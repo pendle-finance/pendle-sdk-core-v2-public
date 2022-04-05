@@ -1,4 +1,4 @@
-import { BlockchainEntity, BlockchainEntityRead, BlockchainEntityReadWrite } from "./BlockchainEntities";
+import { BlockchainEntity, BlockchainEntityRead } from "./BlockchainEntities";
 import { Address, NetworkConnection } from "./types";
 
 export class ERC20Read extends BlockchainEntityRead {
@@ -7,7 +7,7 @@ export class ERC20Read extends BlockchainEntityRead {
     }
 }
 
-export class ERC20ReadWrite extends BlockchainEntityReadWrite {
+export class ERC20ReadWrite extends ERC20Read {
     public constructor(networkConnection: NetworkConnection) {
         super(networkConnection)
     }

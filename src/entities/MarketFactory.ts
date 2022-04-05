@@ -1,4 +1,4 @@
-import { BlockchainEntity, BlockchainEntityRead, BlockchainEntityReadWrite } from "./BlockchainEntities";
+import { BlockchainEntity, BlockchainEntityRead } from "./BlockchainEntities";
 import { Address, NetworkConnection } from "./types";
 
 export class MarketFactoryRead extends BlockchainEntityRead {
@@ -7,7 +7,7 @@ export class MarketFactoryRead extends BlockchainEntityRead {
     }
 }
 
-export class MarketFactoryReadWrite extends BlockchainEntityReadWrite {
+export class MarketFactoryReadWrite extends MarketFactoryRead {
     public constructor(networkConnection: NetworkConnection) {
         super(networkConnection)
     }

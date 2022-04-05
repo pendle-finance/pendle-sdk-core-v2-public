@@ -1,4 +1,4 @@
-import { BlockchainEntity, BlockchainEntityRead, BlockchainEntityReadWrite } from "../BlockchainEntities";
+import { BlockchainEntity, BlockchainEntityRead } from "../BlockchainEntities";
 import { Address, NetworkConnection } from "../types";
 
 export class PendleRouterYTRead extends BlockchainEntityRead {
@@ -7,7 +7,7 @@ export class PendleRouterYTRead extends BlockchainEntityRead {
     }
 }
 
-export class PendleRouterYTReadWrite extends BlockchainEntityReadWrite {
+export class PendleRouterYTReadWrite extends PendleRouterYTRead {
     public constructor(networkConnection: NetworkConnection) {
         super(networkConnection)
     }

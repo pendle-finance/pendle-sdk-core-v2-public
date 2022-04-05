@@ -1,4 +1,4 @@
-import { ERC20, ERC20Read, ERC20ReadWrite } from "./ERC20";
+import { ERC20, ERC20Read } from "./ERC20";
 import { Address, NetworkConnection } from "./types";
 
 export class OTRead extends ERC20Read {
@@ -7,7 +7,7 @@ export class OTRead extends ERC20Read {
     }
 }
 
-export class OTWrite extends ERC20ReadWrite {
+export class OTWrite extends OTRead {
     public constructor(networkConnection: NetworkConnection) {
         super(networkConnection)
     }

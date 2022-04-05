@@ -1,4 +1,4 @@
-import { BlockchainEntity, BlockchainEntityRead, BlockchainEntityReadWrite } from "./BlockchainEntities";
+import { BlockchainEntity, BlockchainEntityRead } from "./BlockchainEntities";
 import { Address, NetworkConnection } from "./types";
 
 export class YieldContractFactoryRead extends BlockchainEntityRead {
@@ -7,7 +7,7 @@ export class YieldContractFactoryRead extends BlockchainEntityRead {
     }
 }
 
-export class YieldContractFactoryReadWrite extends BlockchainEntityReadWrite {
+export class YieldContractFactoryReadWrite extends YieldContractFactoryRead {
     public constructor(networkConnection: NetworkConnection) {
         super(networkConnection)
     }
