@@ -1,30 +1,18 @@
-import { BlockchainEntity, BlockchainEntityRead } from "./BlockchainEntities";
 import { Address, NetworkConnection } from "./types";
-
-export class YieldContractFactoryRead extends BlockchainEntityRead {
-    public constructor(networkConnection: NetworkConnection) {
-        super(networkConnection)
-    }
-}
-
-export class YieldContractFactoryReadWrite extends YieldContractFactoryRead {
-    public constructor(networkConnection: NetworkConnection) {
-        super(networkConnection)
-    }
-}
-
-export class YieldContractFactory extends BlockchainEntity {
+import { Contract } from "ethers";
+import { dummyABI } from "../dummy";
+export class YieldContractFactory {
     public address: Address;
+    public contract: Contract; // To-Be replaced by typechain class
+    public chainId: number;
 
-    public constructor(_address: Address) {
-        super();
+    protected networkConnection: NetworkConnection;
+    public constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
         this.address = _address;
-    }
-    public read(networkConnection: NetworkConnection): YieldContractFactoryRead {
-        return new YieldContractFactoryRead(networkConnection);
+        this.networkConnection = _networkConnection;
+        this.chainId = _chainId;
+        this.contract = new Contract(_address, dummyABI, _networkConnection.provider);
     }
 
-    public readWrite(networkConnection: NetworkConnection): YieldContractFactoryReadWrite {
-        return new YieldContractFactoryReadWrite(networkConnection);
-    }
+    // Add additional functions below
 }

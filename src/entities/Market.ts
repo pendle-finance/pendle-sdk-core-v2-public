@@ -1,30 +1,18 @@
-import { ERC20, ERC20Read } from "./ERC20";
 import { Address, NetworkConnection } from "./types";
-
-export class MarketRead extends ERC20Read {
-    public constructor(networkConnection: NetworkConnection) {
-        super(networkConnection)
-    }
-}
-
-export class MarketWrite extends MarketRead {
-    public constructor(networkConnection: NetworkConnection) {
-        super(networkConnection)
-    }
-}
-
-export class Market extends ERC20 {
+import { Contract } from "ethers";
+import { dummyABI } from "../dummy";
+export class Market {
     public address: Address;
+    public contract: Contract; // To-Be replaced by typechain class
+    public chainId: number;
 
-    public constructor(_address: Address) {
-        super(_address);
+    protected networkConnection: NetworkConnection;
+    public constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
+        this.address = _address;
+        this.networkConnection = _networkConnection;
+        this.chainId = _chainId;
+        this.contract = new Contract(_address, dummyABI, _networkConnection.provider);
     }
 
-    public read(networkConnection: NetworkConnection): MarketRead {
-        return new MarketRead(networkConnection);
-    }
-
-    public readWrite(networkConnection: NetworkConnection): MarketWrite {
-        return new MarketWrite(networkConnection);
-    }
+    // Add additional functions below
 }

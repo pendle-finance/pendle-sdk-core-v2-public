@@ -1,30 +1,18 @@
-import { BlockchainEntity, BlockchainEntityRead } from "../BlockchainEntities";
 import { Address, NetworkConnection } from "../types";
-
-export class PendleRouterRawTokenOTRead extends BlockchainEntityRead {
-    public constructor(networkConnection: NetworkConnection) {
-        super(networkConnection)
-    }
-}
-
-export class PendleRouterRawTokenOTReadWrite extends PendleRouterRawTokenOTRead {
-    public constructor(networkConnection: NetworkConnection) {
-        super(networkConnection)
-    }
-}
-
-export class PendleRouterRawTokenOT extends BlockchainEntity {
+import { Contract } from "ethers";
+import { dummyABI } from "../../dummy";
+export class PendleRouterRawTokenOT {
     public address: Address;
+    public contract: Contract; // To-Be replaced by typechain class
+    public chainId: number;
 
-    public constructor(_address: Address) {
-        super();
+    protected networkConnection: NetworkConnection;
+    public constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
         this.address = _address;
-    }
-    public read(networkConnection: NetworkConnection): PendleRouterRawTokenOTRead {
-        return new PendleRouterRawTokenOTRead(networkConnection);
+        this.networkConnection = _networkConnection;
+        this.chainId = _chainId;
+        this.contract = new Contract(_address, dummyABI, _networkConnection.provider);
     }
 
-    public readWrite(networkConnection: NetworkConnection): PendleRouterRawTokenOTReadWrite {
-        return new PendleRouterRawTokenOTReadWrite(networkConnection);
-    }
+    // Add additional functions below
 }

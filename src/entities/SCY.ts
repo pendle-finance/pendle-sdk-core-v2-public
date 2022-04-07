@@ -1,7 +1,7 @@
-import { Address, NetworkConnection } from "../types";
+import { Address, NetworkConnection } from "./types";
 import { Contract } from "ethers";
-import { dummyABI } from "../../dummy";
-export class PendleRouterYT {
+import { dummyABI } from "../dummy";
+export class SCY {
     public address: Address;
     public contract: Contract; // To-Be replaced by typechain class
     public chainId: number;
