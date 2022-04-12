@@ -1,6 +1,22 @@
-import { Address, NetworkConnection } from './types';
-import { Contract } from 'ethers';
+import type { Address, NetworkConnection, TokenAmount } from './types';
+import { type BigNumber as BN, Contract } from 'ethers';
 import { dummyABI } from '../dummy';
+
+export type UserYOInfo = {
+  ytAddress: Address;
+  ytBalance: BN;
+  otAddress: Address;
+  otBalance: BN;
+  unclaimedInterest: TokenAmount;
+  unclaimedRewards: TokenAmount[];
+};
+
+export type YOInfo = {
+  exchangeRate: BN;
+  totalSupply: BN;
+  totalInterest: BN;
+};
+
 export class YT {
   public address: Address;
   public contract: Contract; // To-Be replaced by typechain class
@@ -14,5 +30,11 @@ export class YT {
     this.contract = new Contract(_address, dummyABI, _networkConnection.provider);
   }
 
-  // Add additional functions below
+  userInfo(user: Address): UserYOInfo {
+    return '' as unknown as UserYOInfo;
+  }
+
+  getInfo(): YOInfo {
+    return {} as unknown as YOInfo;
+  }
 }

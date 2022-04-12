@@ -1,4 +1,5 @@
-import { Address, NetworkConnection } from './types';
+import type { Address, NetworkConnection } from './types';
+import type { UserYOInfo, YOInfo } from './YT';
 import { Contract } from 'ethers';
 import { dummyABI } from '../dummy';
 export class OT {
@@ -14,5 +15,11 @@ export class OT {
     this.contract = new Contract(_address, dummyABI, _networkConnection.provider);
   }
 
-  // Add additional functions below
+  userInfo(user: Address): UserYOInfo {
+    return '' as unknown as UserYOInfo;
+  }
+
+  getInfo(): YOInfo {
+    return {} as unknown as YOInfo;
+  }
 }
