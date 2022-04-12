@@ -1,0 +1,12 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-node@v3
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile # don't generate a lockfile and fail if an update is needed
+    - name: Lint with eslint
+      run: yarn eslint "{src,test}/**/*.{ts,js}"
