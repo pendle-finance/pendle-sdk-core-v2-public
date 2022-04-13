@@ -13,12 +13,11 @@ export class PendleRoutingSystem {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
-        this.contract = new Contract(_address, dummyABI, _networkConnection.provider) as ( PendleRouterCoreUpg);
+        this.contract = new Contract(_address, dummyABI, _networkConnection.provider) as (PendleRouterCoreUpg);
     }
 
     public async addLiquidity(recipient: Address, market: Address, scyDesired: string, otDesired: string, slippage: number, overrides?: Overrides): Promise<ContractTransaction> {
-        const msgSender = await this.networkConnection.signer!.getAddress();
-        const [netLpOut] = await this.contract.callStatic.addLiquidity(recipient, market, scyDesired, otDesired, 0, {from: msgSender});
+        const [netLpOut] = await this.contract.connect(this.networkConnection.signer!).callStatic.addLiquidity(recipient, market, scyDesired, otDesired, 0, );
         return this.contract.connect(this.networkConnection.signer!).addLiquidity(recipient, market, scyDesired, otDesired, calcSlippedDownAmount(netLpOut, slippage), overrides);
     }
 
