@@ -7,4 +7,4 @@ jobs:
     - uses: actions/checkout@v1
     - uses: actions/setup-node@v3
     - name: Lint with eslint
-      run: yarn eslint "{src,test}/**/*.{ts,js}"
+      run: yarn format
