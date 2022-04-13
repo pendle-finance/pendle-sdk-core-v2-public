@@ -30,23 +30,23 @@ export class PendleRoutingSystem {
     }
 
     public async swapExactOtForScy(recipient: Address, market: Address, exactOtIn: string, slippage: number, overrides?: Overrides): Promise<ContractTransaction>{
-        const [netScyOut] = await this.contract.connect(this.networkConnection.signer!).callStatic.swapExactOtForScy(recipient, market, exactOtIn, 0);
+        const netScyOut = await this.contract.connect(this.networkConnection.signer!).callStatic.swapExactOtForScy(recipient, market, exactOtIn, 0);
         return this.contract.connect(this.networkConnection.signer!).swapExactOtForScy(recipient, market, exactOtIn, calcSlippedDownAmount(netScyOut, slippage), overrides);
     }
 
     public async swapOtForExactScy(recipient: Address, market: Address, exactScyOut: string, slippage: number, overrides?: Overrides): Promise<ContractTransaction>{
-        const [netOtIn] = await this.contract.connect(this.networkConnection.signer!).callStatic.swapOtForExactScy(recipient, market, INF, exactScyOut, 0, INF);
+        const netOtIn = await this.contract.connect(this.networkConnection.signer!).callStatic.swapOtForExactScy(recipient, market, INF, exactScyOut, 0, INF);
         const maxOtIn = calcSlippedDownAmount(netOtIn, slippage);
         return this.contract.connect(this.networkConnection.signer!).swapOtForExactScy(recipient, market, maxOtIn, exactScyOut, 0, maxOtIn, overrides);
     }
     
     public async swapScyForExactOt(recipient: Address, market: Address, exactOtOut: string, slippage: number, overrides?: Overrides): Promise<ContractTransaction>{
-        const [netScyIn] = await this.contract.connect(this.networkConnection.signer!).callStatic.swapScyForExactOt(recipient, market, exactOtOut, INF);
+        const netScyIn = await this.contract.connect(this.networkConnection.signer!).callStatic.swapScyForExactOt(recipient, market, exactOtOut, INF);
         return this.contract.connect(this.networkConnection.signer!).swapScyForExactOt(recipient, market, exactOtOut, calcSlippedDownAmount(netScyIn, slippage), overrides);
     }
 
     public async swapExactScyForOt(recipient: Address, market: Address, exactScyIn: string, slippage: number, overrides?: Overrides): Promise<ContractTransaction>{
-        const [netOtOut] = await this.contract.connect(this.networkConnection.signer!).callStatic.swapExactScyForOt(recipient, market, exactScyIn, 0, 0, INF);
+        const netOtOut = await this.contract.connect(this.networkConnection.signer!).callStatic.swapExactScyForOt(recipient, market, exactScyIn, 0, 0, INF);
         const minOtOut = calcSlippedDownAmount(netOtOut, slippage);
         return this.contract.connect(this.networkConnection.signer!).swapExactScyForOt(recipient, market, exactScyIn, minOtOut, minOtOut, INF, overrides);
     }
