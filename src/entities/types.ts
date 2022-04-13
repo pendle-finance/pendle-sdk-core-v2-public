@@ -1,7 +1,7 @@
 import type { providers, Signer } from 'ethers';
 export type NetworkConnection = {
-  provider: providers.Provider;
-  signer?: Signer;
+    provider: providers.Provider;
+    signer?: Signer;
 };
 
 // To-do
