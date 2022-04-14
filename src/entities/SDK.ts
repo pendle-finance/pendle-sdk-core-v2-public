@@ -4,5 +4,5 @@ import type { UserYOInfo } from './YT';
 import type { UserMarketInfo } from './Market';
 
 export async function getAllOt(): Promise<Address[]> {
-  return [];
+    return [];
 }
