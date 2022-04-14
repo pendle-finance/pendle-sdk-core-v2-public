@@ -3,10 +3,14 @@ on: [push, pull_request]
 jobs:
   lint:
     runs-on: ubuntu-latest
+
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-node@v3
-    - name: Install eslint
-      run: yarn add eslint --frozen-lockfile # don't generate a lockfile and fail if an update is needed
+    - name: Install dependencies
+      run: yarn --frozen-lockfile # don't generate a lockfile and fail if an update is needed
     - name: Lint with eslint
       run: yarn eslint "{src,test}/**/*.{ts,js}"
