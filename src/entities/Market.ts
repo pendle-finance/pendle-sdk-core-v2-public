@@ -1,3 +1,4 @@
+import type { PendleRouterStaticUpg } from '@pendle/core-v2/typechain-types';
 import type { MarketParametersStruct, PendleMarket } from '@pendle/core-v2/typechain-types/PendleMarket';
 import type { Address, NetworkConnection, TokenAmount } from './types';
 import { BigNumber as BN, Contract } from 'ethers';
@@ -9,7 +10,7 @@ export type MarketInfo = {
     ot: Address;
     scy: Address;
     marketParam: MarketParametersStruct;
-    currentImpliedYield: number;
+    currentImpliedYield: BN;
     currentExchangeRate: BN;
 };
 
@@ -36,14 +37,24 @@ export class Market {
     }
 
     async getMarketInfo(): Promise<MarketInfo> {
-        const [ot, scy, marketParam] = await Promise.all([
+        // TODO: Finalize where to get router static data
+        const routerStatic = new Contract(
+            '0xRouter',
+            dummyABI,
+            this.networkConnection.provider
+        ) as PendleRouterStaticUpg;
+        const [ot, scy, marketParam, currentImpliedYield] = await Promise.all([
             this.contract.callStatic.OT(),
             this.contract.callStatic.SCY(),
             this.contract.callStatic.readState(),
+            routerStatic.callStatic.getOtImpliedYield(this.address),
         ]);
-        // TODO: Wait for contract updates
-        const currentImpliedYield = 0;
-        const currentExchangeRate = BN.from(0);
+        const otContract = new OT(ot, this.networkConnection, this.chainId).contract;
+        const otDecimalFactor = await otContract.callStatic.decimals();
+        const [currentExchangeRate] = await routerStatic.callStatic.swapOtForScyStatic(
+            this.address,
+            BN.from(10).pow(otDecimalFactor)
+        );
         return { ot, scy, marketParam, currentImpliedYield, currentExchangeRate };
     }
 
