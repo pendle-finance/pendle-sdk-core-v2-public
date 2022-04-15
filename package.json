@@ -22,7 +22,7 @@
   "homepage": "https://github.com/pendle-finance/pendle-sdk-core-v2#readme",
   "devDependencies": {
     "@size-limit/preset-small-lib": "^7.0.5",
-    "@pendle/core-v2": "0.2.1",
+    "@pendle/core-v2": "0.2.3",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
     "husky": "^7.0.4",
