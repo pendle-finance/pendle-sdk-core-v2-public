@@ -1,5 +1,5 @@
 import type { PendleRouterStaticUpg } from '@pendle/core-v2/typechain-types';
-import type { MarketParametersStruct, PendleMarket } from '@pendle/core-v2/typechain-types/PendleMarket';
+import type { MarketStateStruct, PendleMarket } from '@pendle/core-v2/typechain-types/PendleMarket';
 import type { Address, NetworkConnection, TokenAmount } from './types';
 import { BigNumber as BN, Contract } from 'ethers';
 import { OT } from './OT';
@@ -9,7 +9,7 @@ import { dummyABI, dummyAccountingAssetAddress } from '../dummy';
 export type MarketInfo = {
     ot: Address;
     scy: Address;
-    marketParam: MarketParametersStruct;
+    marketParam: MarketStateStruct;
     currentImpliedYield: BN;
     currentExchangeRate: BN;
 };
@@ -46,7 +46,7 @@ export class Market {
         const [ot, scy, marketParam, currentImpliedYield] = await Promise.all([
             this.contract.callStatic.OT(),
             this.contract.callStatic.SCY(),
-            this.contract.callStatic.readState(),
+            this.contract.callStatic.readState(true),
             routerStatic.callStatic.getOtImpliedYield(this.address),
         ]);
         const otContract = new OT(ot, this.networkConnection, this.chainId).contract;
