@@ -4,12 +4,9 @@ export type NetworkConnection = {
     signer?: Signer;
 };
 
-// To-do
-export type Token = {};
+export type Address = string;
 
 export type TokenAmount = {
-    token: Token;
+    token: Address;
     amount: BN;
 };
-
-export type Address = string;
