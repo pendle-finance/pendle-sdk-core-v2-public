@@ -37,7 +37,7 @@ export class Market {
     }
 
     async getMarketInfo(): Promise<MarketInfo> {
-        // TODO: Finalize where to get router static data
+        // TODO: Store the router contract address somewhere
         const routerStatic = new Contract(
             '0xRouter',
             dummyABI,
@@ -51,6 +51,8 @@ export class Market {
         ]);
         const otContract = new OT(ot, this.networkConnection, this.chainId).contract;
         const otDecimalFactor = await otContract.callStatic.decimals();
+        // OT -> SCY exchange rate
+        // FIXME: Get actual exchange rate, not swap rate
         const [currentExchangeRate] = await routerStatic.callStatic.swapOtForScyStatic(
             this.address,
             BN.from(10).pow(otDecimalFactor)
@@ -67,10 +69,10 @@ export class Market {
         ]);
         const ot = new OT(otAddress, this.networkConnection, this.chainId);
         const scy = new SCY(scyAddress, this.networkConnection, this.chainId);
+        // FIXME: Use the amount that the LP token is entitled to, not balance
         const [otAmount, scyAmount, scyIndex] = await Promise.all([
             ot.contract.callStatic.balanceOf(user),
             scy.contract.callStatic.balanceOf(user),
-            // TODO: Maybe refactor this to use a corresponding method in SCY class
             scy.contract.callStatic.scyIndexCurrent(),
         ]);
         const otBalance = { token: otAddress, amount: otAmount };
