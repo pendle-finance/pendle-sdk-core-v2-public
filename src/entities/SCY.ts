@@ -35,7 +35,7 @@ export class SCY {
      * */ 
     public async mint(recipient: Address, baseAssetIn: Address, amountBaseToPull: BigNumberish, slippage: number, overrides?: Overrides): Promise<ContractTransaction> {
         const amountScyOut = await this.contract.connect(this.networkConnection.signer!).callStatic.mint(recipient, baseAssetIn, amountBaseToPull, 0);
-        return await this.contract.connect(this.networkConnection.signer!).mint(recipient, baseAssetIn, amountBaseToPull, calcSlippedDownAmount(amountScyOut, slippage)) as ContractTransaction;
+        return this.contract.connect(this.networkConnection.signer!).mint(recipient, baseAssetIn, amountBaseToPull, calcSlippedDownAmount(amountScyOut, slippage)) as ContractTransaction;
     }
     
     /**
@@ -43,7 +43,7 @@ export class SCY {
      */
     public async redeem(recipient: Address, baseAssetOut: Address, amountScyOut: BigNumberish, slippage: number, overrides?: Overrides): Promise<ContractTransaction> {
         const amountBaseOut = await this.contract.connect(this.networkConnection.signer!).callStatic.redeem(recipient, baseAssetOut, amountScyOut, 0);
-        return await this.contract.connect(this.networkConnection.signer!).redeem(recipient, baseAssetOut, amountScyOut, calcSlippedDownAmount(amountBaseOut, slippage)) as ContractTransaction;
+        return this.contract.connect(this.networkConnection.signer!).redeem(recipient, baseAssetOut, amountScyOut, calcSlippedDownAmount(amountBaseOut, slippage)) as ContractTransaction;
     }
 
     public async userInfo(user: Address): Promise<UserSCYInfo> {
