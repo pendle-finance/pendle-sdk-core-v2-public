@@ -1,9 +1,8 @@
-import { Address, NetworkConnection } from './types';
-import { BigNumberish, Contract, ContractTransaction, Overrides } from 'ethers';
+import type { IPAllAction } from '@pendle/core-v2/typechain-types';
+import type { Address, NetworkConnection } from './types';
+import { type BigNumberish, type ContractTransaction, type Overrides, Contract, constants } from 'ethers';
 import { dummyABI } from '../dummy';
-import { IPAllAction } from '@pendle/core-v2/typechain-types';
 import { calcSlippedDownAmount, calcSlippedUpAmount } from './helper';
-import { INF } from './constants';
 
 export class PendleRoutingSystem {
     public address: Address;
@@ -97,7 +96,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const netScyIn = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapScyForExactOt(recipient, market, exactOtOut, INF);
+            .callStatic.swapScyForExactOt(recipient, market, exactOtOut, constants.MaxUint256);
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapScyForExactOt(recipient, market, exactOtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
@@ -282,7 +281,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const netScyIn = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapScyForExactYt(recipient, market, exactYtOut, INF);
+            .callStatic.swapScyForExactYt(recipient, market, exactYtOut, constants.MaxUint256);
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapScyForExactYt(recipient, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
@@ -321,6 +320,4 @@ export class PendleRoutingSystem {
                 overrides
             );
     }
-
-    // Add additional functions below
 }
