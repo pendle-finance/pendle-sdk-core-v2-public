@@ -19,11 +19,11 @@ export class SDK {
     /**
      * Get information about the user's YO positions
      * @param user Address of the user
-     * @param tokens YT and OT token addresses that we want to check
+     * @param yos YT and OT token addresses that we want to check
      * @returns UserYOInfo object array representing user's YO positions
      */
-    async getUserYOPositionsByYOs(user: Address, tokens: Address[]): Promise<UserYOInfo[]> {
-        return this.routerStatic.callStatic.getUserYOPositionsByYOs(user, tokens);
+    async getUserYOPositionsByYOs(user: Address, yos: Address[]): Promise<UserYOInfo[]> {
+        return this.routerStatic.callStatic.getUserYOPositionsByYOs(user, yos);
     }
 
     async getUserMarketPositions(user: Address, markets: Address[]): Promise<UserMarketInfo[]> {
