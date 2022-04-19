@@ -21,6 +21,10 @@ export function calcSlippedUpAmount(theoreticalAmount: BN, slippage: number): BN
         .div(decimalFactor(PERCENTAGE_DECIMALS));
 }
 
+export function getRouterStatic(provider: providers.Provider, chainId: number): RouterStatic {
+    return new Contract(getContractAddresses(chainId).ROUTER_STATIC, dummyABI, provider) as RouterStatic;
+}
+
 export function getContractAddresses(chainId: number): ContractAddresses {
     switch (chainId) {
         case CHAIN_ID.ETHEREUM:
@@ -30,8 +34,4 @@ export function getContractAddresses(chainId: number): ContractAddresses {
         default:
             throw Error('Invalid Chain ID');
     }
-}
-
-export function getRouterStatic(provider: providers.Provider, chainId: number): RouterStatic {
-    return new Contract(getContractAddresses(chainId).ROUTER_STATIC, dummyABI, provider) as RouterStatic;
 }
