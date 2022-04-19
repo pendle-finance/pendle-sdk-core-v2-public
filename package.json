@@ -23,8 +23,8 @@
   },
   "homepage": "https://github.com/pendle-finance/pendle-sdk-core-v2#readme",
   "devDependencies": {
-    "@pendle/core-v2": "^0.4.0",
     "@size-limit/preset-small-lib": "^7.0.5",
+    "@pendle/core-v2": "0.5.1-beta-2",
     "@typescript-eslint/parser": "^5.19.0",
     "eslint": "^8.13.0",
     "eslint-config-prettier": "^8.5.0",
