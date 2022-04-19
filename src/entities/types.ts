@@ -1,9 +1,12 @@
-import type { providers, Signer } from 'ethers';
+import type { BigNumber as BN, providers, Signer } from 'ethers';
 export type NetworkConnection = {
     provider: providers.Provider;
     signer?: Signer;
 };
 
-// To-do
-export type TokenAmount = {};
 export type Address = string;
+
+export type TokenAmount = {
+    token: Address;
+    amount: BN;
+};

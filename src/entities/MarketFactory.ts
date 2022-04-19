@@ -1,9 +1,11 @@
-import { Address, NetworkConnection } from './types';
+import type { PendleMarketFactory } from '@pendle/core-v2/typechain-types';
+import type { Address, NetworkConnection } from './types';
 import { Contract } from 'ethers';
 import { dummyABI } from '../dummy';
+
 export class MarketFactory {
     public address: Address;
-    public contract: Contract; // To-Be replaced by typechain class
+    public contract: PendleMarketFactory;
     public chainId: number;
 
     protected networkConnection: NetworkConnection;
@@ -11,8 +13,6 @@ export class MarketFactory {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
-        this.contract = new Contract(_address, dummyABI, _networkConnection.provider);
+        this.contract = new Contract(_address, dummyABI, _networkConnection.provider) as PendleMarketFactory;
     }
-
-    // Add additional functions below
 }
