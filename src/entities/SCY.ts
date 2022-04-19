@@ -1,6 +1,9 @@
+import type { PendleYieldToken, RouterStatic } from '@pendle/core-v2/typechain-types';
 import { Address, NetworkConnection, TokenAmount } from "./types";
-import { Contract, Overrides, ContractTransaction, BigNumber as BN } from "ethers";
+import { BigNumberish, Contract, Overrides, ContractTransaction, BigNumber as BN } from "ethers";
 import { dummyABI } from "../dummy";
+import { calcSlippedDownAmount, calcSlippedUpAmount, getRouterStatic } from "./helper";
+import { INF } from "../constants";
 
 export type UserSCYInfo = {
     balance: BN,
@@ -13,11 +16,14 @@ export class SCY {
     public chainId: number;
 
     protected networkConnection: NetworkConnection;
+    protected routerStatic: RouterStatic;
+
     public constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
         this.contract = new Contract(_address, dummyABI, _networkConnection.provider);
+        this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
     }
 
     /** 
@@ -27,19 +33,21 @@ export class SCY {
      * 
      * We will simulate how much SCY user can get out of his base assets, and apply (1 - slippage) to the simulated amount as minAmount
      * */ 
-    public async pullAndMint(receipient: Address, baseAssetIn: Address, slippage: number, overrides?: Overrides): Promise<ContractTransaction> {
-        return {} as ContractTransaction
+    public async mint(recipient: Address, baseAssetIn: Address, amountBaseToPull: BigNumberish, slippage: number, overrides?: Overrides): Promise<ContractTransaction> {
+        const amountScyOut = await this.contract.connect(this.networkConnection.signer!).callStatic.mint(recipient, baseAssetIn, amountBaseToPull, 0);
+        return await this.contract.connect(this.networkConnection.signer!).mint(recipient, baseAssetIn, amountBaseToPull, calcSlippedDownAmount(amountScyOut, slippage)) as ContractTransaction;
     }
     
     /**
      * Similar to mint, we allow the user to pass in slippage instead
      */
-    public async pullAndRedeem(receipient: Address, baseAssetOut: Address, slippage: number, overrides?: Overrides): Promise<ContractTransaction> {
-        return {} as ContractTransaction
+    public async redeem(recipient: Address, baseAssetOut: Address, amountScyOut: BigNumberish, slippage: number, overrides?: Overrides): Promise<ContractTransaction> {
+        const amountBaseOut = await this.contract.connect(this.networkConnection.signer!).callStatic.redeem(recipient, baseAssetOut, amountScyOut, 0);
+        return await this.contract.connect(this.networkConnection.signer!).redeem(recipient, baseAssetOut, amountScyOut, calcSlippedDownAmount(amountBaseOut, slippage)) as ContractTransaction;
     }
 
     public async userInfo(user: Address): Promise<UserSCYInfo> {
-        return {} as UserSCYInfo
+        return await this.routerStatic.callStatic.getUserSCYInfo(this.address, user) as UserSCYInfo;
     }
 
     // Add additional functions below
