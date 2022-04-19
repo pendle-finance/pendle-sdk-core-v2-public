@@ -1,6 +1,6 @@
-import { Address, NetworkConnection } from "./types";
-import { Contract } from "ethers";
-import { dummyABI } from "../dummy";
+import { Address, NetworkConnection } from './types';
+import { Contract } from 'ethers';
+import { dummyABI } from '../dummy';
 export class YieldContractFactory {
     public address: Address;
     public contract: Contract; // To-Be replaced by typechain class
