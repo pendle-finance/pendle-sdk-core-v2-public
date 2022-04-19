@@ -1,7 +1,4 @@
 import type { Address } from './entities';
-import { BigNumber as BN } from 'ethers';
-
-export const INF = BN.from(2).pow(256).sub(1);
 
 export type ContractAddresses = {
     ROUTER_STATIC: Address;
