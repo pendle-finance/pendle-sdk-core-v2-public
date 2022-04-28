@@ -1,6 +1,12 @@
 import type { RouterStatic } from '@pendle/core-v2/typechain-types';
 import { BigNumber as BN, Contract, type providers } from 'ethers';
-import { CHAIN_ID, AVALANCHE_ADDRESSES, ETHEREUM_ADDRESSES, type ContractAddresses } from '../constants';
+import {
+    CHAIN_ID,
+    AVALANCHE_ADDRESSES,
+    ETHEREUM_ADDRESSES,
+    KOVAN_ADDRESSES,
+    type ContractAddresses,
+} from '../constants';
 import { dummyABI } from '../dummy';
 
 export const PERCENTAGE_DECIMALS = 6;
@@ -31,6 +37,8 @@ export function getContractAddresses(chainId: number): ContractAddresses {
             return ETHEREUM_ADDRESSES;
         case CHAIN_ID.AVALANCHE:
             return AVALANCHE_ADDRESSES;
+        case CHAIN_ID.KOVAN:
+            return KOVAN_ADDRESSES;
         default:
             throw Error('Invalid Chain ID');
     }

@@ -7,6 +7,7 @@ export type ContractAddresses = {
 export const CHAIN_ID = {
     ETHEREUM: 1,
     AVALANCHE: 43114,
+    KOVAN: 42,
 };
 
 export const ETHEREUM_ADDRESSES: ContractAddresses = {
@@ -14,3 +15,5 @@ export const ETHEREUM_ADDRESSES: ContractAddresses = {
 };
 
 export const AVALANCHE_ADDRESSES: ContractAddresses = ETHEREUM_ADDRESSES;
+
+export const KOVAN_ADDRESSES: ContractAddresses = ETHEREUM_ADDRESSES;
