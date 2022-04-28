@@ -4,16 +4,16 @@ import { type BigNumber as BN, Contract } from 'ethers';
 import { getRouterStatic } from './helper';
 import { dummyABI } from '../dummy';
 
-export type UserYOInfo = {
+export type UserPYInfo = {
     yt: Address;
     ytBalance: BN;
-    ot: Address;
-    otBalance: BN;
+    pt: Address;
+    ptBalance: BN;
     unclaimedInterest: TokenAmount;
     unclaimedRewards: TokenAmount[];
 };
 
-export type YOInfo = {
+export type PYInfo = {
     exchangeRate: BN;
     totalSupply: BN;
     rewardIndexes: RewardIndex[];
@@ -40,12 +40,12 @@ export class YT {
         this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
     }
 
-    async userInfo(user: Address): Promise<UserYOInfo> {
-        return this.routerStatic.callStatic.getUserYOInfo(this.address, user);
+    async userInfo(user: Address): Promise<UserPYInfo> {
+        return this.routerStatic.callStatic.getUserPYInfo(this.address, user);
     }
 
-    async getInfo(): Promise<YOInfo> {
-        const [exchangeRate, totalSupply, rewardIndexes] = await this.routerStatic.callStatic.getYOInfo(this.address);
+    async getInfo(): Promise<PYInfo> {
+        const [exchangeRate, totalSupply, rewardIndexes] = await this.routerStatic.callStatic.getPYInfo(this.address);
         return { exchangeRate, totalSupply, rewardIndexes };
     }
 }

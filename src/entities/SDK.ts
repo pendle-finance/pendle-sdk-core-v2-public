@@ -1,6 +1,6 @@
 import type { RouterStatic } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection } from './types';
-import type { UserYOInfo } from './YT';
+import type { UserPYInfo } from './YT';
 import type { UserMarketInfo } from './Market';
 import { getRouterStatic } from './helper';
 
@@ -17,13 +17,13 @@ export class SDK {
     }
 
     /**
-     * Get information about the user's YO positions
+     * Get information about the user's PY positions
      * @param user Address of the user
-     * @param yos YT and OT token addresses that we want to check
-     * @returns UserYOInfo object array representing user's YO positions
+     * @param pys PT and YT token addresses that we want to check
+     * @returns UserPYInfo object array representing user's PY positions
      */
-    async getUserYOPositionsByYOs(user: Address, yos: Address[]): Promise<UserYOInfo[]> {
-        return this.routerStatic.callStatic.getUserYOPositionsByYOs(user, yos);
+    async getUserPYPositionsByPYs(user: Address, pys: Address[]): Promise<UserPYInfo[]> {
+        return this.routerStatic.callStatic.getUserPYPositionsByPYs(user, pys);
     }
 
     async getUserMarketPositions(user: Address, markets: Address[]): Promise<UserMarketInfo[]> {

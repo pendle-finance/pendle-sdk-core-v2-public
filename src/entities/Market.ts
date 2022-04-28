@@ -6,7 +6,7 @@ import { getRouterStatic } from './helper';
 import { dummyABI } from '../dummy';
 
 export type MarketInfo = {
-    ot: Address;
+    pt: Address;
     scy: Address;
     state: MarketStateStruct;
     impliedYield: BN;
@@ -16,7 +16,7 @@ export type MarketInfo = {
 export type UserMarketInfo = {
     market: Address;
     lpBalance: BN;
-    otBalance: TokenAmount;
+    ptBalance: TokenAmount;
     scyBalance: TokenAmount;
     assetBalance: TokenAmount;
 };

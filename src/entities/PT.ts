@@ -1,13 +1,13 @@
-import type { PendleOwnershipToken, RouterStatic } from '@pendle/core-v2/typechain-types';
+import type { PendlePrincipalToken, RouterStatic } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection } from './types';
-import type { UserYOInfo, YOInfo } from './YT';
+import type { UserPYInfo, PYInfo } from './YT';
 import { Contract } from 'ethers';
 import { getRouterStatic } from './helper';
 import { dummyABI } from '../dummy';
 
-export class OT {
+export class PT {
     public address: Address;
-    public contract: PendleOwnershipToken;
+    public contract: PendlePrincipalToken;
     public chainId: number;
 
     protected networkConnection: NetworkConnection;
@@ -17,16 +17,16 @@ export class OT {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
-        this.contract = new Contract(_address, dummyABI, _networkConnection.provider) as PendleOwnershipToken;
+        this.contract = new Contract(_address, dummyABI, _networkConnection.provider) as PendlePrincipalToken;
         this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
     }
 
-    async userInfo(user: Address): Promise<UserYOInfo> {
-        return this.routerStatic.callStatic.getUserYOInfo(this.address, user);
+    async userInfo(user: Address): Promise<UserPYInfo> {
+        return this.routerStatic.callStatic.getUserPYInfo(this.address, user);
     }
 
-    async getInfo(): Promise<YOInfo> {
-        const [exchangeRate, totalSupply, rewardIndexes] = await this.routerStatic.callStatic.getYOInfo(this.address);
+    async getInfo(): Promise<PYInfo> {
+        const [exchangeRate, totalSupply, rewardIndexes] = await this.routerStatic.callStatic.getPYInfo(this.address);
         return { exchangeRate, totalSupply, rewardIndexes };
     }
 }
