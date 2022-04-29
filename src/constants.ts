@@ -10,6 +10,7 @@ export const CHAIN_ID = {
     KOVAN: 42,
 };
 
+// TODO: Update addresses after deployment
 export const ETHEREUM_ADDRESSES: ContractAddresses = {
     ROUTER_STATIC: '0xRouter',
 };

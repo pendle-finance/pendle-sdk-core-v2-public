@@ -1,9 +1,9 @@
 import type { PendlePrincipalToken, RouterStatic } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection } from './types';
 import type { UserPYInfo, PYInfo } from './YT';
+import { abi as PendlePrincipalTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/PendlePrincipalToken.sol/PendlePrincipalToken.json';
 import { Contract } from 'ethers';
 import { getRouterStatic } from './helper';
-import { dummyABI } from '../dummy';
 
 export class PT {
     public address: Address;
@@ -17,7 +17,11 @@ export class PT {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
-        this.contract = new Contract(_address, dummyABI, _networkConnection.provider) as PendlePrincipalToken;
+        this.contract = new Contract(
+            _address,
+            PendlePrincipalTokenABI,
+            _networkConnection.provider
+        ) as PendlePrincipalToken;
         this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
     }
 

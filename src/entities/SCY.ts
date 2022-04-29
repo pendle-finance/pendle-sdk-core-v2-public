@@ -1,7 +1,7 @@
 import type { RouterStatic } from '@pendle/core-v2/typechain-types';
 import { Address, NetworkConnection, TokenAmount } from './types';
 import { BigNumberish, Contract, Overrides, ContractTransaction, BigNumber as BN } from 'ethers';
-import { dummyABI } from '../dummy';
+import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/implementations/SCYBase.sol/SCYBase.json';
 import { calcSlippedDownAmount, getRouterStatic } from './helper';
 export type UserSCYInfo = {
     balance: BN;
@@ -20,7 +20,7 @@ export class SCY {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
-        this.contract = new Contract(_address, dummyABI, _networkConnection.provider);
+        this.contract = new Contract(_address, SCYBaseABI, _networkConnection.provider);
         this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
     }
 

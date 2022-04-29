@@ -1,7 +1,7 @@
 import type { IPAllAction } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection } from './types';
+import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
 import { type BigNumberish, type ContractTransaction, type Overrides, Contract, constants } from 'ethers';
-import { dummyABI } from '../dummy';
 import { calcSlippedDownAmount, calcSlippedUpAmount } from './helper';
 
 export class PendleRoutingSystem {
@@ -14,7 +14,7 @@ export class PendleRoutingSystem {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
-        this.contract = new Contract(_address, dummyABI, _networkConnection.provider) as IPAllAction;
+        this.contract = new Contract(_address, IPAllActionABI, _networkConnection.provider) as IPAllAction;
     }
 
     public async addLiquidity(

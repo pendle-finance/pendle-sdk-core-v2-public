@@ -1,7 +1,7 @@
 import type { PendleYieldContractFactory } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection } from './types';
+import { abi as PendleYieldContractFactoryABI } from '@pendle/core-v2/build/artifacts/contracts/core/PendleYieldContractFactory.sol/PendleYieldContractFactory.json';
 import { Contract } from 'ethers';
-import { dummyABI } from '../dummy';
 
 export class YieldContractFactory {
     public address: Address;
@@ -13,6 +13,10 @@ export class YieldContractFactory {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
-        this.contract = new Contract(_address, dummyABI, _networkConnection.provider) as PendleYieldContractFactory;
+        this.contract = new Contract(
+            _address,
+            PendleYieldContractFactoryABI,
+            _networkConnection.provider
+        ) as PendleYieldContractFactory;
     }
 }

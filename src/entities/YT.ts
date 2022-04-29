@@ -1,8 +1,8 @@
 import type { PendleYieldToken, RouterStatic } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, TokenAmount } from './types';
 import { type BigNumber as BN, Contract } from 'ethers';
+import { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/PendleYieldToken.sol/PendleYieldToken.json';
 import { getRouterStatic } from './helper';
-import { dummyABI } from '../dummy';
 
 export type UserPYInfo = {
     yt: Address;
@@ -36,7 +36,7 @@ export class YT {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
-        this.contract = new Contract(_address, dummyABI, _networkConnection.provider) as PendleYieldToken;
+        this.contract = new Contract(_address, PendleYieldTokenABI, _networkConnection.provider) as PendleYieldToken;
         this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
     }
 

@@ -1,4 +1,5 @@
 import type { RouterStatic } from '@pendle/core-v2/typechain-types';
+import { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/core/RouterStatic.sol/RouterStatic.json';
 import { BigNumber as BN, Contract, type providers } from 'ethers';
 import {
     CHAIN_ID,
@@ -7,7 +8,6 @@ import {
     KOVAN_ADDRESSES,
     type ContractAddresses,
 } from '../constants';
-import { dummyABI } from '../dummy';
 
 export const PERCENTAGE_DECIMALS = 6;
 
@@ -28,7 +28,7 @@ export function calcSlippedUpAmount(theoreticalAmount: BN, slippage: number): BN
 }
 
 export function getRouterStatic(provider: providers.Provider, chainId: number): RouterStatic {
-    return new Contract(getContractAddresses(chainId).ROUTER_STATIC, dummyABI, provider) as RouterStatic;
+    return new Contract(getContractAddresses(chainId).ROUTER_STATIC, RouterStaticABI, provider) as RouterStatic;
 }
 
 export function getContractAddresses(chainId: number): ContractAddresses {
