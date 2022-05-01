@@ -4,12 +4,13 @@ import { abi as PendleMarketFactoryABI } from '@pendle/core-v2/build/artifacts/c
 import { Contract } from 'ethers';
 
 export class MarketFactory {
-    public address: Address;
-    public contract: PendleMarketFactory;
-    public chainId: number;
+    address: Address;
+    contract: PendleMarketFactory;
+    chainId: number;
 
     protected networkConnection: NetworkConnection;
-    public constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
+
+    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;

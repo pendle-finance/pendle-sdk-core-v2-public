@@ -5,12 +5,12 @@ import type { UserMarketInfo } from './Market';
 import { getRouterStatic } from './helper';
 
 export class SDK {
-    public chainId: number;
+    chainId: number;
 
     protected networkConnection: NetworkConnection;
     protected routerStatic: RouterStatic;
 
-    public constructor(_networkConnection: NetworkConnection, _chainId: number) {
+    constructor(_networkConnection: NetworkConnection, _chainId: number) {
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
         this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);

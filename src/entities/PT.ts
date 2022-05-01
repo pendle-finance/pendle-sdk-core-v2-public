@@ -6,14 +6,14 @@ import { Contract } from 'ethers';
 import { getRouterStatic } from './helper';
 
 export class PT {
-    public address: Address;
-    public contract: PendlePrincipalToken;
-    public chainId: number;
+    address: Address;
+    contract: PendlePrincipalToken;
+    chainId: number;
 
     protected networkConnection: NetworkConnection;
     protected routerStatic: RouterStatic;
 
-    public constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
+    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;

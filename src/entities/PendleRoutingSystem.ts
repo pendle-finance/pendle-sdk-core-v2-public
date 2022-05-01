@@ -5,19 +5,20 @@ import { type BigNumberish, type ContractTransaction, type Overrides, Contract, 
 import { calcSlippedDownAmount, calcSlippedUpAmount } from './helper';
 
 export class PendleRoutingSystem {
-    public address: Address;
-    public contract: IPAllAction;
-    public chainId: number;
+    address: Address;
+    contract: IPAllAction;
+    chainId: number;
 
     protected networkConnection: NetworkConnection;
-    public constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
+
+    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
         this.contract = new Contract(_address, IPAllActionABI, _networkConnection.provider) as IPAllAction;
     }
 
-    public async addLiquidity(
+    async addLiquidity(
         recipient: Address,
         market: Address,
         scyDesired: BigNumberish,
@@ -40,7 +41,7 @@ export class PendleRoutingSystem {
             );
     }
 
-    public async removeLiquidity(
+    async removeLiquidity(
         recipient: Address,
         market: Address,
         lpToRemove: BigNumberish,
@@ -62,7 +63,7 @@ export class PendleRoutingSystem {
             );
     }
 
-    public async swapExactPtForScy(
+    async swapExactPtForScy(
         recipient: Address,
         market: Address,
         exactPtIn: BigNumberish,
@@ -77,7 +78,7 @@ export class PendleRoutingSystem {
             .swapExactPtForScy(recipient, market, exactPtIn, calcSlippedDownAmount(netScyOut, slippage), overrides);
     }
 
-    public async swapPtForExactScy(
+    async swapPtForExactScy(
         recipient: Address,
         market: Address,
         exactScyOut: BigNumberish,
@@ -87,7 +88,7 @@ export class PendleRoutingSystem {
         return {} as ContractTransaction;
     }
 
-    public async swapScyForExactPt(
+    async swapScyForExactPt(
         recipient: Address,
         market: Address,
         exactPtOut: BigNumberish,
@@ -102,7 +103,7 @@ export class PendleRoutingSystem {
             .swapScyForExactPt(recipient, market, exactPtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
     }
 
-    public async swapExactRawTokenForPt(
+    async swapExactRawTokenForPt(
         recipient: Address,
         market: Address,
         exactRawTokenIn: BigNumberish,
@@ -112,7 +113,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         return {} as ContractTransaction;
     }
-    public async swapExactScyForPt(
+    async swapExactScyForPt(
         recipient: Address,
         market: Address,
         exactScyIn: BigNumberish,
@@ -122,7 +123,7 @@ export class PendleRoutingSystem {
         return {} as ContractTransaction;
     }
 
-    public async mintScyFromRawToken(
+    async mintScyFromRawToken(
         recipient: Address,
         SCY: Address,
         netRawTokenIn: BigNumberish,
@@ -145,7 +146,7 @@ export class PendleRoutingSystem {
             );
     }
 
-    public async redeemScyToRawToken(
+    async redeemScyToRawToken(
         recipient: Address,
         SCY: Address,
         netScyIn: BigNumberish,
@@ -168,7 +169,7 @@ export class PendleRoutingSystem {
             );
     }
 
-    public async mintPyFromRawToken(
+    async mintPyFromRawToken(
         recipient: Address,
         YT: Address,
         netRawTokenIn: BigNumberish,
@@ -191,7 +192,7 @@ export class PendleRoutingSystem {
             );
     }
 
-    public async redeemPyToRawToken(
+    async redeemPyToRawToken(
         recipient: Address,
         YT: Address,
         netPyIn: BigNumberish,
@@ -214,7 +215,7 @@ export class PendleRoutingSystem {
             );
     }
 
-    public async swapExactScyForYt(
+    async swapExactScyForYt(
         recipient: Address,
         market: Address,
         exactScyIn: BigNumberish,
@@ -224,7 +225,7 @@ export class PendleRoutingSystem {
         return {} as ContractTransaction;
     }
 
-    public async swapYtForExactScy(
+    async swapYtForExactScy(
         recipient: Address,
         market: Address,
         exactScyOut: BigNumberish,
@@ -234,7 +235,7 @@ export class PendleRoutingSystem {
         return {} as ContractTransaction;
     }
 
-    public async swapExactPtForRawToken(
+    async swapExactPtForRawToken(
         recipient: Address,
         market: Address,
         exactPtIn: BigNumberish,
@@ -257,7 +258,7 @@ export class PendleRoutingSystem {
             );
     }
 
-    public async swapExactYtForScy(
+    async swapExactYtForScy(
         recipient: Address,
         market: Address,
         exactYtIn: BigNumberish,
@@ -272,7 +273,7 @@ export class PendleRoutingSystem {
             .swapExactYtForScy(recipient, market, exactYtIn, calcSlippedDownAmount(netScyOut, slippage), overrides);
     }
 
-    public async swapScyForExactYt(
+    async swapScyForExactYt(
         recipient: Address,
         market: Address,
         exactYtOut: BigNumberish,
@@ -287,7 +288,7 @@ export class PendleRoutingSystem {
             .swapScyForExactYt(recipient, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
     }
 
-    public async swapExactRawTokenForYt(
+    async swapExactRawTokenForYt(
         recipient: Address,
         market: Address,
         exactRawTokenIn: BigNumberish,
@@ -298,7 +299,7 @@ export class PendleRoutingSystem {
         return {} as ContractTransaction;
     }
 
-    public async swapExactYtForRawToken(
+    async swapExactYtForRawToken(
         recipient: Address,
         market: Address,
         exactYtIn: BigNumberish,

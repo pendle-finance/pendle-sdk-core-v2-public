@@ -25,14 +25,14 @@ export type RewardIndex = {
 };
 
 export class YT {
-    public address: Address;
-    public contract: PendleYieldToken;
-    public chainId: number;
+    address: Address;
+    contract: PendleYieldToken;
+    chainId: number;
 
     protected networkConnection: NetworkConnection;
     protected routerStatic: RouterStatic;
 
-    public constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
+    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;

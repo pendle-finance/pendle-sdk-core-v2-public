@@ -10,14 +10,14 @@ export type UserSCYInfo = {
 };
 
 export class SCY {
-    public address: Address;
-    public contract: SCYBase;
-    public chainId: number;
+    address: Address;
+    contract: SCYBase;
+    chainId: number;
 
     protected networkConnection: NetworkConnection;
     protected routerStatic: RouterStatic;
 
-    public constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
+    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
@@ -32,7 +32,7 @@ export class SCY {
      *
      * We will simulate how much SCY user can get out of his base assets, and apply (1 - slippage) to the simulated amount as minAmount
      * */
-    public async mint(
+    async mint(
         recipient: Address,
         baseAssetIn: Address,
         amountBaseToPull: BigNumberish,
@@ -50,7 +50,7 @@ export class SCY {
     /**
      * Similar to mint, we allow the user to pass in slippage instead
      */
-    public async redeem(
+    async redeem(
         recipient: Address,
         baseAssetOut: Address,
         amountScyToPull: BigNumberish,
@@ -71,7 +71,7 @@ export class SCY {
             );
     }
 
-    public async userInfo(user: Address): Promise<UserSCYInfo> {
+    async userInfo(user: Address): Promise<UserSCYInfo> {
         return this.routerStatic.callStatic.getUserSCYInfo(this.address, user);
     }
 }
