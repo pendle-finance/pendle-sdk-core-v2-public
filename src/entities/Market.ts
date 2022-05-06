@@ -1,12 +1,12 @@
 import type { PendleMarket, RouterStatic } from '@pendle/core-v2/typechain-types';
 import type { MarketStateStruct } from '@pendle/core-v2/typechain-types/PendleMarket';
 import type { Address, NetworkConnection, TokenAmount } from './types';
+import { abi as PendleMarketABI } from '@pendle/core-v2/build/artifacts/contracts/core/PendleMarket.sol/PendleMarket.json';
 import { type BigNumber as BN, Contract } from 'ethers';
 import { getRouterStatic } from './helper';
-import { dummyABI } from '../dummy';
 
 export type MarketInfo = {
-    ot: Address;
+    pt: Address;
     scy: Address;
     state: MarketStateStruct;
     impliedYield: BN;
@@ -16,24 +16,24 @@ export type MarketInfo = {
 export type UserMarketInfo = {
     market: Address;
     lpBalance: BN;
-    otBalance: TokenAmount;
+    ptBalance: TokenAmount;
     scyBalance: TokenAmount;
     assetBalance: TokenAmount;
 };
 
 export class Market {
-    public address: Address;
-    public contract: PendleMarket;
-    public chainId: number;
+    address: Address;
+    contract: PendleMarket;
+    chainId: number;
 
     protected networkConnection: NetworkConnection;
     protected routerStatic: RouterStatic;
 
-    public constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
+    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
-        this.contract = new Contract(_address, dummyABI, _networkConnection.provider) as PendleMarket;
+        this.contract = new Contract(_address, PendleMarketABI, _networkConnection.provider) as PendleMarket;
         this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
     }
 

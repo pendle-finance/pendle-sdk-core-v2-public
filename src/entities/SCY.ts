@@ -1,26 +1,27 @@
-import type { RouterStatic } from '@pendle/core-v2/typechain-types';
-import { Address, NetworkConnection, TokenAmount } from './types';
-import { BigNumberish, Contract, Overrides, ContractTransaction, BigNumber as BN } from 'ethers';
-import { dummyABI } from '../dummy';
+import type { RouterStatic, SCYBase } from '@pendle/core-v2/typechain-types';
+import type { Address, NetworkConnection, TokenAmount } from './types';
+import { type BigNumber as BN, type BigNumberish, type ContractTransaction, type Overrides, Contract } from 'ethers';
+import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/implementations/SCYBase.sol/SCYBase.json';
 import { calcSlippedDownAmount, getRouterStatic } from './helper';
+
 export type UserSCYInfo = {
     balance: BN;
     rewards: TokenAmount[];
 };
 
 export class SCY {
-    public address: Address;
-    public contract: Contract; // To-Be replaced by typechain class
-    public chainId: number;
+    address: Address;
+    contract: SCYBase;
+    chainId: number;
 
     protected networkConnection: NetworkConnection;
     protected routerStatic: RouterStatic;
 
-    public constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
+    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
         this.address = _address;
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
-        this.contract = new Contract(_address, dummyABI, _networkConnection.provider);
+        this.contract = new Contract(_address, SCYBaseABI, _networkConnection.provider) as SCYBase;
         this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
     }
 
@@ -31,7 +32,7 @@ export class SCY {
      *
      * We will simulate how much SCY user can get out of his base assets, and apply (1 - slippage) to the simulated amount as minAmount
      * */
-    public async mint(
+    async mint(
         recipient: Address,
         baseAssetIn: Address,
         amountBaseToPull: BigNumberish,
@@ -49,7 +50,7 @@ export class SCY {
     /**
      * Similar to mint, we allow the user to pass in slippage instead
      */
-    public async redeem(
+    async redeem(
         recipient: Address,
         baseAssetOut: Address,
         amountScyToPull: BigNumberish,
@@ -70,9 +71,7 @@ export class SCY {
             );
     }
 
-    public async userInfo(user: Address): Promise<UserSCYInfo> {
-        return (await this.routerStatic.callStatic.getUserSCYInfo(this.address, user)) as UserSCYInfo;
+    async userInfo(user: Address): Promise<UserSCYInfo> {
+        return this.routerStatic.callStatic.getUserSCYInfo(this.address, user);
     }
-
-    // Add additional functions below
 }
