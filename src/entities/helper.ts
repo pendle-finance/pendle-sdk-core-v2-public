@@ -11,19 +11,19 @@ import {
 
 export const PERCENTAGE_DECIMALS = 6;
 
-export function decimalFactor(decimals: number): string {
-    return BN.from(10).pow(decimals).toString();
+export function decimalFactor(decimals: number): BN {
+    return BN.from(10).pow(decimals);
 }
 
 export function calcSlippedDownAmount(theoreticalAmount: BN, slippage: number): BN {
     return theoreticalAmount
-        .mul(BN.from(decimalFactor(PERCENTAGE_DECIMALS)).sub(Math.trunc(slippage * Math.pow(10, PERCENTAGE_DECIMALS))))
+        .mul(decimalFactor(PERCENTAGE_DECIMALS).sub(Math.trunc(slippage * Math.pow(10, PERCENTAGE_DECIMALS))))
         .div(decimalFactor(PERCENTAGE_DECIMALS));
 }
 
 export function calcSlippedUpAmount(theoreticalAmount: BN, slippage: number): BN {
     return theoreticalAmount
-        .mul(BN.from(decimalFactor(PERCENTAGE_DECIMALS)).add(Math.trunc(slippage * Math.pow(10, PERCENTAGE_DECIMALS))))
+        .mul(decimalFactor(PERCENTAGE_DECIMALS).add(Math.trunc(slippage * Math.pow(10, PERCENTAGE_DECIMALS))))
         .div(decimalFactor(PERCENTAGE_DECIMALS));
 }
 
