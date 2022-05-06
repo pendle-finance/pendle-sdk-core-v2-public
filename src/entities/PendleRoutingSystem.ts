@@ -1,10 +1,25 @@
-import type { IPAllAction } from '@pendle/core-v2/typechain-types';
+import type { ApproxParamsStruct, IPAllAction } from '@pendle/core-v2/typechain-types/IPAllAction';
 import type { Address, NetworkConnection } from './types';
 import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
-import { type BigNumberish, type ContractTransaction, type Overrides, Contract, constants } from 'ethers';
+import {
+    type BigNumberish,
+    type ContractTransaction,
+    type Overrides,
+    BigNumber as BN,
+    Contract,
+    constants,
+} from 'ethers';
 import { calcSlippedDownAmount, calcSlippedUpAmount } from './helper';
 
 export class PendleRoutingSystem {
+    static readonly STATIC_APPROX_PARAMS = {
+        guessMin: 0,
+        guessMax: constants.MaxUint256,
+        guessOffchain: 0,
+        maxIteration: 15,
+        eps: BN.from(10).pow(15),
+    };
+
     address: Address;
     contract: IPAllAction;
     chainId: number;
@@ -16,6 +31,15 @@ export class PendleRoutingSystem {
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
         this.contract = new Contract(_address, IPAllActionABI, _networkConnection.provider) as IPAllAction;
+    }
+
+    static swapApproxParams(netAmountOut: BN, slippage: number): ApproxParamsStruct {
+        const MAX_UPSIDE = 0.5;
+        return {
+            ...PendleRoutingSystem.STATIC_APPROX_PARAMS,
+            guessMin: calcSlippedDownAmount(netAmountOut, slippage),
+            guessMax: calcSlippedUpAmount(netAmountOut, MAX_UPSIDE),
+        };
     }
 
     async addLiquidity(
@@ -85,7 +109,18 @@ export class PendleRoutingSystem {
         slippage: number,
         overrides?: Overrides
     ): Promise<ContractTransaction> {
-        return {} as ContractTransaction;
+        const netScyOut = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.swapPtForExactScy(recipient, market, exactScyOut, PendleRoutingSystem.STATIC_APPROX_PARAMS);
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapPtForExactScy(
+                recipient,
+                market,
+                exactScyOut,
+                PendleRoutingSystem.swapApproxParams(netScyOut, slippage),
+                overrides
+            );
     }
 
     async swapScyForExactPt(
@@ -111,7 +146,25 @@ export class PendleRoutingSystem {
         slippage: number,
         overrides?: Overrides
     ): Promise<ContractTransaction> {
-        return {} as ContractTransaction;
+        const netPtOut = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.swapExactRawTokenForPt(
+                exactRawTokenIn,
+                recipient,
+                path,
+                market,
+                PendleRoutingSystem.STATIC_APPROX_PARAMS
+            );
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapExactRawTokenForPt(
+                exactRawTokenIn,
+                recipient,
+                path,
+                market,
+                PendleRoutingSystem.swapApproxParams(netPtOut, slippage),
+                overrides
+            );
     }
     async swapExactScyForPt(
         recipient: Address,
@@ -120,7 +173,18 @@ export class PendleRoutingSystem {
         slippage: number,
         overrides?: Overrides
     ): Promise<ContractTransaction> {
-        return {} as ContractTransaction;
+        const netPtOut = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.swapExactScyForPt(recipient, market, exactScyIn, PendleRoutingSystem.STATIC_APPROX_PARAMS);
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapExactScyForPt(
+                recipient,
+                market,
+                exactScyIn,
+                PendleRoutingSystem.swapApproxParams(netPtOut, slippage),
+                overrides
+            );
     }
 
     async mintScyFromRawToken(
@@ -222,7 +286,18 @@ export class PendleRoutingSystem {
         slippage: number,
         overrides?: Overrides
     ): Promise<ContractTransaction> {
-        return {} as ContractTransaction;
+        const netYtOut = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.swapExactScyForYt(recipient, market, exactScyIn, PendleRoutingSystem.STATIC_APPROX_PARAMS);
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapExactScyForYt(
+                recipient,
+                market,
+                exactScyIn,
+                PendleRoutingSystem.swapApproxParams(netYtOut, slippage),
+                overrides
+            );
     }
 
     async swapYtForExactScy(
@@ -232,7 +307,18 @@ export class PendleRoutingSystem {
         slippage: number,
         overrides?: Overrides
     ): Promise<ContractTransaction> {
-        return {} as ContractTransaction;
+        const netScyOut = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.swapYtForExactScy(recipient, market, exactScyOut, PendleRoutingSystem.STATIC_APPROX_PARAMS);
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapYtForExactScy(
+                recipient,
+                market,
+                exactScyOut,
+                PendleRoutingSystem.swapApproxParams(netScyOut, slippage),
+                overrides
+            );
     }
 
     async swapExactPtForRawToken(
@@ -296,7 +382,25 @@ export class PendleRoutingSystem {
         slippage: number,
         overrides?: Overrides
     ): Promise<ContractTransaction> {
-        return {} as ContractTransaction;
+        const netScyYt = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.swapExactRawTokenForYt(
+                exactRawTokenIn,
+                recipient,
+                path,
+                market,
+                PendleRoutingSystem.STATIC_APPROX_PARAMS
+            );
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapExactRawTokenForYt(
+                exactRawTokenIn,
+                recipient,
+                path,
+                market,
+                PendleRoutingSystem.swapApproxParams(netScyYt, slippage),
+                overrides
+            );
     }
 
     async swapExactYtForRawToken(
