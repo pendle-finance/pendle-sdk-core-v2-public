@@ -7,7 +7,7 @@ import { type NetworkConnection, CHAIN_ID } from '../src';
 config();
 
 // Change this to the current active network
-export const ACTIVE_CHAIN_ID = CHAIN_ID.KOVAN;
+export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID);
 const LOCAL_CHAIN_ID = 31337;
 const USE_LOCAL = !!process.env.USE_LOCAL;
 
