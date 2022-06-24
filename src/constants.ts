@@ -1,4 +1,5 @@
 import type { Address } from './entities';
+import KOVAN_CONTRACTS from '@pendle/core-v2/deployments/kovan.json';
 
 export type ContractAddresses = {
     ROUTER_STATIC: Address;
@@ -18,5 +19,5 @@ export const ETHEREUM_ADDRESSES: ContractAddresses = {
 export const AVALANCHE_ADDRESSES: ContractAddresses = ETHEREUM_ADDRESSES;
 
 export const KOVAN_ADDRESSES: ContractAddresses = {
-    ROUTER_STATIC: '0x304e2cdb93d820DC5f86D5FCaF2ccFd34E52e9C9',
+    ROUTER_STATIC: KOVAN_CONTRACTS.ROUTER_STATIC,
 };

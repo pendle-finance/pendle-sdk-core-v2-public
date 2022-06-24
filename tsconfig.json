@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "esnext",
+        "removeComments": true,
+        "sourceMap": true,
+        "outDir": "./dist",
+        "baseUrl": "./src",
+        "rootDir": "./src",
+        "incremental": true,
+        "skipLibCheck": true,
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "forceConsistentCasingInFileNames": true,
+        "typeRoots": ["./node_modules/@types"],
+        "plugins": [{ "transform": "@zerollup/ts-transform-paths" }]
+    },
+    "ts-node": {
+        "files": true
+    },
+    "include": ["src/**/*"]
+}
