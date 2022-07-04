@@ -1,7 +1,7 @@
 import type { RouterStatic, SCYBase } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, TokenAmount } from './types';
 import { type BigNumber as BN, type BigNumberish, type ContractTransaction, type Overrides, Contract } from 'ethers';
-import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/implementations/SCYBase.sol/SCYBase.json';
+import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/base-implementations/SCYBase.sol/SCYBase.json';
 import { calcSlippedDownAmount, getRouterStatic } from './helper';
 
 export type UserSCYInfo = {
@@ -32,8 +32,8 @@ export class SCY {
      *
      * We will simulate how much SCY user can get out of his base assets, and apply (1 - slippage) to the simulated amount as minAmount
      * */
-    async mint(
-        recipient: Address,
+    async deposit(
+        receiver: Address,
         baseAssetIn: Address,
         amountBaseToPull: BigNumberish,
         slippage: number,
@@ -41,17 +41,17 @@ export class SCY {
     ): Promise<ContractTransaction> {
         const amountScyOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.mint(recipient, baseAssetIn, amountBaseToPull, 0);
+            .callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0);
         return this.contract
             .connect(this.networkConnection.signer!)
-            .mint(recipient, baseAssetIn, amountBaseToPull, calcSlippedDownAmount(amountScyOut, slippage), overrides);
+            .deposit(receiver, baseAssetIn, amountBaseToPull, calcSlippedDownAmount(amountScyOut, slippage), overrides);
     }
 
     /**
-     * Similar to mint, we allow the user to pass in slippage instead
+     * Similar to deposit, we allow the user to pass in slippage instead
      */
     async redeem(
-        recipient: Address,
+        receiver: Address,
         baseAssetOut: Address,
         amountScyToPull: BigNumberish,
         slippage: number,
@@ -59,16 +59,10 @@ export class SCY {
     ): Promise<ContractTransaction> {
         const amountBaseOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.redeem(recipient, baseAssetOut, amountScyToPull, 0);
+            .callStatic.redeem(receiver, amountScyToPull, baseAssetOut, 0);
         return this.contract
             .connect(this.networkConnection.signer!)
-            .redeem(
-                recipient,
-                baseAssetOut,
-                amountScyToPull,
-                calcSlippedDownAmount(amountBaseOut, slippage),
-                overrides
-            );
+            .redeem(receiver, amountScyToPull, baseAssetOut, calcSlippedDownAmount(amountBaseOut, slippage), overrides);
     }
 
     async userInfo(user: Address): Promise<UserSCYInfo> {

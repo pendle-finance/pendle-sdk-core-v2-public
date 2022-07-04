@@ -1,7 +1,7 @@
 import type { PendleMarket, RouterStatic } from '@pendle/core-v2/typechain-types';
 import type { MarketStateStruct } from '@pendle/core-v2/typechain-types/PendleMarket';
 import type { Address, NetworkConnection, TokenAmount } from './types';
-import { abi as PendleMarketABI } from '@pendle/core-v2/build/artifacts/contracts/core/PendleMarket.sol/PendleMarket.json';
+import { abi as PendleMarketABI } from '@pendle/core-v2/build/artifacts/contracts/core/Market/PendleMarket.sol/PendleMarket.json';
 import { type BigNumber as BN, Contract } from 'ethers';
 import { getRouterStatic } from './helper';
 

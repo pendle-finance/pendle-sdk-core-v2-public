@@ -1,5 +1,5 @@
 import type { RouterStatic } from '@pendle/core-v2/typechain-types';
-import { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/core/RouterStatic.sol/RouterStatic.json';
+import { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/RouterStatic.sol/RouterStatic.json';
 import { BigNumber as BN, Contract, type providers } from 'ethers';
 import {
     CHAIN_ID,
