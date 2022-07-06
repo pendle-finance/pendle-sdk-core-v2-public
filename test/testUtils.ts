@@ -1,8 +1,11 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
-import KOVAN_CONTRACTS from '@pendle/core-v2/deployments/kovan.json';
 import { config } from 'dotenv';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../src';
+import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
+import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market.json';
+import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
+import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market.json';
 
 config();
 
@@ -14,7 +17,8 @@ const USE_LOCAL = !!process.env.USE_LOCAL;
 const providerUrls = {
     [CHAIN_ID.ETHEREUM]: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
     [CHAIN_ID.AVALANCHE]: 'https://api.avax.network/ext/bc/C/rpc',
-    [CHAIN_ID.KOVAN]: `https://kovan.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+    [CHAIN_ID.FUJI]: 'https://api.avax-test.network/ext/bc/C/rpc',
+    [CHAIN_ID.MUMBAI]: 'https://matic-mumbai.chainstacklabs.com',
     [LOCAL_CHAIN_ID]: 'http://localhost:8545',
 };
 
@@ -26,7 +30,22 @@ export const networkConnection: NetworkConnection = {
 };
 
 export const CONTRACT_ADDRESSES = {
-    KOVAN: KOVAN_CONTRACTS,
+    [CHAIN_ID.FUJI]: {
+        CORE: {
+            DEPLOYER: FUJI_CORE_ADDRESSES.deployer,
+        },
+        BENQI: {
+            SCY: FUJI_BENQI_ADDRESSES.SCY,
+        },
+    },
+    [CHAIN_ID.MUMBAI]: {
+        CORE: {
+            DEPLOYER: MUMBAI_CORE_ADDRESSES.deployer,
+        },
+        BENQI: {
+            SCY: MUMBAI_BENQI_ADDRESSES.SCY,
+        },
+    },
 };
 
 export function print(message: any): void {

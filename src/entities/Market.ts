@@ -1,5 +1,6 @@
 import type { PendleMarket, RouterStatic } from '@pendle/core-v2/typechain-types';
 import type { MarketStateStruct } from '@pendle/core-v2/typechain-types/PendleMarket';
+import type { IPRouterStatic } from '@pendle/core-v2/typechain-types/IPRouterStatic';
 import type { Address, NetworkConnection, TokenAmount } from './types';
 import { abi as PendleMarketABI } from '@pendle/core-v2/build/artifacts/contracts/core/Market/PendleMarket.sol/PendleMarket.json';
 import { type BigNumber as BN, Contract } from 'ethers';
@@ -10,7 +11,6 @@ export type MarketInfo = {
     scy: Address;
     state: MarketStateStruct;
     impliedYield: BN;
-    exchangeRate: BN;
 };
 
 export type UserMarketInfo = {
@@ -18,7 +18,7 @@ export type UserMarketInfo = {
     lpBalance: BN;
     ptBalance: TokenAmount;
     scyBalance: TokenAmount;
-    assetBalance: TokenAmount;
+    assetBalance: IPRouterStatic.AssetAmountStruct;
 };
 
 export class Market {
