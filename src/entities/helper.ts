@@ -1,11 +1,12 @@
 import type { RouterStatic } from '@pendle/core-v2/typechain-types';
-import { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/core/RouterStatic.sol/RouterStatic.json';
+import { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/RouterStatic.sol/RouterStatic.json';
 import { BigNumber as BN, Contract, type providers } from 'ethers';
 import {
     CHAIN_ID,
     AVALANCHE_ADDRESSES,
     ETHEREUM_ADDRESSES,
-    KOVAN_ADDRESSES,
+    FUJI_ADDRESSES,
+    MUMBAI_ADDRESSES,
     type ContractAddresses,
 } from '../constants';
 
@@ -37,8 +38,10 @@ export function getContractAddresses(chainId: number): ContractAddresses {
             return ETHEREUM_ADDRESSES;
         case CHAIN_ID.AVALANCHE:
             return AVALANCHE_ADDRESSES;
-        case CHAIN_ID.KOVAN:
-            return KOVAN_ADDRESSES;
+        case CHAIN_ID.FUJI:
+            return FUJI_ADDRESSES;
+        case CHAIN_ID.MUMBAI:
+            return MUMBAI_ADDRESSES;
         default:
             throw Error('Invalid Chain ID');
     }

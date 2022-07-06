@@ -1,4 +1,6 @@
 import type { Address } from './entities';
+import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
+import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
 
 export type ContractAddresses = {
     ROUTER_STATIC: Address;
@@ -7,7 +9,8 @@ export type ContractAddresses = {
 export const CHAIN_ID = {
     ETHEREUM: 1,
     AVALANCHE: 43114,
-    KOVAN: 42,
+    FUJI: 43113,
+    MUMBAI: 80001,
 };
 
 // TODO: Update addresses after deployment
@@ -17,6 +20,10 @@ export const ETHEREUM_ADDRESSES: ContractAddresses = {
 
 export const AVALANCHE_ADDRESSES: ContractAddresses = ETHEREUM_ADDRESSES;
 
-export const KOVAN_ADDRESSES: ContractAddresses = {
-    ROUTER_STATIC: '0x304e2cdb93d820DC5f86D5FCaF2ccFd34E52e9C9',
+export const FUJI_ADDRESSES: ContractAddresses = {
+    ROUTER_STATIC: FUJI_CORE_ADDRESSES.routerStatic,
+};
+
+export const MUMBAI_ADDRESSES: ContractAddresses = {
+    ROUTER_STATIC: MUMBAI_CORE_ADDRESSES.routerStatic,
 };
