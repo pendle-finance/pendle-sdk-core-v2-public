@@ -11,12 +11,12 @@ import {
 } from 'ethers';
 import { calcSlippedDownAmount, calcSlippedUpAmount } from './helper';
 
-export class PendleRoutingSystem {
+export class PendleRouter {
     static readonly MIN_AMOUNT = 0;
     static readonly MAX_AMOUNT = constants.MaxUint256;
     static readonly STATIC_APPROX_PARAMS = {
-        guessMin: PendleRoutingSystem.MIN_AMOUNT,
-        guessMax: PendleRoutingSystem.MAX_AMOUNT,
+        guessMin: PendleRouter.MIN_AMOUNT,
+        guessMax: PendleRouter.MAX_AMOUNT,
         guessOffchain: 0,
         maxIteration: 15,
         eps: BN.from(10).pow(15),
@@ -38,7 +38,7 @@ export class PendleRoutingSystem {
     static swapApproxParams(netAmountOut: BN, slippage: number): ApproxParamsStruct {
         const MAX_UPSIDE = 0.5;
         return {
-            ...PendleRoutingSystem.STATIC_APPROX_PARAMS,
+            ...PendleRouter.STATIC_APPROX_PARAMS,
             guessMin: calcSlippedDownAmount(netAmountOut, slippage),
             guessMax: calcSlippedUpAmount(netAmountOut, MAX_UPSIDE),
         };
@@ -54,7 +54,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const [netLpOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.addLiquidity(receiver, market, scyDesired, ptDesired, PendleRoutingSystem.MIN_AMOUNT);
+            .callStatic.addLiquidity(receiver, market, scyDesired, ptDesired, PendleRouter.MIN_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
             .addLiquidity(
@@ -76,13 +76,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const [netScyOut, netPtOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.removeLiquidity(
-                receiver,
-                market,
-                lpToRemove,
-                PendleRoutingSystem.MIN_AMOUNT,
-                PendleRoutingSystem.MIN_AMOUNT
-            );
+            .callStatic.removeLiquidity(receiver, market, lpToRemove, PendleRouter.MIN_AMOUNT, PendleRouter.MIN_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
             .removeLiquidity(
@@ -104,7 +98,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const netScyOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapExactPtForScy(receiver, market, exactPtIn, PendleRoutingSystem.MIN_AMOUNT);
+            .callStatic.swapExactPtForScy(receiver, market, exactPtIn, PendleRouter.MIN_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapExactPtForScy(receiver, market, exactPtIn, calcSlippedDownAmount(netScyOut, slippage), overrides);
@@ -123,8 +117,8 @@ export class PendleRoutingSystem {
                 receiver,
                 market,
                 exactScyOut,
-                PendleRoutingSystem.MAX_AMOUNT,
-                PendleRoutingSystem.STATIC_APPROX_PARAMS
+                PendleRouter.MAX_AMOUNT,
+                PendleRouter.STATIC_APPROX_PARAMS
             );
         return this.contract
             .connect(this.networkConnection.signer!)
@@ -133,7 +127,7 @@ export class PendleRoutingSystem {
                 market,
                 exactScyOut,
                 calcSlippedUpAmount(netPtIn, slippage),
-                PendleRoutingSystem.swapApproxParams(netPtIn, slippage),
+                PendleRouter.swapApproxParams(netPtIn, slippage),
                 overrides
             );
     }
@@ -147,7 +141,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const netScyIn = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapScyForExactPt(receiver, market, exactPtOut, PendleRoutingSystem.MAX_AMOUNT);
+            .callStatic.swapScyForExactPt(receiver, market, exactPtOut, PendleRouter.MAX_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapScyForExactPt(receiver, market, exactPtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
@@ -167,9 +161,9 @@ export class PendleRoutingSystem {
                 receiver,
                 market,
                 exactRawTokenIn,
-                PendleRoutingSystem.MIN_AMOUNT,
+                PendleRouter.MIN_AMOUNT,
                 path,
-                PendleRoutingSystem.STATIC_APPROX_PARAMS
+                PendleRouter.STATIC_APPROX_PARAMS
             );
         return this.contract
             .connect(this.networkConnection.signer!)
@@ -179,7 +173,7 @@ export class PendleRoutingSystem {
                 exactRawTokenIn,
                 calcSlippedDownAmount(netPtOut, slippage),
                 path,
-                PendleRoutingSystem.swapApproxParams(netPtOut, slippage),
+                PendleRouter.swapApproxParams(netPtOut, slippage),
                 overrides
             );
     }
@@ -196,8 +190,8 @@ export class PendleRoutingSystem {
                 receiver,
                 market,
                 exactScyIn,
-                PendleRoutingSystem.MIN_AMOUNT,
-                PendleRoutingSystem.STATIC_APPROX_PARAMS
+                PendleRouter.MIN_AMOUNT,
+                PendleRouter.STATIC_APPROX_PARAMS
             );
         return this.contract
             .connect(this.networkConnection.signer!)
@@ -206,7 +200,7 @@ export class PendleRoutingSystem {
                 market,
                 exactScyIn,
                 calcSlippedDownAmount(netPtOut, slippage),
-                PendleRoutingSystem.swapApproxParams(netPtOut, slippage),
+                PendleRouter.swapApproxParams(netPtOut, slippage),
                 overrides
             );
     }
@@ -221,7 +215,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const netScyOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.mintScyFromRawToken(receiver, SCY, netRawTokenIn, PendleRoutingSystem.MIN_AMOUNT, path);
+            .callStatic.mintScyFromRawToken(receiver, SCY, netRawTokenIn, PendleRouter.MIN_AMOUNT, path);
         return this.contract
             .connect(this.networkConnection.signer!)
             .mintScyFromRawToken(
@@ -244,7 +238,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const netRawTokenOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.redeemScyToRawToken(receiver, SCY, netScyIn, PendleRoutingSystem.MIN_AMOUNT, path);
+            .callStatic.redeemScyToRawToken(receiver, SCY, netScyIn, PendleRouter.MIN_AMOUNT, path);
         return this.contract
             .connect(this.networkConnection.signer!)
             .redeemScyToRawToken(
@@ -267,7 +261,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const netPyOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.mintPyFromRawToken(receiver, YT, netRawTokenIn, PendleRoutingSystem.MIN_AMOUNT, path);
+            .callStatic.mintPyFromRawToken(receiver, YT, netRawTokenIn, PendleRouter.MIN_AMOUNT, path);
         return this.contract
             .connect(this.networkConnection.signer!)
             .mintPyFromRawToken(
@@ -290,7 +284,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const netRawTokenOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.redeemPyToRawToken(receiver, YT, netPyIn, PendleRoutingSystem.MIN_AMOUNT, path);
+            .callStatic.redeemPyToRawToken(receiver, YT, netPyIn, PendleRouter.MIN_AMOUNT, path);
         return this.contract
             .connect(this.networkConnection.signer!)
             .redeemPyToRawToken(
@@ -316,8 +310,8 @@ export class PendleRoutingSystem {
                 receiver,
                 market,
                 exactScyIn,
-                PendleRoutingSystem.MIN_AMOUNT,
-                PendleRoutingSystem.STATIC_APPROX_PARAMS
+                PendleRouter.MIN_AMOUNT,
+                PendleRouter.STATIC_APPROX_PARAMS
             );
         return this.contract
             .connect(this.networkConnection.signer!)
@@ -326,7 +320,7 @@ export class PendleRoutingSystem {
                 market,
                 exactScyIn,
                 calcSlippedDownAmount(netYtOut, slippage),
-                PendleRoutingSystem.swapApproxParams(netYtOut, slippage),
+                PendleRouter.swapApproxParams(netYtOut, slippage),
                 overrides
             );
     }
@@ -344,8 +338,8 @@ export class PendleRoutingSystem {
                 receiver,
                 market,
                 exactScyOut,
-                PendleRoutingSystem.MAX_AMOUNT,
-                PendleRoutingSystem.STATIC_APPROX_PARAMS
+                PendleRouter.MAX_AMOUNT,
+                PendleRouter.STATIC_APPROX_PARAMS
             );
         return this.contract
             .connect(this.networkConnection.signer!)
@@ -354,7 +348,7 @@ export class PendleRoutingSystem {
                 market,
                 exactScyOut,
                 calcSlippedUpAmount(netYtIn, slippage),
-                PendleRoutingSystem.swapApproxParams(netYtIn, slippage),
+                PendleRouter.swapApproxParams(netYtIn, slippage),
                 overrides
             );
     }
@@ -369,7 +363,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const netRawTokenOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapExactPtForRawToken(receiver, market, exactPtIn, PendleRoutingSystem.MIN_AMOUNT, path);
+            .callStatic.swapExactPtForRawToken(receiver, market, exactPtIn, PendleRouter.MIN_AMOUNT, path);
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapExactPtForRawToken(
@@ -406,7 +400,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const netScyIn = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapScyForExactYt(receiver, market, exactYtOut, PendleRoutingSystem.MAX_AMOUNT);
+            .callStatic.swapScyForExactYt(receiver, market, exactYtOut, PendleRouter.MAX_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
@@ -426,9 +420,9 @@ export class PendleRoutingSystem {
                 receiver,
                 market,
                 exactRawTokenIn,
-                PendleRoutingSystem.MIN_AMOUNT,
+                PendleRouter.MIN_AMOUNT,
                 path,
-                PendleRoutingSystem.STATIC_APPROX_PARAMS
+                PendleRouter.STATIC_APPROX_PARAMS
             );
         return this.contract
             .connect(this.networkConnection.signer!)
@@ -438,7 +432,7 @@ export class PendleRoutingSystem {
                 exactRawTokenIn,
                 calcSlippedDownAmount(netYtOut, slippage),
                 path,
-                PendleRoutingSystem.swapApproxParams(netYtOut, slippage),
+                PendleRouter.swapApproxParams(netYtOut, slippage),
                 overrides
             );
     }
@@ -453,7 +447,7 @@ export class PendleRoutingSystem {
     ): Promise<ContractTransaction> {
         const netRawTokenOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapExactYtForRawToken(receiver, market, exactYtIn, PendleRoutingSystem.MIN_AMOUNT, path);
+            .callStatic.swapExactYtForRawToken(receiver, market, exactYtIn, PendleRouter.MIN_AMOUNT, path);
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapExactYtForRawToken(
