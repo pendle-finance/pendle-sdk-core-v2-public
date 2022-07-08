@@ -9,7 +9,7 @@ import {
     Contract,
     constants,
 } from 'ethers';
-import { calcSlippedDownAmount, calcSlippedUpAmount } from './helper';
+import { calcSlippedDownAmount, calcSlippedUpAmount, getContractAddresses } from './helper';
 
 export class PendleRouter {
     static readonly MIN_AMOUNT = 0;
@@ -33,6 +33,10 @@ export class PendleRouter {
         this.networkConnection = _networkConnection;
         this.chainId = _chainId;
         this.contract = new Contract(_address, IPAllActionABI, _networkConnection.provider) as IPAllAction;
+    }
+
+    static getRouter(networkConnection: NetworkConnection, chainId: number): PendleRouter {
+        return new PendleRouter(getContractAddresses(chainId).ROUTER, networkConnection, chainId);
     }
 
     static swapApproxParams(netAmountOut: BN, slippage: number): ApproxParamsStruct {
