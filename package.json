@@ -3,7 +3,7 @@
     "author": "Pendle Labs",
     "description": "SDK of Pendle Protocol.",
     "license": "MIT",
-    "version": "0.0.10",
+    "version": "0.0.11",
     "homepage": "https://pendle.finance",
     "keywords": [
         "pendle",
@@ -31,12 +31,13 @@
     },
     "dependencies": {
         "@pendle/core-v2": "^0.7.1-beta-2",
+        "bignumber.js": "^9.0.2",
         "ethers": "^5.6.9"
     },
     "devDependencies": {
         "@size-limit/preset-small-lib": "^7.0.8",
         "@types/jest": "^28.1.4",
-        "@typescript-eslint/parser": "^5.30.5",
+        "@typescript-eslint/parser": "^5.30.6",
         "dotenv": "^16.0.1",
         "eslint": "^8.19.0",
         "eslint-config-prettier": "^8.5.0",

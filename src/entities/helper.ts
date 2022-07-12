@@ -46,3 +46,7 @@ export function getContractAddresses(chainId: number): ContractAddresses {
             throw Error('Invalid Chain ID');
     }
 }
+
+export function isMainchain(chainId: number): boolean {
+    return chainId === CHAIN_ID.ETHEREUM || chainId === CHAIN_ID.FUJI;
+}
