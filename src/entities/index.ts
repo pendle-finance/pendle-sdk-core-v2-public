@@ -5,4 +5,4 @@ export * from './YT';
 export * from './SCY';
 export * from './types';
 export * from './YieldContractFactory';
-export * from './PendleRouter';
+export * from './Router';
