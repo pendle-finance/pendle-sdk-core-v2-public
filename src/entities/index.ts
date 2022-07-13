@@ -6,3 +6,5 @@ export * from './SCY';
 export * from './types';
 export * from './YieldContractFactory';
 export * from './Router';
+export * from './VePendle';
+export * from './VotingController';
