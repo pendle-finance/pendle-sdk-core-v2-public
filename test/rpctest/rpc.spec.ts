@@ -1,6 +1,6 @@
 import { BigNumber, Contract, ethers, Signer } from 'ethers';
 import { abi as ERC20ABI } from './ERC20.json';
-import { networkConnection, WALLET } from '../testUtils';
+import { networkConnection, WALLET } from '../util/testUtils';
 import { config } from 'dotenv';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { ERC20 } from './typechain/ERC20';

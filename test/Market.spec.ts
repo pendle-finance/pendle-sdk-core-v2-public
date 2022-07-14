@@ -1,7 +1,7 @@
 import { BigNumber } from 'ethers';
 import { Market } from '../src';
 //  import { getRouterStatic } from '../src/entities/helper';
-import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET } from './testUtils';
+import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET } from './util/testUtils';
 
 const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 

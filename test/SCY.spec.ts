@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers';
 import { type Address, SCY } from '../src';
-import { ACTIVE_CHAIN_ID, networkConnection, testConfig, print, WALLET } from './testUtils';
+import { ACTIVE_CHAIN_ID, networkConnection, testConfig, print, WALLET } from './util/testUtils';
 
 const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 
