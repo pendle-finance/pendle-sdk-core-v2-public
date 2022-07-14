@@ -37,13 +37,12 @@ export const CONTRACT_ADDRESSES = {
             YT_FACTORY: FUJI_CORE_ADDRESSES.yieldContractFactory,
             ROUTER: FUJI_CORE_ADDRESSES.router,
             ROUTER_STATIC: FUJI_CORE_ADDRESSES.routerStatic,
-
         },
         BENQI: {
             SCY: FUJI_BENQI_ADDRESSES.SCY,
             MARKET: FUJI_BENQI_ADDRESSES.market,
             PT: FUJI_BENQI_ADDRESSES.PT,
-            YT: FUJI_BENQI_ADDRESSES.YT
+            YT: FUJI_BENQI_ADDRESSES.YT,
         },
     },
     [CHAIN_ID.MUMBAI]: {
@@ -58,7 +57,7 @@ export const CONTRACT_ADDRESSES = {
             SCY: MUMBAI_BENQI_ADDRESSES.SCY,
             MARKET: MUMBAI_BENQI_ADDRESSES.market,
             PT: MUMBAI_BENQI_ADDRESSES.PT,
-            YT: MUMBAI_BENQI_ADDRESSES.YT
+            YT: MUMBAI_BENQI_ADDRESSES.YT,
         },
     },
 };
@@ -75,11 +74,9 @@ export const testConfig = (chainId: number) => ({
     yieldContractFactory: CONTRACT_ADDRESSES[chainId].CORE.YT_FACTORY,
 });
 
-export const WALLET = () => (
-    {
-        wallet: new ethers.Wallet(process.env.PRIVATE_KEYS!).connect(networkConnection.provider),
-    }
-)
+export const WALLET = () => ({
+    wallet: new ethers.Wallet(process.env.PRIVATE_KEYS!).connect(networkConnection.provider),
+});
 
 export function print(message: any): void {
     console.log(inspect(message, { showHidden: false, depth: null, colors: true }));

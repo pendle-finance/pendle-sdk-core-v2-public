@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers';
 import { type Address, SCY } from '../src';
-import { ACTIVE_CHAIN_ID, networkConnection,testConfig,print,WALLET } from './testUtils';
+import { ACTIVE_CHAIN_ID, networkConnection, testConfig, print, WALLET } from './testUtils';
 
 const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 
@@ -14,13 +14,13 @@ describe(SCY, () => {
         expect(scy.chainId).toBe(ACTIVE_CHAIN_ID);
     });
 
-    // it will fail if not add approve ( need seperate approve )
+    //  it will fail if not add approve ( need seperate approve )
     it('#contract', async () => {
         const { contract } = scy;
         expect(contract).toBeDefined();
         expect(contract.getBaseTokens()).resolves.toHaveLength;
-        //await contract.connect(signer).deposit(signer.address,"0x2018ecc38fbca2ce3A62f96f9F0D38F0DEE2f99D",BigNumber.from(10).pow(21),0);
-        //await contract.connect(signer).redeem(signer.address,BigNumber.from(10).pow(20),"0x2018ecc38fbca2ce3A62f96f9F0D38F0DEE2f99D",0);
+        //  await contract.connect(signer).deposit(signer.address,"0x2018ecc38fbca2ce3A62f96f9F0D38F0DEE2f99D",BigNumber.from(10).pow(21),0);
+        //  await contract.connect(signer).redeem(signer.address,BigNumber.from(10).pow(20),"0x2018ecc38fbca2ce3A62f96f9F0D38F0DEE2f99D",0);
     });
 
     it('#userInfo', async () => {
