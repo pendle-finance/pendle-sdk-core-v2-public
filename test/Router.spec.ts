@@ -4,6 +4,10 @@ import { ERC20 } from '../src/entities/ERC20';
 import { getRouterStatic } from '../src/entities/helper';
 import { ACTIVE_CHAIN_ID, networkConnection, testConfig, print, WALLET } from './util/testUtils';
 
+/*
+ * Reminder for all test need to run each write seperate
+ */
+
 const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 
 describe(Router, () => {
@@ -21,7 +25,7 @@ describe(Router, () => {
         expect(router.chainId).toBe(ACTIVE_CHAIN_ID);
     });
 
-    it.skip('#addLiquidity', async () => {
+    it('#addLiquidity', async () => {
         await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await router.addLiquidity(
@@ -34,50 +38,167 @@ describe(Router, () => {
         );
     });
 
-    it.skip('#removeLiquidity', async () => {
+    it('#removeLiquidity', async () => {
         await market.approve(currentConfig.router, BigNumber.from(10).pow(18));
         await router.removeLiquidity(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 0, {});
     });
 
-    it.skip('#swapExactPtForScy', async () => {
+    /*
+     *  Type 1 of swap between Scy and PT
+     */
+    it('#swapExactPtForScy', async () => {
         await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await router.swapExactPtForScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 0, {});
     });
 
-    // Exceed limit pt in
-    it.skip('#swapPtForExactScy', async () => {
+    it('#swapPtForExactScy', async () => {
         await pt.approve(currentConfig.router, BigNumber.from(10).pow(19).mul(2));
-        await router.swapPtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 0, {});
+        await router.swapPtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 1, {});
     });
 
-    it.skip('#swapExactPtForScy', async () => {
-        await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapExactPtForScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 0, {});
-    });
-
-    //  exceed limit SCY in
+    // 0 fail
+    // 1 ,2 ,3 ,4 approx fail
+    // expect that > 4 also fail
     it('#swapScyForExactPt', async () => {
+        // await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await router.swapScyForExactPt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 0, {});
+    });
+
+    // "approx fail" for 0,1,2 ???
+    it('#swapExactScyForPt', async () => {
         await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapScyForExactPt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 0, {});
+        await router.swapExactScyForPt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 2, {});
     });
 
-    // it('#swapExactRawTokenForPt', async() =>{
-    //     await usd.approve(currentConfig.router,BigNumber.from(10).pow(19));
-    //     await router.swapExactRawTokenForPt(signer.address,currentConfig.marketAddress,BigNumber.from(10).pow(19),{});
-    // })
+    /*
+     * Type 2 of swap between Scy and YT
+     */
 
-    it.skip('#swapExactRawTokenForPt', async () => {
-        await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapExactPtForScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 0, {});
+    //  "approx fail" for 0,1,2 ???
+    it('#swapExactScyForYt', async () => {
+        await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await router.swapExactScyForYt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 2, {});
     });
 
-    it.skip('#swapExactRawTokenForPt', async () => {
-        await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapExactPtForScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 0, {});
+    //  "approx fail" for 0,1,2 ???
+    it('#swapYtForExactScy', async () => {
+        await yt.approve(currentConfig.router, BigNumber.from(10).pow(19).mul(2));
+        await router.swapYtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 2, {});
     });
 
-    it.skip('#swapExactRawTokenForPt', async () => {
+    // exceed scy in limit for 0,1,2,3
+    it('#swapScyForExactYt', async () => {
+        await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await router.swapScyForExactYt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 2, {});
+    });
+
+    it('#swapExactYtForScy', async () => {
+        await yt.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await router.swapExactYtForScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(1), 0, {});
+    });
+
+    /*
+     * Type 3: Raw token with PT & YT
+     */
+
+    // approx fail ( No idea )
+    it('#swapExactRawTokenForPt', async () => {
+        await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
+        await router.swapExactRawTokenForPt(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(19),
+            [usdAddress],
+            2,
+            {}
+        );
+    });
+
+    it('#swapExactPtForRawToken', async () => {
         await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapExactPtForScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 0, {});
+        await router.swapExactPtForRawToken(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(19),
+            [usdAddress],
+            0,
+            {}
+        );
+    });
+
+    it('#swapExactRawTokenForYt', async () => {
+        await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
+        await router.swapExactRawTokenForYt(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(19),
+            [usdAddress],
+            0,
+            {}
+        );
+    });
+
+    it('#swapExactYtForRawToken', async () => {
+        await yt.approve(currentConfig.router, BigNumber.from(10).pow(20));
+        await router.swapExactYtForRawToken(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(4),
+            [usdAddress],
+            0,
+            {}
+        );
+    });
+    /*
+     * Type 4: Mint, redeem PY & SCY -> Raw token
+     */
+
+    it('#mintPyFromRawToken', async () => {
+        await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
+        await router.mintPyFromRawToken(
+            signer.address,
+            currentConfig.ytAddress,
+            BigNumber.from(10).pow(18),
+            [usdAddress],
+            0,
+            {}
+        );
+    });
+
+    it('#redeemPyToRawToken', async () => {
+        await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await yt.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await router.redeemPyToRawToken(
+            signer.address,
+            currentConfig.ytAddress,
+            BigNumber.from(10).pow(19),
+            [usdAddress],
+            0,
+            {}
+        );
+    });
+
+    it('#mintScyFromRawToken', async () => {
+        await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
+        await router.mintScyFromRawToken(
+            signer.address,
+            currentConfig.scyAddress,
+            BigNumber.from(10).pow(18),
+            [usdAddress],
+            0,
+            {}
+        );
+    });
+
+    it('#redeemScyToRawToken', async () => {
+        await scy.approve(currentConfig.router, BigNumber.from(10).pow(20));
+        await router.redeemScyToRawToken(
+            signer.address,
+            currentConfig.scyAddress,
+            BigNumber.from(10).pow(18),
+            [usdAddress],
+            0,
+            {}
+        );
     });
 });
