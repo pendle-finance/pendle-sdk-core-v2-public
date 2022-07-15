@@ -1,5 +1,5 @@
 import { type Address, PT } from '../src';
-import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET, print } from './testUtils';
+import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET, print } from './util/testUtils';
 
 const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 

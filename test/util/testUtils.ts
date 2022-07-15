@@ -25,7 +25,7 @@ const providerUrls = {
 export const networkConnection: NetworkConnection = {
     provider: new JsonRpcProvider(USE_LOCAL ? providerUrls[LOCAL_CHAIN_ID] : providerUrls[ACTIVE_CHAIN_ID]),
     get signer() {
-        return this.provider.getSigner();
+        return WALLET().wallet; //this.provider.getSigner();
     },
 };
 

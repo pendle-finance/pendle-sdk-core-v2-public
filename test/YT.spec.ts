@@ -1,7 +1,7 @@
 import { yellow } from '@material-ui/core/colors';
 import { BigNumber } from 'ethers';
 import { type Address, YT, SCY } from '../src';
-import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET, print } from './testUtils';
+import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET, print } from './util/testUtils';
 
 const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 

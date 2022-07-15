@@ -1,5 +1,5 @@
 import { type Address, Market, MarketFactory } from '../src';
-import { ACTIVE_CHAIN_ID, networkConnection, testConfig, print } from './testUtils';
+import { ACTIVE_CHAIN_ID, networkConnection, testConfig, print } from './util/testUtils';
 
 const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 
@@ -11,3 +11,18 @@ describe('MarketFactory', () => {
         expect(marketFactory.chainId).toBe(ACTIVE_CHAIN_ID);
     });
 });
+
+describe('contract', () => { 
+    const marketFactory = new MarketFactory(currentConfig.marketFactory, networkConnection, ACTIVE_CHAIN_ID);
+    const {contract} = marketFactory;
+
+    it('Read contract', async () => {
+        const treasure = await contract.treasury();
+        expect(treasure).toBeDefined();
+    });
+
+    // To be define need to deploy new scy .. 
+    it('Create Market', async () => {
+
+    } )
+ })

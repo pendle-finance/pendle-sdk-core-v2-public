@@ -4,7 +4,7 @@ import { networkConnection, WALLET } from '../util/testUtils';
 import { config } from 'dotenv';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { ERC20 } from './typechain/ERC20';
-import {} from '@nomiclabs/hardhat-ethers/src/internal/type-extensions';
+//import {} from '@nomiclabs/hardhat-ethers/src/internal/type-extensions';
 config();
 describe.skip('Test rpc', () => {
     const provider = new JsonRpcProvider('https://api.avax.network/ext/bc/C/rpc');
@@ -24,28 +24,28 @@ describe.skip('Test rpc', () => {
     //  })
     it('Test play', async () => {});
 });
-describe.skip('Approve', () => {
+describe('Approve', () => {
     const provider = new JsonRpcProvider('https://api.avax-test.network/ext/bc/C/rpc');
     let ERC20Contract: ERC20 = new Contract('0x2018ecc38fbca2ce3A62f96f9F0D38F0DEE2f99D', ERC20ABI, provider) as ERC20;
     const sender = WALLET().wallet;
     it('Approve', async () => {
         await ERC20Contract.connect(sender).approve(
             '0xb597dE4e247945A4D0e577ef65a32Bd4E459C3A7',
-            BigNumber.from(10).pow(21)
+            BigNumber.from(10).pow(20)
         );
     });
 });
 //  scy 0xb597dE4e247945A4D0e577ef65a32Bd4E459C3A7
 //  yt 0x8774E8D4A17f6DbDF93da23189df6026DD77aA34
 //  usd 0x2018ecc38fbca2ce3A62f96f9F0D38F0DEE2f99D
-describe('Send', () => {
-    const provider = new JsonRpcProvider('https://api.avax-test.network/ext/bc/C/rpc');
-    let ERC20Contract: ERC20 = new Contract('0xb597dE4e247945A4D0e577ef65a32Bd4E459C3A7', ERC20ABI, provider) as ERC20;
-    const sender = WALLET().wallet;
-    it('Send', async () => {
-        await ERC20Contract.connect(sender).transfer(
-            '0x8774E8D4A17f6DbDF93da23189df6026DD77aA34',
-            BigNumber.from(10).pow(20)
-        );
-    });
-});
+// describe('Send', () => {
+//     const provider = new JsonRpcProvider('https://api.avax-test.network/ext/bc/C/rpc');
+//     let ERC20Contract: ERC20 = new Contract('0xb597dE4e247945A4D0e577ef65a32Bd4E459C3A7', ERC20ABI, provider) as ERC20;
+//     const sender = WALLET().wallet;
+//     it('Send', async () => {
+//         await ERC20Contract.connect(sender).transfer(
+//             '0x8774E8D4A17f6DbDF93da23189df6026DD77aA34',
+//             BigNumber.from(10).pow(20)
+//         );
+//     });
+// });
