@@ -12,17 +12,15 @@ describe('MarketFactory', () => {
     });
 });
 
-describe('contract', () => { 
+describe('contract', () => {
     const marketFactory = new MarketFactory(currentConfig.marketFactory, networkConnection, ACTIVE_CHAIN_ID);
-    const {contract} = marketFactory;
+    const { contract } = marketFactory;
 
     it('Read contract', async () => {
         const treasure = await contract.treasury();
         expect(treasure).toBeDefined();
     });
 
-    // To be define need to deploy new scy .. 
-    it('Create Market', async () => {
-
-    } )
- })
+    // To be define need to deploy new scy ..
+    it('Create Market', async () => {});
+});

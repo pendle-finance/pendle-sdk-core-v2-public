@@ -1,7 +1,7 @@
 import { BigNumber } from 'ethers';
 import { Market } from '../src';
 //  import { getRouterStatic } from '../src/entities/helper';
-import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET,print } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET, print } from './util/testUtils';
 
 const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 
@@ -26,10 +26,10 @@ describe.skip(Market, () => {
     });
 });
 
-describe('contract', ()=>{
+describe('contract', () => {
     const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
     const sender = WALLET().wallet;
-    const {contract} = market;
+    const { contract } = market;
 
     it('Read Contract', async () => {
         const totalSupply = (await contract.totalSupply()).toBigInt();
@@ -51,4 +51,4 @@ describe('contract', ()=>{
     });
 
     //  All write function test via Router
-})
+});

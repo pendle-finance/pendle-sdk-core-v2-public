@@ -17,17 +17,11 @@ export class ERC20 {
         this.contract = new Contract(_address, PendleERC20ABI, _networkConnection.provider) as PendleERC20;
     }
 
-    async approve(
-        spender: Address,
-        amount: BigNumberish
-    ): Promise<ContractTransaction> {
+    async approve(spender: Address, amount: BigNumberish): Promise<ContractTransaction> {
         return this.contract.connect(this.networkConnection.signer!).approve(spender, amount);
     }
 
-    async transfer(
-        to: Address,
-        amount: BigNumberish
-    ): Promise<ContractTransaction> {
-        return this.contract.connect(this.networkConnection.signer!).transfer(to,amount);
+    async transfer(to: Address, amount: BigNumberish): Promise<ContractTransaction> {
+        return this.contract.connect(this.networkConnection.signer!).transfer(to, amount);
     }
 }

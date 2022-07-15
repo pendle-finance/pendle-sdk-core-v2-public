@@ -4,7 +4,7 @@ import { networkConnection, WALLET } from '../util/testUtils';
 import { config } from 'dotenv';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { ERC20 } from './typechain/ERC20';
-//import {} from '@nomiclabs/hardhat-ethers/src/internal/type-extensions';
+// import {} from '@nomiclabs/hardhat-ethers/src/internal/type-extensions';
 config();
 describe.skip('Test rpc', () => {
     const provider = new JsonRpcProvider('https://api.avax.network/ext/bc/C/rpc');
