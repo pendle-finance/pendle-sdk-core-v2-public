@@ -12,13 +12,6 @@ describe(PT, () => {
         expect(pt.chainId).toBe(ACTIVE_CHAIN_ID);
     });
 
-    it('#contract', async () => {
-        const { contract } = pt;
-        expect(contract).toBeDefined();
-        const supply = await contract.totalSupply();
-        expect(supply.toBigInt()).toBeGreaterThan(0);
-    });
-
     it('#userInfo', async () => {
         const userInfo = await pt.userInfo(currentConfig.deployer);
         expect(userInfo).toBeDefined();
@@ -28,4 +21,9 @@ describe(PT, () => {
         const ptInfo = await pt.getInfo();
         expect(ptInfo).toBeDefined();
     });
+});
+
+describe('contract', () => {
+    const pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const { contract } = pt;
 });
