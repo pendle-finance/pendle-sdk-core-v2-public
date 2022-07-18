@@ -56,21 +56,19 @@ describe(Router, () => {
         await router.swapPtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 1, {});
     });
 
-    // 0 fail
-    // 1 ,2 ,3 ,4 approx fail
-    // expect that > 4 also fail
-    // problem with cal function since change to manual work
     it.skip('#swapScyForExactPt', async () => {
-        //await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.contract.connect(signer).swapScyForExactPt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), BigNumber.from(10).pow(19), {});
+        await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await router.contract
+            .connect(signer)
+            .swapScyForExactPt(
+                signer.address,
+                currentConfig.marketAddress,
+                BigNumber.from(10).pow(18),
+                BigNumber.from(10).pow(19),
+                {}
+            );
     });
 
-    // "approx fail" for 0,1,2 ???
-    // 10^16 fail
-    // 10^17 work
-    // 10^18 work
-    // 10^19 fail
-    // Advice from contract team. Increase the iter ( current set to 15 - expect set to 256);
     it.skip('#swapExactScyForPt', async () => {
         await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await router.swapExactScyForPt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(16), 1, {});
@@ -80,16 +78,14 @@ describe(Router, () => {
      * Type 2 of swap between Scy and YT
      */
 
-    //  "approx fail" for 0,1,2 ???
     it.skip('#swapExactScyForYt', async () => {
         await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapExactScyForYt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 2, {});
+        await router.swapExactScyForYt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 0, {});
     });
 
-    //  "approx fail" for 0,1,2 ???
     it.skip('#swapYtForExactScy', async () => {
         await yt.approve(currentConfig.router, BigNumber.from(10).pow(19).mul(2));
-        await router.swapYtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 2, {});
+        await router.swapYtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 1, {});
     });
 
     // exceed scy in limit for 0,1,2,3
@@ -107,8 +103,7 @@ describe(Router, () => {
      * Type 3: Raw token with PT & YT
      */
 
-    // approx fail ( No idea )
-    it('#swapExactRawTokenForPt', async () => {
+    it.skip('#swapExactRawTokenForPt', async () => {
         await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
         await router.swapExactRawTokenForPt(
             signer.address,

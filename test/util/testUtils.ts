@@ -38,7 +38,7 @@ export const CONTRACT_ADDRESSES = {
             ROUTER: FUJI_CORE_ADDRESSES.router,
             ROUTER_STATIC: FUJI_CORE_ADDRESSES.routerStatic,
             VE: FUJI_CORE_ADDRESSES.vePendle,
-            VOTING_CONTROLLER: FUJI_CORE_ADDRESSES.votingController
+            VOTING_CONTROLLER: FUJI_CORE_ADDRESSES.votingController,
         },
         BENQI: {
             SCY: FUJI_BENQI_ADDRESSES.SCY,
