@@ -3,6 +3,8 @@ import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET, print } from '.
 
 const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 
+// No write function need to test 
+
 describe(PT, () => {
     const pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
 
@@ -10,6 +12,13 @@ describe(PT, () => {
         expect(pt).toBeInstanceOf(PT);
         expect(pt.address).toBe(currentConfig.ptAddress);
         expect(pt.chainId).toBe(ACTIVE_CHAIN_ID);
+    });
+
+    it('#contract', async () => {
+        const { contract } = pt;
+        expect(contract).toBeDefined();
+        const supply = await contract.totalSupply();
+        expect(supply.toBigInt()).toBeGreaterThan(0);
     });
 
     it('#userInfo', async () => {
@@ -21,9 +30,4 @@ describe(PT, () => {
         const ptInfo = await pt.getInfo();
         expect(ptInfo).toBeDefined();
     });
-});
-
-describe('contract', () => {
-    const pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const { contract } = pt;
 });

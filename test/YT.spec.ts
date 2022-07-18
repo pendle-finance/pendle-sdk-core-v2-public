@@ -15,11 +15,7 @@ describe(YT, () => {
         expect(yt.chainId).toBe(ACTIVE_CHAIN_ID);
     });
 
-    // need to send scy to contract first
-    it('#contract', async () => {
-        const { contract } = yt;
-        await contract.connect(signer).mintPY(signer.address, signer.address);
-    });
+    
     it('#userInfo', async () => {
         const userInfo = await yt.getInfo();
         expect(userInfo).toBeDefined();
@@ -29,3 +25,34 @@ describe(YT, () => {
         expect(info).toBeDefined();
     });
 });
+
+// Only test reward since other function test through router
+describe('contract',() => {
+    const yt = new YT(currentConfig.ytAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const signer = WALLET().wallet;
+    const {contract} = yt;
+    it('Read contract', async () =>{
+        const rewardToken = await contract.getRewardTokens();
+        expect(rewardToken).toBeDefined();
+
+        const index = await contract.scyIndexStored();
+        expect(index).toBeDefined();
+    });
+
+    it('Redeem interest',async ()=>{
+        const interest = await contract.connect(signer).redeemDueInterest(signer.address);
+        // Check Scy balance by hand
+    });
+
+    it('Redeem reward', async () =>{
+        const reward = await contract.connect(signer).redeemDueRewards(signer.address);
+        // Check balance by hand
+    });
+
+    it('Redeem interest and reward', async () =>{
+        const reward = await contract.connect(signer).redeemDueInterestAndRewards(signer.address);
+        // Check balance by hand
+    });
+
+})
