@@ -3,7 +3,7 @@ import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET, print } from '.
 
 const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 
-// No write function need to test 
+// No write function need to test
 
 describe(PT, () => {
     const pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
