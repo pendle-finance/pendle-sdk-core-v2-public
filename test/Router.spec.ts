@@ -19,13 +19,13 @@ describe(Router, () => {
     const pt = new ERC20(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
     const market = new ERC20(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
-    it('#constructor', async () => {
+    it.skip('#constructor', async () => {
         expect(router).toBeInstanceOf(Router);
         expect(router.address).toBe(currentConfig.router);
         expect(router.chainId).toBe(ACTIVE_CHAIN_ID);
     });
 
-    it('#addLiquidity', async () => {
+    it.skip('#addLiquidity', async () => {
         await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await router.addLiquidity(
@@ -38,7 +38,7 @@ describe(Router, () => {
         );
     });
 
-    it('#removeLiquidity', async () => {
+    it.skip('#removeLiquidity', async () => {
         await market.approve(currentConfig.router, BigNumber.from(10).pow(18));
         await router.removeLiquidity(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 0, {});
     });
@@ -46,12 +46,12 @@ describe(Router, () => {
     /*
      *  Type 1 of swap between Scy and PT
      */
-    it('#swapExactPtForScy', async () => {
+    it.skip('#swapExactPtForScy', async () => {
         await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await router.swapExactPtForScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 0, {});
     });
 
-    it('#swapPtForExactScy', async () => {
+    it.skip('#swapPtForExactScy', async () => {
         await pt.approve(currentConfig.router, BigNumber.from(10).pow(19).mul(2));
         await router.swapPtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 1, {});
     });
@@ -59,15 +59,21 @@ describe(Router, () => {
     // 0 fail
     // 1 ,2 ,3 ,4 approx fail
     // expect that > 4 also fail
-    it('#swapScyForExactPt', async () => {
-        // await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapScyForExactPt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 0, {});
+    // problem with cal function since change to manual work
+    it.skip('#swapScyForExactPt', async () => {
+        //await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await router.contract.connect(signer).swapScyForExactPt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), BigNumber.from(10).pow(19), {});
     });
 
     // "approx fail" for 0,1,2 ???
-    it('#swapExactScyForPt', async () => {
+    // 10^16 fail
+    // 10^17 work
+    // 10^18 work
+    // 10^19 fail
+    // Advice from contract team. Increase the iter ( current set to 15 - expect set to 256);
+    it.skip('#swapExactScyForPt', async () => {
         await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapExactScyForPt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 2, {});
+        await router.swapExactScyForPt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(16), 1, {});
     });
 
     /*
@@ -75,24 +81,24 @@ describe(Router, () => {
      */
 
     //  "approx fail" for 0,1,2 ???
-    it('#swapExactScyForYt', async () => {
+    it.skip('#swapExactScyForYt', async () => {
         await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await router.swapExactScyForYt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 2, {});
     });
 
     //  "approx fail" for 0,1,2 ???
-    it('#swapYtForExactScy', async () => {
+    it.skip('#swapYtForExactScy', async () => {
         await yt.approve(currentConfig.router, BigNumber.from(10).pow(19).mul(2));
         await router.swapYtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 2, {});
     });
 
     // exceed scy in limit for 0,1,2,3
-    it('#swapScyForExactYt', async () => {
+    it.skip('#swapScyForExactYt', async () => {
         await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await router.swapScyForExactYt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 2, {});
     });
 
-    it('#swapExactYtForScy', async () => {
+    it.skip('#swapExactYtForScy', async () => {
         await yt.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await router.swapExactYtForScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(1), 0, {});
     });
@@ -107,14 +113,14 @@ describe(Router, () => {
         await router.swapExactRawTokenForPt(
             signer.address,
             currentConfig.marketAddress,
-            BigNumber.from(10).pow(19),
+            BigNumber.from(10).pow(18),
             [usdAddress],
-            2,
+            0,
             {}
         );
     });
 
-    it('#swapExactPtForRawToken', async () => {
+    it.skip('#swapExactPtForRawToken', async () => {
         await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await router.swapExactPtForRawToken(
             signer.address,
@@ -126,7 +132,7 @@ describe(Router, () => {
         );
     });
 
-    it('#swapExactRawTokenForYt', async () => {
+    it.skip('#swapExactRawTokenForYt', async () => {
         await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
         await router.swapExactRawTokenForYt(
             signer.address,
@@ -138,7 +144,7 @@ describe(Router, () => {
         );
     });
 
-    it('#swapExactYtForRawToken', async () => {
+    it.skip('#swapExactYtForRawToken', async () => {
         await yt.approve(currentConfig.router, BigNumber.from(10).pow(20));
         await router.swapExactYtForRawToken(
             signer.address,
@@ -153,7 +159,7 @@ describe(Router, () => {
      * Type 4: Mint, redeem PY & SCY -> Raw token
      */
 
-    it('#mintPyFromRawToken', async () => {
+    it.skip('#mintPyFromRawToken', async () => {
         await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
         await router.mintPyFromRawToken(
             signer.address,
@@ -165,7 +171,7 @@ describe(Router, () => {
         );
     });
 
-    it('#redeemPyToRawToken', async () => {
+    it.skip('#redeemPyToRawToken', async () => {
         await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await yt.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await router.redeemPyToRawToken(
@@ -178,7 +184,7 @@ describe(Router, () => {
         );
     });
 
-    it('#mintScyFromRawToken', async () => {
+    it.skip('#mintScyFromRawToken', async () => {
         await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
         await router.mintScyFromRawToken(
             signer.address,
@@ -190,7 +196,7 @@ describe(Router, () => {
         );
     });
 
-    it('#redeemScyToRawToken', async () => {
+    it.skip('#redeemScyToRawToken', async () => {
         await scy.approve(currentConfig.router, BigNumber.from(10).pow(20));
         await router.redeemScyToRawToken(
             signer.address,

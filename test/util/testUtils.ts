@@ -37,6 +37,8 @@ export const CONTRACT_ADDRESSES = {
             YT_FACTORY: FUJI_CORE_ADDRESSES.yieldContractFactory,
             ROUTER: FUJI_CORE_ADDRESSES.router,
             ROUTER_STATIC: FUJI_CORE_ADDRESSES.routerStatic,
+            VE: FUJI_CORE_ADDRESSES.vePendle,
+            VOTING_CONTROLLER: FUJI_CORE_ADDRESSES.votingController
         },
         BENQI: {
             SCY: FUJI_BENQI_ADDRESSES.SCY,
@@ -52,6 +54,8 @@ export const CONTRACT_ADDRESSES = {
             YT_FACTORY: MUMBAI_CORE_ADDRESSES.yieldContractFactory,
             ROUTER: MUMBAI_CORE_ADDRESSES.router,
             ROUTER_STATIC: MUMBAI_CORE_ADDRESSES.routerStatic,
+            VE: MUMBAI_CORE_ADDRESSES.vePendle,
+            //VOTING_CONTROLLER: MUMBAI_CORE_ADDRESSES.votingController  // not availabe now
         },
         BENQI: {
             SCY: MUMBAI_BENQI_ADDRESSES.SCY,
@@ -72,6 +76,8 @@ export const testConfig = (chainId: number) => ({
     router: CONTRACT_ADDRESSES[chainId].CORE.ROUTER,
     routerStatic: CONTRACT_ADDRESSES[chainId].CORE.ROUTER_STATIC,
     yieldContractFactory: CONTRACT_ADDRESSES[chainId].CORE.YT_FACTORY,
+    veAddress: CONTRACT_ADDRESSES[chainId].CORE.VE,
+    votingController: CONTRACT_ADDRESSES[chainId].CORE.VOTING_CONTROLLER,
 });
 
 export const WALLET = () => ({

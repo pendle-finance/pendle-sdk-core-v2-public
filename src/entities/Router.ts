@@ -18,7 +18,7 @@ export class Router {
         guessMin: Router.MIN_AMOUNT,
         guessMax: Router.MAX_AMOUNT,
         guessOffchain: 0,
-        maxIteration: 15,
+        maxIteration: 256,
         eps: BN.from(10).pow(15),
     };
 
