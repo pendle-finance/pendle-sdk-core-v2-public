@@ -124,16 +124,28 @@ export class Router {
                 Router.MAX_AMOUNT,
                 Router.STATIC_APPROX_PARAMS
             );
-        return this.contract
-            .connect(this.networkConnection.signer!)
-            .swapPtForExactScy(
-                receiver,
-                market,
-                exactScyOut,
-                calcSlippedUpAmount(netPtIn, slippage),
-                Router.swapApproxParams(netPtIn, slippage),
-                overrides
-            );
+        if (overrides) {
+            return this.contract
+                .connect(this.networkConnection.signer!)
+                .swapPtForExactScy(
+                    receiver,
+                    market,
+                    exactScyOut,
+                    calcSlippedUpAmount(netPtIn, slippage),
+                    Router.swapApproxParams(netPtIn, slippage),
+                    overrides
+                );
+        } else {
+            return this.contract
+                .connect(this.networkConnection.signer!)
+                .swapPtForExactScy(
+                    receiver,
+                    market,
+                    exactScyOut,
+                    calcSlippedUpAmount(netPtIn, slippage),
+                    Router.swapApproxParams(netPtIn, slippage)
+                );
+        }
     }
 
     async swapScyForExactPt(
@@ -393,9 +405,15 @@ export class Router {
         const netScyIn = await this.contract
             .connect(this.networkConnection.signer!)
             .callStatic.swapScyForExactYt(receiver, market, exactYtOut, Router.MAX_AMOUNT);
-        return this.contract
-            .connect(this.networkConnection.signer!)
-            .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
+        if (overrides) {
+            return this.contract
+                .connect(this.networkConnection.signer!)
+                .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
+        } else {
+            return this.contract
+                .connect(this.networkConnection.signer!)
+                .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage));
+        }
     }
 
     async swapExactRawTokenForYt(

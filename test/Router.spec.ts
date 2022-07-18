@@ -51,9 +51,9 @@ describe(Router, () => {
         await router.swapExactPtForScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 0, {});
     });
 
-    it.skip('#swapPtForExactScy', async () => {
-        await pt.approve(currentConfig.router, BigNumber.from(10).pow(19).mul(2));
-        await router.swapPtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 1, {});
+    it('#swapPtForExactScy', async () => {
+        await pt.approve(currentConfig.router, BigNumber.from(10).pow(18));
+        await router.swapPtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(17), 1);
     });
 
     it.skip('#swapScyForExactPt', async () => {
