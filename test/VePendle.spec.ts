@@ -20,6 +20,6 @@ describe('contract', () => {
     const ve = new VePendle(currentConfig.veAddress, networkConnection, ACTIVE_CHAIN_ID);
     const contract = ve.contract;
     it('read contract', async () => {
-        //contract
+        // contract
     });
 });
