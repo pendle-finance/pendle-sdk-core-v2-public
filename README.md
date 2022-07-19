@@ -1,6 +1,10 @@
 # pendle-sdk-core-v2
 Testing step
 
+Add required information to .env.example change to .env
+
+Ask contract team for fund USD and PENDLE
+
 1 SCY 
 
 2 YT 

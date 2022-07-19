@@ -62,7 +62,7 @@ export const CONTRACT_ADDRESSES = {
             ROUTER_STATIC: MUMBAI_CORE_ADDRESSES.routerStatic,
             VE: MUMBAI_CORE_ADDRESSES.vePendle,
             // VOTING_CONTROLLER: MUMBAI_CORE_ADDRESSES.votingController  // not availabe now
-            PENDLE: MUMBAI_CORE_ADDRESSES.PENDLE
+            PENDLE: MUMBAI_CORE_ADDRESSES.PENDLE,
         },
         BENQI: {
             SCY: MUMBAI_BENQI_ADDRESSES.SCY,
