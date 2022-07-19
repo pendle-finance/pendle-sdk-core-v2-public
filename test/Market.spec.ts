@@ -5,7 +5,7 @@ import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET, print } from '.
 
 const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 
-describe.skip(Market, () => {
+describe(Market, () => {
     const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
     const sender = WALLET().wallet;
     it('#constructor', () => {
@@ -33,7 +33,7 @@ describe('contract', () => {
 
     it('Read Contract', async () => {
         const totalSupply = (await contract.totalSupply()).toBigInt();
-        expect(totalSupply).toBeGreaterThan(0);
+        expect(totalSupply).toBe(BigNumber.from(0).toBigInt());
 
         const Token = await contract.readTokens();
         expect(Token._PT).toBe(currentConfig.ptAddress);

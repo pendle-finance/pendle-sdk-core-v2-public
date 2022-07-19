@@ -3,9 +3,9 @@ import { config } from 'dotenv';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../../src';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market.json';
+import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-0xF3150c14F776c50C9D397054d38979c7B77FC41D.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
-import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market.json';
+import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-0x150b6eb90Bf636eC0c4328d13d1e1d4adDBAF904.json';
 import { ethers } from 'ethers';
 config();
 
@@ -55,7 +55,7 @@ export const CONTRACT_ADDRESSES = {
             ROUTER: MUMBAI_CORE_ADDRESSES.router,
             ROUTER_STATIC: MUMBAI_CORE_ADDRESSES.routerStatic,
             VE: MUMBAI_CORE_ADDRESSES.vePendle,
-            // VOTING_CONTROLLER: MUMBAI_CORE_ADDRESSES.votingController  // not availabe now
+            //VOTING_CONTROLLER: MUMBAI_CORE_ADDRESSES.votingController  // not availabe now
         },
         BENQI: {
             SCY: MUMBAI_BENQI_ADDRESSES.SCY,
