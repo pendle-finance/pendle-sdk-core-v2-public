@@ -20,7 +20,4 @@ describe('contract', () => {
         const treasure = await contract.treasury();
         expect(treasure).toBeDefined();
     });
-
-    // To be define need to deploy new scy ..
-    it('Create Market', async () => {});
 });

@@ -18,12 +18,12 @@ describe(SCY, () => {
 
     it('#deposit', async () => {
         const beforeBalance = await scy.contract.balanceOf(signer.address);
-        const approveTx = await usdc.approve(currentConfig.scyAddress, BigNumber.from(10).pow(20));
+        const approveTx = await usdc.approve(currentConfig.scyAddress, BigNumber.from(10).pow(21));
         await approveTx.wait(1);
         const depositTx = await scy.deposit(
             signer.address,
             currentConfig.usdcAddress,
-            BigNumber.from(10).pow(20),
+            BigNumber.from(10).pow(21),
             0,
             {}
         );
@@ -64,7 +64,7 @@ describe('#contract', () => {
         expect(baseToken[1]).toBe(currentConfig.usdcAddress);
 
         const rewardToken = await contract.getRewardTokens();
-        expect(rewardToken).toBe(currentConfig.qiAddress);
+        expect(rewardToken[0]).toBe(currentConfig.qiAddress);
     });
 
     it('Claim reward', async () => {

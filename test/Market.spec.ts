@@ -28,7 +28,6 @@ describe(Market, () => {
 
 describe('contract', () => {
     const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const sender = WALLET().wallet;
     const { contract } = market;
 
     it('Read Contract', async () => {

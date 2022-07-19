@@ -26,9 +26,11 @@ describe(Router, () => {
     });
 
     it.skip('#addLiquidity', async () => {
-        await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.addLiquidity(
+        const scyApproveTx = await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await scyApproveTx.wait(1);
+        const ptApproveTx = await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await ptApproveTx.wait(1);
+        const addLiquidityTx = await router.addLiquidity(
             signer.address,
             currentConfig.marketAddress,
             BigNumber.from(10).pow(19),
@@ -36,6 +38,7 @@ describe(Router, () => {
             0,
             {}
         );
+        await addLiquidityTx.wait(1);
     });
 
     it.skip('#removeLiquidity', async () => {

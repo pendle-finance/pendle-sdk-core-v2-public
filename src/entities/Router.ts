@@ -54,27 +54,21 @@ export class Router {
         scyDesired: BigNumberish,
         ptDesired: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const [netLpOut] = await this.contract
             .connect(this.networkConnection.signer!)
             .callStatic.addLiquidity(receiver, market, scyDesired, ptDesired, Router.MIN_AMOUNT);
-        if (overrides) {
-            return this.contract
-                .connect(this.networkConnection.signer!)
-                .addLiquidity(
-                    receiver,
-                    market,
-                    scyDesired,
-                    ptDesired,
-                    calcSlippedDownAmount(netLpOut, slippage),
-                    overrides
-                );
-        } else {
-            return this.contract
-                .connect(this.networkConnection.signer!)
-                .addLiquidity(receiver, market, scyDesired, ptDesired, calcSlippedDownAmount(netLpOut, slippage));
-        }
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .addLiquidity(
+                receiver,
+                market,
+                scyDesired,
+                ptDesired,
+                calcSlippedDownAmount(netLpOut, slippage),
+                overrides
+            );
     }
 
     async removeLiquidity(
@@ -82,7 +76,7 @@ export class Router {
         market: Address,
         lpToRemove: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const [netScyOut, netPtOut] = await this.contract
             .connect(this.networkConnection.signer!)
@@ -104,7 +98,7 @@ export class Router {
         market: Address,
         exactPtIn: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netScyOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -119,7 +113,7 @@ export class Router {
         market: Address,
         exactScyOut: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netPtIn = await this.contract
             .connect(this.networkConnection.signer!)
@@ -130,28 +124,16 @@ export class Router {
                 Router.MAX_AMOUNT,
                 Router.STATIC_APPROX_PARAMS
             );
-        if (overrides) {
-            return this.contract
-                .connect(this.networkConnection.signer!)
-                .swapPtForExactScy(
-                    receiver,
-                    market,
-                    exactScyOut,
-                    calcSlippedUpAmount(netPtIn, slippage),
-                    Router.swapApproxParams(netPtIn, slippage),
-                    overrides
-                );
-        } else {
-            return this.contract
-                .connect(this.networkConnection.signer!)
-                .swapPtForExactScy(
-                    receiver,
-                    market,
-                    exactScyOut,
-                    calcSlippedUpAmount(netPtIn, slippage),
-                    Router.swapApproxParams(netPtIn, slippage)
-                );
-        }
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapPtForExactScy(
+                receiver,
+                market,
+                exactScyOut,
+                calcSlippedUpAmount(netPtIn, slippage),
+                Router.swapApproxParams(netPtIn, slippage),
+                overrides
+            );
     }
 
     async swapScyForExactPt(
@@ -159,7 +141,7 @@ export class Router {
         market: Address,
         exactPtOut: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netScyIn = await this.contract
             .connect(this.networkConnection.signer!)
@@ -175,7 +157,7 @@ export class Router {
         exactRawTokenIn: BigNumberish,
         path: Address[],
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netPtOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -204,7 +186,7 @@ export class Router {
         market: Address,
         exactScyIn: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netPtOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -227,7 +209,7 @@ export class Router {
         netRawTokenIn: BigNumberish,
         path: Address[],
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netScyOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -250,7 +232,7 @@ export class Router {
         netScyIn: BigNumberish,
         path: Address[],
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netRawTokenOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -273,7 +255,7 @@ export class Router {
         netRawTokenIn: BigNumberish,
         path: Address[],
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netPyOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -296,7 +278,7 @@ export class Router {
         netPyIn: BigNumberish,
         path: Address[],
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netRawTokenOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -318,7 +300,7 @@ export class Router {
         market: Address,
         exactScyIn: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netYtOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -340,7 +322,7 @@ export class Router {
         market: Address,
         exactScyOut: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netYtIn = await this.contract
             .connect(this.networkConnection.signer!)
@@ -369,7 +351,7 @@ export class Router {
         exactPtIn: BigNumberish,
         path: Address[],
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netRawTokenOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -391,7 +373,7 @@ export class Router {
         market: Address,
         exactYtIn: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netScyOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -406,7 +388,7 @@ export class Router {
         market: Address,
         exactYtOut: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netScyIn = await this.contract
             .connect(this.networkConnection.signer!)
@@ -428,7 +410,7 @@ export class Router {
         exactRawTokenIn: BigNumberish,
         path: Address[],
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netYtOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -459,7 +441,7 @@ export class Router {
         exactYtIn: BigNumberish,
         path: Address[],
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const netRawTokenOut = await this.contract
             .connect(this.networkConnection.signer!)
