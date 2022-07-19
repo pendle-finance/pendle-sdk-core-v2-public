@@ -3,9 +3,11 @@ import { config } from 'dotenv';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../../src';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-0xF3150c14F776c50C9D397054d38979c7B77FC41D.json';
+import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-0x9f080Af83E84099ED92b1b9b4B4BbE4400f2A3CB.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
-import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-0x150b6eb90Bf636eC0c4328d13d1e1d4adDBAF904.json';
+import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-0x78699fa58C484e9867B8047A12E959ccB8BaD90E.json';
+import FUJI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-benqi.json';
+import MUMBAI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-benqi.json';
 import { ethers } from 'ethers';
 config();
 
@@ -45,6 +47,9 @@ export const CONTRACT_ADDRESSES = {
             MARKET: FUJI_BENQI_ADDRESSES.market,
             PT: FUJI_BENQI_ADDRESSES.PT,
             YT: FUJI_BENQI_ADDRESSES.YT,
+            USDC: FUJI_TEST_BENQI_ADDRESSES.USDC,
+            QI: FUJI_TEST_BENQI_ADDRESSES.QI,
+            QIUSDC: FUJI_TEST_BENQI_ADDRESSES.qiUSDC,
         },
     },
     [CHAIN_ID.MUMBAI]: {
@@ -62,6 +67,9 @@ export const CONTRACT_ADDRESSES = {
             MARKET: MUMBAI_BENQI_ADDRESSES.market,
             PT: MUMBAI_BENQI_ADDRESSES.PT,
             YT: MUMBAI_BENQI_ADDRESSES.YT,
+            USDC: MUMBAI_TEST_BENQI_ADDRESSES.USDC,
+            QI: MUMBAI_TEST_BENQI_ADDRESSES.QI,
+            QIUSDC: MUMBAI_TEST_BENQI_ADDRESSES.qiUSDC,
         },
     },
 };
@@ -78,6 +86,8 @@ export const testConfig = (chainId: number) => ({
     yieldContractFactory: CONTRACT_ADDRESSES[chainId].CORE.YT_FACTORY,
     veAddress: CONTRACT_ADDRESSES[chainId].CORE.VE,
     votingController: CONTRACT_ADDRESSES[chainId].CORE.VOTING_CONTROLLER,
+    usdcAddress: CONTRACT_ADDRESSES[chainId].BENQI.USDC,
+    qiAddress: CONTRACT_ADDRESSES[chainId].BENQI.QI,
 });
 
 export const WALLET = () => ({

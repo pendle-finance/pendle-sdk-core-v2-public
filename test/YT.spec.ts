@@ -1,5 +1,3 @@
-import { yellow } from '@material-ui/core/colors';
-import { BigNumber } from 'ethers';
 import { type Address, YT, SCY } from '../src';
 import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET, print } from './util/testUtils';
 
@@ -34,23 +32,12 @@ describe('contract', () => {
     it('Read contract', async () => {
         const rewardToken = await contract.getRewardTokens();
         expect(rewardToken).toBeDefined();
-
         const index = await contract.scyIndexStored();
         expect(index).toBeDefined();
     });
 
-    it('Redeem interest', async () => {
-        const interest = await contract.connect(signer).redeemDueInterest(signer.address);
-        // Check Scy balance by hand
-    });
-
-    it('Redeem reward', async () => {
-        const reward = await contract.connect(signer).redeemDueRewards(signer.address);
-        // Check balance by hand
-    });
-
     it('Redeem interest and reward', async () => {
-        const reward = await contract.connect(signer).redeemDueInterestAndRewards(signer.address);
-        // Check balance by hand
+        const rewardTx = await contract.connect(signer).redeemDueInterestAndRewards(signer.address, true, true);
+        await rewardTx.wait(1);
     });
 });

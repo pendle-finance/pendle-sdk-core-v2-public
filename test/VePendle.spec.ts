@@ -28,7 +28,5 @@ describe('contract', () => {
         // contract
         print(await contract.pendle());
     });
-    it('lock', async () => {
-        
-    });
+    it('lock', async () => {});
 });

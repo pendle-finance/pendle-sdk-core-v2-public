@@ -59,16 +59,22 @@ export class Router {
         const [netLpOut] = await this.contract
             .connect(this.networkConnection.signer!)
             .callStatic.addLiquidity(receiver, market, scyDesired, ptDesired, Router.MIN_AMOUNT);
-        return this.contract
-            .connect(this.networkConnection.signer!)
-            .addLiquidity(
-                receiver,
-                market,
-                scyDesired,
-                ptDesired,
-                calcSlippedDownAmount(netLpOut, slippage),
-                overrides
-            );
+        if (overrides) {
+            return this.contract
+                .connect(this.networkConnection.signer!)
+                .addLiquidity(
+                    receiver,
+                    market,
+                    scyDesired,
+                    ptDesired,
+                    calcSlippedDownAmount(netLpOut, slippage),
+                    overrides
+                );
+        } else {
+            return this.contract
+                .connect(this.networkConnection.signer!)
+                .addLiquidity(receiver, market, scyDesired, ptDesired, calcSlippedDownAmount(netLpOut, slippage));
+        }
     }
 
     async removeLiquidity(

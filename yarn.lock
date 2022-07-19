@@ -1787,10 +1787,10 @@
   "resolved" "https://registry.npmjs.org/@openzeppelin/contracts/-/contracts-4.7.0.tgz"
   "version" "4.7.0"
 
-"@pendle/core-v2@^0.8.0-beta":
-  "integrity" "sha512-LifKif5XPSdBYygUuxe1n2bitcfUqFw6Kb2Pcd4J0beVjLuanpQA18r6FDMEKNmcGuyS1en1fSNaXKbLL4Bd3Q=="
-  "resolved" "https://registry.npmjs.org/@pendle/core-v2/-/core-v2-0.8.0-beta.tgz"
-  "version" "0.8.0-beta"
+"@pendle/core-v2@^0.8.0-beta-3":
+  "integrity" "sha512-cnvKL462M492nqj0efmXnzQ0nQO+uKlJb2eQqpsWQft/2L1C1V22kK8XJR40ru6Yu7FAqQQ+vCehCEGdLchcBA=="
+  "resolved" "https://registry.npmjs.org/@pendle/core-v2/-/core-v2-0.8.0-beta-3.tgz"
+  "version" "0.8.0-beta-3"
   dependencies:
     "@openzeppelin/contracts" "^4.5.0"
     "@openzeppelin/contracts-upgradeable" "^4.5.2"
