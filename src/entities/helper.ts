@@ -17,12 +17,14 @@ export function decimalFactor(decimals: number): BN {
 }
 
 export function calcSlippedDownAmount(theoreticalAmount: BN, slippage: number): BN {
+    InvalidSlippageError.verify(slippage);
     return theoreticalAmount
         .mul(decimalFactor(PERCENTAGE_DECIMALS).sub(Math.trunc(slippage * Math.pow(10, PERCENTAGE_DECIMALS))))
         .div(decimalFactor(PERCENTAGE_DECIMALS));
 }
 
 export function calcSlippedUpAmount(theoreticalAmount: BN, slippage: number): BN {
+    InvalidSlippageError.verify(slippage);
     return theoreticalAmount
         .mul(decimalFactor(PERCENTAGE_DECIMALS).add(Math.trunc(slippage * Math.pow(10, PERCENTAGE_DECIMALS))))
         .div(decimalFactor(PERCENTAGE_DECIMALS));
@@ -49,4 +51,14 @@ export function getContractAddresses(chainId: number): ContractAddresses {
 
 export function isMainchain(chainId: number): boolean {
     return chainId === CHAIN_ID.ETHEREUM || chainId === CHAIN_ID.FUJI;
+}
+
+export class InvalidSlippageError extends Error {
+    constructor() {
+        super('Slippage must be a decimal value in the range [0, 1]');
+    }
+
+    static verify(slippage: number) {
+        if (slippage < 0 || slippage > 1) throw new InvalidSlippageError();
+    }
 }
