@@ -31,13 +31,12 @@ export class VotingController {
         return BN.from(new BigNumber(constants.WeiPerEther.toString()).times(weight).toFixed());
     }
 
-    async getUserTotalVotedWeight(user: Address): Promise<number> {
-        // TODO: Uncomment this after interface update
-        await this.contract.userData();
-        const totalVotedWeight = await this.contract.callStatic.userData(user);
-        // const totalVotedWeight = 0;
-        return new BigNumber(totalVotedWeight.toString()).div(constants.WeiPerEther.toString()).toNumber();
-    }
+    // async getUserTotalVotedWeight(user: Address): Promise<number> {
+    //     // TODO: Uncomment this after interface update
+    //     const totalVotedWeight = await this.contract.callStatic.userData(user);
+    //     // const totalVotedWeight = 0;
+    //     return new BigNumber(totalVotedWeight.toString()).div(constants.WeiPerEther.toString()).toNumber();
+    // }
 
     async vote(market: Market, weight: number) {
         return this.contract.vote([market.address], [VotingController.scaleWeight(weight)]);

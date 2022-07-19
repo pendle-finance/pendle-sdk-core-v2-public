@@ -41,6 +41,7 @@ export const CONTRACT_ADDRESSES = {
             ROUTER_STATIC: FUJI_CORE_ADDRESSES.routerStatic,
             VE: FUJI_CORE_ADDRESSES.vePendle,
             VOTING_CONTROLLER: FUJI_CORE_ADDRESSES.votingController,
+            PENDLE: FUJI_CORE_ADDRESSES.PENDLE,
         },
         BENQI: {
             SCY: FUJI_BENQI_ADDRESSES.SCY,
@@ -61,6 +62,7 @@ export const CONTRACT_ADDRESSES = {
             ROUTER_STATIC: MUMBAI_CORE_ADDRESSES.routerStatic,
             VE: MUMBAI_CORE_ADDRESSES.vePendle,
             // VOTING_CONTROLLER: MUMBAI_CORE_ADDRESSES.votingController  // not availabe now
+            PENDLE: MUMBAI_CORE_ADDRESSES.PENDLE
         },
         BENQI: {
             SCY: MUMBAI_BENQI_ADDRESSES.SCY,
@@ -88,6 +90,7 @@ export const testConfig = (chainId: number) => ({
     votingController: CONTRACT_ADDRESSES[chainId].CORE.VOTING_CONTROLLER,
     usdcAddress: CONTRACT_ADDRESSES[chainId].BENQI.USDC,
     qiAddress: CONTRACT_ADDRESSES[chainId].BENQI.QI,
+    pendle: CONTRACT_ADDRESSES[chainId].CORE.PENDLE,
 });
 
 export const WALLET = () => ({
