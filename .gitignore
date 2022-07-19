@@ -113,3 +113,5 @@ dist
 
 # OS file
 .DS_Store
+#lock
+package-lock.json
