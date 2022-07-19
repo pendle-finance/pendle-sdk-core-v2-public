@@ -12,20 +12,20 @@ const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 
 describe(Router, () => {
     const router = new Router(currentConfig.router, networkConnection, ACTIVE_CHAIN_ID);
-    const usdAddress = '0x2018ecc38fbca2ce3A62f96f9F0D38F0DEE2f99D';
-    const usd = new ERC20(usdAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const usd = new ERC20(currentConfig.usdcAddress, networkConnection, ACTIVE_CHAIN_ID);
     const scy = new ERC20(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
     const yt = new ERC20(currentConfig.ytAddress, networkConnection, ACTIVE_CHAIN_ID);
     const pt = new ERC20(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
     const market = new ERC20(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
-    it.skip('#constructor', async () => {
+    it('#constructor', async () => {
         expect(router).toBeInstanceOf(Router);
         expect(router.address).toBe(currentConfig.router);
         expect(router.chainId).toBe(ACTIVE_CHAIN_ID);
     });
 
-    it.skip('#addLiquidity', async () => {
+    it('#addLiquidity', async () => {
+        const beforeMarketBalance = await market.contract.balanceOf(signer.address);
         const scyApproveTx = await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
         await scyApproveTx.wait(1);
         const ptApproveTx = await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
@@ -35,174 +35,345 @@ describe(Router, () => {
             currentConfig.marketAddress,
             BigNumber.from(10).pow(19),
             BigNumber.from(10).pow(19),
-            0,
-            {}
+            0
         );
         await addLiquidityTx.wait(1);
+        const afterMarketBalance = await market.contract.balanceOf(signer.address);
+        expect(afterMarketBalance.toBigInt()).toBeGreaterThan(beforeMarketBalance.toBigInt());
     });
 
-    it.skip('#removeLiquidity', async () => {
-        await market.approve(currentConfig.router, BigNumber.from(10).pow(18));
-        await router.removeLiquidity(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 0, {});
+    it('#removeLiquidity', async () => {
+        const beforeMarketBalance = await market.contract.balanceOf(signer.address);
+        const marketApprove = await market.approve(currentConfig.router, BigNumber.from(10).pow(18));
+        await marketApprove.wait(1);
+        const removeLiquidityTx = await router.removeLiquidity(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(18),
+            0
+        );
+        await removeLiquidityTx.wait(1);
+        const afterMarketBalance = await market.contract.balanceOf(signer.address);
+        expect(afterMarketBalance.toBigInt()).toBeLessThan(beforeMarketBalance.toBigInt());
     });
 
     /*
      *  Type 1 of swap between Scy and PT
      */
-    it.skip('#swapExactPtForScy', async () => {
-        await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapExactPtForScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(19), 0, {});
+    it('#swapExactPtForScy', async () => {
+        const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
+        const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
+        const ptApprove = await pt.approve(currentConfig.router, BigNumber.from(10).pow(15));
+        await ptApprove.wait(1);
+        const swapTx = await router.swapExactPtForScy(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(15),
+            0
+        );
+        await swapTx.wait(1);
+        const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
+        const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
+        expect(ptBalanceAfter.toBigInt()).toBeLessThan(ptBalanceBefore.toBigInt());
+        expect(scyBalanceAfter.toBigInt()).toBeGreaterThan(scyBalanceBefore.toBigInt());
     });
 
     it('#swapPtForExactScy', async () => {
-        await pt.approve(currentConfig.router, BigNumber.from(10).pow(18));
-        await router.swapPtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(17), 1);
+        const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
+        const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
+        const approveTx = await pt.approve(currentConfig.router, BigNumber.from(10).pow(18));
+        await approveTx.wait(1);
+        const swapTx = await router.swapPtForExactScy(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(16),
+            1
+        );
+        await swapTx.wait(1);
+        const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
+        const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
+        expect(ptBalanceAfter.toBigInt()).toBeLessThan(ptBalanceBefore.toBigInt());
+        expect(scyBalanceAfter.toBigInt()).toBeGreaterThan(scyBalanceBefore.toBigInt());
     });
 
-    it.skip('#swapScyForExactPt', async () => {
-        await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.contract
-            .connect(signer)
-            .swapScyForExactPt(
-                signer.address,
-                currentConfig.marketAddress,
-                BigNumber.from(10).pow(18),
-                BigNumber.from(10).pow(19),
-                {}
-            );
+    it('#swapScyForExactPt', async () => {
+        const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
+        const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
+        const approveTx = await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await approveTx.wait(1);
+        const swapTx = await router.swapScyForExactPt(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(18),
+            1
+        );
+        await swapTx.wait(1);
+        const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
+        const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
+        expect(ptBalanceAfter.toBigInt()).toBeGreaterThan(ptBalanceBefore.toBigInt());
+        expect(scyBalanceAfter.toBigInt()).toBeLessThan(scyBalanceBefore.toBigInt());
     });
 
-    it.skip('#swapExactScyForPt', async () => {
-        await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapExactScyForPt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(16), 1, {});
+    it('#swapExactScyForPt', async () => {
+        const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
+        const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
+        const approveTx = await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await approveTx.wait(1);
+        const swapTx = await router.swapExactScyForPt(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(17),
+            0
+        );
+        await swapTx.wait(1);
+        const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
+        const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
+        expect(ptBalanceAfter.toBigInt()).toBeGreaterThan(ptBalanceBefore.toBigInt());
+        expect(scyBalanceAfter.toBigInt()).toBeLessThan(scyBalanceBefore.toBigInt());
     });
 
     /*
      * Type 2 of swap between Scy and YT
      */
 
-    it.skip('#swapExactScyForYt', async () => {
-        await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapExactScyForYt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 0, {});
+    it('#swapExactScyForYt', async () => {
+        const ytBalanceBefore = await yt.contract.balanceOf(signer.address);
+        const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
+        const approveTx = await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await approveTx.wait(1);
+        const swapTx = await router.swapExactScyForYt(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(18),
+            0
+        );
+        await swapTx.wait(1);
+        const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
+        const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
+        expect(ytBalanceAfter.toBigInt()).toBeGreaterThan(ytBalanceBefore.toBigInt());
+        expect(scyBalanceAfter.toBigInt()).toBeLessThan(scyBalanceBefore.toBigInt());
     });
 
-    it.skip('#swapYtForExactScy', async () => {
-        await yt.approve(currentConfig.router, BigNumber.from(10).pow(19).mul(2));
-        await router.swapYtForExactScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 1, {});
+    it('#swapYtForExactScy', async () => {
+        const ytBalanceBefore = await yt.contract.balanceOf(signer.address);
+        const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
+        const approveTx = await yt.approve(currentConfig.router, BigNumber.from(10).pow(19).mul(2));
+        await approveTx.wait(1);
+        const swapTx = await router.swapYtForExactScy(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(18),
+            1
+        );
+        await swapTx.wait(1);
+        const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
+        const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
+        expect(ytBalanceAfter.toBigInt()).toBeLessThan(ytBalanceBefore.toBigInt());
+        expect(scyBalanceAfter.toBigInt()).toBeGreaterThan(scyBalanceBefore.toBigInt());
     });
 
-    // exceed scy in limit for 0,1,2,3
-    it.skip('#swapScyForExactYt', async () => {
-        await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapScyForExactYt(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(18), 2, {});
+    it('#swapScyForExactYt', async () => {
+        const ytBalanceBefore = await yt.contract.balanceOf(signer.address);
+        const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
+        const scyApproveTx = await scy.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await scyApproveTx.wait(1);
+        const swapTx = await router.swapScyForExactYt(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(18),
+            0
+        );
+        await swapTx.wait(1);
+        const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
+        const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
+        expect(ytBalanceAfter.toBigInt()).toBeGreaterThan(ytBalanceBefore.toBigInt());
+        expect(scyBalanceAfter.toBigInt()).toBeLessThan(scyBalanceBefore.toBigInt());
     });
 
-    it.skip('#swapExactYtForScy', async () => {
-        await yt.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapExactYtForScy(signer.address, currentConfig.marketAddress, BigNumber.from(10).pow(1), 0, {});
+    it('#swapExactYtForScy', async () => {
+        const ytBalanceBefore = await yt.contract.balanceOf(signer.address);
+        const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
+        const approveTx = await yt.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await approveTx.wait(1);
+        const swapTx = await router.swapExactYtForScy(
+            signer.address,
+            currentConfig.marketAddress,
+            BigNumber.from(10).pow(1),
+            0
+        );
+        await swapTx.wait(1);
+        const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
+        const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
+        expect(ytBalanceAfter.toBigInt()).toBeLessThan(ytBalanceBefore.toBigInt());
+        expect(scyBalanceAfter.toBigInt()).toBeGreaterThan(scyBalanceBefore.toBigInt());
     });
 
     /*
      * Type 3: Raw token with PT & YT
      */
 
-    it.skip('#swapExactRawTokenForPt', async () => {
-        await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
-        await router.swapExactRawTokenForPt(
+    it('#swapExactRawTokenForPt', async () => {
+        jest.setTimeout(300000);
+        const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
+        const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
+        const approveTx = await usd.approve(currentConfig.router, BigNumber.from(10).pow(16));
+        await approveTx.wait(1);
+        const swapTx = await router.swapExactRawTokenForPt(
             signer.address,
             currentConfig.marketAddress,
-            BigNumber.from(10).pow(18),
-            [usdAddress],
-            0,
-            {}
+            BigNumber.from(10).pow(16),
+            [currentConfig.usdcAddress],
+            0
         );
+        await swapTx.wait(1);
+        const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
+        const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
+        expect(usdBalanceAfter.toBigInt()).toBeLessThan(usdBalanceBefore.toBigInt());
+        expect(ptBalanceAfter.toBigInt()).toBeGreaterThan(ptBalanceBefore.toBigInt());
     });
 
-    it.skip('#swapExactPtForRawToken', async () => {
-        await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.swapExactPtForRawToken(
+    it('#swapExactPtForRawToken', async () => {
+        const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
+        const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
+        const approveTx = await pt.approve(currentConfig.router, BigNumber.from(10).pow(15));
+        await approveTx.wait(1);
+        const swapTx = await router.swapExactPtForRawToken(
             signer.address,
             currentConfig.marketAddress,
-            BigNumber.from(10).pow(19),
-            [usdAddress],
-            0,
-            {}
+            BigNumber.from(10).pow(15),
+            [currentConfig.usdcAddress],
+            0
         );
+        await swapTx.wait(1);
+        const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
+        const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
+        expect(usdBalanceAfter.toBigInt()).toBeGreaterThan(usdBalanceBefore.toBigInt());
+        expect(ptBalanceAfter.toBigInt()).toBeLessThan(ptBalanceBefore.toBigInt());
     });
 
-    it.skip('#swapExactRawTokenForYt', async () => {
-        await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
-        await router.swapExactRawTokenForYt(
+    it('#swapExactRawTokenForYt', async () => {
+        const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
+        const ytBalanceBefore = await yt.contract.balanceOf(signer.address);
+        const approveTx = await usd.approve(currentConfig.router, BigNumber.from(10).pow(16));
+        await approveTx.wait(1);
+        const swapTx = await router.swapExactRawTokenForYt(
             signer.address,
             currentConfig.marketAddress,
-            BigNumber.from(10).pow(19),
-            [usdAddress],
-            0,
-            {}
+            BigNumber.from(10).pow(16),
+            [currentConfig.usdcAddress],
+            0
         );
+        await swapTx.wait(1);
+        const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
+        const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
+        expect(usdBalanceAfter.toBigInt()).toBeLessThan(usdBalanceBefore.toBigInt());
+        expect(ytBalanceAfter.toBigInt()).toBeGreaterThan(ytBalanceBefore.toBigInt());
     });
 
-    it.skip('#swapExactYtForRawToken', async () => {
-        await yt.approve(currentConfig.router, BigNumber.from(10).pow(20));
-        await router.swapExactYtForRawToken(
+    it('#swapExactYtForRawToken', async () => {
+        const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
+        const ytBalanceBefore = await yt.contract.balanceOf(signer.address);
+        const approveTx = await yt.approve(currentConfig.router, BigNumber.from(10).pow(20));
+        await approveTx.wait(1);
+        const swapTx = await router.swapExactYtForRawToken(
             signer.address,
             currentConfig.marketAddress,
             BigNumber.from(10).pow(4),
-            [usdAddress],
-            0,
-            {}
+            [currentConfig.usdcAddress],
+            0
         );
+        await swapTx.wait(1);
+        const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
+        const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
+        expect(usdBalanceAfter.toBigInt()).toBeGreaterThan(usdBalanceBefore.toBigInt());
+        expect(ytBalanceAfter.toBigInt()).toBeLessThan(ytBalanceBefore.toBigInt());
     });
     /*
      * Type 4: Mint, redeem PY & SCY -> Raw token
      */
 
-    it.skip('#mintPyFromRawToken', async () => {
-        await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
-        await router.mintPyFromRawToken(
+    it('#mintPyFromRawToken', async () => {
+        const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
+        const ytBalanceBefore = await yt.contract.balanceOf(signer.address);
+        const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
+        const approveTx = await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
+        await approveTx.wait(1);
+        const mintTx = await router.mintPyFromRawToken(
             signer.address,
             currentConfig.ytAddress,
             BigNumber.from(10).pow(18),
-            [usdAddress],
-            0,
-            {}
+            [currentConfig.usdcAddress],
+            0
         );
+        await mintTx.wait(1);
+        const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
+        const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
+        const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
+        expect(usdBalanceAfter.toBigInt()).toBeLessThan(usdBalanceBefore.toBigInt());
+        expect(ytBalanceAfter.toBigInt()).toBeGreaterThan(ytBalanceBefore.toBigInt());
+        expect(ptBalanceAfter.toBigInt()).toBeGreaterThan(ptBalanceBefore.toBigInt());
     });
 
-    it.skip('#redeemPyToRawToken', async () => {
-        await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await yt.approve(currentConfig.router, BigNumber.from(10).pow(19));
-        await router.redeemPyToRawToken(
+    it('#redeemPyToRawToken', async () => {
+        const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
+        const ytBalanceBefore = await yt.contract.balanceOf(signer.address);
+        const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
+        const ptApproveTx = await pt.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await ptApproveTx.wait(1);
+        const ytApproveTx = await yt.approve(currentConfig.router, BigNumber.from(10).pow(19));
+        await ytApproveTx.wait(1);
+        const redeemTx = await router.redeemPyToRawToken(
             signer.address,
             currentConfig.ytAddress,
             BigNumber.from(10).pow(19),
-            [usdAddress],
-            0,
-            {}
+            [currentConfig.usdcAddress],
+            0
         );
+        await redeemTx.wait(1);
+        const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
+        const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
+        const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
+        expect(usdBalanceAfter.toBigInt()).toBeGreaterThan(usdBalanceBefore.toBigInt());
+        expect(ytBalanceAfter.toBigInt()).toBeLessThan(ytBalanceBefore.toBigInt());
+        expect(ptBalanceAfter.toBigInt()).toBeLessThan(ptBalanceBefore.toBigInt());
     });
 
-    it.skip('#mintScyFromRawToken', async () => {
-        await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
-        await router.mintScyFromRawToken(
+    it('#mintScyFromRawToken', async () => {
+        const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
+        const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
+        const approveTx = await usd.approve(currentConfig.router, BigNumber.from(10).pow(20));
+        await approveTx.wait(1);
+        const mintTx = await router.mintScyFromRawToken(
             signer.address,
             currentConfig.scyAddress,
             BigNumber.from(10).pow(18),
-            [usdAddress],
-            0,
-            {}
+            [currentConfig.usdcAddress],
+            0
         );
+        await mintTx.wait(1);
+        const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
+        const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
+        expect(usdBalanceAfter.toBigInt()).toBeLessThan(usdBalanceBefore.toBigInt());
+        expect(scyBalanceAfter.toBigInt()).toBeGreaterThan(scyBalanceBefore.toBigInt());
     });
 
-    it.skip('#redeemScyToRawToken', async () => {
-        await scy.approve(currentConfig.router, BigNumber.from(10).pow(20));
-        await router.redeemScyToRawToken(
+    it('#redeemScyToRawToken', async () => {
+        jest.setTimeout(300000);
+        const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
+        const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
+        const approveTx = await scy.approve(currentConfig.router, BigNumber.from(10).pow(18));
+        await approveTx.wait(1);
+        const redeemTx = await router.redeemScyToRawToken(
             signer.address,
             currentConfig.scyAddress,
             BigNumber.from(10).pow(18),
-            [usdAddress],
-            0,
-            {}
+            [currentConfig.usdcAddress],
+            0
         );
+        await redeemTx.wait(1);
+        const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
+        const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
+        expect(usdBalanceAfter.toBigInt()).toBeGreaterThan(usdBalanceBefore.toBigInt());
+        expect(scyBalanceAfter.toBigInt()).toBeLessThan(scyBalanceBefore.toBigInt());
     });
 });

@@ -7,7 +7,7 @@ describe('draft test', () => {
     const usdc = new ERC20(currentConfig.usdcAddress, networkConnection, ACTIVE_CHAIN_ID);
     it('test approve', async () => {
         const allowanceBefore = await usdc.allowance(signer.address, currentConfig.scyAddress);
-        //console.log(allowanceBefore.toBigInt());
+        // console.log(allowanceBefore.toBigInt());
         const approveTx = await usdc.approve(currentConfig.scyAddress, BigNumber.from(10).pow(3));
         await approveTx.wait(1);
         const allowanceAfter = await usdc.allowance(signer.address, currentConfig.scyAddress);

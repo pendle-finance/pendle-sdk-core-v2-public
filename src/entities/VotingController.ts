@@ -33,24 +33,25 @@ export class VotingController {
 
     async getUserTotalVotedWeight(user: Address): Promise<number> {
         // TODO: Uncomment this after interface update
-        // const { totalVotedWeight } = await this.contract.callStatic.userData(user);
-        const totalVotedWeight = 0;
+        await this.contract.userData();
+        const totalVotedWeight = await this.contract.callStatic.userData(user);
+        // const totalVotedWeight = 0;
         return new BigNumber(totalVotedWeight.toString()).div(constants.WeiPerEther.toString()).toNumber();
     }
 
     async vote(market: Market, weight: number) {
-        return this.contract.vote(market.address, VotingController.scaleWeight(weight));
+        return this.contract.vote([market.address], [VotingController.scaleWeight(weight)]);
     }
 
-    async unvote(market: Market) {
-        return this.contract.unvote(market.address);
-    }
+    // async unvote(market: Market) {
+    //     return this.contract.unvote(market.address);
+    // }
 
-    async updatePoolVotes(market: Market) {
-        return this.contract.updatePoolVotes(market.address);
-    }
+    // async updatePoolVotes(market: Market) {
+    //     return this.contract.updatePoolVotes(market.address);
+    // }
 
-    async voteForMultiple(votes: { market: Market; weight: number }[]) {
-        // TODO: Implement this
-    }
+    // async voteForMultiple(votes: { market: Market; weight: number }[]) {
+    //     // TODO: Implement this
+    // }
 }
