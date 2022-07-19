@@ -25,19 +25,11 @@ export class ERC20 {
         return this.contract.allowance(owner, spender);
     }
 
-    async approve(spender: Address, amount: BigNumberish, overrides?: Overrides): Promise<ContractTransaction> {
-        if (overrides) {
-            return this.contract.connect(this.networkConnection.signer!).approve(spender, amount, overrides);
-        } else {
-            return this.contract.connect(this.networkConnection.signer!).approve(spender, amount);
-        }
+    async approve(spender: Address, amount: BigNumberish, overrides: Overrides = {}): Promise<ContractTransaction> {
+        return this.contract.connect(this.networkConnection.signer!).approve(spender, amount, overrides);
     }
 
-    async transfer(to: Address, amount: BigNumberish, overrides?: Overrides): Promise<ContractTransaction> {
-        if (overrides) {
-            return this.contract.connect(this.networkConnection.signer!).transfer(to, amount, overrides);
-        } else {
-            return this.contract.connect(this.networkConnection.signer!).transfer(to, amount);
-        }
+    async transfer(to: Address, amount: BigNumberish, overrides: Overrides = {}): Promise<ContractTransaction> {
+        return this.contract.connect(this.networkConnection.signer!).transfer(to, amount, overrides);
     }
 }

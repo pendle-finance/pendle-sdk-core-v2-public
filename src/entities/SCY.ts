@@ -37,7 +37,7 @@ export class SCY {
         baseAssetIn: Address,
         amountBaseToPull: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const amountScyOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -55,7 +55,7 @@ export class SCY {
         baseAssetOut: Address,
         amountScyToPull: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const amountBaseOut = await this.contract
             .connect(this.networkConnection.signer!)
