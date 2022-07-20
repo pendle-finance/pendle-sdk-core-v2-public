@@ -24,7 +24,7 @@ export type UserMarketInfo = {
 export class Market {
     readonly contract: PendleMarket;
 
-    protected routerStatic: RouterStatic;
+    protected readonly routerStatic: RouterStatic;
 
     constructor(
         readonly address: Address,

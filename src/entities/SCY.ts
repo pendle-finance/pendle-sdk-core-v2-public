@@ -11,9 +11,9 @@ export type UserSCYInfo = {
 
 export class SCY {
     readonly contract: SCYBase;
-    protected routerStatic: RouterStatic;
+    protected readonly routerStatic: RouterStatic;
 
-    constructor(readonly address: Address, protected networkConnection: NetworkConnection, chainId: number) {
+    constructor(readonly address: Address, protected readonly networkConnection: NetworkConnection, readonly chainId: number) {
         this.contract = new Contract(address, SCYBaseABI, networkConnection.provider) as SCYBase;
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }

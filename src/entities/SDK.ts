@@ -5,9 +5,9 @@ import type { UserMarketInfo } from './Market';
 import { getRouterStatic } from './helper';
 
 export class SDK {
-    protected routerStatic: RouterStatic;
+    protected readonly routerStatic: RouterStatic;
 
-    constructor(protected networkConnection: NetworkConnection, readonly chainId: number) {
+    constructor(protected readonly networkConnection: NetworkConnection, readonly chainId: number) {
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 

@@ -6,11 +6,11 @@ import { Contract } from 'ethers';
 import { getRouterStatic } from './helper';
 
 export class PT {
-    contract: PendlePrincipalToken;
+    readonly contract: PendlePrincipalToken;
 
-    protected routerStatic: RouterStatic;
+    protected readonly routerStatic: RouterStatic;
 
-    constructor(readonly address: Address, protected networkConnection: NetworkConnection, readonly chainId: number) {
+    constructor(readonly address: Address, protected readonly networkConnection: NetworkConnection, readonly chainId: number) {
         this.contract = new Contract(
             address,
             PendlePrincipalTokenABI,
