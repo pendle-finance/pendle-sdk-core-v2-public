@@ -1,10 +1,9 @@
-import { BigNumber } from 'ethers';
-import { type Address, YT } from '../src';
 import { SDK } from '../src/entities/SDK';
-import { ACTIVE_CHAIN_ID, networkConnection, testConfig, print } from './util/testUtils';
-const currentConfig = testConfig(ACTIVE_CHAIN_ID);
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
+
 describe(SDK, () => {
     const sdk = new SDK(networkConnection, ACTIVE_CHAIN_ID);
+
     it('#constructor', async () => {
         expect(sdk).toBeInstanceOf(SDK);
         expect(sdk.chainId).toBe(ACTIVE_CHAIN_ID);

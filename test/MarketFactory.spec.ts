@@ -1,10 +1,9 @@
-import { type Address, Market, MarketFactory } from '../src';
-import { ACTIVE_CHAIN_ID, networkConnection, testConfig, print } from './util/testUtils';
-
-const currentConfig = testConfig(ACTIVE_CHAIN_ID);
+import { MarketFactory } from '../src';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 
 describe('MarketFactory', () => {
     const marketFactory = new MarketFactory(currentConfig.marketFactory, networkConnection, ACTIVE_CHAIN_ID);
+
     it('#constructor', async () => {
         expect(marketFactory).toBeInstanceOf(MarketFactory);
         expect(marketFactory.address).toBe(currentConfig.marketFactory);
@@ -12,7 +11,7 @@ describe('MarketFactory', () => {
     });
 });
 
-describe('contract', () => {
+describe('#contract', () => {
     const marketFactory = new MarketFactory(currentConfig.marketFactory, networkConnection, ACTIVE_CHAIN_ID);
     const { contract } = marketFactory;
 

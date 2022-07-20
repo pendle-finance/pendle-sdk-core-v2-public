@@ -1,13 +1,10 @@
-import { BigNumber } from 'ethers';
 import { Market } from '../src';
-//  import { getRouterStatic } from '../src/entities/helper';
-import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET, print } from './util/testUtils';
-
-const currentConfig = testConfig(ACTIVE_CHAIN_ID);
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testUtils';
 
 describe(Market, () => {
     const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
     const sender = WALLET().wallet;
+
     it('#constructor', () => {
         expect(market).toBeInstanceOf(Market);
         expect(market.address).toBe(currentConfig.marketAddress);
@@ -26,28 +23,27 @@ describe(Market, () => {
     });
 });
 
-describe('contract', () => {
+describe('#contract', () => {
     const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const { contract } = market;
+    const contract = market.contract.callStatic;
 
     it('Read Contract', async () => {
-        const totalSupply = (await contract.totalSupply()).toBigInt();
-        expect(totalSupply).toBe(BigNumber.from(0).toBigInt());
+        const [totalSupply, tokens, isExpired, rewardTokens, state] = await Promise.all([
+            contract.totalSupply(),
+            contract.readTokens(),
+            contract.isExpired(),
+            contract.getRewardTokens(),
+            contract.readState(false),
+        ]);
 
-        const Token = await contract.readTokens();
-        expect(Token._PT).toBe(currentConfig.ptAddress);
-        expect(Token._YT).toBe(currentConfig.ytAddress);
-        expect(Token._SCY).toBe(currentConfig.scyAddress);
-
-        const isExperied = await contract.isExpired();
-        expect(isExperied).toBe(false);
-
-        const RewardToken = await contract.getRewardTokens();
-        expect(RewardToken).toBeDefined();
-
-        const State = await contract.readState(false);
-        expect(State).toBeDefined();
+        expect(totalSupply.toBigInt()).toBeGreaterThanOrEqual(0);
+        expect(tokens._PT).toBe(currentConfig.ptAddress);
+        expect(tokens._YT).toBe(currentConfig.ytAddress);
+        expect(tokens._SCY).toBe(currentConfig.scyAddress);
+        expect(isExpired).toBe(false);
+        expect(rewardTokens).toBeDefined();
+        expect(state).toBeDefined();
     });
 
-    //  All write function test via Router
+    //  Test all write functions via Router
 });
