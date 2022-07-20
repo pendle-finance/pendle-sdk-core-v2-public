@@ -1,6 +1,6 @@
 import { ERC20, Router } from '../src';
 import { decimalFactor } from '../src/entities/helper';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, print, WALLET } from './util/testUtils';
+import { currentConfig, networkConnection, WALLET } from './util/testUtils';
 
 describe(Router, () => {
     const router = new Router(currentConfig.router, networkConnection);
