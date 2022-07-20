@@ -1,5 +1,5 @@
 import { YieldContractFactory } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
+import { currentConfig, networkConnection } from './util/testUtils';
 
 describe(YieldContractFactory, () => {
     const yieldFactory = new YieldContractFactory(currentConfig.yieldContractFactory, networkConnection);
