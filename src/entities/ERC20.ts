@@ -1,35 +1,57 @@
 import type { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection } from './types';
 import { abi as PendleERC20ABI } from '@pendle/core-v2/build/artifacts/contracts/core/PendleERC20.sol/PendleERC20.json';
-import { BigNumber, BigNumberish, Contract, ContractTransaction, Overrides } from 'ethers';
+import { type BigNumberish, type ContractTransaction, type Overrides, BigNumber, Contract } from 'ethers';
 
 export class ERC20 {
-    address: Address;
-    contract: PendleERC20;
-    chainId: number;
+    readonly contract: PendleERC20;
 
-    protected networkConnection: NetworkConnection;
-
-    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
-        this.address = _address;
-        this.networkConnection = _networkConnection;
-        this.chainId = _chainId;
-        this.contract = new Contract(_address, PendleERC20ABI, _networkConnection.provider) as PendleERC20;
+    constructor(
+        readonly address: Address,
+        protected readonly networkConnection: NetworkConnection,
+        readonly chainId: number
+    ) {
+        this.contract = new Contract(address, PendleERC20ABI, networkConnection.provider) as PendleERC20;
     }
 
-    async balanceOf(account: Address): Promise<BigNumber> {
-        return this.contract.balanceOf(account);
+    allowance(owner: Address, spender: Address): Promise<BigNumber> {
+        return this.contract.callStatic.allowance(owner, spender);
     }
 
-    async allowance(owner: Address, spender: Address): Promise<BigNumber> {
-        return this.contract.allowance(owner, spender);
+    balanceOf(account: Address): Promise<BigNumber> {
+        return this.contract.callStatic.balanceOf(account);
     }
 
-    async approve(spender: Address, amount: BigNumberish, overrides: Overrides = {}): Promise<ContractTransaction> {
+    decimals(): Promise<number> {
+        return this.contract.callStatic.decimals();
+    }
+
+    name(): Promise<string> {
+        return this.contract.callStatic.name();
+    }
+
+    symbol(): Promise<string> {
+        return this.contract.callStatic.symbol();
+    }
+
+    totalSupply(): Promise<BigNumber> {
+        return this.contract.callStatic.totalSupply();
+    }
+
+    approve(spender: Address, amount: BigNumberish, overrides: Overrides = {}): Promise<ContractTransaction> {
         return this.contract.connect(this.networkConnection.signer!).approve(spender, amount, overrides);
     }
 
-    async transfer(to: Address, amount: BigNumberish, overrides: Overrides = {}): Promise<ContractTransaction> {
+    transfer(to: Address, amount: BigNumberish, overrides: Overrides = {}): Promise<ContractTransaction> {
         return this.contract.connect(this.networkConnection.signer!).transfer(to, amount, overrides);
+    }
+
+    transferFrom(
+        from: Address,
+        to: Address,
+        amount: BigNumberish,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        return this.contract.connect(this.networkConnection.signer!).transferFrom(from, to, amount, overrides);
     }
 }
