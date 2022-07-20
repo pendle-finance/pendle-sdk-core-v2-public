@@ -38,7 +38,7 @@ describe('#contract', () => {
         expect(index).toBeDefined();
     });
 
-    describe.skip('write functions', () => {
+    describe('write functions', () => {
         it('Mint PY', async () => {
             const beforeYtBalance = await yt.contract.balanceOf(signer.address);
             const beforePtBalance = await pt.contract.balanceOf(signer.address);

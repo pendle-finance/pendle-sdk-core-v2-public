@@ -13,6 +13,7 @@ describe(Market, () => {
 
     it('#marketInfo', async () => {
         const marketInfo = await market.getMarketInfo();
+        console.log(marketInfo.state.totalPt);
         expect(marketInfo.pt).toBe(currentConfig.ptAddress);
         expect(marketInfo.scy).toBe(currentConfig.scyAddress);
     });

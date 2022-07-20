@@ -25,7 +25,7 @@ describe(SCY, () => {
         }
     });
 
-    describe.skip('write functions', () => {
+    describe('write functions', () => {
         it('#deposit', async () => {
             const beforeBalance = await scy.contract.balanceOf(signer.address);
             const approveTx = await usdc.approve(currentConfig.scyAddress, decimalFactor(21));
@@ -39,7 +39,7 @@ describe(SCY, () => {
         it('#redeem', async () => {
             const beforeBalance = await usdc.contract.balanceOf(signer.address);
             const redeemTx = await scy.redeem(signer.address, currentConfig.usdcAddress, decimalFactor(19), 0);
-            await redeemTx.wait(1);
+            await redeemTx.wait(3);
             const afterBalance = await usdc.contract.balanceOf(signer.address);
             expect(afterBalance.toBigInt()).toBeGreaterThan(beforeBalance.toBigInt());
         });
@@ -60,7 +60,7 @@ describe('#contract', () => {
         expect(rewardToken[0]).toBe(currentConfig.qiAddress);
     });
 
-    describe.skip('write functions', () => {
+    describe('write functions', () => {
         it('Claim reward', async () => {
             const qiBalanceBefore = await qi.balanceOf(signer.address);
             const claimReward = await contract.connect(signer).claimRewards(signer.address);

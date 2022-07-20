@@ -16,7 +16,7 @@ describe(Router, () => {
         expect(router.address).toBe(currentConfig.router);
     });
 
-    describe.skip('write functions', () => {
+    describe('write functions', () => {
         it('#addLiquidity', async () => {
             const [beforeMarketBalance, scyApproveTx] = await Promise.all([
                 market.balanceOf(signer.address),
@@ -47,7 +47,7 @@ describe(Router, () => {
                 signer.address,
                 currentConfig.marketAddress,
                 decimalFactor(18),
-                0
+                0.01
             );
             await removeLiquidityTx.wait(1);
             const afterMarketBalance = await market.contract.balanceOf(signer.address);
@@ -60,13 +60,13 @@ describe(Router, () => {
         it('#swapExactPtForScy', async () => {
             const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
             const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
-            const ptApprove = await pt.approve(currentConfig.router, decimalFactor(15));
+            const ptApprove = await pt.approve(currentConfig.router, decimalFactor(18));
             await ptApprove.wait(1);
             const swapTx = await router.swapExactPtForScy(
                 signer.address,
                 currentConfig.marketAddress,
-                decimalFactor(15),
-                0
+                decimalFactor(18),
+                0.01
             );
             await swapTx.wait(1);
             const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
@@ -78,13 +78,13 @@ describe(Router, () => {
         it('#swapPtForExactScy', async () => {
             const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
             const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
-            const approveTx = await pt.approve(currentConfig.router, decimalFactor(18));
+            const approveTx = await pt.approve(currentConfig.router, decimalFactor(20));
             await approveTx.wait(1);
             const swapTx = await router.swapPtForExactScy(
                 signer.address,
                 currentConfig.marketAddress,
-                decimalFactor(16),
-                1
+                decimalFactor(17),
+                0.03
             );
             await swapTx.wait(1);
             const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
@@ -102,7 +102,7 @@ describe(Router, () => {
                 signer.address,
                 currentConfig.marketAddress,
                 decimalFactor(18),
-                1
+                0.01
             );
             await swapTx.wait(1);
             const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
@@ -114,13 +114,13 @@ describe(Router, () => {
         it('#swapExactScyForPt', async () => {
             const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
             const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
-            const approveTx = await scy.approve(currentConfig.router, decimalFactor(19));
+            const approveTx = await scy.approve(currentConfig.router, decimalFactor(20));
             await approveTx.wait(1);
             const swapTx = await router.swapExactScyForPt(
                 signer.address,
                 currentConfig.marketAddress,
-                decimalFactor(17),
-                0
+                decimalFactor(18),
+                0.01
             );
             await swapTx.wait(1);
             const ptBalanceAfter = await pt.contract.balanceOf(signer.address);
@@ -142,7 +142,7 @@ describe(Router, () => {
                 signer.address,
                 currentConfig.marketAddress,
                 decimalFactor(18),
-                0
+                0.01
             );
             await swapTx.wait(1);
             const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
@@ -160,7 +160,7 @@ describe(Router, () => {
                 signer.address,
                 currentConfig.marketAddress,
                 decimalFactor(18),
-                1
+                0.01
             );
             await swapTx.wait(1);
             const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
@@ -178,7 +178,7 @@ describe(Router, () => {
                 signer.address,
                 currentConfig.marketAddress,
                 decimalFactor(18),
-                0
+                0.01
             );
             await swapTx.wait(1);
             const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
@@ -190,13 +190,13 @@ describe(Router, () => {
         it('#swapExactYtForScy', async () => {
             const ytBalanceBefore = await yt.contract.balanceOf(signer.address);
             const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
-            const approveTx = await yt.approve(currentConfig.router, decimalFactor(19));
+            const approveTx = await yt.approve(currentConfig.router, decimalFactor(20));
             await approveTx.wait(1);
             const swapTx = await router.swapExactYtForScy(
                 signer.address,
                 currentConfig.marketAddress,
-                decimalFactor(1),
-                0
+                decimalFactor(17),
+                0.01
             );
             await swapTx.wait(1);
             const ytBalanceAfter = await yt.contract.balanceOf(signer.address);
@@ -213,14 +213,14 @@ describe(Router, () => {
             jest.setTimeout(300000);
             const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
             const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
-            const approveTx = await usd.approve(currentConfig.router, decimalFactor(16));
+            const approveTx = await usd.approve(currentConfig.router, decimalFactor(20));
             await approveTx.wait(1);
             const swapTx = await router.swapExactRawTokenForPt(
                 signer.address,
                 currentConfig.marketAddress,
-                decimalFactor(16),
+                decimalFactor(18),
                 [currentConfig.usdcAddress],
-                0
+                0.01
             );
             await swapTx.wait(1);
             const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
@@ -232,14 +232,14 @@ describe(Router, () => {
         it('#swapExactPtForRawToken', async () => {
             const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
             const ptBalanceBefore = await pt.contract.balanceOf(signer.address);
-            const approveTx = await pt.approve(currentConfig.router, decimalFactor(15));
+            const approveTx = await pt.approve(currentConfig.router, decimalFactor(20));
             await approveTx.wait(1);
             const swapTx = await router.swapExactPtForRawToken(
                 signer.address,
                 currentConfig.marketAddress,
-                decimalFactor(15),
+                decimalFactor(17),
                 [currentConfig.usdcAddress],
-                0
+                0.01
             );
             await swapTx.wait(1);
             const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
@@ -251,14 +251,14 @@ describe(Router, () => {
         it('#swapExactRawTokenForYt', async () => {
             const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
             const ytBalanceBefore = await yt.contract.balanceOf(signer.address);
-            const approveTx = await usd.approve(currentConfig.router, decimalFactor(16));
+            const approveTx = await usd.approve(currentConfig.router, decimalFactor(19));
             await approveTx.wait(1);
             const swapTx = await router.swapExactRawTokenForYt(
                 signer.address,
                 currentConfig.marketAddress,
-                decimalFactor(16),
+                decimalFactor(17),
                 [currentConfig.usdcAddress],
-                0
+                0.01
             );
             await swapTx.wait(1);
             const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
@@ -270,14 +270,14 @@ describe(Router, () => {
         it('#swapExactYtForRawToken', async () => {
             const usdBalanceBefore = await usd.contract.balanceOf(signer.address);
             const ytBalanceBefore = await yt.contract.balanceOf(signer.address);
-            const approveTx = await yt.approve(currentConfig.router, decimalFactor(20));
+            const approveTx = await yt.approve(currentConfig.router, decimalFactor(18));
             await approveTx.wait(1);
             const swapTx = await router.swapExactYtForRawToken(
                 signer.address,
                 currentConfig.marketAddress,
-                decimalFactor(4),
+                decimalFactor(18),
                 [currentConfig.usdcAddress],
-                0
+                0.01
             );
             await swapTx.wait(1);
             const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
@@ -300,7 +300,7 @@ describe(Router, () => {
                 currentConfig.ytAddress,
                 decimalFactor(18),
                 [currentConfig.usdcAddress],
-                0
+                0.01
             );
             await mintTx.wait(1);
             const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
@@ -324,7 +324,7 @@ describe(Router, () => {
                 currentConfig.ytAddress,
                 decimalFactor(19),
                 [currentConfig.usdcAddress],
-                0
+                0.01
             );
             await redeemTx.wait(1);
             const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
@@ -345,7 +345,7 @@ describe(Router, () => {
                 currentConfig.scyAddress,
                 decimalFactor(18),
                 [currentConfig.usdcAddress],
-                0
+                0.01
             );
             await mintTx.wait(1);
             const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
@@ -365,9 +365,9 @@ describe(Router, () => {
                 currentConfig.scyAddress,
                 decimalFactor(18),
                 [currentConfig.usdcAddress],
-                0
+                0.01
             );
-            await redeemTx.wait(1);
+            await redeemTx.wait(4);
             const usdBalanceAfter = await usd.contract.balanceOf(signer.address);
             const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
             expect(usdBalanceAfter.toBigInt()).toBeGreaterThan(usdBalanceBefore.toBigInt());
