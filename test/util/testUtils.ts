@@ -1,5 +1,6 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
+import { ethers } from 'ethers';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../../src';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
@@ -8,7 +9,7 @@ import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
 import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-0x78699fa58C484e9867B8047A12E959ccB8BaD90E.json';
 import FUJI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-benqi.json';
 import MUMBAI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-benqi.json';
-import { ethers } from 'ethers';
+
 config();
 
 // Change this to the current active network
@@ -93,8 +94,10 @@ export const testConfig = (chainId: number) => ({
     pendle: CONTRACT_ADDRESSES[chainId].CORE.PENDLE,
 });
 
+export const currentConfig = testConfig(ACTIVE_CHAIN_ID);
+
 export const WALLET = () => ({
-    wallet: new ethers.Wallet(process.env.PRIVATE_KEYS!).connect(networkConnection.provider),
+    wallet: new ethers.Wallet(process.env.PRIVATE_KEY!).connect(networkConnection.provider),
 });
 
 export function print(message: any): void {
