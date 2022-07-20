@@ -1,9 +1,5 @@
-import { type Address, PT } from '../src';
-import { ACTIVE_CHAIN_ID, networkConnection, testConfig, WALLET, print } from './util/testUtils';
-
-const currentConfig = testConfig(ACTIVE_CHAIN_ID);
-
-// No write function need to test
+import { PT } from '../src';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 
 describe(PT, () => {
     const pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
