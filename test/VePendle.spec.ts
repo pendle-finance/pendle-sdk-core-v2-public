@@ -19,7 +19,7 @@ describe(VePendle, () => {
 
 describe('#contract', () => {
     const ve = new VePendle(currentConfig.veAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const pendle = new ERC20(currentConfig.pendle, networkConnection, ACTIVE_CHAIN_ID);
+    const pendle = new ERC20(currentConfig.pendle, networkConnection);
     const signer = WALLET().wallet;
     const contract: VotingEscrowPendleMainchain = ve.contract as VotingEscrowPendleMainchain;
 

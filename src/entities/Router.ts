@@ -21,22 +21,14 @@ export class Router {
         maxIteration: 256,
         eps: BN.from(10).pow(15),
     };
+    readonly contract: IPAllAction;
 
-    address: Address;
-    contract: IPAllAction;
-    chainId: number;
-
-    protected networkConnection: NetworkConnection;
-
-    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
-        this.address = _address;
-        this.networkConnection = _networkConnection;
-        this.chainId = _chainId;
-        this.contract = new Contract(_address, IPAllActionABI, _networkConnection.provider) as IPAllAction;
+    constructor(readonly address: Address, protected networkConnection: NetworkConnection) {
+        this.contract = new Contract(address, IPAllActionABI, networkConnection.provider) as IPAllAction;
     }
 
     static getRouter(networkConnection: NetworkConnection, chainId: number): Router {
-        return new Router(getContractAddresses(chainId).ROUTER, networkConnection, chainId);
+        return new Router(getContractAddresses(chainId).ROUTER, networkConnection);
     }
 
     static swapApproxParams(netAmountOut: BN, slippage: number): ApproxParamsStruct {

@@ -4,20 +4,13 @@ import { abi as PendleYieldContractFactoryABI } from '@pendle/core-v2/build/arti
 import { Contract } from 'ethers';
 
 export class YieldContractFactory {
-    address: Address;
-    contract: PendleYieldContractFactory;
-    chainId: number;
+    readonly contract: PendleYieldContractFactory;
 
-    protected networkConnection: NetworkConnection;
-
-    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
-        this.address = _address;
-        this.networkConnection = _networkConnection;
-        this.chainId = _chainId;
+    constructor(readonly address: Address, protected networkConnection: NetworkConnection) {
         this.contract = new Contract(
-            _address,
+            address,
             PendleYieldContractFactoryABI,
-            _networkConnection.provider
+            networkConnection.provider
         ) as PendleYieldContractFactory;
     }
 }

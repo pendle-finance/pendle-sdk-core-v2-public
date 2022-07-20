@@ -25,19 +25,12 @@ export type RewardIndex = {
 };
 
 export class YT {
-    address: Address;
-    contract: PendleYieldToken;
-    chainId: number;
-
-    protected networkConnection: NetworkConnection;
+    readonly contract: PendleYieldToken;
     protected routerStatic: RouterStatic;
 
-    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
-        this.address = _address;
-        this.networkConnection = _networkConnection;
-        this.chainId = _chainId;
-        this.contract = new Contract(_address, PendleYieldTokenABI, _networkConnection.provider) as PendleYieldToken;
-        this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
+    constructor(readonly address: Address, protected networkConnection: NetworkConnection, readonly chainId: number) {
+        this.contract = new Contract(address, PendleYieldTokenABI, networkConnection.provider) as PendleYieldToken;
+        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
     async userInfo(user: Address): Promise<UserPYInfo> {

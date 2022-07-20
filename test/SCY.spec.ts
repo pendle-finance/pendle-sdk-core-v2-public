@@ -5,12 +5,11 @@ import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './uti
 describe(SCY, () => {
     const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
-    const usdc = new ERC20(currentConfig.usdcAddress, networkConnection, ACTIVE_CHAIN_ID); // USD
+    const usdc = new ERC20(currentConfig.usdcAddress, networkConnection); // USD
 
     it('#constructor', () => {
         expect(scy).toBeInstanceOf(SCY);
         expect(scy.address).toBe(currentConfig.scyAddress);
-        expect(scy.chainId).toBe(ACTIVE_CHAIN_ID);
     });
 
     it('#userInfo', async () => {
@@ -50,7 +49,7 @@ describe(SCY, () => {
 describe('#contract', () => {
     const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
-    const qi = new ERC20(currentConfig.qiAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const qi = new ERC20(currentConfig.qiAddress, networkConnection);
     const { contract } = scy;
 
     it('Read contract', async () => {

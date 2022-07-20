@@ -22,19 +22,17 @@ export type UserMarketInfo = {
 };
 
 export class Market {
-    address: Address;
-    contract: PendleMarket;
-    chainId: number;
+    readonly contract: PendleMarket;
 
-    protected networkConnection: NetworkConnection;
     protected routerStatic: RouterStatic;
 
-    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
-        this.address = _address;
-        this.networkConnection = _networkConnection;
-        this.chainId = _chainId;
-        this.contract = new Contract(_address, PendleMarketABI, _networkConnection.provider) as PendleMarket;
-        this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
+    constructor(
+        readonly address: Address,
+        protected readonly networkConnection: NetworkConnection,
+        readonly chainId: number
+    ) {
+        this.contract = new Contract(address, PendleMarketABI, networkConnection.provider) as PendleMarket;
+        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
     async getMarketInfo(): Promise<MarketInfo> {

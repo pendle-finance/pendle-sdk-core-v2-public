@@ -6,23 +6,17 @@ import { Contract } from 'ethers';
 import { getRouterStatic } from './helper';
 
 export class PT {
-    address: Address;
     contract: PendlePrincipalToken;
-    chainId: number;
 
-    protected networkConnection: NetworkConnection;
     protected routerStatic: RouterStatic;
 
-    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
-        this.address = _address;
-        this.networkConnection = _networkConnection;
-        this.chainId = _chainId;
+    constructor(readonly address: Address, protected networkConnection: NetworkConnection, readonly chainId: number) {
         this.contract = new Contract(
-            _address,
+            address,
             PendlePrincipalTokenABI,
-            _networkConnection.provider
+            networkConnection.provider
         ) as PendlePrincipalToken;
-        this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
+        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
     async userInfo(user: Address): Promise<UserPYInfo> {

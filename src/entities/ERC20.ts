@@ -6,11 +6,7 @@ import { type BigNumberish, type ContractTransaction, type Overrides, BigNumber,
 export class ERC20 {
     readonly contract: PendleERC20;
 
-    constructor(
-        readonly address: Address,
-        protected readonly networkConnection: NetworkConnection,
-        readonly chainId: number
-    ) {
+    constructor(readonly address: Address, protected readonly networkConnection: NetworkConnection) {
         this.contract = new Contract(address, PendleERC20ABI, networkConnection.provider) as PendleERC20;
     }
 

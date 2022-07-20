@@ -10,19 +10,12 @@ export type UserSCYInfo = {
 };
 
 export class SCY {
-    address: Address;
-    contract: SCYBase;
-    chainId: number;
-
-    protected networkConnection: NetworkConnection;
+    readonly contract: SCYBase;
     protected routerStatic: RouterStatic;
 
-    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
-        this.address = _address;
-        this.networkConnection = _networkConnection;
-        this.chainId = _chainId;
-        this.contract = new Contract(_address, SCYBaseABI, _networkConnection.provider) as SCYBase;
-        this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
+    constructor(readonly address: Address, protected networkConnection: NetworkConnection, chainId: number) {
+        this.contract = new Contract(address, SCYBaseABI, networkConnection.provider) as SCYBase;
+        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
     /**
