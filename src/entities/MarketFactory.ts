@@ -5,7 +5,11 @@ import { Contract } from 'ethers';
 
 export class MarketFactory {
     readonly contract: PendleMarketFactory;
-    constructor(readonly address: Address, protected readonly networkConnection: NetworkConnection) {
+    constructor(
+        readonly address: Address,
+        protected readonly networkConnection: NetworkConnection,
+        readonly chainId: number
+    ) {
         this.contract = new Contract(
             address,
             PendleMarketFactoryABI,

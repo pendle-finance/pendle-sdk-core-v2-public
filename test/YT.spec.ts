@@ -27,7 +27,7 @@ describe('#contract', () => {
     const yt = new YT(currentConfig.ytAddress, networkConnection, ACTIVE_CHAIN_ID);
     const pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
     const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const qi = new ERC20(currentConfig.qiAddress, networkConnection);
+    const qi = new ERC20(currentConfig.qiAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
     const { contract } = yt;
 

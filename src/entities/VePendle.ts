@@ -7,9 +7,9 @@ import { isMainchain } from './helper';
 
 export class VePendle {
     constructor(
-        public readonly address: Address,
-        public readonly networkConnection: NetworkConnection,
-        public readonly chainId: number
+        readonly address: Address,
+        protected readonly networkConnection: NetworkConnection,
+        readonly chainId: number
     ) {}
 
     get contract() {

@@ -1,8 +1,8 @@
 import { MarketFactory } from '../src';
-import { currentConfig, networkConnection } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 
 describe('MarketFactory', () => {
-    const marketFactory = new MarketFactory(currentConfig.marketFactory, networkConnection);
+    const marketFactory = new MarketFactory(currentConfig.marketFactory, networkConnection, ACTIVE_CHAIN_ID);
 
     it('#constructor', async () => {
         expect(marketFactory).toBeInstanceOf(MarketFactory);
@@ -11,7 +11,7 @@ describe('MarketFactory', () => {
 });
 
 describe('#contract', () => {
-    const marketFactory = new MarketFactory(currentConfig.marketFactory, networkConnection);
+    const marketFactory = new MarketFactory(currentConfig.marketFactory, networkConnection, ACTIVE_CHAIN_ID);
     const { contract } = marketFactory;
 
     it('Read contract', async () => {
