@@ -2,12 +2,12 @@ import type { ApproxParamsStruct, IPAllAction } from '@pendle/core-v2/typechain-
 import type { Address, NetworkConnection } from './types';
 import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
 import {
-    BigNumber as BN,
     type BigNumberish,
-    constants,
-    Contract,
     type ContractTransaction,
     type Overrides,
+    BigNumber as BN,
+    constants,
+    Contract,
 } from 'ethers';
 import { calcSlippedDownAmount, calcSlippedUpAmount, getContractAddresses } from './helper';
 
