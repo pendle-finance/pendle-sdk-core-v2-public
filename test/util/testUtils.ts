@@ -20,6 +20,8 @@ const USE_LOCAL = !!process.env.USE_LOCAL;
 export const describeWrite = (fn: () => any) =>
     (process.env.INCLUDE_WRITE ? describe : describe.skip)('Write functions', fn);
 
+export const TX_WAIT_TIME = 1;
+
 const providerUrls = {
     [CHAIN_ID.ETHEREUM]: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
     [CHAIN_ID.AVALANCHE]: 'https://api.avax.network/ext/bc/C/rpc',

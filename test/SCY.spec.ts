@@ -1,6 +1,14 @@
+import { Contract } from 'ethers';
 import { ERC20, SCY } from '../src';
 import { decimalFactor } from '../src/entities/helper';
-import { ACTIVE_CHAIN_ID, currentConfig, describeWrite, networkConnection, WALLET } from './util/testUtils';
+import {
+    ACTIVE_CHAIN_ID,
+    currentConfig,
+    describeWrite,
+    networkConnection,
+    TX_WAIT_TIME,
+    WALLET,
+} from './util/testUtils';
 
 describe(SCY, () => {
     const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
@@ -10,14 +18,17 @@ describe(SCY, () => {
     it('#constructor', () => {
         expect(scy).toBeInstanceOf(SCY);
         expect(scy.address).toBe(currentConfig.scyAddress);
+        expect(scy.chainId).toBe(ACTIVE_CHAIN_ID);
+        expect(scy.contract).toBeInstanceOf(Contract);
+        expect(scy.ERC20).toBeInstanceOf(ERC20);
     });
 
     it('#userInfo', async () => {
         const [userInfo, rewardTokens] = await Promise.all([
             scy.userInfo(currentConfig.deployer),
-            scy.contract.getRewardTokens(),
+            scy.contract.callStatic.getRewardTokens(),
         ]);
-        expect(userInfo.balance.isZero()).toBe(true);
+        expect(userInfo.balance.toBigInt()).toBeGreaterThanOrEqual(0);
         for (let i = 0; i < rewardTokens.length; i++) {
             const { token, amount } = userInfo.rewards[i];
             expect(token).toBe(rewardTokens[i]);
@@ -27,20 +38,22 @@ describe(SCY, () => {
 
     describeWrite(() => {
         it('#deposit', async () => {
-            const beforeBalance = await scy.contract.balanceOf(signer.address);
-            const approveTx = await usdc.approve(currentConfig.scyAddress, decimalFactor(21));
-            await approveTx.wait(1);
-            const depositTx = await scy.deposit(signer.address, currentConfig.usdcAddress, decimalFactor(21), 0);
-            await depositTx.wait(1);
-            const afterBalance = await scy.contract.balanceOf(signer.address);
+            const scyToken = scy.ERC20;
+            const beforeBalance = await scyToken.balanceOf(signer.address);
+            const amount = decimalFactor(21);
+            const approveTx = await usdc.approve(currentConfig.scyAddress, amount);
+            await approveTx.wait(TX_WAIT_TIME);
+            const depositTx = await scy.deposit(signer.address, currentConfig.usdcAddress, amount, 0);
+            await depositTx.wait(TX_WAIT_TIME);
+            const afterBalance = await scyToken.balanceOf(signer.address);
             expect(afterBalance.toBigInt()).toBeGreaterThan(beforeBalance.toBigInt());
         });
 
         it('#redeem', async () => {
-            const beforeBalance = await usdc.contract.balanceOf(signer.address);
+            const beforeBalance = await usdc.balanceOf(signer.address);
             const redeemTx = await scy.redeem(signer.address, currentConfig.usdcAddress, decimalFactor(19), 0);
-            await redeemTx.wait(3);
-            const afterBalance = await usdc.contract.balanceOf(signer.address);
+            await redeemTx.wait(TX_WAIT_TIME);
+            const afterBalance = await usdc.balanceOf(signer.address);
             expect(afterBalance.toBigInt()).toBeGreaterThan(beforeBalance.toBigInt());
         });
     });
@@ -53,10 +66,10 @@ describe('#contract', () => {
     const { contract } = scy;
 
     it('Read contract', async () => {
-        const baseToken = await contract.getBaseTokens();
+        const baseToken = await contract.callStatic.getBaseTokens();
         expect(baseToken[1]).toBe(currentConfig.usdcAddress);
 
-        const rewardToken = await contract.getRewardTokens();
+        const rewardToken = await contract.callStatic.getRewardTokens();
         expect(rewardToken[0]).toBe(currentConfig.qiAddress);
     });
 
@@ -64,7 +77,7 @@ describe('#contract', () => {
         it('Claim reward', async () => {
             const qiBalanceBefore = await qi.balanceOf(signer.address);
             const claimReward = await contract.connect(signer).claimRewards(signer.address);
-            await claimReward.wait(1);
+            await claimReward.wait(TX_WAIT_TIME);
             const qiBalanceAfter = await qi.balanceOf(signer.address);
             expect(qiBalanceAfter.toBigInt()).toBeGreaterThan(qiBalanceBefore.toBigInt());
         });
