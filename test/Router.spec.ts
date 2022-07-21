@@ -1,14 +1,14 @@
 import { ERC20, Router } from '../src';
 import { decimalFactor } from '../src/entities/helper';
-import { currentConfig, networkConnection, WALLET } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testUtils';
 
 describe(Router, () => {
-    const router = new Router(currentConfig.router, networkConnection);
-    const usd = new ERC20(currentConfig.usdcAddress, networkConnection);
-    const scy = new ERC20(currentConfig.scyAddress, networkConnection);
-    const yt = new ERC20(currentConfig.ytAddress, networkConnection);
-    const pt = new ERC20(currentConfig.ptAddress, networkConnection);
-    const market = new ERC20(currentConfig.marketAddress, networkConnection);
+    const router = new Router(currentConfig.router, networkConnection, ACTIVE_CHAIN_ID);
+    const usd = new ERC20(currentConfig.usdcAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const scy = new ERC20(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const yt = new ERC20(currentConfig.ytAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const pt = new ERC20(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const market = new ERC20(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
 
     it('#constructor', async () => {

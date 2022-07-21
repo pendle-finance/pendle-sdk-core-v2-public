@@ -1,8 +1,12 @@
 import { YieldContractFactory } from '../src';
-import { currentConfig, networkConnection } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 
 describe(YieldContractFactory, () => {
-    const yieldFactory = new YieldContractFactory(currentConfig.yieldContractFactory, networkConnection);
+    const yieldFactory = new YieldContractFactory(
+        currentConfig.yieldContractFactory,
+        networkConnection,
+        ACTIVE_CHAIN_ID
+    );
 
     it('#constructor', async () => {
         expect(yieldFactory).toBeInstanceOf(YieldContractFactory);

@@ -23,12 +23,16 @@ export class Router {
     };
     readonly contract: IPAllAction;
 
-    constructor(readonly address: Address, protected readonly networkConnection: NetworkConnection) {
+    constructor(
+        readonly address: Address,
+        protected readonly networkConnection: NetworkConnection,
+        readonly chainId: number
+    ) {
         this.contract = new Contract(address, IPAllActionABI, networkConnection.provider) as IPAllAction;
     }
 
     static getRouter(networkConnection: NetworkConnection, chainId: number): Router {
-        return new Router(getContractAddresses(chainId).ROUTER, networkConnection);
+        return new Router(getContractAddresses(chainId).ROUTER, networkConnection, chainId);
     }
 
     static swapApproxParams(netAmountOut: BN, slippage: number): ApproxParamsStruct {

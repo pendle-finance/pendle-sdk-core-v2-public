@@ -10,7 +10,11 @@ export class PT {
 
     protected readonly routerStatic: RouterStatic;
 
-    constructor(readonly address: Address, protected readonly networkConnection: NetworkConnection, readonly chainId: number) {
+    constructor(
+        readonly address: Address,
+        protected readonly networkConnection: NetworkConnection,
+        readonly chainId: number
+    ) {
         this.contract = new Contract(
             address,
             PendlePrincipalTokenABI,

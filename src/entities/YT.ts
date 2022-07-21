@@ -28,7 +28,11 @@ export class YT {
     readonly contract: PendleYieldToken;
     protected readonly routerStatic: RouterStatic;
 
-    constructor(readonly address: Address, protected readonly networkConnection: NetworkConnection, readonly chainId: number) {
+    constructor(
+        readonly address: Address,
+        protected readonly networkConnection: NetworkConnection,
+        readonly chainId: number
+    ) {
         this.contract = new Contract(address, PendleYieldTokenABI, networkConnection.provider) as PendleYieldToken;
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
