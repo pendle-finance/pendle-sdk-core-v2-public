@@ -76,9 +76,9 @@ describe('#contract', () => {
             const transferScyTx = await scy.contract
                 .connect(signer)
                 .transfer(currentConfig.ytAddress, decimalFactor(20).mul(5));
-            await transferScyTx.wait(1);
+            await transferScyTx.wait(TX_WAIT_TIME);
             const mintPYTx = await contract.connect(signer).mintPY(signer.address, signer.address);
-            await mintPYTx.wait(1);
+            await mintPYTx.wait(TX_WAIT_TIME);
             const [afterYtBalance, afterPtBalance] = await Promise.all([
                 yt.ERC20.balanceOf(signer.address),
                 pt.ERC20.balanceOf(signer.address),
@@ -90,11 +90,11 @@ describe('#contract', () => {
         it.skip('Redeem PY', async () => {
             const scyBalanceBefore = await scy.contract.balanceOf(signer.address);
             const sendPtTx = await pt.contract.connect(signer).transfer(currentConfig.ytAddress, decimalFactor(18));
-            await sendPtTx.wait(1);
+            await sendPtTx.wait(TX_WAIT_TIME);
             const sendYtTx = await yt.contract.connect(signer).transfer(currentConfig.ytAddress, decimalFactor(18));
-            await sendYtTx.wait(1);
+            await sendYtTx.wait(TX_WAIT_TIME);
             const redeemPYTx = await contract.connect(signer).redeemPY(signer.address);
-            await redeemPYTx.wait(1);
+            await redeemPYTx.wait(TX_WAIT_TIME);
             const scyBalanceAfter = await scy.contract.balanceOf(signer.address);
             expect(scyBalanceAfter.toBigInt()).toBeGreaterThan(scyBalanceBefore.toBigInt());
         });
