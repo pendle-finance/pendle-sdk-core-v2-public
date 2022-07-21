@@ -5,9 +5,10 @@
 Clone [`.env.example`](.env.example) to a new `.env` file and edit it to match
 your environment.
 
-After unskipping the write function tests, fund the account with USDC and PENDLE
-tokens. Run the tests in the following order (do note that this will involve
-real funds, so please do it either on a testnet or a local fork):
+By default, write function tests are disabled. To enable them, uncomment the
+`INCLUDE_WRITE` field in `.env`. After unskipping the write function tests, fund
+the account with USDC and PENDLE tokens. Run the tests in the following order
+(do note that this will involve real funds):
 
 1. [SCY](test/SCY.spec.ts)
 2. [YT](test/YT.spec.ts)
