@@ -14,7 +14,7 @@ describe(PT, () => {
         const { contract } = pt;
         expect(contract).toBeDefined();
         const supply = await contract.totalSupply();
-        expect(supply.toBigInt()).toBeGreaterThan(0);
+        expect(supply.toBigInt()).toBeGreaterThanOrEqual(0);
     });
 
     it('#userInfo', async () => {
