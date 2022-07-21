@@ -11,6 +11,6 @@ describe(VotingController, () => {
     });
 
     it('#vote', async () => {
-        await votingController.vote(market, 1);
+        await votingController.vote([{ market, weight: 1 }]);
     });
 });
