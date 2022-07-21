@@ -1,10 +1,12 @@
-import { Market } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testUtils';
+import { BigNumber } from 'ethers';
+import { Market, SCY } from '../src';
+import { decimalFactor } from '../src/entities/helper';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET, print } from './util/testUtils';
 
 describe(Market, () => {
     const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
     const sender = WALLET().wallet;
-
+    const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
     it('#constructor', () => {
         expect(market).toBeInstanceOf(Market);
         expect(market.address).toBe(currentConfig.marketAddress);
@@ -18,12 +20,37 @@ describe(Market, () => {
     });
 
     it('userMarketInfo', async () => {
-        const userMarketInfo = await market.getUserMarketInfo(sender.address);
-        expect(userMarketInfo).toBeDefined();
+        const [marketInfo, userMarketInfo, userBalance, scyInfo, scyExchangeRate] = await Promise.all([
+            market.getMarketInfo(),
+            market.getUserMarketInfo(sender.address),
+            market.contract.callStatic.balanceOf(sender.address),
+            scy.contract.assetInfo(),
+            scy.contract.exchangeRate(),
+        ]);
+
+        expect(userMarketInfo.market).toBe(currentConfig.marketAddress);
+
+        expect(userMarketInfo.lpBalance.toBigInt()).toBe(userBalance.toBigInt());
+
+        expect(userMarketInfo.ptBalance.token).toBe(currentConfig.ptAddress);
+        expect(userMarketInfo.ptBalance.amount.toBigInt()).toBe(
+            userBalance.mul(marketInfo.state.totalPt).div(marketInfo.state.totalLp).toBigInt()
+        );
+
+        expect(userMarketInfo.scyBalance.token).toBe(currentConfig.scyAddress);
+        expect(userMarketInfo.scyBalance.amount.toBigInt()).toBe(
+            userBalance.mul(marketInfo.state.totalScy).div(marketInfo.state.totalLp).toBigInt()
+        );
+
+        expect(userMarketInfo.assetBalance.assetType).toBe(scyInfo.assetType);
+        expect(userMarketInfo.assetBalance.assetAddress).toBe(scyInfo.assetAddress);
+        expect((userMarketInfo.assetBalance.amount as BigNumber).toBigInt()).toBe(
+            userMarketInfo.scyBalance.amount.mul(scyExchangeRate).div(decimalFactor(18)).toBigInt()
+        );
     });
 });
 
-describe('#contract', () => {
+describe.skip('#contract', () => {
     const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
     const contract = market.contract.callStatic;
 

@@ -8,9 +8,8 @@ import {
     FUJI_ADDRESSES,
     MUMBAI_ADDRESSES,
     type ContractAddresses,
+    PERCENTAGE_DECIMALS,
 } from '../constants';
-
-export const PERCENTAGE_DECIMALS = 6;
 
 export function decimalFactor(decimals: number): BN {
     return BN.from(10).pow(decimals);
