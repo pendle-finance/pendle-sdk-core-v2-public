@@ -1,6 +1,6 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
-import { ethers } from 'ethers';
+import { Wallet } from 'ethers';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../../src';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
@@ -16,6 +16,9 @@ config();
 export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID);
 const LOCAL_CHAIN_ID = 31337;
 const USE_LOCAL = !!process.env.USE_LOCAL;
+
+export const describeWrite = (fn: () => any) =>
+    (process.env.INCLUDE_WRITE ? describe : describe.skip)('Write functions', fn);
 
 const providerUrls = {
     [CHAIN_ID.ETHEREUM]: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
@@ -96,7 +99,7 @@ export const testConfig = (chainId: number) => ({
 export const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 
 export const WALLET = () => ({
-    wallet: new ethers.Wallet(process.env.PRIVATE_KEY!).connect(networkConnection.provider),
+    wallet: new Wallet(process.env.PRIVATE_KEY!).connect(networkConnection.provider),
 });
 
 export function print(message: any): void {

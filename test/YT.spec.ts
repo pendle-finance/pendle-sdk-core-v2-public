@@ -1,6 +1,6 @@
 import { ERC20, PT, SCY, YT } from '../src';
 import { decimalFactor } from '../src/entities/helper';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, describeWrite, networkConnection, WALLET } from './util/testUtils';
 
 describe(YT, () => {
     const yt = new YT(currentConfig.ytAddress, networkConnection, ACTIVE_CHAIN_ID);
@@ -38,7 +38,7 @@ describe('#contract', () => {
         expect(index).toBeDefined();
     });
 
-    describe('write functions', () => {
+    describeWrite(() => {
         it('Mint PY', async () => {
             const beforeYtBalance = await yt.contract.balanceOf(signer.address);
             const beforePtBalance = await pt.contract.balanceOf(signer.address);

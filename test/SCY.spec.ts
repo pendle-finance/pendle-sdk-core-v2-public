@@ -1,6 +1,6 @@
 import { ERC20, SCY } from '../src';
 import { decimalFactor } from '../src/entities/helper';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, describeWrite, networkConnection, WALLET } from './util/testUtils';
 
 describe(SCY, () => {
     const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
@@ -25,7 +25,7 @@ describe(SCY, () => {
         }
     });
 
-    describe('write functions', () => {
+    describeWrite(() => {
         it('#deposit', async () => {
             const beforeBalance = await scy.contract.balanceOf(signer.address);
             const approveTx = await usdc.approve(currentConfig.scyAddress, decimalFactor(21));
@@ -60,7 +60,7 @@ describe('#contract', () => {
         expect(rewardToken[0]).toBe(currentConfig.qiAddress);
     });
 
-    describe('write functions', () => {
+    describeWrite(() => {
         it('Claim reward', async () => {
             const qiBalanceBefore = await qi.balanceOf(signer.address);
             const claimReward = await contract.connect(signer).claimRewards(signer.address);
