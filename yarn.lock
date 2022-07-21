@@ -1778,19 +1778,19 @@
     fastq "^1.6.0"
 
 "@openzeppelin/contracts-upgradeable@^4.5.2":
-  version "4.7.0"
-  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts-upgradeable/-/contracts-upgradeable-4.7.0.tgz#6437261286879d353f6de7bf3ac8216bef8a486d"
-  integrity sha512-wO3PyoAaAV/rA77cK8H4c3SbO98QylTjfiFxyvURUZKTFLV180rnAvna1x7/Nxvt0Gqv+jt1sXKC7ygxsq8iCw==
+  version "4.7.1"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts-upgradeable/-/contracts-upgradeable-4.7.1.tgz#f63fc384255d6ac139e0a2561aa207fd7c14183c"
+  integrity sha512-5EFiZld3DYFd8aTL8eeMnhnaWh1/oXLXFNuFMrgF3b1DNPshF3LCyO7VR6lc+gac2URJ0BlVcZoCfkk/3MoEfg==
 
 "@openzeppelin/contracts@^4.5.0":
-  version "4.7.0"
-  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.7.0.tgz#3092d70ea60e3d1835466266b1d68ad47035a2d5"
-  integrity sha512-52Qb+A1DdOss8QvJrijYYPSf32GUg2pGaG/yCxtaA3cu4jduouTdg4XZSMLW9op54m1jH7J8hoajhHKOPsoJFw==
+  version "4.7.1"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.7.1.tgz#33d0a857b76b18d313e6bb6ed28cdaf367e90cfe"
+  integrity sha512-UXmAjKARsXORHlHZu5GCD7ZbRKm6nU8UHnbuT/QJJa2JEOEcbvV/X8w/sUk62Sl9VZuuljM1akrZLyAtzUgsxw==
 
-"@pendle/core-v2@^0.8.0-beta-3":
-  version "0.8.0-beta-3"
-  resolved "https://registry.yarnpkg.com/@pendle/core-v2/-/core-v2-0.8.0-beta-3.tgz#c1abf1928af17fceaae4c9357539d1e23aa0b827"
-  integrity sha512-cnvKL462M492nqj0efmXnzQ0nQO+uKlJb2eQqpsWQft/2L1C1V22kK8XJR40ru6Yu7FAqQQ+vCehCEGdLchcBA==
+"@pendle/core-v2@^0.8.0-beta-5":
+  version "0.8.0-beta-5"
+  resolved "https://registry.yarnpkg.com/@pendle/core-v2/-/core-v2-0.8.0-beta-5.tgz#c41cf1158cbc719a04cfbe26d2bcfef14a3c8e66"
+  integrity sha512-xBx9cjHqZ4uAXU7ctZjyIG6T9Fxp4pAcg3BGKDjutq2o+KAob0RG1VM26L0HrkUHKhlsK5Qd7LD4GX69NPH1wA==
   dependencies:
     "@openzeppelin/contracts" "^4.5.0"
     "@openzeppelin/contracts-upgradeable" "^4.5.2"
@@ -3288,9 +3288,9 @@ ecc-jsbn@~0.1.1:
     safer-buffer "^2.1.0"
 
 electron-to-chromium@^1.4.188:
-  version "1.4.195"
-  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.195.tgz#139b2d95a42a3f17df217589723a1deac71d1473"
-  integrity sha512-vefjEh0sk871xNmR5whJf9TEngX+KTKS3hOHpjoMpauKkwlGwtMz1H8IaIjAT/GNnX0TbGwAdmVoXCAzXf+PPg==
+  version "1.4.196"
+  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.196.tgz#e18cdc5c1c2c2ebf78da237d0c374cc3b244d4cb"
+  integrity sha512-uxMa/Dt7PQsLBVXwH+t6JvpHJnrsYBaxWKi/J6HE+/nBtoHENhwBoNkgkm226/Kfxeg0z1eMQLBRPPKcDH8xWA==
 
 elliptic@6.5.4:
   version "6.5.4"
