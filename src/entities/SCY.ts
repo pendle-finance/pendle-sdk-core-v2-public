@@ -3,6 +3,7 @@ import type { Address, NetworkConnection, TokenAmount } from './types';
 import { type BigNumber as BN, type BigNumberish, type ContractTransaction, type Overrides, Contract } from 'ethers';
 import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/base-implementations/SCYBase.sol/SCYBase.json';
 import { calcSlippedDownAmount, getRouterStatic } from './helper';
+import { ERC20 } from './ERC20';
 
 export type UserSCYInfo = {
     balance: BN;
@@ -10,6 +11,7 @@ export type UserSCYInfo = {
 };
 
 export class SCY {
+    readonly ERC20: ERC20;
     readonly contract: SCYBase;
     protected readonly routerStatic: RouterStatic;
 
@@ -18,6 +20,7 @@ export class SCY {
         protected readonly networkConnection: NetworkConnection,
         readonly chainId: number
     ) {
+        this.ERC20 = new ERC20(address, networkConnection, chainId);
         this.contract = new Contract(address, SCYBaseABI, networkConnection.provider) as SCYBase;
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }

@@ -1,7 +1,7 @@
 import type { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection } from './types';
 import { abi as PendleERC20ABI } from '@pendle/core-v2/build/artifacts/contracts/core/PendleERC20.sol/PendleERC20.json';
-import { type BigNumberish, type ContractTransaction, type Overrides, BigNumber, Contract } from 'ethers';
+import { type BigNumberish, type ContractTransaction, type Overrides, BigNumber as BN, Contract } from 'ethers';
 
 export class ERC20 {
     readonly contract: PendleERC20;
@@ -14,11 +14,11 @@ export class ERC20 {
         this.contract = new Contract(address, PendleERC20ABI, networkConnection.provider) as PendleERC20;
     }
 
-    allowance(owner: Address, spender: Address): Promise<BigNumber> {
+    allowance(owner: Address, spender: Address): Promise<BN> {
         return this.contract.callStatic.allowance(owner, spender);
     }
 
-    balanceOf(account: Address): Promise<BigNumber> {
+    balanceOf(account: Address): Promise<BN> {
         return this.contract.callStatic.balanceOf(account);
     }
 
@@ -34,7 +34,7 @@ export class ERC20 {
         return this.contract.callStatic.symbol();
     }
 
-    totalSupply(): Promise<BigNumber> {
+    totalSupply(): Promise<BN> {
         return this.contract.callStatic.totalSupply();
     }
 

@@ -1,6 +1,6 @@
 import { ERC20, Router } from '../src';
 import { decimalFactor } from '../src/entities/helper';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, describeWrite, networkConnection, WALLET } from './util/testUtils';
 
 describe(Router, () => {
     const router = new Router(currentConfig.router, networkConnection, ACTIVE_CHAIN_ID);
@@ -16,7 +16,7 @@ describe(Router, () => {
         expect(router.address).toBe(currentConfig.router);
     });
 
-    describe('write functions', () => {
+    describeWrite(() => {
         it('#addLiquidity', async () => {
             const [beforeMarketBalance, scyApproveTx] = await Promise.all([
                 market.balanceOf(signer.address),
