@@ -1,6 +1,5 @@
 import { Contract } from 'ethers';
-import { ERC20, PT, SCY, YT } from '../src';
-import { decimalFactor } from '../src/entities/helper';
+import { ERC20, YT } from '../src';
 import { getBalance, REDEEM_FACTOR, transferHelper } from './util/testHelper';
 import {
     ACTIVE_CHAIN_ID,

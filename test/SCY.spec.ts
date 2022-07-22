@@ -8,7 +8,6 @@ import {
     networkConnection,
     TX_WAIT_TIME,
     WALLET,
-    print,
 } from './util/testUtils';
 import { getBalance, approveHelper, REDEEM_FACTOR, SLIPPAGE_TYPE2 } from './util/testHelper';
 describe(SCY, () => {
@@ -61,7 +60,6 @@ describe(SCY, () => {
 describe('#contract', () => {
     const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
-    const qi = new ERC20(currentConfig.qiAddress, networkConnection, ACTIVE_CHAIN_ID);
     const { contract } = scy;
 
     it('Read contract', async () => {

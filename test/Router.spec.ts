@@ -19,10 +19,6 @@ import {
 import { BigNumber } from 'ethers';
 describe(Router, () => {
     const router = new Router(currentConfig.router, networkConnection, ACTIVE_CHAIN_ID);
-    const usdc = new ERC20(currentConfig.usdcAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const scy = new ERC20(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const yt = new ERC20(currentConfig.ytAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const pt = new ERC20(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
 
     it('#constructor', async () => {

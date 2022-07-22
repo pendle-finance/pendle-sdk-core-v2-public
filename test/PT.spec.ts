@@ -1,5 +1,5 @@
 import { PT, YT } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, print } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 
 describe(PT, () => {
     const pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);

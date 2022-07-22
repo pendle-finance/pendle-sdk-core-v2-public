@@ -1,7 +1,7 @@
 import { BigNumber } from 'ethers';
 import { Market, SCY } from '../src';
 import { decimalFactor } from '../src/entities/helper';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET, print } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testUtils';
 
 describe(Market, () => {
     const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
