@@ -17,5 +17,7 @@ describe('#contract', () => {
     it('Read contract', async () => {
         const treasure = await contract.treasury();
         expect(treasure).toBeDefined();
+        const valid = await marketFactory.contract.isValidMarket(currentConfig.marketAddress);
+        console.log(valid);
     });
 });

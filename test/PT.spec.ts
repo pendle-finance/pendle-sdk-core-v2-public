@@ -21,7 +21,7 @@ describe(PT, () => {
         const [userInfo, userPtBalance, userYtBalance, interestToken, interestAmount] = await Promise.all([
             pt.userInfo(currentConfig.deployer),
             pt.ERC20.balanceOf(currentConfig.deployer),
-            await yt.ERC20.balanceOf(currentConfig.deployer),
+            yt.ERC20.balanceOf(currentConfig.deployer),
             yt.contract.callStatic.SCY(),
             yt.contract.callStatic.userInterest(currentConfig.deployer),
         ]);

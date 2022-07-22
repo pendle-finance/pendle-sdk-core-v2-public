@@ -1,7 +1,14 @@
 import { VotingEscrowPendleMainchain } from '@pendle/core-v2/typechain-types';
 import { ERC20, VePendle } from '../src';
 import { decimalFactor } from '../src/entities/helper';
-import { ACTIVE_CHAIN_ID, currentConfig, describeWrite, networkConnection, WALLET } from './util/testUtils';
+import {
+    ACTIVE_CHAIN_ID,
+    currentConfig,
+    describeWrite,
+    networkConnection,
+    TX_WAIT_TIME,
+    WALLET,
+} from './util/testUtils';
 
 describe(VePendle, () => {
     const ve = new VePendle(currentConfig.veAddress, networkConnection, ACTIVE_CHAIN_ID);
@@ -36,9 +43,9 @@ describe('#contract', () => {
             const week = await contract.WEEK();
             const newExpiry = Math.round((currentTimeStamp + 10 * week.toNumber()) / week.toNumber()) * week.toNumber();
             const approveTx = await pendle.approve(currentConfig.veAddress, decimalFactor(19));
-            await approveTx.wait(1);
+            await approveTx.wait(TX_WAIT_TIME);
             const lockTx = await contract.connect(signer).increaseLockPosition(decimalFactor(19), newExpiry);
-            await lockTx.wait(1);
+            await lockTx.wait(TX_WAIT_TIME);
             const pendleBalanceAfter = await pendle.balanceOf(signer.address);
             expect(pendleBalanceAfter.toBigInt()).toBeGreaterThan(pendleBalanceBefore.toBigInt());
         });

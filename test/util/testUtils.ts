@@ -4,9 +4,9 @@ import { Wallet } from 'ethers';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../../src';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-0x9f080Af83E84099ED92b1b9b4B4BbE4400f2A3CB.json';
+import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-5C60ba.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
-import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-0x78699fa58C484e9867B8047A12E959ccB8BaD90E.json';
+import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-5E1104.json';
 import FUJI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-benqi.json';
 import MUMBAI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-benqi.json';
 
@@ -54,9 +54,9 @@ export const CONTRACT_ADDRESSES = {
             MARKET: FUJI_BENQI_ADDRESSES.market,
             PT: FUJI_BENQI_ADDRESSES.PT,
             YT: FUJI_BENQI_ADDRESSES.YT,
-            USDC: FUJI_TEST_BENQI_ADDRESSES.USDC,
+            USDC: FUJI_TEST_BENQI_ADDRESSES.USD,
             QI: FUJI_TEST_BENQI_ADDRESSES.QI,
-            QIUSDC: FUJI_TEST_BENQI_ADDRESSES.qiUSDC,
+            QIUSDC: FUJI_TEST_BENQI_ADDRESSES.qiUSD,
         },
     },
     [CHAIN_ID.MUMBAI]: {
@@ -74,9 +74,9 @@ export const CONTRACT_ADDRESSES = {
             MARKET: MUMBAI_BENQI_ADDRESSES.market,
             PT: MUMBAI_BENQI_ADDRESSES.PT,
             YT: MUMBAI_BENQI_ADDRESSES.YT,
-            USDC: MUMBAI_TEST_BENQI_ADDRESSES.USDC,
+            USDC: MUMBAI_TEST_BENQI_ADDRESSES.USD,
             QI: MUMBAI_TEST_BENQI_ADDRESSES.QI,
-            QIUSDC: MUMBAI_TEST_BENQI_ADDRESSES.qiUSDC,
+            QIUSDC: MUMBAI_TEST_BENQI_ADDRESSES.qiUSD,
         },
     },
 };

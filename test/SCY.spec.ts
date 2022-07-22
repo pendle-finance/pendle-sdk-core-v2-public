@@ -8,12 +8,12 @@ import {
     networkConnection,
     TX_WAIT_TIME,
     WALLET,
+    print,
 } from './util/testUtils';
-
+import { getBalance, approveHelper, REDEEM_FACTOR, SLIPPAGE_TYPE2 } from './util/testHelper';
 describe(SCY, () => {
     const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
-    const usdc = new ERC20(currentConfig.usdcAddress, networkConnection, ACTIVE_CHAIN_ID); // USD
 
     it('#constructor', () => {
         expect(scy).toBeInstanceOf(SCY);
@@ -38,22 +38,21 @@ describe(SCY, () => {
 
     describeWrite(() => {
         it('#deposit', async () => {
-            const scyToken = scy.ERC20;
-            const beforeBalance = await scyToken.balanceOf(signer.address);
+            const beforeBalance = await getBalance('SCY', signer.address);
             const amount = decimalFactor(21);
-            const approveTx = await usdc.approve(currentConfig.scyAddress, amount);
-            await approveTx.wait(TX_WAIT_TIME);
-            const depositTx = await scy.deposit(signer.address, currentConfig.usdcAddress, amount, 0);
+            await approveHelper('USDC', currentConfig.scyAddress, amount);
+            const depositTx = await scy.deposit(signer.address, currentConfig.usdcAddress, amount, SLIPPAGE_TYPE2);
             await depositTx.wait(TX_WAIT_TIME);
-            const afterBalance = await scyToken.balanceOf(signer.address);
+            const afterBalance = await getBalance('SCY', signer.address);
             expect(afterBalance.toBigInt()).toBeGreaterThan(beforeBalance.toBigInt());
         });
 
         it('#redeem', async () => {
-            const beforeBalance = await usdc.balanceOf(signer.address);
-            const redeemTx = await scy.redeem(signer.address, currentConfig.usdcAddress, decimalFactor(19), 0);
+            const redeemAmount = (await getBalance('SCY', signer.address)).div(REDEEM_FACTOR);
+            const beforeBalance = await getBalance('USDC', signer.address);
+            const redeemTx = await scy.redeem(signer.address, currentConfig.usdcAddress, redeemAmount, SLIPPAGE_TYPE2);
             await redeemTx.wait(TX_WAIT_TIME);
-            const afterBalance = await usdc.balanceOf(signer.address);
+            const afterBalance = await getBalance('USDC', signer.address);
             expect(afterBalance.toBigInt()).toBeGreaterThan(beforeBalance.toBigInt());
         });
     });
@@ -72,10 +71,10 @@ describe('#contract', () => {
 
     describeWrite(() => {
         it('Claim reward', async () => {
-            const qiBalanceBefore = await qi.balanceOf(signer.address);
+            const qiBalanceBefore = await getBalance('QI', signer.address);
             const claimReward = await contract.connect(signer).claimRewards(signer.address);
             await claimReward.wait(TX_WAIT_TIME);
-            const qiBalanceAfter = await qi.balanceOf(signer.address);
+            const qiBalanceAfter = await getBalance('QI', signer.address);
             expect(qiBalanceAfter.toBigInt()).toBeGreaterThan(qiBalanceBefore.toBigInt());
         });
     });
