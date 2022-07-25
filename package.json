@@ -27,7 +27,8 @@
         "format": "yarn prettier --write \"{src,test}/**/*.{ts,js}\"",
         "lint": "yarn eslint \"{src,test}/**/*.{ts,js}\" --fix",
         "test": "yarn jest",
-        "test:coverage": "yarn test --coverage"
+        "test:coverage": "yarn test --coverage",
+        "test:scripts": "ts-node -P tsconfig.scripts.json ./scripts/testScript.ts"
     },
     "dependencies": {
         "@pendle/core-v2": "^0.8.0-beta-12",

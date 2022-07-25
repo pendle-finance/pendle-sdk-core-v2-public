@@ -35,7 +35,7 @@ describe(ERC20, () => {
         ]);
         expect(decimal).toBe(18);
         expect(name).toBe('USD');
-        expect(symbol).toBe('USDC');
+        expect(symbol).toBe('USD');
         expect(totalSupply).toBeDefined();
     });
 
