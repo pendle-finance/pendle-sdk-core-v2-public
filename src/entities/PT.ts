@@ -31,7 +31,6 @@ export class PT {
     }
 
     async getInfo(): Promise<PYInfo> {
-        const [exchangeRate, totalSupply, rewardIndexes] = await this.routerStatic.callStatic.getPYInfo(this.address);
-        return { exchangeRate, totalSupply, rewardIndexes };
+        return this.routerStatic.callStatic.getPYInfo(this.address);
     }
 }

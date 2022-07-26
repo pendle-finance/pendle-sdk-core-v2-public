@@ -2,8 +2,6 @@ import type { Address } from './entities';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
 
-export const PERCENTAGE_DECIMALS = 6;
-
 export type ContractAddresses = {
     ROUTER: Address;
     ROUTER_STATIC: Address;
@@ -11,6 +9,8 @@ export type ContractAddresses = {
     VEPENDLE: Address;
     VOTING_CONTROLLER?: Address;
 };
+
+export const PERCENTAGE_DECIMALS = 6;
 
 export const CHAIN_ID = {
     ETHEREUM: 1,

@@ -45,13 +45,4 @@ export class ERC20 {
     transfer(to: Address, amount: BigNumberish, overrides: Overrides = {}): Promise<ContractTransaction> {
         return this.contract.connect(this.networkConnection.signer!).transfer(to, amount, overrides);
     }
-
-    transferFrom(
-        from: Address,
-        to: Address,
-        amount: BigNumberish,
-        overrides: Overrides = {}
-    ): Promise<ContractTransaction> {
-        return this.contract.connect(this.networkConnection.signer!).transferFrom(from, to, amount, overrides);
-    }
 }

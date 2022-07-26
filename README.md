@@ -5,13 +5,12 @@
 Clone [`.env.example`](.env.example) to a new `.env` file and edit it to match
 your environment.
 
-To run all test with script. First give the permission: 
+To set up the right environment (in case the prerequisites are not being done,
+e.g. adding liquidity to pools), run all tests below with the following script:
 
-chmod 777 testScript.sh
-
-Then run :
-
-./testScript.sh
+```sh
+yarn test:all
+```
 
 By default, write function tests are disabled. To enable them, uncomment the
 `INCLUDE_WRITE` field in `.env`. After unskipping the write function tests, fund
@@ -29,4 +28,3 @@ the account with USDC and PENDLE tokens. Run the tests in the following order
 9. [Router](test/Router.spec.ts) (Might take some time to complete)
 10. [VePendle](test/VePendle.spec.ts)
 11. [VotingController](test/VotingController.spec.ts)
-

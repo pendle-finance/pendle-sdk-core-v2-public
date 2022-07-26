@@ -2,12 +2,12 @@ import type { RouterStatic } from '@pendle/core-v2/typechain-types';
 import { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/RouterStatic.sol/RouterStatic.json';
 import { BigNumber as BN, Contract, type providers } from 'ethers';
 import {
+    type ContractAddresses,
     CHAIN_ID,
     AVALANCHE_ADDRESSES,
     ETHEREUM_ADDRESSES,
     FUJI_ADDRESSES,
     MUMBAI_ADDRESSES,
-    type ContractAddresses,
     PERCENTAGE_DECIMALS,
 } from '../constants';
 

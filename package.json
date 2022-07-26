@@ -27,8 +27,8 @@
         "format": "yarn prettier --write \"{src,test}/**/*.{ts,js}\"",
         "lint": "yarn eslint \"{src,test}/**/*.{ts,js}\" --fix",
         "test": "yarn jest",
-        "test:coverage": "yarn test --coverage",
-        "test:scripts": "ts-node -P tsconfig.scripts.json ./scripts/testScript.ts"
+        "test:all": "yarn node test/all.js",
+        "test:coverage": "yarn jest --coverage"
     },
     "dependencies": {
         "@pendle/core-v2": "^0.8.0-beta-12",
@@ -38,7 +38,7 @@
     "devDependencies": {
         "@size-limit/preset-small-lib": "^7.0.8",
         "@types/jest": "^28.1.6",
-        "@typescript-eslint/parser": "^5.30.7",
+        "@typescript-eslint/parser": "^5.31.0",
         "dotenv": "^16.0.1",
         "eslint": "^8.20.0",
         "eslint-config-prettier": "^8.5.0",

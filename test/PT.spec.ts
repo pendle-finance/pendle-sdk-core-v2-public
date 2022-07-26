@@ -4,6 +4,7 @@ import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUt
 describe(PT, () => {
     const pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
     const yt = new YT(currentConfig.ytAddress, networkConnection, ACTIVE_CHAIN_ID);
+
     it('#constructor', async () => {
         expect(pt).toBeInstanceOf(PT);
         expect(pt.address).toBe(currentConfig.ptAddress);
@@ -27,37 +28,34 @@ describe(PT, () => {
         ]);
 
         expect(userInfo.pt).toBe(currentConfig.ptAddress);
-        expect(userInfo.ptBalance.toBigInt()).toBe(userPtBalance.toBigInt());
+        expect(userInfo.ptBalance.eq(userPtBalance)).toBe(true);
 
         expect(userInfo.yt).toBe(currentConfig.ytAddress);
-        expect(userInfo.ytBalance.toBigInt()).toBe(userYtBalance.toBigInt());
+        expect(userInfo.ytBalance.eq(userYtBalance)).toBe(true);
 
         const interest = userInfo.unclaimedInterest;
         expect(interest.token).toBe(interestToken);
-        expect(interest.amount.toBigInt()).toBe(interestAmount[1].toBigInt());
+        expect(interest.amount.eq(interestAmount[1])).toBe(true);
 
-        const reward = userInfo.unclaimedRewards;
-
-        const amountExpected = await Promise.all(
-            reward.map(
-                async (token) => (await yt.contract.callStatic.userReward(token.token, currentConfig.deployer))[1]
-            )
+        await Promise.all(
+            userInfo.unclaimedRewards.map(async ({ token, amount }) => {
+                const { accrued } = await yt.contract.callStatic.userReward(token, currentConfig.deployer);
+                expect(amount).toBe(accrued);
+            })
         );
-        const amountActual = reward.map((token) => token.amount);
-        expect(amountActual).toEqual(amountExpected);
     });
 
     it('#getInfo', async () => {
         const [ptInfo, ytTotalSupply, ytIndexCurrent, rewardToken] = await Promise.all([
             pt.getInfo(),
-            yt.contract.callStatic.totalSupply(),
+            yt.ERC20.totalSupply(),
             yt.contract.callStatic.scyIndexCurrent(),
             yt.contract.callStatic.getRewardTokens(),
         ]);
 
-        expect(ptInfo.totalSupply.toBigInt()).toBe(ytTotalSupply.toBigInt());
+        expect(ptInfo.totalSupply.eq(ytTotalSupply)).toBe(true);
 
-        expect(ptInfo.exchangeRate.toBigInt()).toBe(ytIndexCurrent.toBigInt());
+        expect(ptInfo.exchangeRate.eq(ytIndexCurrent)).toBe(true);
 
         for (let i = 0; i < rewardToken.length; i++) {
             expect(ptInfo.rewardIndexes[i].index.toBigInt()).toBeGreaterThan(0);

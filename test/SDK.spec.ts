@@ -1,6 +1,6 @@
 import { SDK } from '../src/entities/SDK';
-import { PT, YT, SCY, Market } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, print } from './util/testUtils';
+import { Market, PT, SCY, YT } from '../src';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 import { BigNumber } from 'ethers';
 import { decimalFactor } from '../src/entities/helper';
 
@@ -10,13 +10,14 @@ describe(SDK, () => {
     const yt = new YT(currentConfig.ytAddress, networkConnection, ACTIVE_CHAIN_ID);
     const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
     const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
+
     it('#constructor', async () => {
         expect(sdk).toBeInstanceOf(SDK);
         expect(sdk.chainId).toBe(ACTIVE_CHAIN_ID);
     });
 
-    it('#userPositionPY', async () => {
-        const [userPositionPY, userPtBalance, userYtBalance, interestToken, interestAmount] = await Promise.all([
+    it('#getUserPYPositionsByPYs', async () => {
+        const [userPYPositions, userPtBalance, userYtBalance, interestToken, interestAmount] = await Promise.all([
             sdk.getUserPYPositionsByPYs(currentConfig.deployer, [currentConfig.ytAddress, currentConfig.ptAddress]),
             pt.ERC20.balanceOf(currentConfig.deployer),
             yt.ERC20.balanceOf(currentConfig.deployer),
@@ -24,8 +25,8 @@ describe(SDK, () => {
             yt.contract.callStatic.userInterest(currentConfig.deployer),
         ]);
 
-        expect(userPositionPY[0]).toEqual(userPositionPY[1]);
-        const userInfo = userPositionPY[0];
+        expect(userPYPositions[0]).toEqual(userPYPositions[1]);
+        const userInfo = userPYPositions[0];
 
         expect(userInfo.pt).toBe(currentConfig.ptAddress);
         expect(userInfo.ptBalance.toBigInt()).toBe(userPtBalance.toBigInt());
