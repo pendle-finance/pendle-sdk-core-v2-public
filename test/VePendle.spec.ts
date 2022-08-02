@@ -6,7 +6,7 @@ import {
     currentConfig,
     describeWrite,
     networkConnection,
-    TX_WAIT_TIME,
+    BLOCK_CONFIRMATION,
     WALLET,
 } from './util/testUtils';
 
@@ -43,11 +43,11 @@ describe('#contract', () => {
             const week = await contract.WEEK();
             const newExpiry = Math.round((currentTimeStamp + 10 * week.toNumber()) / week.toNumber()) * week.toNumber();
             const approveTx = await pendle.approve(currentConfig.veAddress, decimalFactor(19));
-            await approveTx.wait(TX_WAIT_TIME);
+            await approveTx.wait(BLOCK_CONFIRMATION);
             const lockTx = await contract.connect(signer).increaseLockPosition(decimalFactor(19), newExpiry);
-            await lockTx.wait(TX_WAIT_TIME);
+            await lockTx.wait(BLOCK_CONFIRMATION);
             const pendleBalanceAfter = await pendle.balanceOf(signer.address);
-            expect(pendleBalanceAfter.toBigInt()).toBeGreaterThan(pendleBalanceBefore.toBigInt());
+            expect(pendleBalanceAfter.lt(pendleBalanceBefore)).toBe(true);
         });
 
         // Can only test withdraw by advancing the time on a local fork

@@ -14,17 +14,20 @@ yarn test:all
 
 By default, write function tests are disabled. To enable them, uncomment the
 `INCLUDE_WRITE` field in `.env`. After unskipping the write function tests, fund
-the account with USDC and PENDLE tokens. Run the tests in the following order
-(do note that this will involve real funds):
+the account with USDC and PENDLE tokens, add liquidity for the markers if needed.
+Do note that this will involve real funds.
 
-1. [ERC20](test/ERC20.spec.ts)
-2. [SCY](test/SCY.spec.ts)
-3. [YT](test/YT.spec.ts)
-4. [PT](test/PT.spec.ts)
-5. [YieldContractFactory](test/YieldContractFactory.spec.ts)
-6. [SDK](test/SDK.spec.ts)
-7. [Market](test/Market.spec.ts)
-8. [MarketFactory](test/MarketFactory.spec.ts)
-9. [Router](test/Router.spec.ts) (Might take some time to complete)
-10. [VePendle](test/VePendle.spec.ts)
-11. [VotingController](test/VotingController.spec.ts)
+### Notes
+
+Most of the test is to make sure that the SDK is working as expected (calling
+the correct functions, using the correct parameters, calculating the correct
+number).
+
+SDK tests are not meant to test the actual functionality of the contracts.
+
+### Limitations
+
+- Tests for SDK vePendle are currently not implemented.
+- All tests must run sequentially and not in parallel. Most of the tests require
+  sending transactions, so running them in parallel will cause the transactions
+  to fail due to nonce errors.

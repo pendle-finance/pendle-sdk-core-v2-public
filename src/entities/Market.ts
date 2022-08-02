@@ -1,5 +1,5 @@
 import type { PendleMarket, RouterStatic } from '@pendle/core-v2/typechain-types';
-import type { MarketStateStruct } from '@pendle/core-v2/typechain-types/PendleMarket';
+import type { MarketStateStructOutput } from '@pendle/core-v2/typechain-types/PendleMarket';
 import type { IPRouterStatic } from '@pendle/core-v2/typechain-types/IPRouterStatic';
 import type { Address, NetworkConnection, TokenAmount } from './types';
 import { abi as PendleMarketABI } from '@pendle/core-v2/build/artifacts/contracts/core/Market/PendleMarket.sol/PendleMarket.json';
@@ -10,8 +10,9 @@ import { ERC20 } from './ERC20';
 export type MarketInfo = {
     pt: Address;
     scy: Address;
-    state: MarketStateStruct;
+    state: MarketStateStructOutput;
     impliedYield: BN;
+    exchangeRate: BN;
 };
 
 export type UserMarketInfo = {
@@ -19,7 +20,7 @@ export type UserMarketInfo = {
     lpBalance: BN;
     ptBalance: TokenAmount;
     scyBalance: TokenAmount;
-    assetBalance: IPRouterStatic.AssetAmountStruct;
+    assetBalance: IPRouterStatic.AssetAmountStructOutput;
 };
 
 export class Market {

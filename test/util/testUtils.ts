@@ -4,9 +4,9 @@ import { Wallet } from 'ethers';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../../src';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-5C60ba.json';
+import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-4Ccb97.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
-import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-5E1104.json';
+import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-4e470E.json';
 import FUJI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-benqi.json';
 import MUMBAI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-benqi.json';
 
@@ -20,7 +20,8 @@ const USE_LOCAL = !!process.env.USE_LOCAL;
 export const describeWrite = (fn: () => any) =>
     (process.env.INCLUDE_WRITE ? describe : describe.skip)('Write functions', fn);
 
-export const TX_WAIT_TIME = 1;
+// How much blocks to wait for a transaction to be confirmed, should set to 1 for local RPC
+export const BLOCK_CONFIRMATION = 1;
 
 const providerUrls = {
     [CHAIN_ID.ETHEREUM]: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,

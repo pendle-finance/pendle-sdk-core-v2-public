@@ -12,6 +12,7 @@ const toTest = [
     'Router',
     'VePendle',
     'VotingController',
+    'Misc',
 ];
 
 toTest.forEach((file) => {

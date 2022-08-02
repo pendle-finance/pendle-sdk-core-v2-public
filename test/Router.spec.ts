@@ -5,20 +5,34 @@ import {
     currentConfig,
     describeWrite,
     networkConnection,
-    TX_WAIT_TIME,
+    BLOCK_CONFIRMATION,
     WALLET,
 } from './util/testUtils';
 import {
     getBalance,
     approveHelper,
     REDEEM_FACTOR,
-    SWAP_FACTOR,
     SLIPPAGE_TYPE2,
     ADD_LIQUIDITY_FACTOR,
+    getTotalSupply,
+    REMOVE_LIQUIDITY_FACTOR,
+    DEFAULT_SWAP_AMOUNT,
+    DEFAULT_MINT_AMOUNT,
+    minBigNumber,
 } from './util/testHelper';
-import { BigNumber } from 'ethers';
+import { BigNumber as BN } from 'ethers';
+
+type BalanceSnapshot = {
+    ptBalance: BN;
+    scyBalance: BN;
+    ytBalance: BN;
+    usdcBalance: BN;
+    marketPtBalance: BN;
+    marketScyBalance: BN;
+};
+
 describe(Router, () => {
-    const router = new Router(currentConfig.router, networkConnection, ACTIVE_CHAIN_ID);
+    const router = Router.getRouter(networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
 
     it('#constructor', async () => {
@@ -31,8 +45,11 @@ describe(Router, () => {
             const scyAdd = (await getBalance('SCY', signer.address)).div(ADD_LIQUIDITY_FACTOR);
             const ptAdd = (await getBalance('PT', signer.address)).div(ADD_LIQUIDITY_FACTOR);
             await approveHelper('SCY', currentConfig.router, scyAdd);
-            const beforeMarketBalance = await getBalance('MARKET', signer.address);
             await approveHelper('PT', currentConfig.router, ptAdd);
+
+            const lpBalanceBefore = await getBalance('MARKET', signer.address);
+            const marketSupplyBefore = await getTotalSupply('MARKET');
+
             const addLiquidityTx = await router.addLiquidity(
                 signer.address,
                 currentConfig.marketAddress,
@@ -40,14 +57,21 @@ describe(Router, () => {
                 ptAdd,
                 SLIPPAGE_TYPE2
             );
-            await addLiquidityTx.wait(TX_WAIT_TIME);
-            const afterMarketBalance = await getBalance('MARKET', signer.address);
-            expect(afterMarketBalance.toBigInt()).toBeGreaterThan(beforeMarketBalance.toBigInt());
+            await addLiquidityTx.wait(BLOCK_CONFIRMATION);
+            const lpBalanceAfter = await getBalance('MARKET', signer.address);
+            const marketSupplyAfter = await getTotalSupply('MARKET');
+
+            expect(lpBalanceAfter.gt(lpBalanceBefore)).toBe(true);
+            expect(marketSupplyAfter.gt(marketSupplyBefore)).toBe(true);
+
+            expect(lpBalanceAfter.sub(lpBalanceBefore).eq(marketSupplyAfter.sub(marketSupplyBefore))).toBe(true);
         });
 
         it('#removeLiquidity', async () => {
-            const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REDEEM_FACTOR);
-            const beforeMarketBalance = await getBalance('MARKET', signer.address);
+            const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            const lpBalanceBefore = await getBalance('MARKET', signer.address);
+            const marketSupplyBefore = await getTotalSupply('MARKET');
+
             await approveHelper('MARKET', router.address, liquidityRemove);
 
             const removeLiquidityTx = await router.removeLiquidity(
@@ -56,115 +80,103 @@ describe(Router, () => {
                 liquidityRemove,
                 SLIPPAGE_TYPE2
             );
-            await removeLiquidityTx.wait(TX_WAIT_TIME);
-            const afterMarketBalance = await getBalance('MARKET', signer.address);
-            expect(afterMarketBalance.toBigInt()).toBeLessThan(beforeMarketBalance.toBigInt());
+            await removeLiquidityTx.wait(BLOCK_CONFIRMATION);
+
+            const lpBalanceAfter = await getBalance('MARKET', signer.address);
+            const marketSupplyAfter = await getTotalSupply('MARKET');
+
+            // lp balance reduced amount equals to liquidity removed
+            expect(lpBalanceBefore.sub(lpBalanceAfter).eq(liquidityRemove)).toBe(true);
+            expect(marketSupplyBefore.sub(marketSupplyAfter).eq(liquidityRemove)).toBe(true);
         });
 
         /*
          *  Type 1 of swap between Scy and PT
          */
         it('#swapExactPtForScy', async () => {
-            const [ptBalanceBefore, scyBalanceBefore] = await Promise.all([
-                getBalance('PT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            const swapAmount = ptBalanceBefore.div(SWAP_FACTOR);
-            await approveHelper('PT', router.address, swapAmount);
+            const balanceBefore = await getBalanceSnapshot();
+            const ptInAmount = getPtSwapAmount(balanceBefore);
+
+            await approveHelper('PT', router.address, ptInAmount);
             const swapTx = await router.swapExactPtForScy(
                 signer.address,
                 currentConfig.marketAddress,
-                swapAmount,
+                ptInAmount,
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
-            const [ptBalanceAfter, scyBalanceAfter] = await Promise.all([
-                getBalance('PT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            expect(ptBalanceAfter.toBigInt()).toBeLessThan(ptBalanceBefore.toBigInt());
-            expect(scyBalanceAfter.toBigInt()).toBeGreaterThan(scyBalanceBefore.toBigInt());
+            await swapTx.wait(BLOCK_CONFIRMATION);
+            // Reset approvement
+            await approveHelper('PT', router.address, 0);
+
+            const balanceAfter = await getBalanceSnapshot();
+            verifyBalanceChanges(balanceBefore, balanceAfter);
+            expect(balanceAfter.marketPtBalance.sub(balanceBefore.marketPtBalance).eq(ptInAmount)).toBe(true);
         });
 
         it('#swapPtForExactScy', async () => {
-            const [ptBalanceBefore, scyBalanceBefore] = await Promise.all([
-                getBalance('PT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectScyOut = getScySwapAmount(balanceBefore);
 
-            const getAmount = scyBalanceBefore.div(SWAP_FACTOR).div(SWAP_FACTOR);
-            await approveHelper('PT', router.address, ptBalanceBefore);
-
+            await approveHelper('PT', router.address, balanceBefore.ptBalance);
             const swapTx = await router.swapPtForExactScy(
                 signer.address,
                 currentConfig.marketAddress,
-                getAmount,
+                expectScyOut,
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
-            const [ptBalanceAfter, scyBalanceAfter] = await Promise.all([
-                getBalance('PT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            expect(ptBalanceAfter.toBigInt()).toBeLessThan(ptBalanceBefore.toBigInt());
-            expect(scyBalanceAfter.toBigInt()).toBeGreaterThan(scyBalanceBefore.toBigInt());
+            await swapTx.wait(BLOCK_CONFIRMATION);
+            // Reset approvement
+            await approveHelper('PT', router.address, 0);
 
-            // RESET
-            await approveHelper('PT', router.address, BigNumber.from(0));
+            const balanceAfter = await getBalanceSnapshot();
+            verifyBalanceChanges(balanceBefore, balanceAfter);
+
+            const netScyOut = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
+            verifyScyOut(expectScyOut, netScyOut);
         });
 
         it('#swapScyForExactPt', async () => {
-            const [ptBalanceBefore, scyBalanceBefore] = await Promise.all([
-                getBalance('PT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectPtOut = getPtSwapAmount(balanceBefore);
 
-            const amountGet = ptBalanceBefore.div(SWAP_FACTOR);
-            await approveHelper('SCY', router.address, scyBalanceBefore);
-
+            await approveHelper('SCY', router.address, balanceBefore.scyBalance);
             const swapTx = await router.swapScyForExactPt(
                 signer.address,
                 currentConfig.marketAddress,
-                amountGet,
+                expectPtOut,
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
-
-            const [ptBalanceAfter, scyBalanceAfter] = await Promise.all([
-                getBalance('PT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-
-            expect(ptBalanceAfter.toBigInt()).toBeGreaterThan(ptBalanceBefore.toBigInt());
-            expect(scyBalanceAfter.toBigInt()).toBeLessThan(scyBalanceBefore.toBigInt());
-
+            await swapTx.wait(BLOCK_CONFIRMATION);
             // RESET
-            await approveHelper('SCY', router.address, BigNumber.from(0));
+            await approveHelper('SCY', router.address, 0);
+
+            const balanceAfter = await getBalanceSnapshot();
+            verifyBalanceChanges(balanceBefore, balanceAfter);
+            const netPtOut = balanceAfter.ptBalance.sub(balanceBefore.ptBalance);
+            // we know exactly how much PT we get out
+            expect(netPtOut.eq(expectPtOut)).toBe(true);
         });
 
         it('#swapExactScyForPt', async () => {
-            const [ptBalanceBefore, scyBalanceBefore] = await Promise.all([
-                getBalance('PT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            const swapAmount = scyBalanceBefore.div(SWAP_FACTOR);
-            await approveHelper('SCY', router.address, swapAmount);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectScyIn = getScySwapAmount(balanceBefore);
 
+            await approveHelper('SCY', router.address, expectScyIn);
             const swapTx = await router.swapExactScyForPt(
                 signer.address,
                 currentConfig.marketAddress,
-                swapAmount,
+                expectScyIn,
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
+            await swapTx.wait(BLOCK_CONFIRMATION);
+            // RESET
+            await approveHelper('SCY', router.address, 0);
 
-            const [ptBalanceAfter, scyBalanceAfter] = await Promise.all([
-                getBalance('PT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
+            const balanceAfter = await getBalanceSnapshot();
+            verifyBalanceChanges(balanceBefore, balanceAfter);
 
-            expect(ptBalanceAfter.toBigInt()).toBeGreaterThan(ptBalanceBefore.toBigInt());
-            expect(scyBalanceAfter.toBigInt()).toBeLessThan(scyBalanceBefore.toBigInt());
+            const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
+            expect(netScyIn.eq(expectScyIn)).toBe(true);
         });
 
         /*
@@ -172,108 +184,88 @@ describe(Router, () => {
          */
 
         it('#swapExactScyForYt', async () => {
-            const [ytBalanceBefore, scyBalanceBefore] = await Promise.all([
-                getBalance('YT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            const swapAmount = scyBalanceBefore.div(SWAP_FACTOR);
-            await approveHelper('SCY', router.address, swapAmount);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectScyIn = getScySwapAmount(balanceBefore);
 
+            await approveHelper('SCY', router.address, expectScyIn);
             const swapTx = await router.swapExactScyForYt(
                 signer.address,
                 currentConfig.marketAddress,
-                swapAmount,
+                expectScyIn,
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
+            await swapTx.wait(BLOCK_CONFIRMATION);
+            // RESET
+            await approveHelper('SCY', router.address, 0);
 
-            const [ytBalanceAfter, scyBalanceAfter] = await Promise.all([
-                getBalance('YT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            expect(ytBalanceAfter.toBigInt()).toBeGreaterThan(ytBalanceBefore.toBigInt());
-            expect(scyBalanceAfter.toBigInt()).toBeLessThan(scyBalanceBefore.toBigInt());
+            const balanceAfter = await getBalanceSnapshot();
+            // Cannot use `verifyBalanceChanges` because the underlying logic of swapping YT/SCY
+            const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
+            expect(netScyIn.eq(expectScyIn)).toBe(true);
+            expect(balanceAfter.ytBalance.gt(balanceBefore.ytBalance)).toBe(true);
         });
 
         it('#swapYtForExactScy', async () => {
-            const [ytBalanceBefore, scyBalanceBefore] = await Promise.all([
-                getBalance('YT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectScyOut = getScySwapAmount(balanceBefore);
 
-            const getAmount = scyBalanceBefore.div(SWAP_FACTOR);
-            await approveHelper('YT', router.address, ytBalanceBefore);
-
+            await approveHelper('YT', router.address, balanceBefore.ytBalance);
             const swapTx = await router.swapYtForExactScy(
                 signer.address,
                 currentConfig.marketAddress,
-                getAmount,
+                expectScyOut,
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
-
-            const [ytBalanceAfter, scyBalanceAfter] = await Promise.all([
-                getBalance('YT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            expect(ytBalanceAfter.toBigInt()).toBeLessThan(ytBalanceBefore.toBigInt());
-            expect(scyBalanceAfter.toBigInt()).toBeGreaterThan(scyBalanceBefore.toBigInt());
-
+            await swapTx.wait(BLOCK_CONFIRMATION);
             //  RESET
-            await approveHelper('YT', router.address, BigNumber.from(0));
+            await approveHelper('YT', router.address, BN.from(0));
+
+            const balanceAfter = await getBalanceSnapshot();
+            const netScyOut = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
+            verifyScyOut(expectScyOut, netScyOut);
+            expect(balanceAfter.ytBalance.lt(balanceBefore.ytBalance)).toBe(true);
         });
 
         it('#swapScyForExactYt', async () => {
-            const [ytBalanceBefore, scyBalanceBefore] = await Promise.all([
-                getBalance('YT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            const getAmount = ytBalanceBefore.div(SWAP_FACTOR);
-            await approveHelper('SCY', router.address, scyBalanceBefore);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectYtOut = getYtSwapAmount(balanceBefore);
 
+            await approveHelper('SCY', router.address, balanceBefore.scyBalance);
             const swapTx = await router.swapScyForExactYt(
                 signer.address,
                 currentConfig.marketAddress,
-                getAmount,
+                expectYtOut,
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
-
-            const [ytBalanceAfter, scyBalanceAfter] = await Promise.all([
-                getBalance('YT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-
-            expect(ytBalanceAfter.toBigInt()).toBeGreaterThan(ytBalanceBefore.toBigInt());
-            expect(scyBalanceAfter.toBigInt()).toBeLessThan(scyBalanceBefore.toBigInt());
-
+            await swapTx.wait(BLOCK_CONFIRMATION);
             //  RESET
-            await approveHelper('SCY', router.address, BigNumber.from(0));
+            await approveHelper('SCY', router.address, BN.from(0));
+
+            const balanceAfter = await getBalanceSnapshot();
+            const netYtOut = balanceAfter.ytBalance.sub(balanceBefore.ytBalance);
+            expect(netYtOut.gte(expectYtOut)).toBe(true);
+            expect(balanceAfter.scyBalance.lt(balanceBefore.scyBalance)).toBe(true);
         });
 
         it('#swapExactYtForScy', async () => {
-            const [ytBalanceBefore, scyBalanceBefore] = await Promise.all([
-                getBalance('YT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            const swapAmount = ytBalanceBefore.div(SWAP_FACTOR);
-            await approveHelper('YT', router.address, swapAmount);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectYtIn = getYtSwapAmount(balanceBefore);
 
+            await approveHelper('YT', router.address, expectYtIn);
             const swapTx = await router.swapExactYtForScy(
                 signer.address,
                 currentConfig.marketAddress,
-                swapAmount,
+                expectYtIn,
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
+            await swapTx.wait(BLOCK_CONFIRMATION);
+            //  RESET
+            await approveHelper('YT', router.address, BN.from(0));
 
-            const [ytBalanceAfter, scyBalanceAfter] = await Promise.all([
-                getBalance('YT', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-
-            expect(ytBalanceAfter.toBigInt()).toBeLessThan(ytBalanceBefore.toBigInt());
-            expect(scyBalanceAfter.toBigInt()).toBeGreaterThan(scyBalanceBefore.toBigInt());
+            const balanceAfter = await getBalanceSnapshot();
+            const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
+            expect(netYtIn.eq(expectYtIn)).toBe(true);
+            expect(balanceAfter.scyBalance.gt(balanceBefore.scyBalance)).toBe(true);
         });
 
         /*
@@ -281,224 +273,274 @@ describe(Router, () => {
          */
 
         it('#swapExactRawTokenForPt', async () => {
-            jest.setTimeout(300000);
-            const [usdBalanceBefore, ptBalanceBefore] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('PT', signer.address),
-            ]);
-            const swapAmount = usdBalanceBefore.div(SWAP_FACTOR).div(SWAP_FACTOR);
-            await approveHelper('USDC', router.address, swapAmount);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectUsdcIn = getUsdcSwapAmount(balanceBefore);
 
+            await approveHelper('USDC', router.address, expectUsdcIn);
             const swapTx = await router.swapExactRawTokenForPt(
                 signer.address,
                 currentConfig.marketAddress,
-                swapAmount,
+                expectUsdcIn,
                 [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
+            await swapTx.wait(BLOCK_CONFIRMATION);
+            // RESET
+            await approveHelper('USDC', router.address, BN.from(0));
 
-            const [usdBalanceAfter, ptBalanceAfter] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('PT', signer.address),
-            ]);
-            expect(usdBalanceAfter.toBigInt()).toBeLessThan(usdBalanceBefore.toBigInt());
-            expect(ptBalanceAfter.toBigInt()).toBeGreaterThan(ptBalanceBefore.toBigInt());
+            const balanceAfter = await getBalanceSnapshot();
+            const netUsdcIn = balanceAfter.usdcBalance.sub(balanceBefore.usdcBalance).mul(-1);
+
+            expect(netUsdcIn.eq(expectUsdcIn)).toBe(true);
+            expect(balanceAfter.ptBalance.gt(balanceBefore.ptBalance)).toBe(true);
         });
 
         it('#swapExactPtForRawToken', async () => {
-            const [usdBalanceBefore, ptBalanceBefore] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('PT', signer.address),
-            ]);
-            const swapAmount = ptBalanceBefore.div(SWAP_FACTOR);
-            await approveHelper('PT', router.address, swapAmount);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectPtIn = getPtSwapAmount(balanceBefore);
 
+            await approveHelper('PT', router.address, expectPtIn);
             const swapTx = await router.swapExactPtForRawToken(
                 signer.address,
                 currentConfig.marketAddress,
-                swapAmount,
+                expectPtIn,
                 [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
+            await swapTx.wait(BLOCK_CONFIRMATION);
+            // RESET
+            await approveHelper('PT', router.address, BN.from(0));
 
-            const [usdBalanceAfter, ptBalanceAfter] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('PT', signer.address),
-            ]);
-            expect(usdBalanceAfter.toBigInt()).toBeGreaterThan(usdBalanceBefore.toBigInt());
-            expect(ptBalanceAfter.toBigInt()).toBeLessThan(ptBalanceBefore.toBigInt());
+            const balanceAfter = await getBalanceSnapshot();
+            const netPtIn = balanceAfter.ptBalance.sub(balanceBefore.ptBalance).mul(-1);
+            expect(netPtIn.eq(expectPtIn)).toBe(true);
+            expect(balanceAfter.usdcBalance.gt(balanceBefore.usdcBalance)).toBe(true);
         });
 
         it('#swapExactRawTokenForYt', async () => {
-            const [usdBalanceBefore, ytBalanceBefore] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('YT', signer.address),
-            ]);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectUsdcIn = getUsdcSwapAmount(balanceBefore);
 
-            const swapAmount = usdBalanceBefore.div(SWAP_FACTOR).div(SWAP_FACTOR);
-            await approveHelper('USDC', router.address, swapAmount);
-
+            await approveHelper('USDC', router.address, expectUsdcIn);
             const swapTx = await router.swapExactRawTokenForYt(
                 signer.address,
                 currentConfig.marketAddress,
-                swapAmount,
+                expectUsdcIn,
                 [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
+            await swapTx.wait(BLOCK_CONFIRMATION);
+            // RESET
+            await approveHelper('USDC', router.address, BN.from(0));
 
-            const [usdBalanceAfter, ytBalanceAfter] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('YT', signer.address),
-            ]);
-            expect(usdBalanceAfter.toBigInt()).toBeLessThan(usdBalanceBefore.toBigInt());
-            expect(ytBalanceAfter.toBigInt()).toBeGreaterThan(ytBalanceBefore.toBigInt());
+            const balanceAfter = await getBalanceSnapshot();
+            const netUsdcIn = balanceAfter.usdcBalance.sub(balanceBefore.usdcBalance).mul(-1);
+            expect(netUsdcIn.eq(expectUsdcIn)).toBe(true);
+            expect(balanceAfter.ytBalance.gt(balanceBefore.ytBalance)).toBe(true);
         });
 
         it('#swapExactYtForRawToken', async () => {
-            const [usdBalanceBefore, ytBalanceBefore] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('YT', signer.address),
-            ]);
-            const swapAmount = ytBalanceBefore.div(SWAP_FACTOR);
-            await approveHelper('YT', router.address, swapAmount);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectYtIn = getYtSwapAmount(balanceBefore);
 
+            await approveHelper('YT', router.address, expectYtIn);
             const swapTx = await router.swapExactYtForRawToken(
                 signer.address,
                 currentConfig.marketAddress,
-                swapAmount,
+                expectYtIn,
                 [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
-            await swapTx.wait(TX_WAIT_TIME);
+            await swapTx.wait(BLOCK_CONFIRMATION);
+            // RESET
+            await approveHelper('YT', router.address, BN.from(0));
 
-            const [usdBalanceAfter, ytBalanceAfter] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('YT', signer.address),
-            ]);
-
-            expect(usdBalanceAfter.toBigInt()).toBeGreaterThan(usdBalanceBefore.toBigInt());
-            expect(ytBalanceAfter.toBigInt()).toBeLessThan(ytBalanceBefore.toBigInt());
+            const balanceAfter = await getBalanceSnapshot();
+            const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
+            expect(netYtIn.eq(expectYtIn)).toBe(true);
+            expect(balanceAfter.usdcBalance.gt(balanceBefore.usdcBalance)).toBe(true);
         });
+
         /*
          * Type 4: Mint, redeem PY & SCY -> Raw token
          */
-
         it('#mintPyFromRawToken', async () => {
-            const [usdBalanceBefore, ytBalanceBefore, ptBalanceBefore] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('YT', signer.address),
-                getBalance('PT', signer.address),
-            ]);
-            const mintAmount = usdBalanceBefore.div(SWAP_FACTOR).div(ADD_LIQUIDITY_FACTOR).div(ADD_LIQUIDITY_FACTOR);
-            await approveHelper('USDC', router.address, mintAmount);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectUsdcIn = DEFAULT_MINT_AMOUNT;
 
+            await approveHelper('USDC', router.address, expectUsdcIn);
             const mintTx = await router.mintPyFromRawToken(
                 signer.address,
                 currentConfig.ytAddress,
-                mintAmount,
+                expectUsdcIn,
                 [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
-            await mintTx.wait(TX_WAIT_TIME);
+            await mintTx.wait(BLOCK_CONFIRMATION);
+            // RESET
+            await approveHelper('USDC', router.address, BN.from(0));
 
-            const [usdBalanceAfter, ytBalanceAfter, ptBalanceAfter] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('YT', signer.address),
-                getBalance('PT', signer.address),
-            ]);
-            expect(usdBalanceAfter.toBigInt()).toBeLessThan(usdBalanceBefore.toBigInt());
-            expect(ytBalanceAfter.toBigInt()).toBeGreaterThan(ytBalanceBefore.toBigInt());
-            expect(ptBalanceAfter.toBigInt()).toBeGreaterThan(ptBalanceBefore.toBigInt());
+            const balanceAfter = await getBalanceSnapshot();
+            const netUsdcIn = balanceAfter.usdcBalance.sub(balanceBefore.usdcBalance).mul(-1);
+            expect(netUsdcIn.eq(expectUsdcIn)).toBe(true);
+
+            const mintedPt = balanceAfter.ptBalance.sub(balanceBefore.ptBalance);
+            const mintedYt = balanceAfter.ytBalance.sub(balanceBefore.ytBalance);
+            expect(mintedPt.eq(mintedYt)).toBe(true);
+            expect(mintedPt.gt(0)).toBe(true);
         });
 
         it('#redeemPyToRawToken', async () => {
-            const [usdBalanceBefore, ytBalanceBefore, ptBalanceBefore] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('YT', signer.address),
-                getBalance('PT', signer.address),
-            ]);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectPyIn = getPyRedeemAmount(balanceBefore);
 
-            const redeemAmount =
-                ytBalanceBefore >= ptBalanceBefore
-                    ? ptBalanceBefore.div(REDEEM_FACTOR)
-                    : ytBalanceBefore.div(REDEEM_FACTOR);
+            if (expectPyIn.eq(0)) {
+                return;
+            }
 
-            await approveHelper('YT', router.address, redeemAmount);
-            await approveHelper('PT', router.address, redeemAmount);
-
+            await approveHelper('YT', router.address, expectPyIn);
+            await approveHelper('PT', router.address, expectPyIn);
             const redeemTx = await router.redeemPyToRawToken(
                 signer.address,
                 currentConfig.ytAddress,
-                redeemAmount,
+                expectPyIn,
                 [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
-            await redeemTx.wait(TX_WAIT_TIME);
+            await redeemTx.wait(BLOCK_CONFIRMATION);
+            // RESET
+            await approveHelper('PT', router.address, BN.from(0));
+            await approveHelper('YT', router.address, BN.from(0));
 
-            const [usdBalanceAfter, ytBalanceAfter, ptBalanceAfter] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('YT', signer.address),
-                getBalance('PT', signer.address),
-            ]);
-            expect(usdBalanceAfter.toBigInt()).toBeGreaterThan(usdBalanceBefore.toBigInt());
-            expect(ytBalanceAfter.toBigInt()).toBeLessThan(ytBalanceBefore.toBigInt());
-            expect(ptBalanceAfter.toBigInt()).toBeLessThan(ptBalanceBefore.toBigInt());
+            const balanceAfter = await getBalanceSnapshot();
+            const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
+            const netPtIn = balanceAfter.ptBalance.sub(balanceBefore.ptBalance).mul(-1);
+
+            expect(netYtIn.eq(expectPyIn)).toBe(true);
+            expect(netPtIn.eq(expectPyIn)).toBe(true);
+
+            expect(balanceAfter.usdcBalance.gt(balanceBefore.usdcBalance)).toBe(true);
         });
 
         it('#mintScyFromRawToken', async () => {
-            const [usdBalanceBefore, scyBalanceBefore] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectUsdcIn = DEFAULT_MINT_AMOUNT;
 
-            const amountMint = usdBalanceBefore.div(ADD_LIQUIDITY_FACTOR).div(ADD_LIQUIDITY_FACTOR);
-            await approveHelper('USDC', router.address, amountMint);
-
+            await approveHelper('USDC', router.address, expectUsdcIn);
             const mintTx = await router.mintScyFromRawToken(
                 signer.address,
                 currentConfig.scyAddress,
-                amountMint,
+                expectUsdcIn,
                 [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
-            await mintTx.wait(TX_WAIT_TIME);
+            await mintTx.wait(BLOCK_CONFIRMATION);
+            // RESET
+            await approveHelper('USDC', router.address, BN.from(0));
 
-            const [usdBalanceAfter, scyBalanceAfter] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            expect(usdBalanceAfter.toBigInt()).toBeLessThan(usdBalanceBefore.toBigInt());
-            expect(scyBalanceAfter.toBigInt()).toBeGreaterThan(scyBalanceBefore.toBigInt());
+            const balanceAfter = await getBalanceSnapshot();
+            const netUsdcIn = balanceAfter.usdcBalance.sub(balanceBefore.usdcBalance).mul(-1);
+            expect(netUsdcIn.eq(expectUsdcIn)).toBe(true);
+            expect(balanceAfter.scyBalance.gt(balanceBefore.scyBalance)).toBe(true);
         });
 
         it('#redeemScyToRawToken', async () => {
-            jest.setTimeout(300000);
-            const [usdBalanceBefore, scyBalanceBefore] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            const amountRedeem = scyBalanceBefore.div(REDEEM_FACTOR);
+            const balanceBefore = await getBalanceSnapshot();
+            const expectScyIn = getScyRedeemAmount(balanceBefore);
 
-            await approveHelper('SCY', router.address, amountRedeem);
+            if (expectScyIn.eq(0)) {
+                return;
+            }
 
+            await approveHelper('SCY', router.address, expectScyIn);
             const redeemTx = await router.redeemScyToRawToken(
                 signer.address,
                 currentConfig.scyAddress,
-                amountRedeem,
+                expectScyIn,
                 [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
-            await redeemTx.wait(4 * TX_WAIT_TIME);
+            await redeemTx.wait(BLOCK_CONFIRMATION);
+            // RESET
+            await approveHelper('SCY', router.address, BN.from(0));
 
-            const [usdBalanceAfter, scyBalanceAfter] = await Promise.all([
-                getBalance('USDC', signer.address),
-                getBalance('SCY', signer.address),
-            ]);
-            expect(usdBalanceAfter.toBigInt()).toBeGreaterThan(usdBalanceBefore.toBigInt());
-            expect(scyBalanceAfter.toBigInt()).toBeLessThan(scyBalanceBefore.toBigInt());
+            const balanceAfter = await getBalanceSnapshot();
+            const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
+            expect(netScyIn.eq(expectScyIn)).toBe(true);
+            expect(balanceAfter.usdcBalance.gt(balanceBefore.usdcBalance)).toBe(true);
         });
     });
+
+    // =============================HELPER FUNCTIONS====================================================
+    /**
+     * Helper function to get balance snapshot of the market
+     */
+    async function getBalanceSnapshot(): Promise<BalanceSnapshot> {
+        const [ptBalance, scyBalance, ytBalance, usdcBalance, marketPtBalance, marketScyBalance] = await Promise.all([
+            getBalance('PT', signer.address),
+            getBalance('SCY', signer.address),
+            getBalance('YT', signer.address),
+            getBalance('USDC', signer.address),
+            getBalance('PT', currentConfig.marketAddress),
+            getBalance('SCY', currentConfig.marketAddress),
+        ]);
+        return {
+            ptBalance,
+            scyBalance,
+            ytBalance,
+            usdcBalance,
+            marketPtBalance,
+            marketScyBalance,
+        };
+    }
+
+    /**
+     * Get a safe amount to swap in router.
+     *
+     * Ideally, all of the following functions should calculate the swap amount
+     * base on the balanceSnapshot.
+     *
+     * But due to the logic to get the correct swap amount is not yet implemented,
+     * we return the default swap amount.
+     */
+    function getScySwapAmount(balanceSnapshot: BalanceSnapshot) {
+        return DEFAULT_SWAP_AMOUNT;
+    }
+
+    function getPtSwapAmount(balanceSnapshot: BalanceSnapshot) {
+        return DEFAULT_SWAP_AMOUNT;
+    }
+
+    function getYtSwapAmount(balanceSnapshot: BalanceSnapshot) {
+        return DEFAULT_SWAP_AMOUNT;
+    }
+
+    function getUsdcSwapAmount(balanceSnapshot: BalanceSnapshot) {
+        return DEFAULT_SWAP_AMOUNT;
+    }
+
+    function getPyRedeemAmount(balanceSnapshot: BalanceSnapshot) {
+        return minBigNumber(balanceSnapshot.ptBalance, balanceSnapshot.ytBalance).div(REDEEM_FACTOR);
+    }
+
+    function getScyRedeemAmount(balanceSnapshot: BalanceSnapshot) {
+        return balanceSnapshot.scyBalance.div(REDEEM_FACTOR);
+    }
+
+    function verifyBalanceChanges(balanceBefore: BalanceSnapshot, balanceAfter: BalanceSnapshot) {
+        const ptBalanceDiff = balanceAfter.ptBalance.sub(balanceBefore.ptBalance);
+        const marketPtBalanceDiff = balanceAfter.marketPtBalance.sub(balanceBefore.marketPtBalance);
+        expect(ptBalanceDiff.eq(marketPtBalanceDiff.mul(-1))).toBe(true);
+
+        const scyBalanceDiff = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
+        const marketScyBalanceDiff = balanceAfter.marketScyBalance.sub(balanceBefore.marketScyBalance);
+        expect(scyBalanceDiff.eq(marketScyBalanceDiff.mul(-1))).toBe(true);
+    }
+
+    function verifyScyOut(expectScyOut: BN, netScyOut: BN) {
+        // netScyOut will differ from expectScyOut by 0.1%
+        expect(netScyOut.gte(expectScyOut)).toBe(true);
+        // netScyOut < expectScyOut * 100.1%
+        expect(netScyOut.lt(expectScyOut.add(expectScyOut.div(1000)))).toBe(true);
+    }
 });

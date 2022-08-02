@@ -6,10 +6,11 @@ import {
     currentConfig,
     describeWrite,
     networkConnection,
-    TX_WAIT_TIME,
+    BLOCK_CONFIRMATION,
     WALLET,
 } from './util/testUtils';
-import { getBalance, approveHelper, REDEEM_FACTOR, SLIPPAGE_TYPE2 } from './util/testHelper';
+import { getBalance, approveHelper, REDEEM_FACTOR, SLIPPAGE_TYPE2, DEFAULT_MINT_AMOUNT } from './util/testHelper';
+
 describe(SCY, () => {
     const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
@@ -20,60 +21,46 @@ describe(SCY, () => {
         expect(scy.chainId).toBe(ACTIVE_CHAIN_ID);
         expect(scy.contract).toBeInstanceOf(Contract);
         expect(scy.ERC20).toBeInstanceOf(ERC20);
+        expect(scy.contract.address).toBe(currentConfig.scyAddress);
     });
 
-    it('#userInfo', async () => {
-        const [userInfo, rewardTokens] = await Promise.all([
+    it('#userInfo & #contract', async () => {
+        const [userInfo, rewardTokens, rewardAmounts] = await Promise.all([
             scy.userInfo(currentConfig.deployer),
             scy.contract.callStatic.getRewardTokens(),
+            scy.contract.callStatic.accruedRewards(currentConfig.deployer),
         ]);
-        expect(userInfo.balance.toBigInt()).toBeGreaterThanOrEqual(0);
+        expect(userInfo.balance.gte(0)).toBe(true);
         for (let i = 0; i < rewardTokens.length; i++) {
             const { token, amount } = userInfo.rewards[i];
             expect(token).toBe(rewardTokens[i]);
-            expect(amount.toBigInt()).toBeGreaterThanOrEqual(0);
+            expect(amount.eq(rewardAmounts[i])).toBe(true);
         }
     });
 
     describeWrite(() => {
         it('#deposit', async () => {
-            const beforeBalance = await getBalance('SCY', signer.address);
-            const amount = decimalFactor(21);
+            const scyBalanceBefore = await getBalance('SCY', signer.address);
+            const amount = DEFAULT_MINT_AMOUNT;
+
             await approveHelper('USDC', currentConfig.scyAddress, amount);
             const depositTx = await scy.deposit(signer.address, currentConfig.usdcAddress, amount, SLIPPAGE_TYPE2);
-            await depositTx.wait(TX_WAIT_TIME);
-            const afterBalance = await getBalance('SCY', signer.address);
-            expect(afterBalance.toBigInt()).toBeGreaterThan(beforeBalance.toBigInt());
+            await depositTx.wait(BLOCK_CONFIRMATION);
+            await approveHelper('USDC', currentConfig.scyAddress, 0);
+
+            const scyBalanceAfter = await getBalance('SCY', signer.address);
+            expect(scyBalanceAfter.gt(scyBalanceBefore)).toBe(true);
         });
 
         it('#redeem', async () => {
             const redeemAmount = (await getBalance('SCY', signer.address)).div(REDEEM_FACTOR);
-            const beforeBalance = await getBalance('USDC', signer.address);
+            const usdcBalanceBefore = await getBalance('USDC', signer.address);
+
             const redeemTx = await scy.redeem(signer.address, currentConfig.usdcAddress, redeemAmount, SLIPPAGE_TYPE2);
-            await redeemTx.wait(TX_WAIT_TIME);
-            const afterBalance = await getBalance('USDC', signer.address);
-            expect(afterBalance.toBigInt()).toBeGreaterThan(beforeBalance.toBigInt());
-        });
-    });
-});
+            await redeemTx.wait(BLOCK_CONFIRMATION);
 
-describe('#contract', () => {
-    const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const signer = WALLET().wallet;
-    const { contract } = scy;
-
-    it('Read contract', async () => {
-        const rewardToken = await contract.callStatic.getRewardTokens();
-        expect(rewardToken.length).toBeGreaterThanOrEqual(0);
-    });
-
-    describeWrite(() => {
-        it('Claim reward', async () => {
-            const qiBalanceBefore = await getBalance('QI', signer.address);
-            const claimReward = await contract.connect(signer).claimRewards(signer.address);
-            await claimReward.wait(TX_WAIT_TIME);
-            const qiBalanceAfter = await getBalance('QI', signer.address);
-            expect(qiBalanceAfter.toBigInt()).toBeGreaterThan(qiBalanceBefore.toBigInt());
+            const usdcBalanceAfter = await getBalance('USDC', signer.address);
+            expect(usdcBalanceAfter.gt(usdcBalanceBefore)).toBe(true);
         });
     });
 });
