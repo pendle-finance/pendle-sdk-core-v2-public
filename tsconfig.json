@@ -17,7 +17,10 @@
         "plugins": [{ "transform": "@zerollup/ts-transform-paths" }]
     },
     "ts-node": {
-        "files": true
+        "files": true,
+        "compilerOptions": {
+            "module": "CommonJS"
+        }
     },
     "include": ["src/**/*"]
 }
