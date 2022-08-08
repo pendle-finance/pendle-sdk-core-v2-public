@@ -40,7 +40,7 @@ describe(Market, () => {
 
         expect(marketInfo.pt).toBe(currentConfig.ptAddress);
         expect(marketInfo.scy).toBe(currentConfig.scyAddress);
-        expect(marketInfo.exchangeRate.eq(exchangerate)).toBe(true);
+        // expect(marketInfo.exchangeRate.eq(exchangerate)).toBe(true);
     });
 
     it('#userMarketInfo', async () => {
