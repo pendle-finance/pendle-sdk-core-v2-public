@@ -36,7 +36,7 @@ describe(Market, () => {
 
     it('#marketInfo', async () => {
         const marketInfo = await market.getMarketInfo();
-        const exchangerate = await routerStatic.getExchangeRate(market.address);
+        const exchangerate = await routerStatic.callStatic.getExchangeRate(market.address);
 
         expect(marketInfo.pt).toBe(currentConfig.ptAddress);
         expect(marketInfo.scy).toBe(currentConfig.scyAddress);
