@@ -4,9 +4,9 @@ import { Wallet } from 'ethers';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../../src';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-4Ccb97.json';
+import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-599408.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
-import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-4e470E.json';
+import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-3fe528.json';
 import FUJI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-benqi.json';
 import MUMBAI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-benqi.json';
 
@@ -49,6 +49,7 @@ export const CONTRACT_ADDRESSES = {
             VE: FUJI_CORE_ADDRESSES.vePendle,
             VOTING_CONTROLLER: FUJI_CORE_ADDRESSES.votingController,
             PENDLE: FUJI_CORE_ADDRESSES.PENDLE,
+            PENDLE_TREASURY: FUJI_CORE_ADDRESSES.treasury,
         },
         BENQI: {
             SCY: FUJI_BENQI_ADDRESSES.SCY,
@@ -58,6 +59,7 @@ export const CONTRACT_ADDRESSES = {
             USDC: FUJI_TEST_BENQI_ADDRESSES.USD,
             QI: FUJI_TEST_BENQI_ADDRESSES.QI,
             QIUSDC: FUJI_TEST_BENQI_ADDRESSES.qiUSD,
+            FUND_KEEPER: FUJI_TEST_BENQI_ADDRESSES.fundKeeper,
         },
     },
     [CHAIN_ID.MUMBAI]: {
@@ -69,6 +71,7 @@ export const CONTRACT_ADDRESSES = {
             ROUTER_STATIC: MUMBAI_CORE_ADDRESSES.routerStatic,
             VE: MUMBAI_CORE_ADDRESSES.vePendle,
             PENDLE: MUMBAI_CORE_ADDRESSES.PENDLE,
+            PENDLE_TREASURY: MUMBAI_CORE_ADDRESSES.treasury,
         },
         BENQI: {
             SCY: MUMBAI_BENQI_ADDRESSES.SCY,
@@ -78,6 +81,7 @@ export const CONTRACT_ADDRESSES = {
             USDC: MUMBAI_TEST_BENQI_ADDRESSES.USD,
             QI: MUMBAI_TEST_BENQI_ADDRESSES.QI,
             QIUSDC: MUMBAI_TEST_BENQI_ADDRESSES.qiUSD,
+            FUND_KEEPER: MUMBAI_TEST_BENQI_ADDRESSES.fundKeeper,
         },
     },
 };
@@ -97,6 +101,8 @@ export const testConfig = (chainId: number) => ({
     usdcAddress: CONTRACT_ADDRESSES[chainId].BENQI.USDC,
     qiAddress: CONTRACT_ADDRESSES[chainId].BENQI.QI,
     pendle: CONTRACT_ADDRESSES[chainId].CORE.PENDLE,
+    fundKeeper: CONTRACT_ADDRESSES[chainId].BENQI.FUND_KEEPER,
+    pendleTreasury: CONTRACT_ADDRESSES[chainId].CORE.PENDLE_TREASURY,
 });
 
 export const currentConfig = testConfig(ACTIVE_CHAIN_ID);

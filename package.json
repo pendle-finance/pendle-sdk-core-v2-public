@@ -3,7 +3,7 @@
     "author": "Pendle Labs",
     "description": "SDK of Pendle Protocol.",
     "license": "MIT",
-    "version": "0.0.15",
+    "version": "0.0.16",
     "homepage": "https://pendle.finance",
     "keywords": [
         "pendle",
@@ -27,11 +27,12 @@
         "format": "yarn prettier --write \"{src,test}/**/*.{ts,js}\"",
         "lint": "yarn eslint \"{src,test}/**/*.{ts,js}\" --fix",
         "test": "yarn jest",
+        "test:prepare": "yarn ts-node test/util/prepareMarket.ts",
         "test:all": "yarn node test/all.js",
         "test:coverage": "yarn jest --coverage --maxWorkers=1"
     },
     "dependencies": {
-        "@pendle/core-v2": "0.8.1-beta",
+        "@pendle/core-v2": "0.8.1-gamma",
         "bignumber.js": "^9.0.2",
         "ethers": "^5.6.9"
     },
