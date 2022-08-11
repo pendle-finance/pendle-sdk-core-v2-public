@@ -3,6 +3,7 @@ import { Market, PT, SCY, YT } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 import { BigNumber } from 'ethers';
 import { decimalFactor } from '../src/entities/helper';
+import './util/BigNumberMatcher';
 
 describe(SDK, () => {
     const sdk = new SDK(networkConnection, ACTIVE_CHAIN_ID);
@@ -29,14 +30,14 @@ describe(SDK, () => {
         const userInfo = userPYPositions[0];
 
         expect(userInfo.pt).toBe(currentConfig.ptAddress);
-        expect(userInfo.ptBalance.eq(userPtBalance)).toBe(true);
+        expect(userInfo.ptBalance).toEqBN(userPtBalance);
 
         expect(userInfo.yt).toBe(currentConfig.ytAddress);
-        expect(userInfo.ytBalance.eq(userYtBalance)).toBe(true);
+        expect(userInfo.ytBalance).toEqBN(userYtBalance);
 
         const interest = userInfo.unclaimedInterest;
         expect(interest.token).toBe(interestToken);
-        expect(interest.amount.eq(interestAmount[1])).toBe(true);
+        expect(interest.amount).toEqBN(interestAmount[1]);
 
         const reward = userInfo.unclaimedRewards;
 
@@ -64,26 +65,22 @@ describe(SDK, () => {
 
         expect(userMarketInfo.market).toBe(currentConfig.marketAddress);
 
-        expect(userMarketInfo.lpBalance.eq(userBalance)).toBe(true);
+        expect(userMarketInfo.lpBalance).toEqBN(userBalance);
 
         expect(userMarketInfo.ptBalance.token).toBe(currentConfig.ptAddress);
-        expect(
-            userMarketInfo.ptBalance.amount.eq(userBalance.mul(marketInfo.state.totalPt).div(marketInfo.state.totalLp))
-        ).toBe(true);
+        expect(userMarketInfo.ptBalance.amount).toEqBN(
+            userBalance.mul(marketInfo.state.totalPt).div(marketInfo.state.totalLp)
+        );
 
         expect(userMarketInfo.scyBalance.token).toBe(currentConfig.scyAddress);
-        expect(
-            userMarketInfo.scyBalance.amount.eq(
-                userBalance.mul(marketInfo.state.totalScy).div(marketInfo.state.totalLp)
-            )
-        ).toBe(true);
+        expect(userMarketInfo.scyBalance.amount).toEqBN(
+            userBalance.mul(marketInfo.state.totalScy).div(marketInfo.state.totalLp)
+        );
 
         expect(userMarketInfo.assetBalance.assetType).toBe(scyInfo.assetType);
         expect(userMarketInfo.assetBalance.assetAddress).toBe(scyInfo.assetAddress);
-        expect(
-            userMarketInfo.assetBalance.amount.eq(
-                userMarketInfo.scyBalance.amount.mul(scyExchangeRate).div(decimalFactor(18))
-            )
-        ).toBe(true);
+        expect(userMarketInfo.assetBalance.amount).toEqBN(
+            userMarketInfo.scyBalance.amount.mul(scyExchangeRate).div(decimalFactor(18))
+        );
     });
 });

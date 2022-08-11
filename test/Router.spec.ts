@@ -21,6 +21,7 @@ import {
     minBigNumber,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
+import './util/BigNumberMatcher';
 
 type BalanceSnapshot = {
     ptBalance: BN;
@@ -61,10 +62,10 @@ describe(Router, () => {
             const lpBalanceAfter = await getBalance('MARKET', signer.address);
             const marketSupplyAfter = await getTotalSupply('MARKET');
 
-            expect(lpBalanceAfter.gt(lpBalanceBefore)).toBe(true);
-            expect(marketSupplyAfter.gt(marketSupplyBefore)).toBe(true);
+            expect(lpBalanceAfter).toBeGtBN(lpBalanceBefore);
+            expect(marketSupplyAfter).toBeGtBN(marketSupplyBefore);
 
-            expect(lpBalanceAfter.sub(lpBalanceBefore).eq(marketSupplyAfter.sub(marketSupplyBefore))).toBe(true);
+            expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(marketSupplyAfter.sub(marketSupplyBefore));
         });
 
         it('#removeLiquidity', async () => {
@@ -86,8 +87,8 @@ describe(Router, () => {
             const marketSupplyAfter = await getTotalSupply('MARKET');
 
             // lp balance reduced amount equals to liquidity removed
-            expect(lpBalanceBefore.sub(lpBalanceAfter).eq(liquidityRemove)).toBe(true);
-            expect(marketSupplyBefore.sub(marketSupplyAfter).eq(liquidityRemove)).toBe(true);
+            expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
+            expect(marketSupplyBefore.sub(marketSupplyAfter)).toEqBN(liquidityRemove);
         });
 
         /*
@@ -110,7 +111,7 @@ describe(Router, () => {
 
             const balanceAfter = await getBalanceSnapshot();
             verifyBalanceChanges(balanceBefore, balanceAfter);
-            expect(balanceAfter.marketPtBalance.sub(balanceBefore.marketPtBalance).eq(ptInAmount)).toBe(true);
+            expect(balanceAfter.marketPtBalance.sub(balanceBefore.marketPtBalance)).toEqBN(ptInAmount);
         });
 
         it('#swapPtForExactScy', async () => {
@@ -154,7 +155,7 @@ describe(Router, () => {
             verifyBalanceChanges(balanceBefore, balanceAfter);
             const netPtOut = balanceAfter.ptBalance.sub(balanceBefore.ptBalance);
             // we know exactly how much PT we get out
-            expect(netPtOut.eq(expectPtOut)).toBe(true);
+            expect(netPtOut).toEqBN(expectPtOut);
         });
 
         it('#swapExactScyForPt', async () => {
@@ -176,7 +177,7 @@ describe(Router, () => {
             verifyBalanceChanges(balanceBefore, balanceAfter);
 
             const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
-            expect(netScyIn.eq(expectScyIn)).toBe(true);
+            expect(netScyIn).toEqBN(expectScyIn);
         });
 
         /*
@@ -201,8 +202,8 @@ describe(Router, () => {
             const balanceAfter = await getBalanceSnapshot();
             // Cannot use `verifyBalanceChanges` because the underlying logic of swapping YT/SCY
             const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
-            expect(netScyIn.eq(expectScyIn)).toBe(true);
-            expect(balanceAfter.ytBalance.gt(balanceBefore.ytBalance)).toBe(true);
+            expect(netScyIn).toEqBN(expectScyIn);
+            expect(balanceAfter.ytBalance).toBeGtBN(balanceBefore.ytBalance);
         });
 
         it('#swapYtForExactScy', async () => {
@@ -223,7 +224,7 @@ describe(Router, () => {
             const balanceAfter = await getBalanceSnapshot();
             const netScyOut = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
             verifyScyOut(expectScyOut, netScyOut);
-            expect(balanceAfter.ytBalance.lt(balanceBefore.ytBalance)).toBe(true);
+            expect(balanceAfter.ytBalance).toBeLtBN(balanceBefore.ytBalance);
         });
 
         it('#swapScyForExactYt', async () => {
@@ -243,8 +244,8 @@ describe(Router, () => {
 
             const balanceAfter = await getBalanceSnapshot();
             const netYtOut = balanceAfter.ytBalance.sub(balanceBefore.ytBalance);
-            expect(netYtOut.gte(expectYtOut)).toBe(true);
-            expect(balanceAfter.scyBalance.lt(balanceBefore.scyBalance)).toBe(true);
+            expect(netYtOut).toBeGteBN(expectYtOut);
+            expect(balanceAfter.scyBalance).toBeLtBN(balanceBefore.scyBalance);
         });
 
         it('#swapExactYtForScy', async () => {
@@ -264,8 +265,8 @@ describe(Router, () => {
 
             const balanceAfter = await getBalanceSnapshot();
             const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
-            expect(netYtIn.eq(expectYtIn)).toBe(true);
-            expect(balanceAfter.scyBalance.gt(balanceBefore.scyBalance)).toBe(true);
+            expect(netYtIn).toEqBN(expectYtIn);
+            expect(balanceAfter.scyBalance).toBeGtBN(balanceBefore.scyBalance);
         });
 
         /*
@@ -291,8 +292,8 @@ describe(Router, () => {
             const balanceAfter = await getBalanceSnapshot();
             const netUsdcIn = balanceAfter.usdcBalance.sub(balanceBefore.usdcBalance).mul(-1);
 
-            expect(netUsdcIn.eq(expectUsdcIn)).toBe(true);
-            expect(balanceAfter.ptBalance.gt(balanceBefore.ptBalance)).toBe(true);
+            expect(netUsdcIn).toEqBN(expectUsdcIn);
+            expect(balanceAfter.ptBalance).toBeGtBN(balanceBefore.ptBalance);
         });
 
         it('#swapExactPtForRawToken', async () => {
@@ -313,8 +314,8 @@ describe(Router, () => {
 
             const balanceAfter = await getBalanceSnapshot();
             const netPtIn = balanceAfter.ptBalance.sub(balanceBefore.ptBalance).mul(-1);
-            expect(netPtIn.eq(expectPtIn)).toBe(true);
-            expect(balanceAfter.usdcBalance.gt(balanceBefore.usdcBalance)).toBe(true);
+            expect(netPtIn).toEqBN(expectPtIn);
+            expect(balanceAfter.usdcBalance).toBeGtBN(balanceBefore.usdcBalance);
         });
 
         it('#swapExactRawTokenForYt', async () => {
@@ -335,8 +336,8 @@ describe(Router, () => {
 
             const balanceAfter = await getBalanceSnapshot();
             const netUsdcIn = balanceAfter.usdcBalance.sub(balanceBefore.usdcBalance).mul(-1);
-            expect(netUsdcIn.eq(expectUsdcIn)).toBe(true);
-            expect(balanceAfter.ytBalance.gt(balanceBefore.ytBalance)).toBe(true);
+            expect(netUsdcIn).toEqBN(expectUsdcIn);
+            expect(balanceAfter.ytBalance).toBeGtBN(balanceBefore.ytBalance);
         });
 
         it('#swapExactYtForRawToken', async () => {
@@ -357,8 +358,8 @@ describe(Router, () => {
 
             const balanceAfter = await getBalanceSnapshot();
             const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
-            expect(netYtIn.eq(expectYtIn)).toBe(true);
-            expect(balanceAfter.usdcBalance.gt(balanceBefore.usdcBalance)).toBe(true);
+            expect(netYtIn).toEqBN(expectYtIn);
+            expect(balanceAfter.usdcBalance).toBeGtBN(balanceBefore.usdcBalance);
         });
 
         /*
@@ -382,12 +383,12 @@ describe(Router, () => {
 
             const balanceAfter = await getBalanceSnapshot();
             const netUsdcIn = balanceAfter.usdcBalance.sub(balanceBefore.usdcBalance).mul(-1);
-            expect(netUsdcIn.eq(expectUsdcIn)).toBe(true);
+            expect(netUsdcIn).toEqBN(expectUsdcIn);
 
             const mintedPt = balanceAfter.ptBalance.sub(balanceBefore.ptBalance);
             const mintedYt = balanceAfter.ytBalance.sub(balanceBefore.ytBalance);
-            expect(mintedPt.eq(mintedYt)).toBe(true);
-            expect(mintedPt.gt(0)).toBe(true);
+            expect(mintedPt).toEqBN(mintedYt);
+            expect(mintedPt).toBeGtBN(0);
         });
 
         it('#redeemPyToRawToken', async () => {
@@ -416,10 +417,10 @@ describe(Router, () => {
             const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
             const netPtIn = balanceAfter.ptBalance.sub(balanceBefore.ptBalance).mul(-1);
 
-            expect(netYtIn.eq(expectPyIn)).toBe(true);
-            expect(netPtIn.eq(expectPyIn)).toBe(true);
+            expect(netYtIn).toEqBN(expectPyIn);
+            expect(netPtIn).toEqBN(expectPyIn);
 
-            expect(balanceAfter.usdcBalance.gt(balanceBefore.usdcBalance)).toBe(true);
+            expect(balanceAfter.usdcBalance).toBeGtBN(balanceBefore.usdcBalance);
         });
 
         it('#mintScyFromRawToken', async () => {
@@ -440,8 +441,8 @@ describe(Router, () => {
 
             const balanceAfter = await getBalanceSnapshot();
             const netUsdcIn = balanceAfter.usdcBalance.sub(balanceBefore.usdcBalance).mul(-1);
-            expect(netUsdcIn.eq(expectUsdcIn)).toBe(true);
-            expect(balanceAfter.scyBalance.gt(balanceBefore.scyBalance)).toBe(true);
+            expect(netUsdcIn).toEqBN(expectUsdcIn);
+            expect(balanceAfter.scyBalance).toBeGtBN(balanceBefore.scyBalance);
         });
 
         it('#redeemScyToRawToken', async () => {
@@ -466,8 +467,8 @@ describe(Router, () => {
 
             const balanceAfter = await getBalanceSnapshot();
             const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
-            expect(netScyIn.eq(expectScyIn)).toBe(true);
-            expect(balanceAfter.usdcBalance.gt(balanceBefore.usdcBalance)).toBe(true);
+            expect(netScyIn).toEqBN(expectScyIn);
+            expect(balanceAfter.usdcBalance).toBeGtBN(balanceBefore.usdcBalance);
         });
     });
 
@@ -530,17 +531,17 @@ describe(Router, () => {
     function verifyBalanceChanges(balanceBefore: BalanceSnapshot, balanceAfter: BalanceSnapshot) {
         const ptBalanceDiff = balanceAfter.ptBalance.sub(balanceBefore.ptBalance);
         const marketPtBalanceDiff = balanceAfter.marketPtBalance.sub(balanceBefore.marketPtBalance);
-        expect(ptBalanceDiff.eq(marketPtBalanceDiff.mul(-1))).toBe(true);
+        expect(ptBalanceDiff).toEqBN(marketPtBalanceDiff.mul(-1));
 
         const scyBalanceDiff = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
         const marketScyBalanceDiff = balanceAfter.marketScyBalance.sub(balanceBefore.marketScyBalance);
-        expect(scyBalanceDiff.eq(marketScyBalanceDiff.mul(-1))).toBe(true);
+        expect(scyBalanceDiff).toEqBN(marketScyBalanceDiff.mul(-1));
     }
 
     function verifyScyOut(expectScyOut: BN, netScyOut: BN) {
         // netScyOut will differ from expectScyOut by 0.1%
-        expect(netScyOut.gte(expectScyOut)).toBe(true);
+        expect(netScyOut).toBeGteBN(expectScyOut);
         // netScyOut < expectScyOut * 100.1%
-        expect(netScyOut.lt(expectScyOut.add(expectScyOut.div(1000)))).toBe(true);
+        expect(netScyOut).toBeLtBN(expectScyOut.add(expectScyOut.div(1000)));
     }
 });

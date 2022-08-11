@@ -9,6 +9,7 @@ import {
     BLOCK_CONFIRMATION,
     WALLET,
 } from './util/testUtils';
+import './util/BigNumberMatcher';
 
 describe(VePendle, () => {
     const ve = new VePendle(currentConfig.veAddress, networkConnection, ACTIVE_CHAIN_ID);
@@ -47,7 +48,7 @@ describe('#contract', () => {
             const lockTx = await contract.connect(signer).increaseLockPosition(decimalFactor(19), newExpiry);
             await lockTx.wait(BLOCK_CONFIRMATION);
             const pendleBalanceAfter = await pendle.balanceOf(signer.address);
-            expect(pendleBalanceAfter.lt(pendleBalanceBefore)).toBe(true);
+            expect(pendleBalanceAfter).toBeLtBN(pendleBalanceBefore);
         });
 
         // Can only test withdraw by advancing the time on a local fork
