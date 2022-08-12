@@ -10,6 +10,7 @@ import {
     WALLET,
 } from './util/testUtils';
 import { getBalance, approveHelper, REDEEM_FACTOR, SLIPPAGE_TYPE2, DEFAULT_MINT_AMOUNT } from './util/testHelper';
+import './util/BigNumberMatcher';
 
 describe(SCY, () => {
     const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
@@ -30,11 +31,11 @@ describe(SCY, () => {
             scy.contract.callStatic.getRewardTokens(),
             scy.contract.callStatic.accruedRewards(currentConfig.deployer),
         ]);
-        expect(userInfo.balance.gte(0)).toBe(true);
+        expect(userInfo.balance).toBeGteBN(0);
         for (let i = 0; i < rewardTokens.length; i++) {
             const { token, amount } = userInfo.rewards[i];
             expect(token).toBe(rewardTokens[i]);
-            expect(amount.eq(rewardAmounts[i])).toBe(true);
+            expect(amount).toEqBN(rewardAmounts[i]);
         }
     });
 
@@ -49,7 +50,7 @@ describe(SCY, () => {
             await approveHelper('USDC', currentConfig.scyAddress, 0);
 
             const scyBalanceAfter = await getBalance('SCY', signer.address);
-            expect(scyBalanceAfter.gt(scyBalanceBefore)).toBe(true);
+            expect(scyBalanceAfter).toBeGtBN(scyBalanceBefore);
         });
 
         it('#redeem', async () => {
@@ -60,7 +61,7 @@ describe(SCY, () => {
             await redeemTx.wait(BLOCK_CONFIRMATION);
 
             const usdcBalanceAfter = await getBalance('USDC', signer.address);
-            expect(usdcBalanceAfter.gt(usdcBalanceBefore)).toBe(true);
+            expect(usdcBalanceAfter).toBeGtBN(usdcBalanceBefore);
         });
     });
 });

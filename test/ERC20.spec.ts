@@ -9,6 +9,7 @@ import {
     BLOCK_CONFIRMATION,
     WALLET,
 } from './util/testUtils';
+import './util/BigNumberMatcher';
 
 describe(ERC20, () => {
     const usdc = new ERC20(currentConfig.usdcAddress, networkConnection, ACTIVE_CHAIN_ID);
@@ -32,7 +33,7 @@ describe(ERC20, () => {
         expect(decimal).toBeGreaterThanOrEqual(6);
         expect(name).toBeDefined();
         expect(symbol).toBeDefined();
-        expect(totalSupply.gte(0)).toBe(true);
+        expect(totalSupply).toBeGteBN(0);
     });
 
     describeWrite(() => {
@@ -42,7 +43,7 @@ describe(ERC20, () => {
             await approveTx.wait(BLOCK_CONFIRMATION);
 
             const currentAllowance = await usdc.allowance(signer.address, currentConfig.marketAddress);
-            expect(currentAllowance.eq(approveAmount)).toBe(true);
+            expect(currentAllowance).toEqBN(approveAmount);
 
             const resetTx = await usdc.approve(currentConfig.marketAddress, 0);
             await resetTx.wait(BLOCK_CONFIRMATION);
@@ -56,7 +57,7 @@ describe(ERC20, () => {
             await transferTx.wait(BLOCK_CONFIRMATION);
 
             const afterBalance = await usdc.balanceOf(signer.address);
-            expect(beforeBalance.sub(afterBalance).eq(transferAmount)).toBe(true);
+            expect(beforeBalance.sub(afterBalance)).toEqBN(transferAmount);
         });
     });
 });
