@@ -13,12 +13,12 @@ import MUMBAI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-benqi
 config();
 
 // Change this to the current active network
-export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID);
+export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID!);
 const LOCAL_CHAIN_ID = 31337;
-const USE_LOCAL = !!process.env.USE_LOCAL;
+const USE_LOCAL = process.env.USE_LOCAL === '1';
 
 export const describeWrite = (fn: () => any) =>
-    (process.env.INCLUDE_WRITE ? describe : describe.skip)('Write functions', fn);
+    (process.env.INCLUDE_WRITE === '1' ? describe : describe.skip)('Write functions', fn);
 
 // How much blocks to wait for a transaction to be confirmed, should set to 1 for local RPC
 export const BLOCK_CONFIRMATION = 1;
