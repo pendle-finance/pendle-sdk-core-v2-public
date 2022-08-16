@@ -32,14 +32,14 @@
         "test:coverage": "yarn jest --coverage --maxWorkers=1"
     },
     "dependencies": {
-        "@pendle/core-v2": "0.8.1-gamma",
-        "bignumber.js": "^9.0.2",
+        "@pendle/core-v2": "0.9.0-gamma-2",
+        "bignumber.js": "^9.1.0",
         "ethers": "^5.6.9"
     },
     "devDependencies": {
         "@size-limit/preset-small-lib": "^8.0.0",
         "@types/jest": "^28.1.6",
-        "@typescript-eslint/parser": "^5.32.0",
+        "@typescript-eslint/parser": "^5.33.0",
         "dotenv": "^16.0.1",
         "eslint": "^8.21.0",
         "eslint-config-prettier": "^8.5.0",
