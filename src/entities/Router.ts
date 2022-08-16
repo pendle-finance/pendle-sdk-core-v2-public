@@ -379,7 +379,7 @@ export class Router {
         ).contract.callStatic.getTokensOut();
         const { output } = await this.outputParams(
             SCY,
-            BN.from(netPyIn).mul(constants.One).div(pyIndex),
+            BN.from(netPyIn).mul(constants.WeiPerEther).div(pyIndex),
             tokenOut,
             tokenRedeemScyList,
             (output) =>
