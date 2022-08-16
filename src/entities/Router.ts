@@ -16,6 +16,7 @@ import {
     constants,
     Contract,
 } from 'ethers';
+import { KYBER_API } from '../constants';
 import { calcSlippedDownAmount, calcSlippedUpAmount, getContractAddresses } from './helper';
 import { Market } from './Market';
 import { SCY as SCYEntity } from './SCY';
@@ -65,12 +66,7 @@ export class Router {
         encodedSwapData: BytesLike;
     }> {
         if (tokenIn.toLowerCase() === tokenOut.toLowerCase()) return { outputAmount: amountIn, encodedSwapData: [] };
-        const kyberAPIURL = {
-            1: 'https://aggregator-api.kyberswap.com/ethereum/route/encode',
-            43113: 'https://aggregator-api.kyberswap.com/fuji/route/encode',
-            43114: 'https://aggregator-api.kyberswap.com/avalanche/route/encode',
-        } as const;
-        const { data }: { data: ReturnType<typeof this.kybercall> } = await axios.get(kyberAPIURL[this.chainId], {
+        const { data } = await axios.get(KYBER_API[this.chainId], {
             params: { tokenIn, tokenOut, amountIn: BN.from(amountIn).toString(), to: this.contract.address },
             headers: { 'Accept-Version': 'Latest' },
         });
