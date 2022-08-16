@@ -454,15 +454,9 @@ export class Router {
         const netScyIn = await this.contract
             .connect(this.networkConnection.signer!)
             .callStatic.swapScyForExactYt(receiver, market, exactYtOut, Router.MAX_AMOUNT);
-        if (overrides) {
-            return this.contract
-                .connect(this.networkConnection.signer!)
-                .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
-        } else {
-            return this.contract
-                .connect(this.networkConnection.signer!)
-                .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage));
-        }
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
     }
 
     async swapExactTokenForYt(
