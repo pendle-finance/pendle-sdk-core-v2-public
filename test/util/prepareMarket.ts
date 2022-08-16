@@ -35,22 +35,22 @@ async function main() {
 
     console.log('minting PY');
     await router
-        .mintPyFromRawToken(
+        .mintPyFromToken(
             signerAddress,
             currentConfig.ytAddress,
+            currentConfig.usdcAddress,
             USDC_TO_MINT_PY,
-            [currentConfig.usdcAddress],
             SLIPPAGE_TYPE3
         )
         .then((tx) => tx.wait());
 
     console.log('minting SCY');
     await router
-        .mintScyFromRawToken(
+        .mintScyFromToken(
             signerAddress,
             currentConfig.scyAddress,
+            currentConfig.usdcAddress,
             USDC_TO_MINT_SCY,
-            [currentConfig.usdcAddress],
             SLIPPAGE_TYPE3
         )
         .then(async (tx) => await tx.wait());
