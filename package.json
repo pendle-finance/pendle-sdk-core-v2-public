@@ -26,6 +26,7 @@
     "scripts": {
         "format": "yarn prettier --write \"{src,test}/**/*.{ts,js}\"",
         "lint": "yarn eslint \"{src,test}/**/*.{ts,js}\" --fix",
+        "check-types": "tsc --noemit",
         "test": "yarn jest",
         "test:prepare": "yarn ts-node test/util/prepareMarket.ts",
         "test:all": "yarn node test/all.js",

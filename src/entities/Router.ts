@@ -22,6 +22,13 @@ import { Market } from './Market';
 import { SCY as SCYEntity } from './SCY';
 import { YT as YTEntity } from './YT';
 
+export type KybercallData = {
+    amountInUsd?: number;
+    amountOutUsd?: number;
+    outputAmount: BigNumberish;
+    encodedSwapData: BytesLike;
+};
+
 export class Router {
     static readonly MIN_AMOUNT = 0;
     static readonly MAX_AMOUNT = constants.MaxUint256;
@@ -59,12 +66,7 @@ export class Router {
         tokenIn: Address,
         tokenOut: Address,
         amountIn: BigNumberish
-    ): Promise<{
-        amountInUsd?: number;
-        amountOutUsd?: number;
-        outputAmount: BigNumberish;
-        encodedSwapData: BytesLike;
-    }> {
+    ): Promise<KybercallData> {
         if (tokenIn.toLowerCase() === tokenOut.toLowerCase()) return { outputAmount: amountIn, encodedSwapData: [] };
         const { data } = await axios.get(KYBER_API[this.chainId], {
             params: { tokenIn, tokenOut, amountIn: BN.from(amountIn).toString(), to: this.contract.address },
@@ -81,7 +83,7 @@ export class Router {
     ): Promise<{
         netOut: BN;
         input: TokenInputStructOutput;
-        kybercallData: Awaited<ReturnType<typeof this.kybercall>>;
+        kybercallData: KybercallData;
     }> {
         const possibleOutAmounts = tokenMintScyList.map(async (tokenMintScy) => {
             const kybercallData = await this.kybercall(tokenIn, tokenMintScy, netTokenIn);
@@ -107,7 +109,7 @@ export class Router {
     ): Promise<{
         netOut: BN;
         output: TokenOutputStructOutput;
-        kybercallData: Awaited<ReturnType<typeof this.kybercall>>;
+        kybercallData: KybercallData;
     }> {
         const possibleOutAmounts = tokenRedeemScyList.map(async (tokenRedeemScy) => {
             const amountIn = await new SCYEntity(
