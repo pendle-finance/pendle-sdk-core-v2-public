@@ -535,7 +535,7 @@ describe(Router, () => {
 
         const scyBalanceDiff = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
         const marketScyBalanceDiff = balanceAfter.marketScyBalance.sub(balanceBefore.marketScyBalance);
-        expect(scyBalanceDiff).toEqBN(marketScyBalanceDiff.mul(-1));
+        expect(scyBalanceDiff).toBeLtBN(marketScyBalanceDiff.mul(-1));
     }
 
     function verifyScyOut(expectScyOut: BN, netScyOut: BN) {
