@@ -47,5 +47,5 @@ export const MUMBAI_ADDRESSES: ContractAddresses = {
 export const KYBER_API = {
     [CHAIN_ID.ETHEREUM]: 'https://aggregator-api.kyberswap.com/ethereum/route/encode',
     [CHAIN_ID.AVALANCHE]: 'https://aggregator-api.kyberswap.com/avalanche/route/encode',
-    [CHAIN_ID.FUJI]: 'https://aggregator-api.kyberswap.com/fuji/route/encode', // FIXME: This doesn't work
+    [CHAIN_ID.FUJI]: 'https://aggregator-api.stg.kyberengineering.io/fuji/route/encode',
 } as const;
