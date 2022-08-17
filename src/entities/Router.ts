@@ -172,6 +172,31 @@ export class Router {
             );
     }
 
+    // TODO: This is "the same" as addLiquidityDualScyAndPt, but with different function name.
+    // We should refactor this to some how  reuse the function?
+    async addLiquidityDualIbTokenAndPt(
+        receiver: Address,
+        market: Address,
+        ibTokenDesired: BigNumberish,
+        ptDesired: BigNumberish,
+        slippage: number,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        const [netLpOut] = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.addLiquidityDualIbTokenAndPt(receiver, market, ibTokenDesired, ptDesired, Router.MIN_AMOUNT);
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .addLiquidityDualIbTokenAndPt(
+                receiver,
+                market,
+                ibTokenDesired,
+                ptDesired,
+                calcSlippedDownAmount(netLpOut, slippage),
+                overrides
+            );
+    }
+
     async removeLiquidityDualScyAndPt(
         receiver: Address,
         market: Address,
@@ -189,6 +214,28 @@ export class Router {
                 market,
                 lpToRemove,
                 calcSlippedDownAmount(netScyOut, slippage),
+                calcSlippedDownAmount(netPtOut, slippage),
+                overrides
+            );
+    }
+
+    async removeLiquidityDualIbTokenAndPt(
+        receiver: Address,
+        market: Address,
+        lpToRemove: BigNumberish,
+        slippage: number,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        const [netIbTokenOut, netPtOut] = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.removeLiquidityDualIbTokenAndPt(receiver, market, lpToRemove, Router.MIN_AMOUNT, Router.MIN_AMOUNT);
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .removeLiquidityDualIbTokenAndPt(
+                receiver,
+                market,
+                lpToRemove,
+                calcSlippedDownAmount(netIbTokenOut, slippage),
                 calcSlippedDownAmount(netPtOut, slippage),
                 overrides
             );
