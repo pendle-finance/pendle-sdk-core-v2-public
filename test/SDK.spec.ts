@@ -1,7 +1,6 @@
 import { SDK } from '../src/entities/SDK';
 import { Market, PT, SCY, YT } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
-import { BigNumber } from 'ethers';
 import { decimalFactor } from '../src/entities/helper';
 import './util/BigNumberMatcher';
 

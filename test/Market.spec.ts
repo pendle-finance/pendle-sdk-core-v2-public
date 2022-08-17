@@ -1,4 +1,4 @@
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { Market, SCY } from '../src';
 import { decimalFactor, getRouterStatic } from '../src/entities/helper';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testUtils';

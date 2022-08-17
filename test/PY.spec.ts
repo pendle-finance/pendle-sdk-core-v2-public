@@ -1,4 +1,3 @@
-import { Contract } from 'ethers';
 import { PT, YT } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 import './util/BigNumberMatcher';

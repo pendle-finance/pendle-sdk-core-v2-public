@@ -1,9 +1,8 @@
-import { BigNumber as BN, Contract } from 'ethers';
-import { CHAIN_ID, ERC20 } from '../src';
+import { BigNumber as BN } from 'ethers';
+import { CHAIN_ID } from '../src';
 import {
     calcSlippedDownAmount,
     calcSlippedUpAmount,
-    decimalFactor,
     getContractAddresses,
     InvalidSlippageError,
     isMainchain,
