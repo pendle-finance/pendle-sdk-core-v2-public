@@ -65,7 +65,14 @@ export class Router {
     async kybercall(tokenIn: Address, tokenOut: Address, amountIn: BigNumberish): Promise<KybercallData> {
         if (tokenIn.toLowerCase() === tokenOut.toLowerCase()) return { outputAmount: amountIn, encodedSwapData: [] };
         const { data } = await axios.get(KYBER_API[this.chainId], {
-            params: { tokenIn, tokenOut, amountIn: BN.from(amountIn).toString(), to: this.contract.address },
+            params: {
+                tokenIn,
+                tokenOut,
+                amountIn: BN.from(amountIn).toString(),
+                to: this.contract.address,
+                // set the slippage to 20% since we already enforced the minimum output in our contract
+                slippageTolerance: 2_000,
+            },
             headers: { 'Accept-Version': 'Latest' },
         });
         return data;
