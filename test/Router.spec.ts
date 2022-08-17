@@ -270,19 +270,19 @@ describe(Router, () => {
         });
 
         /*
-         * Type 3: Raw token with PT & YT
+         * Type 3: Token with PT & YT
          */
 
-        it('#swapExactRawTokenForPt', async () => {
+        it('#swapExactTokenForPt', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectUsdcIn = getUsdcSwapAmount(balanceBefore);
 
             await approveHelper('USDC', router.address, expectUsdcIn);
-            const swapTx = await router.swapExactRawTokenForPt(
+            const swapTx = await router.swapExactTokenForPt(
                 signer.address,
                 currentConfig.marketAddress,
+                currentConfig.usdcAddress,
                 expectUsdcIn,
-                [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
             await swapTx.wait(BLOCK_CONFIRMATION);
@@ -296,16 +296,16 @@ describe(Router, () => {
             expect(balanceAfter.ptBalance).toBeGtBN(balanceBefore.ptBalance);
         });
 
-        it('#swapExactPtForRawToken', async () => {
+        it('#swapExactPtForToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectPtIn = getPtSwapAmount(balanceBefore);
 
             await approveHelper('PT', router.address, expectPtIn);
-            const swapTx = await router.swapExactPtForRawToken(
+            const swapTx = await router.swapExactPtForToken(
                 signer.address,
                 currentConfig.marketAddress,
                 expectPtIn,
-                [currentConfig.usdcAddress],
+                currentConfig.usdcAddress,
                 SLIPPAGE_TYPE2
             );
             await swapTx.wait(BLOCK_CONFIRMATION);
@@ -318,16 +318,16 @@ describe(Router, () => {
             expect(balanceAfter.usdcBalance).toBeGtBN(balanceBefore.usdcBalance);
         });
 
-        it('#swapExactRawTokenForYt', async () => {
+        it('#swapExactTokenForYt', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectUsdcIn = getUsdcSwapAmount(balanceBefore);
 
             await approveHelper('USDC', router.address, expectUsdcIn);
-            const swapTx = await router.swapExactRawTokenForYt(
+            const swapTx = await router.swapExactTokenForYt(
                 signer.address,
                 currentConfig.marketAddress,
+                currentConfig.usdcAddress,
                 expectUsdcIn,
-                [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
             await swapTx.wait(BLOCK_CONFIRMATION);
@@ -340,16 +340,16 @@ describe(Router, () => {
             expect(balanceAfter.ytBalance).toBeGtBN(balanceBefore.ytBalance);
         });
 
-        it('#swapExactYtForRawToken', async () => {
+        it('#swapExactYtForToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtIn = getYtSwapAmount(balanceBefore);
 
             await approveHelper('YT', router.address, expectYtIn);
-            const swapTx = await router.swapExactYtForRawToken(
+            const swapTx = await router.swapExactYtForToken(
                 signer.address,
                 currentConfig.marketAddress,
                 expectYtIn,
-                [currentConfig.usdcAddress],
+                currentConfig.usdcAddress,
                 SLIPPAGE_TYPE2
             );
             await swapTx.wait(BLOCK_CONFIRMATION);
@@ -363,18 +363,18 @@ describe(Router, () => {
         });
 
         /*
-         * Type 4: Mint, redeem PY & SCY -> Raw token
+         * Type 4: Mint, redeem PY & SCY -> Token
          */
-        it('#mintPyFromRawToken', async () => {
+        it('#mintPyFromToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectUsdcIn = DEFAULT_MINT_AMOUNT;
 
             await approveHelper('USDC', router.address, expectUsdcIn);
-            const mintTx = await router.mintPyFromRawToken(
+            const mintTx = await router.mintPyFromToken(
                 signer.address,
                 currentConfig.ytAddress,
+                currentConfig.usdcAddress,
                 expectUsdcIn,
-                [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
             await mintTx.wait(BLOCK_CONFIRMATION);
@@ -391,7 +391,7 @@ describe(Router, () => {
             expect(mintedPt).toBeGtBN(0);
         });
 
-        it('#redeemPyToRawToken', async () => {
+        it('#redeemPyToToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectPyIn = getPyRedeemAmount(balanceBefore);
 
@@ -401,11 +401,11 @@ describe(Router, () => {
 
             await approveHelper('YT', router.address, expectPyIn);
             await approveHelper('PT', router.address, expectPyIn);
-            const redeemTx = await router.redeemPyToRawToken(
+            const redeemTx = await router.redeemPyToToken(
                 signer.address,
                 currentConfig.ytAddress,
                 expectPyIn,
-                [currentConfig.usdcAddress],
+                currentConfig.usdcAddress,
                 SLIPPAGE_TYPE2
             );
             await redeemTx.wait(BLOCK_CONFIRMATION);
@@ -423,16 +423,16 @@ describe(Router, () => {
             expect(balanceAfter.usdcBalance).toBeGtBN(balanceBefore.usdcBalance);
         });
 
-        it('#mintScyFromRawToken', async () => {
+        it('#mintScyFromToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectUsdcIn = DEFAULT_MINT_AMOUNT;
 
             await approveHelper('USDC', router.address, expectUsdcIn);
-            const mintTx = await router.mintScyFromRawToken(
+            const mintTx = await router.mintScyFromToken(
                 signer.address,
                 currentConfig.scyAddress,
+                currentConfig.usdcAddress,
                 expectUsdcIn,
-                [currentConfig.usdcAddress],
                 SLIPPAGE_TYPE2
             );
             await mintTx.wait(BLOCK_CONFIRMATION);
@@ -445,7 +445,7 @@ describe(Router, () => {
             expect(balanceAfter.scyBalance).toBeGtBN(balanceBefore.scyBalance);
         });
 
-        it('#redeemScyToRawToken', async () => {
+        it('#redeemScyToToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyIn = getScyRedeemAmount(balanceBefore);
 
@@ -454,11 +454,11 @@ describe(Router, () => {
             }
 
             await approveHelper('SCY', router.address, expectScyIn);
-            const redeemTx = await router.redeemScyToRawToken(
+            const redeemTx = await router.redeemScyToToken(
                 signer.address,
                 currentConfig.scyAddress,
                 expectScyIn,
-                [currentConfig.usdcAddress],
+                currentConfig.usdcAddress,
                 SLIPPAGE_TYPE2
             );
             await redeemTx.wait(BLOCK_CONFIRMATION);
@@ -535,7 +535,7 @@ describe(Router, () => {
 
         const scyBalanceDiff = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
         const marketScyBalanceDiff = balanceAfter.marketScyBalance.sub(balanceBefore.marketScyBalance);
-        expect(scyBalanceDiff).toEqBN(marketScyBalanceDiff.mul(-1));
+        expect(scyBalanceDiff).toBeLtBN(marketScyBalanceDiff.mul(-1));
     }
 
     function verifyScyOut(expectScyOut: BN, netScyOut: BN) {

@@ -1,15 +1,33 @@
-import type { ApproxParamsStruct, IPAllAction } from '@pendle/core-v2/typechain-types/IPAllAction';
+import type {
+    ApproxParamsStruct,
+    IPAllAction,
+    TokenInputStruct,
+    TokenOutputStruct,
+} from '@pendle/core-v2/typechain-types/IPAllAction';
 import type { Address, NetworkConnection } from './types';
+import axios from 'axios';
 import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
 import {
     type BigNumberish,
+    type BytesLike,
     type ContractTransaction,
     type Overrides,
     BigNumber as BN,
     constants,
     Contract,
 } from 'ethers';
+import { KYBER_API } from '../constants';
 import { calcSlippedDownAmount, calcSlippedUpAmount, getContractAddresses } from './helper';
+import { Market } from './Market';
+import { SCY as SCYEntity } from './SCY';
+import { YT as YTEntity } from './YT';
+
+export type KybercallData = {
+    amountInUsd?: number;
+    amountOutUsd?: number;
+    outputAmount: BigNumberish;
+    encodedSwapData: BytesLike;
+};
 
 export class Router {
     static readonly MIN_AMOUNT = 0;
@@ -42,6 +60,86 @@ export class Router {
             guessMin: calcSlippedDownAmount(netAmountOut, slippage),
             guessMax: calcSlippedUpAmount(netAmountOut, MAX_UPSIDE),
         };
+    }
+
+    async kybercall(tokenIn: Address, tokenOut: Address, amountIn: BigNumberish): Promise<KybercallData> {
+        if (tokenIn.toLowerCase() === tokenOut.toLowerCase()) return { outputAmount: amountIn, encodedSwapData: [] };
+        const { data } = await axios.get(KYBER_API[this.chainId], {
+            params: { tokenIn, tokenOut, amountIn: BN.from(amountIn).toString(), to: this.contract.address },
+            headers: { 'Accept-Version': 'Latest' },
+        });
+        return data;
+    }
+
+    async inputParams(
+        tokenIn: Address,
+        netTokenIn: BigNumberish,
+        tokenMintScyList: Address[],
+        fn: (input: TokenInputStruct) => Promise<BN>
+    ): Promise<{
+        netOut: BN;
+        input: TokenInputStruct;
+        kybercallData: KybercallData;
+    }> {
+        const possibleOutAmounts = tokenMintScyList.map(async (tokenMintScy) => {
+            const kybercallData = await this.kybercall(tokenIn, tokenMintScy, netTokenIn);
+            const input = {
+                tokenIn,
+                netTokenIn,
+                tokenMintScy,
+                kybercall: kybercallData.encodedSwapData,
+            } as TokenInputStruct;
+
+            // return -1 to avoid swapping through this token
+            if (kybercallData.encodedSwapData === undefined) {
+                return { netOut: constants.NegativeOne, input, kybercallData };
+            }
+
+            const netOut = await fn(input);
+            return { netOut, input, kybercallData };
+        });
+        return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
+    }
+
+    async outputParams(
+        SCY: Address,
+        netScyIn: BigNumberish,
+        tokenOut: Address,
+        tokenRedeemScyList: Address[],
+        fn: (output: TokenOutputStruct) => Promise<BN>,
+        slippage: number = 0
+    ): Promise<{
+        netOut: BN;
+        output: TokenOutputStruct;
+        kybercallData: KybercallData;
+    }> {
+        const possibleOutAmounts = tokenRedeemScyList.map(async (tokenRedeemScy) => {
+            const amountIn = await new SCYEntity(
+                SCY,
+                this.networkConnection,
+                this.chainId
+            ).contract.callStatic.previewRedeem(tokenRedeemScy, netScyIn);
+            const kybercallData = await this.kybercall(tokenRedeemScy, tokenOut, amountIn);
+            const output = {
+                tokenOut,
+                tokenRedeemScy,
+                kybercall: kybercallData.encodedSwapData,
+                minTokenOut: Router.MIN_AMOUNT,
+            } as TokenOutputStruct;
+
+            // return -1 to avoid swapping through this token
+            if (kybercallData.encodedSwapData === undefined) {
+                return { netOut: BN.from(-1), output, kybercallData };
+            }
+
+            const netOut = await fn(output);
+            return {
+                netOut,
+                output: { ...output, minTokenOut: calcSlippedDownAmount(netOut, slippage) },
+                kybercallData,
+            };
+        });
+        return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
     }
 
     async addLiquidity(
@@ -147,36 +245,37 @@ export class Router {
             .swapScyForExactPt(receiver, market, exactPtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
     }
 
-    async swapExactRawTokenForPt(
+    async swapExactTokenForPt(
         receiver: Address,
         market: Address,
-        exactRawTokenIn: BigNumberish,
-        path: Address[],
+        tokenIn: Address,
+        netTokenIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netPtOut = await this.contract
-            .connect(this.networkConnection.signer!)
-            .callStatic.swapExactRawTokenForPt(
-                receiver,
-                market,
-                exactRawTokenIn,
-                Router.MIN_AMOUNT,
-                path,
-                Router.STATIC_APPROX_PARAMS
-            );
+        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
+        const tokenMintScyList = await new SCYEntity(
+            scy,
+            this.networkConnection,
+            this.chainId
+        ).contract.callStatic.getTokensIn();
+        const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
+            this.contract
+                .connect(this.networkConnection.signer!)
+                .callStatic.swapExactTokenForPt(receiver, market, Router.MIN_AMOUNT, Router.STATIC_APPROX_PARAMS, input)
+        );
         return this.contract
             .connect(this.networkConnection.signer!)
-            .swapExactRawTokenForPt(
+            .swapExactTokenForPt(
                 receiver,
                 market,
-                exactRawTokenIn,
-                calcSlippedDownAmount(netPtOut, slippage),
-                path,
-                Router.swapApproxParams(netPtOut, slippage),
+                calcSlippedDownAmount(netOut, slippage),
+                Router.swapApproxParams(netOut, slippage),
+                input,
                 overrides
             );
     }
+
     async swapExactScyForPt(
         receiver: Address,
         market: Address,
@@ -199,96 +298,111 @@ export class Router {
             );
     }
 
-    async mintScyFromRawToken(
+    async mintScyFromToken(
         receiver: Address,
         SCY: Address,
-        netRawTokenIn: BigNumberish,
-        path: Address[],
+        tokenIn: Address,
+        netTokenIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netScyOut = await this.contract
-            .connect(this.networkConnection.signer!)
-            .callStatic.mintScyFromRawToken(receiver, SCY, netRawTokenIn, Router.MIN_AMOUNT, path);
+        const tokenMintScyList = await new SCYEntity(
+            SCY,
+            this.networkConnection,
+            this.chainId
+        ).contract.callStatic.getTokensIn();
+        const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
+            this.contract
+                .connect(this.networkConnection.signer!)
+                .callStatic.mintScyFromToken(receiver, SCY, Router.MIN_AMOUNT, input)
+        );
         return this.contract
             .connect(this.networkConnection.signer!)
-            .mintScyFromRawToken(
-                receiver,
-                SCY,
-                netRawTokenIn,
-                calcSlippedDownAmount(netScyOut, slippage),
-                path,
-                overrides
-            );
+            .mintScyFromToken(receiver, SCY, calcSlippedDownAmount(netOut, slippage), input, overrides);
     }
 
-    async redeemScyToRawToken(
+    async redeemScyToToken(
         receiver: Address,
         SCY: Address,
         netScyIn: BigNumberish,
-        path: Address[],
+        tokenOut: Address,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netRawTokenOut = await this.contract
-            .connect(this.networkConnection.signer!)
-            .callStatic.redeemScyToRawToken(receiver, SCY, netScyIn, Router.MIN_AMOUNT, path);
+        const tokenRedeemScyList = await new SCYEntity(
+            SCY,
+            this.networkConnection,
+            this.chainId
+        ).contract.callStatic.getTokensOut();
+        const { output } = await this.outputParams(
+            SCY,
+            netScyIn,
+            tokenOut,
+            tokenRedeemScyList,
+            (output) =>
+                this.contract
+                    .connect(this.networkConnection.signer!)
+                    .callStatic.redeemScyToToken(receiver, SCY, netScyIn, output),
+            slippage
+        );
         return this.contract
             .connect(this.networkConnection.signer!)
-            .redeemScyToRawToken(
-                receiver,
-                SCY,
-                netScyIn,
-                calcSlippedDownAmount(netRawTokenOut, slippage),
-                path,
-                overrides
-            );
+            .redeemScyToToken(receiver, SCY, netScyIn, output, overrides);
     }
 
-    async mintPyFromRawToken(
+    async mintPyFromToken(
         receiver: Address,
         YT: Address,
-        netRawTokenIn: BigNumberish,
-        path: Address[],
+        tokenIn: Address,
+        netTokenIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netPyOut = await this.contract
-            .connect(this.networkConnection.signer!)
-            .callStatic.mintPyFromRawToken(receiver, YT, netRawTokenIn, Router.MIN_AMOUNT, path);
+        const SCY = await new YTEntity(YT, this.networkConnection, this.chainId).contract.callStatic.SCY();
+        const tokenMintScyList = await new SCYEntity(
+            SCY,
+            this.networkConnection,
+            this.chainId
+        ).contract.callStatic.getTokensIn();
+        const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
+            this.contract
+                .connect(this.networkConnection.signer!)
+                .callStatic.mintPyFromToken(receiver, YT, Router.MIN_AMOUNT, input)
+        );
         return this.contract
             .connect(this.networkConnection.signer!)
-            .mintPyFromRawToken(
-                receiver,
-                YT,
-                netRawTokenIn,
-                calcSlippedDownAmount(netPyOut, slippage),
-                path,
-                overrides
-            );
+            .mintPyFromToken(receiver, YT, calcSlippedDownAmount(netOut, slippage), input, overrides);
     }
 
-    async redeemPyToRawToken(
+    async redeemPyToToken(
         receiver: Address,
         YT: Address,
         netPyIn: BigNumberish,
-        path: Address[],
+        tokenOut: Address,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netRawTokenOut = await this.contract
-            .connect(this.networkConnection.signer!)
-            .callStatic.redeemPyToRawToken(receiver, YT, netPyIn, Router.MIN_AMOUNT, path);
+        const ytStatic = new YTEntity(YT, this.networkConnection, this.chainId).contract.callStatic;
+        const [SCY, pyIndex] = await Promise.all([ytStatic.SCY(), ytStatic.pyIndexCurrent()]);
+        const tokenRedeemScyList = await new SCYEntity(
+            SCY,
+            this.networkConnection,
+            this.chainId
+        ).contract.callStatic.getTokensOut();
+        const { output } = await this.outputParams(
+            SCY,
+            BN.from(netPyIn).mul(constants.WeiPerEther).div(pyIndex),
+            tokenOut,
+            tokenRedeemScyList,
+            (output) =>
+                this.contract
+                    .connect(this.networkConnection.signer!)
+                    .callStatic.redeemPyToToken(receiver, YT, netPyIn, output),
+            slippage
+        );
         return this.contract
             .connect(this.networkConnection.signer!)
-            .redeemPyToRawToken(
-                receiver,
-                YT,
-                netPyIn,
-                calcSlippedDownAmount(netRawTokenOut, slippage),
-                path,
-                overrides
-            );
+            .redeemPyToToken(receiver, YT, netPyIn, output, overrides);
     }
 
     async swapExactScyForYt(
@@ -341,27 +455,35 @@ export class Router {
             );
     }
 
-    async swapExactPtForRawToken(
+    async swapExactPtForToken(
         receiver: Address,
         market: Address,
         exactPtIn: BigNumberish,
-        path: Address[],
+        tokenOut: Address,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netRawTokenOut = await this.contract
-            .connect(this.networkConnection.signer!)
-            .callStatic.swapExactPtForRawToken(receiver, market, exactPtIn, Router.MIN_AMOUNT, path);
+        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
+        const [tokenRedeemScyList, netScyIn] = await Promise.all([
+            new SCYEntity(scy, this.networkConnection, this.chainId).contract.callStatic.getTokensOut(),
+            this.contract
+                .connect(this.networkConnection.signer!)
+                .callStatic.swapExactPtForScy(receiver, market, exactPtIn, Router.MIN_AMOUNT),
+        ]);
+        const { output } = await this.outputParams(
+            scy,
+            netScyIn,
+            tokenOut,
+            tokenRedeemScyList,
+            (output) =>
+                this.contract
+                    .connect(this.networkConnection.signer!)
+                    .callStatic.swapExactPtForToken(receiver, market, exactPtIn, output),
+            slippage
+        );
         return this.contract
             .connect(this.networkConnection.signer!)
-            .swapExactPtForRawToken(
-                receiver,
-                market,
-                exactPtIn,
-                calcSlippedDownAmount(netRawTokenOut, slippage),
-                path,
-                overrides
-            );
+            .swapExactPtForToken(receiver, market, exactPtIn, output, overrides);
     }
 
     async swapExactYtForScy(
@@ -389,68 +511,70 @@ export class Router {
         const netScyIn = await this.contract
             .connect(this.networkConnection.signer!)
             .callStatic.swapScyForExactYt(receiver, market, exactYtOut, Router.MAX_AMOUNT);
-        if (overrides) {
-            return this.contract
-                .connect(this.networkConnection.signer!)
-                .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
-        } else {
-            return this.contract
-                .connect(this.networkConnection.signer!)
-                .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage));
-        }
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
     }
 
-    async swapExactRawTokenForYt(
+    async swapExactTokenForYt(
         receiver: Address,
         market: Address,
-        exactRawTokenIn: BigNumberish,
-        path: Address[],
+        tokenIn: Address,
+        netTokenIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netYtOut = await this.contract
-            .connect(this.networkConnection.signer!)
-            .callStatic.swapExactRawTokenForYt(
-                receiver,
-                market,
-                exactRawTokenIn,
-                Router.MIN_AMOUNT,
-                path,
-                Router.STATIC_APPROX_PARAMS
-            );
+        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
+        const tokenMintScyList = await new SCYEntity(
+            scy,
+            this.networkConnection,
+            this.chainId
+        ).contract.callStatic.getTokensIn();
+        const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
+            this.contract
+                .connect(this.networkConnection.signer!)
+                .callStatic.swapExactTokenForYt(receiver, market, Router.MIN_AMOUNT, Router.STATIC_APPROX_PARAMS, input)
+        );
         return this.contract
             .connect(this.networkConnection.signer!)
-            .swapExactRawTokenForYt(
+            .swapExactTokenForYt(
                 receiver,
                 market,
-                exactRawTokenIn,
-                calcSlippedDownAmount(netYtOut, slippage),
-                path,
-                Router.swapApproxParams(netYtOut, slippage),
+                calcSlippedDownAmount(netOut, slippage),
+                Router.swapApproxParams(netOut, slippage),
+                input,
                 overrides
             );
     }
 
-    async swapExactYtForRawToken(
+    async swapExactYtForToken(
         receiver: Address,
         market: Address,
         exactYtIn: BigNumberish,
-        path: Address[],
+        tokenOut: Address,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netRawTokenOut = await this.contract
-            .connect(this.networkConnection.signer!)
-            .callStatic.swapExactYtForRawToken(receiver, market, exactYtIn, Router.MIN_AMOUNT, path);
+        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
+        const [tokenRedeemScyList, netScyIn] = await Promise.all([
+            new SCYEntity(scy, this.networkConnection, this.chainId).contract.callStatic.getTokensOut(),
+            this.contract
+                .connect(this.networkConnection.signer!)
+                .callStatic.swapExactYtForScy(receiver, market, exactYtIn, Router.MIN_AMOUNT),
+        ]);
+        const { output } = await this.outputParams(
+            scy,
+            netScyIn,
+            tokenOut,
+            tokenRedeemScyList,
+            (output) =>
+                this.contract
+                    .connect(this.networkConnection.signer!)
+                    .callStatic.swapExactYtForToken(receiver, market, exactYtIn, output),
+            slippage
+        );
         return this.contract
             .connect(this.networkConnection.signer!)
-            .swapExactYtForRawToken(
-                receiver,
-                market,
-                exactYtIn,
-                calcSlippedDownAmount(netRawTokenOut, slippage),
-                path,
-                overrides
-            );
+            .swapExactYtForToken(receiver, market, exactYtIn, output, overrides);
     }
 }
