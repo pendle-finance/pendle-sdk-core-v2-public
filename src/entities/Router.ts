@@ -92,7 +92,7 @@ export class Router {
 
             // return -1 to avoid swapping through this token
             if (kybercallData.encodedSwapData === undefined) {
-                return { netOut: BN.from(-1), input, kybercallData };
+                return { netOut: constants.NegativeOne, input, kybercallData };
             }
 
             const netOut = await fn(input);
