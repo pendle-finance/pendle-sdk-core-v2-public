@@ -1,8 +1,8 @@
 import type {
     ApproxParamsStruct,
     IPAllAction,
-    TokenInputStructOutput,
-    TokenOutputStructOutput,
+    TokenInputStruct,
+    TokenOutputStruct,
 } from '@pendle/core-v2/typechain-types/IPAllAction';
 import type { Address, NetworkConnection } from './types';
 import axios from 'axios';
@@ -75,10 +75,10 @@ export class Router {
         tokenIn: Address,
         netTokenIn: BigNumberish,
         tokenMintScyList: Address[],
-        fn: (input: TokenInputStructOutput) => Promise<BN>
+        fn: (input: TokenInputStruct) => Promise<BN>
     ): Promise<{
         netOut: BN;
-        input: TokenInputStructOutput;
+        input: TokenInputStruct;
         kybercallData: KybercallData;
     }> {
         const possibleOutAmounts = tokenMintScyList.map(async (tokenMintScy) => {
@@ -88,7 +88,13 @@ export class Router {
                 netTokenIn,
                 tokenMintScy,
                 kybercall: kybercallData.encodedSwapData,
-            } as TokenInputStructOutput;
+            } as TokenInputStruct;
+
+            // return -1 to avoid swapping through this token
+            if (kybercallData.encodedSwapData === undefined) {
+                return { netOut: constants.NegativeOne, input, kybercallData };
+            }
+
             const netOut = await fn(input);
             return { netOut, input, kybercallData };
         });
@@ -100,11 +106,11 @@ export class Router {
         netScyIn: BigNumberish,
         tokenOut: Address,
         tokenRedeemScyList: Address[],
-        fn: (output: TokenOutputStructOutput) => Promise<BN>,
+        fn: (output: TokenOutputStruct) => Promise<BN>,
         slippage: number = 0
     ): Promise<{
         netOut: BN;
-        output: TokenOutputStructOutput;
+        output: TokenOutputStruct;
         kybercallData: KybercallData;
     }> {
         const possibleOutAmounts = tokenRedeemScyList.map(async (tokenRedeemScy) => {
@@ -119,7 +125,13 @@ export class Router {
                 tokenRedeemScy,
                 kybercall: kybercallData.encodedSwapData,
                 minTokenOut: Router.MIN_AMOUNT,
-            } as unknown as TokenOutputStructOutput;
+            } as TokenOutputStruct;
+
+            // return -1 to avoid swapping through this token
+            if (kybercallData.encodedSwapData === undefined) {
+                return { netOut: BN.from(-1), output, kybercallData };
+            }
+
             const netOut = await fn(output);
             return {
                 netOut,
