@@ -149,7 +149,7 @@ export class Router {
         return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
     }
 
-    async addLiquidity(
+    async addLiquidityDualScyAndPt(
         receiver: Address,
         market: Address,
         scyDesired: BigNumberish,
@@ -159,10 +159,10 @@ export class Router {
     ): Promise<ContractTransaction> {
         const [netLpOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.addLiquidity(receiver, market, scyDesired, ptDesired, Router.MIN_AMOUNT);
+            .callStatic.addLiquidityDualScyAndPt(receiver, market, scyDesired, ptDesired, Router.MIN_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
-            .addLiquidity(
+            .addLiquidityDualScyAndPt(
                 receiver,
                 market,
                 scyDesired,
@@ -172,7 +172,32 @@ export class Router {
             );
     }
 
-    async removeLiquidity(
+    // TODO: This is "the same" as addLiquidityDualScyAndPt, but with different function name.
+    // We should refactor this to some how  reuse the function?
+    async addLiquidityDualIbTokenAndPt(
+        receiver: Address,
+        market: Address,
+        ibTokenDesired: BigNumberish,
+        ptDesired: BigNumberish,
+        slippage: number,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        const [netLpOut] = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.addLiquidityDualIbTokenAndPt(receiver, market, ibTokenDesired, ptDesired, Router.MIN_AMOUNT);
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .addLiquidityDualIbTokenAndPt(
+                receiver,
+                market,
+                ibTokenDesired,
+                ptDesired,
+                calcSlippedDownAmount(netLpOut, slippage),
+                overrides
+            );
+    }
+
+    async removeLiquidityDualScyAndPt(
         receiver: Address,
         market: Address,
         lpToRemove: BigNumberish,
@@ -181,14 +206,42 @@ export class Router {
     ): Promise<ContractTransaction> {
         const [netScyOut, netPtOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.removeLiquidity(receiver, market, lpToRemove, Router.MIN_AMOUNT, Router.MIN_AMOUNT);
+            .callStatic.removeLiquidityDualScyAndPt(receiver, market, lpToRemove, Router.MIN_AMOUNT, Router.MIN_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
-            .removeLiquidity(
+            .removeLiquidityDualScyAndPt(
                 receiver,
                 market,
                 lpToRemove,
                 calcSlippedDownAmount(netScyOut, slippage),
+                calcSlippedDownAmount(netPtOut, slippage),
+                overrides
+            );
+    }
+
+    async removeLiquidityDualIbTokenAndPt(
+        receiver: Address,
+        market: Address,
+        lpToRemove: BigNumberish,
+        slippage: number,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        const [netIbTokenOut, netPtOut] = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.removeLiquidityDualIbTokenAndPt(
+                receiver,
+                market,
+                lpToRemove,
+                Router.MIN_AMOUNT,
+                Router.MIN_AMOUNT
+            );
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .removeLiquidityDualIbTokenAndPt(
+                receiver,
+                market,
+                lpToRemove,
+                calcSlippedDownAmount(netIbTokenOut, slippage),
                 calcSlippedDownAmount(netPtOut, slippage),
                 overrides
             );

@@ -99,6 +99,7 @@ export const testConfig = (chainId: number) => ({
     veAddress: CONTRACT_ADDRESSES[chainId].CORE.VE,
     votingController: CONTRACT_ADDRESSES[chainId].CORE.VOTING_CONTROLLER,
     usdcAddress: CONTRACT_ADDRESSES[chainId].BENQI.USDC,
+    qiUsdAddress: CONTRACT_ADDRESSES[chainId].BENQI.QIUSDC,
     qiAddress: CONTRACT_ADDRESSES[chainId].BENQI.QI,
     pendle: CONTRACT_ADDRESSES[chainId].CORE.PENDLE,
     fundKeeper: CONTRACT_ADDRESSES[chainId].BENQI.FUND_KEEPER,
