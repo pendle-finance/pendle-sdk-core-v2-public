@@ -12,6 +12,7 @@ export const ENTITIES: EntitiesMapType = {
     SCY: new ERC20(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID),
     USDC: new ERC20(currentConfig.usdcAddress, networkConnection, ACTIVE_CHAIN_ID),
     QI: new ERC20(currentConfig.qiAddress, networkConnection, ACTIVE_CHAIN_ID),
+    QIUSD: new ERC20(currentConfig.qiUsdAddress, networkConnection, ACTIVE_CHAIN_ID),
     MARKET: new ERC20(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID),
 };
 

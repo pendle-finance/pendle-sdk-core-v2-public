@@ -3,12 +3,14 @@ import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, networkConnection }
 import FUND_KEEPER_ABI from './fundKeeperAbi.json';
 import { ERC20, PT, Router, SCY } from '../../src';
 import { SLIPPAGE_TYPE3 } from './testHelper';
+import { IQiErc20, IQiErc20__factory } from '@pendle/core-v2/typechain-types';
 
 const INF = ethers.constants.MaxUint256;
 const FUND_AMOUNT: BN = BN.from(10).pow(23);
 const USDC_TO_MINT_PY = FUND_AMOUNT.div(10).mul(4);
 // A bit higher than PY, so that the SCY price will higher than PT price
 const USDC_TO_MINT_SCY = FUND_AMOUNT.div(10).mul(5);
+const USDC_TO_MINT_QIUSD = FUND_AMOUNT.div(20);
 
 async function main() {
     let signerAddress = await networkConnection.signer?.getAddress()!;
@@ -20,10 +22,15 @@ async function main() {
     let scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
     let pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
 
-    console.log('funding USDC');
+    console.log('funding USD');
     await benQiFundKeeper
         .transferToMany(currentConfig.usdcAddress, [signerAddress], FUND_AMOUNT)
         .then((tx: any) => tx.wait(BLOCK_CONFIRMATION));
+
+    console.log('mint qiUSD');
+    let qiUsdContract = new Contract(currentConfig.qiUsdAddress, IQiErc20__factory.abi, networkConnection.signer) as IQiErc20;
+    await usdc.approve(qiUsdContract.address, USDC_TO_MINT_QIUSD);
+    await qiUsdContract.mint(USDC_TO_MINT_QIUSD);
 
     console.log('funding Pendle');
     await pendleTreasury
@@ -63,7 +70,7 @@ async function main() {
 
     console.log('add liquidity');
     await router
-        .addLiquidity(
+        .addLiquidityDualScyAndPt(
             signerAddress,
             currentConfig.marketAddress,
             (await scy.ERC20.balanceOf(signerAddress)).div(10).mul(9),

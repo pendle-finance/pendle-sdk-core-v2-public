@@ -68,6 +68,32 @@ describe(Router, () => {
             expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(marketSupplyAfter.sub(marketSupplyBefore));
         });
 
+        it('#addLiquidityDualIbTokenAndPt', async () => {
+            const ibAdd = (await getBalance('QIUSD', signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            const ptAdd = (await getBalance('PT', signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            await approveHelper('QIUSD', currentConfig.router, ibAdd);
+            await approveHelper('PT', currentConfig.router, ptAdd);
+
+            const lpBalanceBefore = await getBalance('MARKET', signer.address);
+            const marketSupplyBefore = await getTotalSupply('MARKET');
+
+            const addLiquidityTx = await router.addLiquidityDualIbTokenAndPt(
+                signer.address,
+                currentConfig.marketAddress,
+                ibAdd,
+                ptAdd,
+                SLIPPAGE_TYPE2
+            );
+            await addLiquidityTx.wait(BLOCK_CONFIRMATION);
+            const lpBalanceAfter = await getBalance('MARKET', signer.address);
+            const marketSupplyAfter = await getTotalSupply('MARKET');
+
+            expect(lpBalanceAfter).toBeGtBN(lpBalanceBefore);
+            expect(marketSupplyAfter).toBeGtBN(marketSupplyBefore);
+
+            expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(marketSupplyAfter.sub(marketSupplyBefore));
+        });
+
         it('#removeLiquidityDualScyAndPt', async () => {
             const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
             const lpBalanceBefore = await getBalance('MARKET', signer.address);
@@ -90,6 +116,28 @@ describe(Router, () => {
             expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
             expect(marketSupplyBefore.sub(marketSupplyAfter)).toEqBN(liquidityRemove);
         });
+
+        it('#removeLiquidityDualIbTokenAndPt', async () => {
+            const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            const lpBalanceBefore = await getBalance('MARKET', signer.address);
+            const marketSupplyBefore = await getTotalSupply('MARKET');
+
+            await approveHelper('MARKET', router.address, liquidityRemove);
+
+            const removeLiquidityTx = await router.removeLiquidityDualIbTokenAndPt(
+                signer.address,
+                currentConfig.marketAddress,
+                liquidityRemove,
+                SLIPPAGE_TYPE2
+            );
+            await removeLiquidityTx.wait(BLOCK_CONFIRMATION);
+
+            const lpBalanceAfter = await getBalance('MARKET', signer.address);
+            const marketSupplyAfter = await getTotalSupply('MARKET');
+
+            expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
+            expect(marketSupplyBefore.sub(marketSupplyAfter)).toEqBN(liquidityRemove);
+        }),
 
         /*
          *  Type 1 of swap between Scy and PT
