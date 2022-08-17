@@ -149,7 +149,7 @@ export class Router {
         return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
     }
 
-    async addLiquidity(
+    async addLiquidityDualScyAndPt(
         receiver: Address,
         market: Address,
         scyDesired: BigNumberish,
@@ -159,10 +159,10 @@ export class Router {
     ): Promise<ContractTransaction> {
         const [netLpOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.addLiquidity(receiver, market, scyDesired, ptDesired, Router.MIN_AMOUNT);
+            .callStatic.addLiquidityDualScyAndPt(receiver, market, scyDesired, ptDesired, Router.MIN_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
-            .addLiquidity(
+            .addLiquidityDualScyAndPt(
                 receiver,
                 market,
                 scyDesired,
@@ -172,7 +172,7 @@ export class Router {
             );
     }
 
-    async removeLiquidity(
+    async removeLiquidityDualScyAndPt(
         receiver: Address,
         market: Address,
         lpToRemove: BigNumberish,
@@ -181,10 +181,10 @@ export class Router {
     ): Promise<ContractTransaction> {
         const [netScyOut, netPtOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.removeLiquidity(receiver, market, lpToRemove, Router.MIN_AMOUNT, Router.MIN_AMOUNT);
+            .callStatic.removeLiquidityDualScyAndPt(receiver, market, lpToRemove, Router.MIN_AMOUNT, Router.MIN_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
-            .removeLiquidity(
+            .removeLiquidityDualScyAndPt(
                 receiver,
                 market,
                 lpToRemove,

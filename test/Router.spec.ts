@@ -42,7 +42,7 @@ describe(Router, () => {
     });
 
     describeWrite(() => {
-        it('#addLiquidity', async () => {
+        it('#addLiquidityDualScyAndPt', async () => {
             const scyAdd = (await getBalance('SCY', signer.address)).div(ADD_LIQUIDITY_FACTOR);
             const ptAdd = (await getBalance('PT', signer.address)).div(ADD_LIQUIDITY_FACTOR);
             await approveHelper('SCY', currentConfig.router, scyAdd);
@@ -51,7 +51,7 @@ describe(Router, () => {
             const lpBalanceBefore = await getBalance('MARKET', signer.address);
             const marketSupplyBefore = await getTotalSupply('MARKET');
 
-            const addLiquidityTx = await router.addLiquidity(
+            const addLiquidityTx = await router.addLiquidityDualScyAndPt(
                 signer.address,
                 currentConfig.marketAddress,
                 scyAdd,
@@ -68,14 +68,14 @@ describe(Router, () => {
             expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(marketSupplyAfter.sub(marketSupplyBefore));
         });
 
-        it('#removeLiquidity', async () => {
+        it('#removeLiquidityDualScyAndPt', async () => {
             const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
             const lpBalanceBefore = await getBalance('MARKET', signer.address);
             const marketSupplyBefore = await getTotalSupply('MARKET');
 
             await approveHelper('MARKET', router.address, liquidityRemove);
 
-            const removeLiquidityTx = await router.removeLiquidity(
+            const removeLiquidityTx = await router.removeLiquidityDualScyAndPt(
                 signer.address,
                 currentConfig.marketAddress,
                 liquidityRemove,
