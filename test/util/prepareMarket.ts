@@ -23,12 +23,12 @@ async function main() {
     console.log('funding USDC');
     await benQiFundKeeper
         .transferToMany(currentConfig.usdcAddress, [signerAddress], FUND_AMOUNT)
-        .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+        .then((tx: any) => tx.wait(BLOCK_CONFIRMATION));
 
     console.log('funding Pendle');
     await pendleTreasury
         .transferToMany(currentConfig.pendle, [signerAddress], FUND_AMOUNT)
-        .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+        .then((tx: any) => tx.wait(BLOCK_CONFIRMATION));
 
     console.log('approving USDC');
     await usdc.approve(currentConfig.router, INF).then((tx) => tx.wait(BLOCK_CONFIRMATION));
@@ -42,7 +42,7 @@ async function main() {
             USDC_TO_MINT_PY,
             SLIPPAGE_TYPE3
         )
-        .then((tx) => tx.wait());
+        .then((tx: any) => tx.wait());
 
     console.log('minting SCY');
     await router
@@ -53,7 +53,7 @@ async function main() {
             USDC_TO_MINT_SCY,
             SLIPPAGE_TYPE3
         )
-        .then(async (tx) => await tx.wait());
+        .then(async (tx: any) => await tx.wait());
 
     console.log('approving SCY');
     await scy.ERC20.approve(currentConfig.router, INF).then((tx) => tx.wait(BLOCK_CONFIRMATION));
@@ -70,7 +70,7 @@ async function main() {
             (await pt.ERC20.balanceOf(signerAddress)).div(10).mul(9),
             SLIPPAGE_TYPE3
         )
-        .then((tx) => tx.wait());
+        .then((tx: any) => tx.wait());
 }
 
 main()
