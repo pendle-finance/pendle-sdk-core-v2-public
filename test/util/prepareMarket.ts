@@ -33,8 +33,8 @@ async function main() {
         IQiErc20__factory.abi,
         networkConnection.signer
     ) as IQiErc20;
-    await usdc.approve(qiUsdContract.address, USDC_TO_MINT_QIUSD);
-    await qiUsdContract.mint(USDC_TO_MINT_QIUSD);
+    await usdc.approve(qiUsdContract.address, USDC_TO_MINT_QIUSD).then((tx: any) => tx.wait());
+    await qiUsdContract.mint(USDC_TO_MINT_QIUSD).then((tx: any) => tx.wait());
 
     console.log('funding Pendle');
     await pendleTreasury
