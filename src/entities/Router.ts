@@ -228,7 +228,13 @@ export class Router {
     ): Promise<ContractTransaction> {
         const [netIbTokenOut, netPtOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.removeLiquidityDualIbTokenAndPt(receiver, market, lpToRemove, Router.MIN_AMOUNT, Router.MIN_AMOUNT);
+            .callStatic.removeLiquidityDualIbTokenAndPt(
+                receiver,
+                market,
+                lpToRemove,
+                Router.MIN_AMOUNT,
+                Router.MIN_AMOUNT
+            );
         return this.contract
             .connect(this.networkConnection.signer!)
             .removeLiquidityDualIbTokenAndPt(

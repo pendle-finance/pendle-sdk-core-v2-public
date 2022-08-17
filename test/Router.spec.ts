@@ -137,7 +137,7 @@ describe(Router, () => {
 
             expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
             expect(marketSupplyBefore.sub(marketSupplyAfter)).toEqBN(liquidityRemove);
-        }),
+        });
 
         /*
          *  Type 1 of swap between Scy and PT

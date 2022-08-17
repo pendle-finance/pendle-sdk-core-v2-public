@@ -28,7 +28,11 @@ async function main() {
         .then((tx: any) => tx.wait(BLOCK_CONFIRMATION));
 
     console.log('mint qiUSD');
-    let qiUsdContract = new Contract(currentConfig.qiUsdAddress, IQiErc20__factory.abi, networkConnection.signer) as IQiErc20;
+    let qiUsdContract = new Contract(
+        currentConfig.qiUsdAddress,
+        IQiErc20__factory.abi,
+        networkConnection.signer
+    ) as IQiErc20;
     await usdc.approve(qiUsdContract.address, USDC_TO_MINT_QIUSD);
     await qiUsdContract.mint(USDC_TO_MINT_QIUSD);
 
