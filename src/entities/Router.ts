@@ -172,25 +172,25 @@ export class Router {
             );
     }
 
-    // TODO: This is "the same" as addLiquidityDualScyAndPt, but with different function name.
-    // We should refactor this to some how  reuse the function?
-    async addLiquidityDualIbTokenAndPt(
+    async addLiquidityDualTokenAndPt(
         receiver: Address,
         market: Address,
-        ibTokenDesired: BigNumberish,
+        tokenIn: Address,
+        tokenDesired: BigNumberish,
         ptDesired: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const [netLpOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.addLiquidityDualIbTokenAndPt(receiver, market, ibTokenDesired, ptDesired, Router.MIN_AMOUNT);
+            .callStatic.addLiquidityDualTokenAndPt(receiver, market, tokenIn, tokenDesired, ptDesired, Router.MIN_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
-            .addLiquidityDualIbTokenAndPt(
+            .addLiquidityDualTokenAndPt(
                 receiver,
                 market,
-                ibTokenDesired,
+                tokenIn,
+                tokenDesired,
                 ptDesired,
                 calcSlippedDownAmount(netLpOut, slippage),
                 overrides
@@ -219,28 +219,31 @@ export class Router {
             );
     }
 
-    async removeLiquidityDualIbTokenAndPt(
+    async removeLiquidityDualTokenAndPt(
         receiver: Address,
         market: Address,
         lpToRemove: BigNumberish,
+        tokenOut: Address,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const [netIbTokenOut, netPtOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.removeLiquidityDualIbTokenAndPt(
+            .callStatic.removeLiquidityDualTokenAndPt(
                 receiver,
                 market,
                 lpToRemove,
+                tokenOut,
                 Router.MIN_AMOUNT,
                 Router.MIN_AMOUNT
             );
         return this.contract
             .connect(this.networkConnection.signer!)
-            .removeLiquidityDualIbTokenAndPt(
+            .removeLiquidityDualTokenAndPt(
                 receiver,
                 market,
                 lpToRemove,
+                tokenOut,
                 calcSlippedDownAmount(netIbTokenOut, slippage),
                 calcSlippedDownAmount(netPtOut, slippage),
                 overrides

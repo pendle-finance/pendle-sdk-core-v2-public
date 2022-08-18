@@ -18,6 +18,7 @@ import {
     DEFAULT_SWAP_AMOUNT,
     DEFAULT_MINT_AMOUNT,
     minBigNumber,
+    ENTITIES,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/BigNumberMatcher';
@@ -67,30 +68,36 @@ describe(Router, () => {
             expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(marketSupplyAfter.sub(marketSupplyBefore));
         });
 
-        it('#addLiquidityDualIbTokenAndPt', async () => {
-            const ibAdd = (await getBalance('QIUSD', signer.address)).div(ADD_LIQUIDITY_FACTOR);
-            const ptAdd = (await getBalance('PT', signer.address)).div(ADD_LIQUIDITY_FACTOR);
-            await approveHelper('QIUSD', currentConfig.router, ibAdd);
-            await approveHelper('PT', currentConfig.router, ptAdd);
+        it('#addLiquidityDualTokenAndPt', async () => {
+            // TODO: should revise this test
+            let tokens = ['QIUSD', 'USDC'];
+            for (let token of tokens) {
+                const tokenAddAmount = (await getBalance(token, signer.address)).div(ADD_LIQUIDITY_FACTOR);
+                const ptAdd = (await getBalance('PT', signer.address)).div(ADD_LIQUIDITY_FACTOR);
+                await approveHelper(token, currentConfig.router, tokenAddAmount);
+                await approveHelper('PT', currentConfig.router, ptAdd);
 
-            const lpBalanceBefore = await getBalance('MARKET', signer.address);
-            const marketSupplyBefore = await getTotalSupply('MARKET');
+                const lpBalanceBefore = await getBalance('MARKET', signer.address);
+                const marketSupplyBefore = await getTotalSupply('MARKET');
 
-            const addLiquidityTx = await router.addLiquidityDualIbTokenAndPt(
-                signer.address,
-                currentConfig.marketAddress,
-                ibAdd,
-                ptAdd,
-                SLIPPAGE_TYPE2
-            );
-            await addLiquidityTx.wait(BLOCK_CONFIRMATION);
-            const lpBalanceAfter = await getBalance('MARKET', signer.address);
-            const marketSupplyAfter = await getTotalSupply('MARKET');
+                const addLiquidityTx = await router.addLiquidityDualTokenAndPt(
+                    signer.address,
+                    currentConfig.marketAddress,
+                    ENTITIES[token].address,
+                    tokenAddAmount,
+                    ptAdd,
+                    SLIPPAGE_TYPE2
+                );
+                await addLiquidityTx.wait(BLOCK_CONFIRMATION);
 
-            expect(lpBalanceAfter).toBeGtBN(lpBalanceBefore);
-            expect(marketSupplyAfter).toBeGtBN(marketSupplyBefore);
+                const lpBalanceAfter = await getBalance('MARKET', signer.address);
+                const marketSupplyAfter = await getTotalSupply('MARKET');
 
-            expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(marketSupplyAfter.sub(marketSupplyBefore));
+                expect(lpBalanceAfter).toBeGtBN(lpBalanceBefore);
+                expect(marketSupplyAfter).toBeGtBN(marketSupplyBefore);
+
+                expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(marketSupplyAfter.sub(marketSupplyBefore));
+            }
         });
 
         it('#removeLiquidityDualScyAndPt', async () => {
@@ -116,26 +123,31 @@ describe(Router, () => {
             expect(marketSupplyBefore.sub(marketSupplyAfter)).toEqBN(liquidityRemove);
         });
 
-        it('#removeLiquidityDualIbTokenAndPt', async () => {
-            const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
-            const lpBalanceBefore = await getBalance('MARKET', signer.address);
-            const marketSupplyBefore = await getTotalSupply('MARKET');
+        it('#removeLiquidityDualTokenAndPt', async () => {
+            // TODO: should revise this test
+            let tokens = ['QIUSD', 'USDC'];
+            for (let token of tokens) {
+                const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+                const lpBalanceBefore = await getBalance('MARKET', signer.address);
+                const marketSupplyBefore = await getTotalSupply('MARKET');
 
-            await approveHelper('MARKET', router.address, liquidityRemove);
+                await approveHelper('MARKET', router.address, liquidityRemove);
 
-            const removeLiquidityTx = await router.removeLiquidityDualIbTokenAndPt(
-                signer.address,
-                currentConfig.marketAddress,
-                liquidityRemove,
-                SLIPPAGE_TYPE2
-            );
-            await removeLiquidityTx.wait(BLOCK_CONFIRMATION);
+                const removeLiquidityTx = await router.removeLiquidityDualTokenAndPt(
+                    signer.address,
+                    currentConfig.marketAddress,
+                    liquidityRemove,
+                    ENTITIES[token].address,
+                    SLIPPAGE_TYPE2
+                );
+                await removeLiquidityTx.wait(BLOCK_CONFIRMATION);
 
-            const lpBalanceAfter = await getBalance('MARKET', signer.address);
-            const marketSupplyAfter = await getTotalSupply('MARKET');
+                const lpBalanceAfter = await getBalance('MARKET', signer.address);
+                const marketSupplyAfter = await getTotalSupply('MARKET');
 
-            expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
-            expect(marketSupplyBefore.sub(marketSupplyAfter)).toEqBN(liquidityRemove);
+                expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
+                expect(marketSupplyBefore.sub(marketSupplyAfter)).toEqBN(liquidityRemove);
+            }
         });
 
         /*
