@@ -183,7 +183,14 @@ export class Router {
     ): Promise<ContractTransaction> {
         const [netLpOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.addLiquidityDualTokenAndPt(receiver, market, tokenIn, tokenDesired, ptDesired, Router.MIN_AMOUNT);
+            .callStatic.addLiquidityDualTokenAndPt(
+                receiver,
+                market,
+                tokenIn,
+                tokenDesired,
+                ptDesired,
+                Router.MIN_AMOUNT
+            );
         return this.contract
             .connect(this.networkConnection.signer!)
             .addLiquidityDualTokenAndPt(
