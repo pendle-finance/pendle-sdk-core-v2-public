@@ -48,13 +48,9 @@ describe(Router, () => {
             const lpBalanceBefore = await getBalance('MARKET', signer.address);
             const marketSupplyBefore = await getTotalSupply('MARKET');
 
-            await router.addLiquidityDualScyAndPt(
-                signer.address,
-                currentConfig.marketAddress,
-                scyAdd,
-                ptAdd,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .addLiquidityDualScyAndPt(signer.address, currentConfig.marketAddress, scyAdd, ptAdd, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
             const lpBalanceAfter = await getBalance('MARKET', signer.address);
             const marketSupplyAfter = await getTotalSupply('MARKET');
 
@@ -74,14 +70,16 @@ describe(Router, () => {
                 const lpBalanceBefore = await getBalance('MARKET', signer.address);
                 const marketSupplyBefore = await getTotalSupply('MARKET');
 
-                await router.addLiquidityDualTokenAndPt(
-                    signer.address,
-                    currentConfig.marketAddress,
-                    ERC20_ENTITIES[token].address,
-                    tokenAddAmount,
-                    ptAdd,
-                    SLIPPAGE_TYPE2
-                ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+                await router
+                    .addLiquidityDualTokenAndPt(
+                        signer.address,
+                        currentConfig.marketAddress,
+                        ERC20_ENTITIES[token].address,
+                        tokenAddAmount,
+                        ptAdd,
+                        SLIPPAGE_TYPE2
+                    )
+                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
                 const lpBalanceAfter = await getBalance('MARKET', signer.address);
                 const marketSupplyAfter = await getTotalSupply('MARKET');
@@ -98,12 +96,14 @@ describe(Router, () => {
             const lpBalanceBefore = await getBalance('MARKET', signer.address);
             const marketSupplyBefore = await getTotalSupply('MARKET');
 
-            await router.removeLiquidityDualScyAndPt(
-                signer.address,
-                currentConfig.marketAddress,
-                liquidityRemove,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .removeLiquidityDualScyAndPt(
+                    signer.address,
+                    currentConfig.marketAddress,
+                    liquidityRemove,
+                    SLIPPAGE_TYPE2
+                )
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const lpBalanceAfter = await getBalance('MARKET', signer.address);
             const marketSupplyAfter = await getTotalSupply('MARKET');
@@ -121,13 +121,15 @@ describe(Router, () => {
                 const lpBalanceBefore = await getBalance('MARKET', signer.address);
                 const marketSupplyBefore = await getTotalSupply('MARKET');
 
-                await router.removeLiquidityDualTokenAndPt(
-                    signer.address,
-                    currentConfig.marketAddress,
-                    liquidityRemove,
-                    ERC20_ENTITIES[token].address,
-                    SLIPPAGE_TYPE2
-                ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+                await router
+                    .removeLiquidityDualTokenAndPt(
+                        signer.address,
+                        currentConfig.marketAddress,
+                        liquidityRemove,
+                        ERC20_ENTITIES[token].address,
+                        SLIPPAGE_TYPE2
+                    )
+                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
                 const lpBalanceAfter = await getBalance('MARKET', signer.address);
                 const marketSupplyAfter = await getTotalSupply('MARKET');
@@ -144,12 +146,9 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const ptInAmount = getPtSwapAmount(balanceBefore);
 
-            await router.swapExactPtForScy(
-                signer.address,
-                currentConfig.marketAddress,
-                ptInAmount,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapExactPtForScy(signer.address, currentConfig.marketAddress, ptInAmount, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             verifyBalanceChanges(balanceBefore, balanceAfter);
@@ -160,12 +159,9 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyOut = getScySwapAmount(balanceBefore);
 
-            await router.swapPtForExactScy(
-                signer.address,
-                currentConfig.marketAddress,
-                expectScyOut,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapPtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             verifyBalanceChanges(balanceBefore, balanceAfter);
@@ -178,12 +174,9 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectPtOut = getPtSwapAmount(balanceBefore);
 
-            await router.swapScyForExactPt(
-                signer.address,
-                currentConfig.marketAddress,
-                expectPtOut,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapScyForExactPt(signer.address, currentConfig.marketAddress, expectPtOut, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             verifyBalanceChanges(balanceBefore, balanceAfter);
@@ -196,12 +189,9 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyIn = getScySwapAmount(balanceBefore);
 
-            await router.swapExactScyForPt(
-                signer.address,
-                currentConfig.marketAddress,
-                expectScyIn,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapExactScyForPt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             verifyBalanceChanges(balanceBefore, balanceAfter);
@@ -218,12 +208,9 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyIn = getScySwapAmount(balanceBefore);
 
-            await router.swapExactScyForYt(
-                signer.address,
-                currentConfig.marketAddress,
-                expectScyIn,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapExactScyForYt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             // Cannot use `verifyBalanceChanges` because the underlying logic of swapping YT/SCY
@@ -236,12 +223,9 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyOut = getScySwapAmount(balanceBefore);
 
-            await router.swapYtForExactScy(
-                signer.address,
-                currentConfig.marketAddress,
-                expectScyOut,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapYtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netScyOut = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
@@ -253,12 +237,9 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtOut = getYtSwapAmount(balanceBefore);
 
-            await router.swapScyForExactYt(
-                signer.address,
-                currentConfig.marketAddress,
-                expectYtOut,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapScyForExactYt(signer.address, currentConfig.marketAddress, expectYtOut, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netYtOut = balanceAfter.ytBalance.sub(balanceBefore.ytBalance);
@@ -270,12 +251,9 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtIn = getYtSwapAmount(balanceBefore);
 
-            await router.swapExactYtForScy(
-                signer.address,
-                currentConfig.marketAddress,
-                expectYtIn,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapExactYtForScy(signer.address, currentConfig.marketAddress, expectYtIn, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
@@ -291,13 +269,15 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectusdIn = getusdSwapAmount(balanceBefore);
 
-            await router.swapExactTokenForPt(
-                signer.address,
-                currentConfig.marketAddress,
-                currentConfig.usdAddress,
-                expectusdIn,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapExactTokenForPt(
+                    signer.address,
+                    currentConfig.marketAddress,
+                    currentConfig.usdAddress,
+                    expectusdIn,
+                    SLIPPAGE_TYPE2
+                )
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netusdIn = balanceAfter.usdBalance.sub(balanceBefore.usdBalance).mul(-1);
@@ -310,13 +290,15 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectPtIn = getPtSwapAmount(balanceBefore);
 
-            await router.swapExactPtForToken(
-                signer.address,
-                currentConfig.marketAddress,
-                expectPtIn,
-                currentConfig.usdAddress,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapExactPtForToken(
+                    signer.address,
+                    currentConfig.marketAddress,
+                    expectPtIn,
+                    currentConfig.usdAddress,
+                    SLIPPAGE_TYPE2
+                )
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netPtIn = balanceAfter.ptBalance.sub(balanceBefore.ptBalance).mul(-1);
@@ -328,13 +310,15 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectusdIn = getusdSwapAmount(balanceBefore);
 
-            await router.swapExactTokenForYt(
-                signer.address,
-                currentConfig.marketAddress,
-                currentConfig.usdAddress,
-                expectusdIn,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapExactTokenForYt(
+                    signer.address,
+                    currentConfig.marketAddress,
+                    currentConfig.usdAddress,
+                    expectusdIn,
+                    SLIPPAGE_TYPE2
+                )
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netusdIn = balanceAfter.usdBalance.sub(balanceBefore.usdBalance).mul(-1);
@@ -346,13 +330,15 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtIn = getYtSwapAmount(balanceBefore);
 
-            await router.swapExactYtForToken(
-                signer.address,
-                currentConfig.marketAddress,
-                expectYtIn,
-                currentConfig.usdAddress,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .swapExactYtForToken(
+                    signer.address,
+                    currentConfig.marketAddress,
+                    expectYtIn,
+                    currentConfig.usdAddress,
+                    SLIPPAGE_TYPE2
+                )
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
@@ -367,13 +353,15 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectusdIn = DEFAULT_MINT_AMOUNT;
 
-            await router.mintPyFromToken(
-                signer.address,
-                currentConfig.ytAddress,
-                currentConfig.usdAddress,
-                expectusdIn,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .mintPyFromToken(
+                    signer.address,
+                    currentConfig.ytAddress,
+                    currentConfig.usdAddress,
+                    expectusdIn,
+                    SLIPPAGE_TYPE2
+                )
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netusdIn = balanceAfter.usdBalance.sub(balanceBefore.usdBalance).mul(-1);
@@ -393,13 +381,15 @@ describe(Router, () => {
                 return;
             }
 
-            await router.redeemPyToToken(
-                signer.address,
-                currentConfig.ytAddress,
-                expectPyIn,
-                currentConfig.usdAddress,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .redeemPyToToken(
+                    signer.address,
+                    currentConfig.ytAddress,
+                    expectPyIn,
+                    currentConfig.usdAddress,
+                    SLIPPAGE_TYPE2
+                )
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
@@ -415,13 +405,15 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectusdIn = DEFAULT_MINT_AMOUNT;
 
-            await router.mintScyFromToken(
-                signer.address,
-                currentConfig.scyAddress,
-                currentConfig.usdAddress,
-                expectusdIn,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .mintScyFromToken(
+                    signer.address,
+                    currentConfig.scyAddress,
+                    currentConfig.usdAddress,
+                    expectusdIn,
+                    SLIPPAGE_TYPE2
+                )
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netusdIn = balanceAfter.usdBalance.sub(balanceBefore.usdBalance).mul(-1);
@@ -437,13 +429,15 @@ describe(Router, () => {
                 return;
             }
 
-            await router.redeemScyToToken(
-                signer.address,
-                currentConfig.scyAddress,
-                expectScyIn,
-                currentConfig.usdAddress,
-                SLIPPAGE_TYPE2
-            ).then(tx => tx.wait(BLOCK_CONFIRMATION));
+            await router
+                .redeemScyToToken(
+                    signer.address,
+                    currentConfig.scyAddress,
+                    expectScyIn,
+                    currentConfig.usdAddress,
+                    SLIPPAGE_TYPE2
+                )
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);

@@ -25,11 +25,11 @@ export async function getTotalSupply(contractName: string): Promise<BN> {
 }
 
 export async function approveHelper(contractName: string, user: Address, amount: BigNumberish) {
-    await (ERC20_ENTITIES[contractName] as ERC20).approve(user, amount).then(tx => tx.wait(BLOCK_CONFIRMATION));
+    await (ERC20_ENTITIES[contractName] as ERC20).approve(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 }
 
 export async function transferHelper(contractName: string, user: Address, amount: BN) {
-    await ERC20_ENTITIES[contractName].transfer(user, amount).then(tx => tx.wait(BLOCK_CONFIRMATION));
+    await ERC20_ENTITIES[contractName].transfer(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 }
 
 export function minBigNumber(a: BN, b: BN): BN {

@@ -40,7 +40,7 @@ describe('PY', () => {
         ]);
 
         expect(ytUserInfo).toEqual(ptUserInfo);
-    })
+    });
 
     it('#getInfo & #contract', async () => {
         const [ptInfo, ytInfo, ytTotalSupply, ytIndexCurrent, rewardToken] = await Promise.all([
