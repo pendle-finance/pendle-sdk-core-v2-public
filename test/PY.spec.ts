@@ -28,7 +28,7 @@ describe('PY', () => {
         await Promise.all(
             userInfo.unclaimedRewards.map(async ({ token, amount }) => {
                 const { accrued } = await yt.contract.callStatic.userReward(token, currentConfig.deployer);
-                expect(amount).toBe(accrued);
+                expect(amount).toEqBN(accrued);
             })
         );
     });
