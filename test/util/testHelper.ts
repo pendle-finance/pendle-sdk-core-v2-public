@@ -6,7 +6,7 @@ type EntitiesMapType = {
     [entity: string]: ERC20;
 };
 
-export const ENTITIES: EntitiesMapType = {
+export const ERC20_ENTITIES: EntitiesMapType = {
     YT: new ERC20(currentConfig.ytAddress, networkConnection, ACTIVE_CHAIN_ID),
     PT: new ERC20(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID),
     SCY: new ERC20(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID),
@@ -17,20 +17,20 @@ export const ENTITIES: EntitiesMapType = {
 };
 
 export async function getBalance(contractName: string, user: Address): Promise<BN> {
-    return ENTITIES[contractName].balanceOf(user);
+    return ERC20_ENTITIES[contractName].balanceOf(user);
 }
 
 export async function getTotalSupply(contractName: string): Promise<BN> {
-    return ENTITIES[contractName].totalSupply();
+    return ERC20_ENTITIES[contractName].totalSupply();
 }
 
 export async function approveHelper(contractName: string, user: Address, amount: BigNumberish) {
-    const approveTx = await (ENTITIES[contractName] as ERC20).approve(user, amount);
+    const approveTx = await (ERC20_ENTITIES[contractName] as ERC20).approve(user, amount);
     await approveTx.wait(BLOCK_CONFIRMATION);
 }
 
 export async function transferHelper(contractName: string, user: Address, amount: BN) {
-    const transferTx = await ENTITIES[contractName].transfer(user, amount);
+    const transferTx = await ERC20_ENTITIES[contractName].transfer(user, amount);
     await transferTx.wait(BLOCK_CONFIRMATION);
 }
 

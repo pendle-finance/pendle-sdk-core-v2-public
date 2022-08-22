@@ -18,7 +18,7 @@ import {
     DEFAULT_SWAP_AMOUNT,
     DEFAULT_MINT_AMOUNT,
     minBigNumber,
-    ENTITIES,
+    ERC20_ENTITIES,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/BigNumberMatcher';
@@ -83,7 +83,7 @@ describe(Router, () => {
                 const addLiquidityTx = await router.addLiquidityDualTokenAndPt(
                     signer.address,
                     currentConfig.marketAddress,
-                    ENTITIES[token].address,
+                    ERC20_ENTITIES[token].address,
                     tokenAddAmount,
                     ptAdd,
                     SLIPPAGE_TYPE2
@@ -137,7 +137,7 @@ describe(Router, () => {
                     signer.address,
                     currentConfig.marketAddress,
                     liquidityRemove,
-                    ENTITIES[token].address,
+                    ERC20_ENTITIES[token].address,
                     SLIPPAGE_TYPE2
                 );
                 await removeLiquidityTx.wait(BLOCK_CONFIRMATION);
