@@ -33,6 +33,15 @@ describe('PY', () => {
         );
     });
 
+    it('#YT.userInfo & PT.userInfo', async () => {
+        const [ytUserInfo, ptUserInfo] = await Promise.all([
+            yt.userInfo(currentConfig.deployer),
+            pt.userInfo(currentConfig.deployer),
+        ]);
+
+        expect(ytUserInfo).toEqual(ptUserInfo);
+    })
+
     it('#getInfo & #contract', async () => {
         const [ptInfo, ytInfo, ytTotalSupply, ytIndexCurrent, rewardToken] = await Promise.all([
             pt.getInfo(),
