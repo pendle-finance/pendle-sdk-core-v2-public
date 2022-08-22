@@ -7,50 +7,50 @@ import { IQiErc20, IQiErc20__factory } from '@pendle/core-v2/typechain-types';
 
 const INF = ethers.constants.MaxUint256;
 const FUND_AMOUNT: BN = BN.from(10).pow(23);
-const USDC_TO_MINT_PY = FUND_AMOUNT.div(10).mul(4);
+const USD_TO_MINT_PY = FUND_AMOUNT.div(10).mul(4);
 // A bit higher than PY, so that the SCY price will higher than PT price
-const USDC_TO_MINT_SCY = FUND_AMOUNT.div(10).mul(5);
-const USDC_TO_MINT_QIUSD = FUND_AMOUNT.div(20);
+const USD_TO_MINT_SCY = FUND_AMOUNT.div(10).mul(5);
+const USD_TO_MINT_QIUSD = FUND_AMOUNT.div(20);
 
 async function main() {
     let signerAddress = await networkConnection.signer?.getAddress()!;
     // typehcain for fundkeeper is not available
     let benQiFundKeeper = new Contract(currentConfig.fundKeeper, FUND_KEEPER_ABI, networkConnection.signer);
     let pendleTreasury = new Contract(currentConfig.pendleTreasury, FUND_KEEPER_ABI, networkConnection.signer);
-    let usdc = new ERC20(currentConfig.usdcAddress, networkConnection, ACTIVE_CHAIN_ID);
+    let usd = new ERC20(currentConfig.usdAddress, networkConnection, ACTIVE_CHAIN_ID);
     let router = new Router(currentConfig.router, networkConnection, ACTIVE_CHAIN_ID);
     let scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
     let pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
 
     console.log('funding USD');
     await benQiFundKeeper
-        .transferToMany(currentConfig.usdcAddress, [signerAddress], FUND_AMOUNT)
+        .transferToMany(currentConfig.usdAddress, [signerAddress], FUND_AMOUNT)
         .then((tx: any) => tx.wait(BLOCK_CONFIRMATION));
 
     console.log('mint qiUSD');
-    let qiUsdContract = new Contract(
+    let qiusdontract = new Contract(
         currentConfig.qiUsdAddress,
         IQiErc20__factory.abi,
         networkConnection.signer
     ) as IQiErc20;
-    await usdc.approve(qiUsdContract.address, USDC_TO_MINT_QIUSD).then((tx: any) => tx.wait());
-    await qiUsdContract.mint(USDC_TO_MINT_QIUSD).then((tx: any) => tx.wait());
+    await usd.approve(qiusdontract.address, USD_TO_MINT_QIUSD).then((tx: any) => tx.wait());
+    await qiusdontract.mint(USD_TO_MINT_QIUSD).then((tx: any) => tx.wait());
 
     console.log('funding Pendle');
     await pendleTreasury
         .transferToMany(currentConfig.pendle, [signerAddress], FUND_AMOUNT)
         .then((tx: any) => tx.wait(BLOCK_CONFIRMATION));
 
-    console.log('approving USDC');
-    await usdc.approve(currentConfig.router, INF).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+    console.log('approving USD');
+    await usd.approve(currentConfig.router, INF).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
     console.log('minting PY');
     await router
         .mintPyFromToken(
             signerAddress,
             currentConfig.ytAddress,
-            currentConfig.usdcAddress,
-            USDC_TO_MINT_PY,
+            currentConfig.usdAddress,
+            USD_TO_MINT_PY,
             SLIPPAGE_TYPE3
         )
         .then((tx: any) => tx.wait());
@@ -60,8 +60,8 @@ async function main() {
         .mintScyFromToken(
             signerAddress,
             currentConfig.scyAddress,
-            currentConfig.usdcAddress,
-            USDC_TO_MINT_SCY,
+            currentConfig.usdAddress,
+            USD_TO_MINT_SCY,
             SLIPPAGE_TYPE3
         )
         .then(async (tx: any) => await tx.wait());

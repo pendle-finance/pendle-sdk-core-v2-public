@@ -28,9 +28,18 @@ describe('PY', () => {
         await Promise.all(
             userInfo.unclaimedRewards.map(async ({ token, amount }) => {
                 const { accrued } = await yt.contract.callStatic.userReward(token, currentConfig.deployer);
-                expect(amount).toBe(accrued);
+                expect(amount).toEqBN(accrued);
             })
         );
+    });
+
+    it('#YT.userInfo & PT.userInfo', async () => {
+        const [ytUserInfo, ptUserInfo] = await Promise.all([
+            yt.userInfo(currentConfig.deployer),
+            pt.userInfo(currentConfig.deployer),
+        ]);
+
+        expect(ytUserInfo).toEqual(ptUserInfo);
     });
 
     it('#getInfo & #contract', async () => {

@@ -43,10 +43,11 @@ describe('#contract', () => {
             const currentTimeStamp = (await networkConnection.provider.getBlock(currentBlockNumber)).timestamp;
             const week = await contract.WEEK();
             const newExpiry = Math.round((currentTimeStamp + 10 * week.toNumber()) / week.toNumber()) * week.toNumber();
-            const approveTx = await pendle.approve(currentConfig.veAddress, decimalFactor(19));
-            await approveTx.wait(BLOCK_CONFIRMATION);
-            const lockTx = await contract.connect(signer).increaseLockPosition(decimalFactor(19), newExpiry);
-            await lockTx.wait(BLOCK_CONFIRMATION);
+            await pendle.approve(currentConfig.veAddress, decimalFactor(19)).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+            await contract
+                .connect(signer)
+                .increaseLockPosition(decimalFactor(19), newExpiry)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
             const pendleBalanceAfter = await pendle.balanceOf(signer.address);
             expect(pendleBalanceAfter).toBeLtBN(pendleBalanceBefore);
         });

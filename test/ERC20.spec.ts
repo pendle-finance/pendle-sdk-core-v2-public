@@ -12,23 +12,23 @@ import {
 import './util/BigNumberMatcher';
 
 describe(ERC20, () => {
-    const usdc = new ERC20(currentConfig.usdcAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const usd = new ERC20(currentConfig.usdAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
 
     it('#constructor', () => {
-        expect(usdc).toBeInstanceOf(ERC20);
-        expect(usdc.address).toBe(currentConfig.usdcAddress);
-        expect(usdc.chainId).toBe(ACTIVE_CHAIN_ID);
-        expect(usdc.contract).toBeInstanceOf(Contract);
-        expect(usdc.contract.address).toBe(currentConfig.usdcAddress);
+        expect(usd).toBeInstanceOf(ERC20);
+        expect(usd.address).toBe(currentConfig.usdAddress);
+        expect(usd.chainId).toBe(ACTIVE_CHAIN_ID);
+        expect(usd.contract).toBeInstanceOf(Contract);
+        expect(usd.contract.address).toBe(currentConfig.usdAddress);
     });
 
     it('#contract', async () => {
         const [decimal, name, symbol, totalSupply] = await Promise.all([
-            usdc.decimals(),
-            usdc.name(),
-            usdc.symbol(),
-            usdc.totalSupply(),
+            usd.decimals(),
+            usd.name(),
+            usd.symbol(),
+            usd.totalSupply(),
         ]);
         expect(decimal).toBeGreaterThanOrEqual(6);
         expect(name).toBeDefined();
@@ -39,24 +39,21 @@ describe(ERC20, () => {
     describeWrite(() => {
         it('#allowance & #approve', async () => {
             const approveAmount = decimalFactor(17);
-            const approveTx = await usdc.approve(currentConfig.marketAddress, approveAmount);
-            await approveTx.wait(BLOCK_CONFIRMATION);
+            await usd.approve(currentConfig.marketAddress, approveAmount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-            const currentAllowance = await usdc.allowance(signer.address, currentConfig.marketAddress);
+            const currentAllowance = await usd.allowance(signer.address, currentConfig.marketAddress);
             expect(currentAllowance).toEqBN(approveAmount);
 
-            const resetTx = await usdc.approve(currentConfig.marketAddress, 0);
-            await resetTx.wait(BLOCK_CONFIRMATION);
+            await usd.approve(currentConfig.marketAddress, 0).then((tx) => tx.wait(BLOCK_CONFIRMATION));
         });
 
         it('#balanceOf & #transfer', async () => {
             const transferAmount = decimalFactor(17);
-            const beforeBalance = await usdc.balanceOf(signer.address);
+            const beforeBalance = await usd.balanceOf(signer.address);
 
-            const transferTx = await usdc.transfer(currentConfig.marketAddress, transferAmount);
-            await transferTx.wait(BLOCK_CONFIRMATION);
+            await usd.transfer(currentConfig.marketAddress, transferAmount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-            const afterBalance = await usdc.balanceOf(signer.address);
+            const afterBalance = await usd.balanceOf(signer.address);
             expect(beforeBalance.sub(afterBalance)).toEqBN(transferAmount);
         });
     });
