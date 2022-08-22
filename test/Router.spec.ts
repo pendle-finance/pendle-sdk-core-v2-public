@@ -470,17 +470,6 @@ describe(Router, () => {
         };
     }
 
-    /**
-     * Get a safe amount to swap in router.
-     *
-     * Ideally, all of the following functions should calculate the swap amount
-     * base on the balanceSnapshot.
-     *
-     * But due to the logic to get the correct swap amount is not yet implemented,
-     * we return the default swap amount.
-     *
-     * TODO: Fix all the logic to get a more meaningful swap amount.
-     */
     function getScySwapAmount(balanceSnapshot: BalanceSnapshot) {
         return balanceSnapshot.marketScyBalance.div(SWAP_FACTOR);
     }
@@ -494,6 +483,14 @@ describe(Router, () => {
         return balanceSnapshot.marketPtBalance.div(SWAP_FACTOR);
     }
 
+    /**
+     * Get a safe amount of USD to swap in router.
+     *
+     * Ideally, this function should calculate the swap amount
+     * base on the balanceSnapshot.
+     *
+     * TODO: Fix this?
+     */
     function getUsdSwapAmount(balanceSnapshot: BalanceSnapshot) {
         return DEFAULT_SWAP_AMOUNT;
     }
