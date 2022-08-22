@@ -36,7 +36,9 @@ export function minBigNumber(a: BN, b: BN): BN {
     return a.lt(b) ? a : b;
 }
 
-export const DEFAULT_SWAP_AMOUNT = BN.from(10).pow(12);
+export const DEFAULT_SWAP_AMOUNT = BN.from(10).pow(15);
+
+export const SWAP_FACTOR = 50; // swap amount at most (market balance / 50)
 
 export const DEFAULT_MINT_AMOUNT = BN.from(10).pow(12);
 

@@ -7,17 +7,33 @@ import { BigNumber, BigNumberish } from 'ethers';
 // different: https://github.com/facebook/jest/issues/6243
 
 export const BigNumberMatchers = {
-    toEqBN(received: BigNumberish, value: BigNumberish) {
-        const pass = BigNumber.from(received).eq(value);
+    toEqBN(received: BigNumberish, value: BigNumberish, slippage: number = 0.01) {
+        if (slippage == 0) {
+            const pass = BigNumber.from(received).eq(value);
+            return pass
+                ? {
+                    pass: true,
+                    message: () => `Expected "${received}" NOT to be equal ${value}`,
+                }
+                : {
+                    pass: false,
+                    message: () => `Expected "${received}" to be equal ${value}`,
+                };
+        }
+        slippage = Math.trunc(slippage * 100);
+        const offset = BigNumber.from(value).mul(slippage).div(100).abs();
+        const lowerBound = BigNumber.from(value).sub(offset);
+        const upperBound = BigNumber.from(value).add(offset);
+        const pass = BigNumber.from(received).gte(lowerBound) && BigNumber.from(received).lte(upperBound);
         return pass
             ? {
-                  pass: true,
-                  message: () => `Expected "${received}" NOT to be equal ${value}`,
-              }
+                pass: true,
+                message: () => `Expected "${received}" NOT to be within ${lowerBound} and ${upperBound}`,
+            }
             : {
-                  pass: false,
-                  message: () => `Expected "${received}" to be equal ${value}`,
-              };
+                pass: false,
+                message: () => `Expected "${received}" to be within ${lowerBound} and ${upperBound}`,
+            };
     },
     toBeGtBN(received: BigNumberish, value: BigNumberish) {
         const pass = BigNumber.from(received).gt(value);
@@ -72,7 +88,7 @@ export const BigNumberMatchers = {
 expect.extend(BigNumberMatchers);
 
 interface CustomMatchers<R = unknown> {
-    toEqBN(value: BigNumberish): R;
+    toEqBN(value: BigNumberish, slippage?: number): R;
     toBeGtBN(value: BigNumberish): R;
     toBeLtBN(value: BigNumberish): R;
     toBeGteBN(value: BigNumberish): R;

@@ -18,6 +18,7 @@ import {
     DEFAULT_MINT_AMOUNT,
     minBigNumber,
     ERC20_ENTITIES,
+    SWAP_FACTOR,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/BigNumberMatcher';
@@ -477,17 +478,20 @@ describe(Router, () => {
      *
      * But due to the logic to get the correct swap amount is not yet implemented,
      * we return the default swap amount.
+     *
+     * TODO: Fix all the logic to get a more meaningful swap amount.
      */
     function getScySwapAmount(balanceSnapshot: BalanceSnapshot) {
-        return DEFAULT_SWAP_AMOUNT;
+        return balanceSnapshot.marketScyBalance.div(SWAP_FACTOR);
     }
 
     function getPtSwapAmount(balanceSnapshot: BalanceSnapshot) {
-        return DEFAULT_SWAP_AMOUNT;
+        return balanceSnapshot.marketPtBalance.div(SWAP_FACTOR);
     }
 
     function getYtSwapAmount(balanceSnapshot: BalanceSnapshot) {
-        return DEFAULT_SWAP_AMOUNT;
+        // not a typo here
+        return balanceSnapshot.marketPtBalance.div(SWAP_FACTOR);
     }
 
     function getUsdSwapAmount(balanceSnapshot: BalanceSnapshot) {

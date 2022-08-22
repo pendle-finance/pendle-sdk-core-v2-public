@@ -39,22 +39,19 @@ describe(ERC20, () => {
     describeWrite(() => {
         it('#allowance & #approve', async () => {
             const approveAmount = decimalFactor(17);
-            const approveTx = await usd.approve(currentConfig.marketAddress, approveAmount);
-            await approveTx.wait(BLOCK_CONFIRMATION);
+            await usd.approve(currentConfig.marketAddress, approveAmount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const currentAllowance = await usd.allowance(signer.address, currentConfig.marketAddress);
             expect(currentAllowance).toEqBN(approveAmount);
 
-            const resetTx = await usd.approve(currentConfig.marketAddress, 0);
-            await resetTx.wait(BLOCK_CONFIRMATION);
+            await usd.approve(currentConfig.marketAddress, 0).then((tx) => tx.wait(BLOCK_CONFIRMATION));
         });
 
         it('#balanceOf & #transfer', async () => {
             const transferAmount = decimalFactor(17);
             const beforeBalance = await usd.balanceOf(signer.address);
 
-            const transferTx = await usd.transfer(currentConfig.marketAddress, transferAmount);
-            await transferTx.wait(BLOCK_CONFIRMATION);
+            await usd.transfer(currentConfig.marketAddress, transferAmount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const afterBalance = await usd.balanceOf(signer.address);
             expect(beforeBalance.sub(afterBalance)).toEqBN(transferAmount);
