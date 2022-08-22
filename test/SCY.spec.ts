@@ -44,8 +44,7 @@ describe(SCY, () => {
             const amount = DEFAULT_MINT_AMOUNT;
 
             await approveHelper('USD', currentConfig.scyAddress, amount);
-            const depositTx = await scy.deposit(signer.address, currentConfig.usdAddress, amount, SLIPPAGE_TYPE2);
-            await depositTx.wait(BLOCK_CONFIRMATION);
+            await scy.deposit(signer.address, currentConfig.usdAddress, amount, SLIPPAGE_TYPE2).then(tx => tx.wait(BLOCK_CONFIRMATION));
             await approveHelper('USD', currentConfig.scyAddress, 0);
 
             const scyBalanceAfter = await getBalance('SCY', signer.address);
@@ -56,8 +55,7 @@ describe(SCY, () => {
             const redeemAmount = (await getBalance('SCY', signer.address)).div(REDEEM_FACTOR);
             const usdBalanceBefore = await getBalance('USD', signer.address);
 
-            const redeemTx = await scy.redeem(signer.address, currentConfig.usdAddress, redeemAmount, SLIPPAGE_TYPE2);
-            await redeemTx.wait(BLOCK_CONFIRMATION);
+            await scy.redeem(signer.address, currentConfig.usdAddress, redeemAmount, SLIPPAGE_TYPE2).then(tx => tx.wait(BLOCK_CONFIRMATION));
 
             const usdBalanceAfter = await getBalance('USD', signer.address);
             expect(usdBalanceAfter).toBeGtBN(usdBalanceBefore);
