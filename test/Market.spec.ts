@@ -25,7 +25,7 @@ describe(Market, () => {
             contract.readTokens(),
             contract.isExpired(),
             contract.getRewardTokens(),
-            contract.readState(false),
+            contract.readState(),
         ]);
 
         expect(totalSupply).toBeGteBN(0);
