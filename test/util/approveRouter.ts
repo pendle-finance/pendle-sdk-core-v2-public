@@ -8,7 +8,7 @@ async function main() {
         console.log('approving ' + (await entity.name()));
         let allowance = await entity.allowance(await networkConnection.signer!.getAddress(), currentConfig.router);
         if (allowance.lt(INF.div(2))) {
-            console.log("approving ");
+            console.log('approving ');
             await entity.approve(currentConfig.router, INF).then((tx) => tx.wait(BLOCK_CONFIRMATION));
         }
     }
