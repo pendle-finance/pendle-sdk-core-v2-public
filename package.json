@@ -41,8 +41,8 @@
     },
     "devDependencies": {
         "@size-limit/preset-small-lib": "^8.0.1",
-        "@types/jest": "^28.1.7",
-        "@typescript-eslint/parser": "^5.34.0",
+        "@types/jest": "^28.1.8",
+        "@typescript-eslint/parser": "^5.35.1",
         "dotenv": "^16.0.1",
         "eslint": "^8.22.0",
         "eslint-config-prettier": "^8.5.0",
