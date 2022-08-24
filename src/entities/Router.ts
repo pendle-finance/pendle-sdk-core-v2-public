@@ -74,7 +74,12 @@ export class Router {
                 slippageTolerance: 2_000,
             },
             headers: { 'Accept-Version': 'Latest' },
-        });
+        }).catch(() => {
+            return { data: {
+                outputAmount: 0,
+                encodedSwapData: undefined,
+            }}
+        })
         return data;
     }
 
@@ -136,7 +141,7 @@ export class Router {
 
             // return -1 to avoid swapping through this token
             if (kybercallData.encodedSwapData === undefined) {
-                return { netOut: BN.from(-1), output, kybercallData };
+                return { netOut: constants.NegativeOne, output, kybercallData };
             }
 
             const netOut = await fn(output);
@@ -424,7 +429,7 @@ export class Router {
         output.minTokenOut = 0;
         return this.contract
             .connect(this.networkConnection.signer!)
-            .swapExactYtForToken(receiver, market, lpToRemove, output, overrides);
+            .removeLiquiditySingleToken(receiver, market, lpToRemove, output, overrides);
     }
 
     async swapExactPtForScy(

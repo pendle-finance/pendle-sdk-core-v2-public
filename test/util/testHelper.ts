@@ -52,6 +52,6 @@ export const SLIPPAGE_TYPE3 = 1;
 
 export const REDEEM_FACTOR = 10; // Redeem 1/10 of SCY balance
 
-export const ADD_LIQUIDITY_FACTOR = 4; // Add 1/4 of SCY and PT balance to liquidity pool
+export const ADD_LIQUIDITY_FACTOR = 40; // Add 1/40 of SCY and PT balance to liquidity pool
 
-export const REMOVE_LIQUIDITY_FACTOR = 4; // Remove 1/4 of LP balance from liquidity pool
+export const REMOVE_LIQUIDITY_FACTOR = 40; // Remove 1/40 of LP balance from liquidity pool
