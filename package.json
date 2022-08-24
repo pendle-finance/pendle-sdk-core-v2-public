@@ -34,15 +34,15 @@
         "test:coverage": "yarn jest --coverage --maxWorkers=1"
     },
     "dependencies": {
-        "@pendle/core-v2": "0.10.1-beta",
+        "@pendle/core-v2": "0.10.2-testnet",
         "axios": "^0.27.2",
         "bignumber.js": "^9.1.0",
-        "ethers": "^5.6.9"
+        "ethers": "^5.7.0"
     },
     "devDependencies": {
         "@size-limit/preset-small-lib": "^8.0.1",
         "@types/jest": "^28.1.7",
-        "@typescript-eslint/parser": "^5.33.1",
+        "@typescript-eslint/parser": "^5.34.0",
         "dotenv": "^16.0.1",
         "eslint": "^8.22.0",
         "eslint-config-prettier": "^8.5.0",
