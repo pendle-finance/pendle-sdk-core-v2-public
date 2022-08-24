@@ -204,6 +204,94 @@ export class Router {
             );
     }
 
+    async addLiquiditySinglePt(
+        receiver: Address,
+        market: Address,
+        netPtIn: BigNumberish,
+        slippage: number,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        const netLpOut = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.addLiquiditySinglePt(receiver, market, netPtIn, Router.MIN_AMOUNT, Router.STATIC_APPROX_PARAMS);
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .addLiquiditySinglePt(
+                receiver,
+                market,
+                netPtIn,
+                calcSlippedDownAmount(netLpOut, slippage),
+                Router.swapApproxParams(netLpOut, slippage),
+                overrides
+            );
+    }
+
+    async addLiquiditySingleScy(
+        receiver: Address,
+        market: Address,
+        netScyIn: BigNumberish,
+        slippage: number,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        const netLpOut = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.addLiquiditySingleScy(
+                receiver,
+                market,
+                netScyIn,
+                Router.MIN_AMOUNT,
+                Router.STATIC_APPROX_PARAMS
+            );
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .addLiquiditySingleScy(
+                receiver,
+                market,
+                netScyIn,
+                calcSlippedDownAmount(netLpOut, slippage),
+                Router.swapApproxParams(netLpOut, slippage),
+                overrides
+            );
+    }
+
+    async addLiquiditySingleToken(
+        receiver: Address,
+        market: Address,
+        tokenIn: Address,
+        netTokenIn: BigNumberish,
+        slippage: number,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
+        const tokenMintScyList = await new SCYEntity(
+            scy,
+            this.networkConnection,
+            this.chainId
+        ).contract.callStatic.getTokensIn();
+        const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
+            this.contract
+                .connect(this.networkConnection.signer!)
+                .callStatic.addLiquiditySingleToken(
+                    receiver,
+                    market,
+                    Router.MIN_AMOUNT,
+                    Router.STATIC_APPROX_PARAMS,
+                    input
+                )
+        );
+
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .addLiquiditySingleToken(
+                receiver,
+                market,
+                calcSlippedDownAmount(netOut, slippage),
+                Router.swapApproxParams(netOut, slippage),
+                input,
+                overrides
+            );
+    }
+
     async removeLiquidityDualScyAndPt(
         receiver: Address,
         market: Address,
@@ -255,6 +343,87 @@ export class Router {
                 calcSlippedDownAmount(netPtOut, slippage),
                 overrides
             );
+    }
+
+    async removeLiquiditySinglePt(
+        receiver: Address,
+        market: Address,
+        lpToRemove: BigNumberish,
+        slippage: number,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        const netLpOut = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.removeLiquiditySinglePt(
+                receiver,
+                market,
+                lpToRemove,
+                Router.MIN_AMOUNT,
+                Router.STATIC_APPROX_PARAMS
+            );
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .removeLiquiditySinglePt(
+                receiver,
+                market,
+                lpToRemove,
+                calcSlippedDownAmount(netLpOut, slippage),
+                Router.swapApproxParams(netLpOut, slippage),
+                overrides
+            );
+    }
+
+    async removeLiquiditySingleScy(
+        receiver: Address,
+        market: Address,
+        lpToRemove: BigNumberish,
+        slippage: number,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        const netLpOut = await this.contract
+            .connect(this.networkConnection.signer!)
+            .callStatic.removeLiquiditySingleScy(receiver, market, lpToRemove, Router.MIN_AMOUNT);
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .removeLiquiditySingleScy(
+                receiver,
+                market,
+                lpToRemove,
+                calcSlippedDownAmount(netLpOut, slippage),
+                overrides
+            );
+    }
+
+    async removeLiquiditySingleToken(
+        receiver: Address,
+        market: Address,
+        lpToRemove: BigNumberish,
+        tokenOut: Address,
+        slippage: number,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
+        const [tokenRedeemScyList, approxScyIn] = await Promise.all([
+            new SCYEntity(scy, this.networkConnection, this.chainId).contract.callStatic.getTokensOut(),
+            this.contract
+                .connect(this.networkConnection.signer!)
+                .callStatic.removeLiquiditySingleScy(receiver, market, lpToRemove, Router.MIN_AMOUNT),
+        ]);
+
+        const { output } = await this.outputParams(
+            scy,
+            approxScyIn,
+            tokenOut,
+            tokenRedeemScyList,
+            (output) =>
+                this.contract
+                    .connect(this.networkConnection.signer!)
+                    .callStatic.removeLiquiditySingleToken(receiver, market, lpToRemove, output),
+            slippage
+        );
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapExactYtForToken(receiver, market, lpToRemove, output, overrides);
     }
 
     async swapExactPtForScy(

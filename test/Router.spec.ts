@@ -32,6 +32,11 @@ type BalanceSnapshot = {
     marketScyBalance: BN;
 };
 
+type LpBalanceSnapshot = {
+    lpBalance: BN;
+    lpTotalSupply: BN;
+};
+
 describe(Router, () => {
     const router = Router.getRouter(networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
@@ -92,6 +97,51 @@ describe(Router, () => {
             }
         });
 
+        it('#addLiquiditySinglePt', async () => {
+            const ptAdd = (await getBalance('PT', signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            const balanceBefore = await getLpBalanceSnapshot();
+
+            await router
+                .addLiquiditySinglePt(signer.address, currentConfig.marketAddress, ptAdd, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+
+            const balanceAfter = await getLpBalanceSnapshot();
+            verifyLpBalanceChanges(balanceBefore, balanceAfter);
+        });
+
+        it('#addLiquiditySingleScy', async () => {
+            const scyAdd = (await getBalance('SCY', signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            const balanceBefore = await getLpBalanceSnapshot();
+
+            await router
+                .addLiquiditySingleScy(signer.address, currentConfig.marketAddress, scyAdd, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+
+            const balanceAfter = await getLpBalanceSnapshot();
+            verifyLpBalanceChanges(balanceBefore, balanceAfter);
+        });
+
+        it('#addLiquiditySingleToken', async () => {
+            let tokens = ['QIUSD', 'USD'];
+            for (let token of tokens) {
+                const tokenAddAmount = (await getBalance(token, signer.address)).div(ADD_LIQUIDITY_FACTOR);
+                const balanceBefore = await getLpBalanceSnapshot();
+
+                await router
+                    .addLiquiditySingleToken(
+                        signer.address,
+                        currentConfig.marketAddress,
+                        ERC20_ENTITIES[token].address,
+                        tokenAddAmount,
+                        SLIPPAGE_TYPE2
+                    )
+                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+
+                const balanceAfter = await getLpBalanceSnapshot();
+                verifyLpBalanceChanges(balanceBefore, balanceAfter);
+            }
+        });
+
         it('#removeLiquidityDualScyAndPt', async () => {
             const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
             const lpBalanceBefore = await getBalance('MARKET', signer.address);
@@ -137,6 +187,60 @@ describe(Router, () => {
 
                 expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
                 expect(marketSupplyBefore.sub(marketSupplyAfter)).toEqBN(liquidityRemove);
+            }
+        });
+
+        it('#removeLiquiditySinglePt', async () => {
+            const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            const balanceBefore = await getLpBalanceSnapshot();
+
+            await router
+                .removeLiquiditySinglePt(signer.address, currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+
+            const balanceAfter = await getLpBalanceSnapshot();
+
+            verifyLpBalanceChanges(balanceBefore, balanceAfter);
+            // lp balance reduced amount equals to liquidity removed
+            expect(balanceBefore.lpBalance.sub(balanceAfter.lpBalance)).toEqBN(liquidityRemove);
+        });
+
+        it('#removeLiquiditySingleScy', async () => {
+            const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            const balanceBefore = await getLpBalanceSnapshot();
+
+            await router
+                .removeLiquiditySingleScy(signer.address, currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+
+            const balanceAfter = await getLpBalanceSnapshot();
+
+            verifyLpBalanceChanges(balanceBefore, balanceAfter);
+            // lp balance reduced amount equals to liquidity removed
+            expect(balanceBefore.lpBalance.sub(balanceAfter.lpBalance)).toEqBN(liquidityRemove);
+        });
+
+        it('#removeLiquiditySingleToken', async () => {
+            let tokens = ['QIUSD', 'USD'];
+            for (let token of tokens) {
+                const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+                const balanceBefore = await getLpBalanceSnapshot();
+
+                await router
+                    .removeLiquiditySingleToken(
+                        signer.address,
+                        currentConfig.marketAddress,
+                        liquidityRemove,
+                        ERC20_ENTITIES[token].address,
+                        SLIPPAGE_TYPE2
+                    )
+                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+
+                const balanceAfter = await getLpBalanceSnapshot();
+
+                verifyLpBalanceChanges(balanceBefore, balanceAfter);
+                // lp balance reduced amount equals to liquidity removed
+                expect(balanceBefore.lpBalance.sub(balanceAfter.lpBalance)).toEqBN(liquidityRemove);
             }
         });
 
@@ -470,6 +574,17 @@ describe(Router, () => {
         };
     }
 
+    async function getLpBalanceSnapshot(): Promise<LpBalanceSnapshot> {
+        const [lpTotalSupply, lpBalance] = await Promise.all([
+            getTotalSupply('MARKET'),
+            getBalance('MARKET', signer.address),
+        ]);
+        return {
+            lpTotalSupply,
+            lpBalance,
+        };
+    }
+
     function getScySwapAmount(balanceSnapshot: BalanceSnapshot) {
         return balanceSnapshot.marketScyBalance.div(SWAP_FACTOR);
     }
@@ -511,6 +626,14 @@ describe(Router, () => {
         const scyBalanceDiff = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
         const marketScyBalanceDiff = balanceAfter.marketScyBalance.sub(balanceBefore.marketScyBalance);
         expect(scyBalanceDiff).toBeLtBN(marketScyBalanceDiff.mul(-1));
+    }
+
+    function verifyLpBalanceChanges(balanceBefore: LpBalanceSnapshot, balanceAfter: LpBalanceSnapshot) {
+        const lpBalanceDiff = balanceAfter.lpBalance.sub(balanceBefore.lpBalance);
+        const lpTotalSupplyDiff = balanceAfter.lpTotalSupply.sub(balanceBefore.lpTotalSupply);
+        expect(lpBalanceDiff).toEqBN(lpTotalSupplyDiff.mul(-1));
+        // Balance should change
+        expect(lpBalanceDiff).not.toEqBN(0);
     }
 
     function verifyScyOut(expectScyOut: BN, netScyOut: BN) {
