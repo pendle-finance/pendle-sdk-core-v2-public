@@ -1,6 +1,6 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
-import { Wallet } from 'ethers';
+import { BigNumber as BN, Wallet } from 'ethers';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../../src';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
@@ -114,4 +114,8 @@ export const WALLET = () => ({
 
 export function print(message: any): void {
     console.log(inspect(message, { showHidden: false, depth: null, colors: true }));
+}
+
+export function minBN(a: BN, b: BN): BN {
+    return a.lt(b) ? a : b;
 }
