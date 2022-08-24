@@ -642,7 +642,7 @@ describe(Router, () => {
     function verifyLpBalanceChanges(balanceBefore: LpBalanceSnapshot, balanceAfter: LpBalanceSnapshot) {
         const lpBalanceDiff = balanceAfter.lpBalance.sub(balanceBefore.lpBalance);
         const lpTotalSupplyDiff = balanceAfter.lpTotalSupply.sub(balanceBefore.lpTotalSupply);
-        expect(lpBalanceDiff).toEqBN(lpTotalSupplyDiff.mul(-1));
+        expect(lpBalanceDiff).toEqBN(lpTotalSupplyDiff);
         // Balance should change
         expect(lpBalanceDiff).not.toEqBN(0);
     }
