@@ -1,4 +1,4 @@
-import { Market, Router } from '../src';
+import { Router } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -49,22 +49,6 @@ describe(Router, () => {
     });
 
     describeWrite(() => {
-        async function checkState() {
-            const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
-            let state = await market.contract.readState();
-            let ptBalance = (await getBalance('PT', currentConfig.marketAddress)).toString();
-            let total__Pt = state.totalPt.toString();
-
-            let scyBalance = (await getBalance('SCY', currentConfig.marketAddress)).toString();
-            let total__Scy = state.totalScy.toString();
-
-            console.log({
-                ptBalance,
-                total__Pt,
-                scyBalance,
-                total__Scy,
-            })
-        }
         it('#addLiquidityDualScyAndPt', async () => {
             const scyAdd = (await getBalance('SCY', signer.address)).div(ADD_LIQUIDITY_FACTOR);
             const ptAdd = (await getBalance('PT', signer.address)).div(ADD_LIQUIDITY_FACTOR);
@@ -427,7 +411,6 @@ describe(Router, () => {
             const netPtIn = balanceAfter.ptBalance.sub(balanceBefore.ptBalance).mul(-1);
             expect(netPtIn).toEqBN(expectPtIn);
             expect(balanceAfter.usdBalance).toBeGtBN(balanceBefore.usdBalance);
-            await checkState();
         });
 
         it('#swapExactTokenForYt', async () => {
@@ -468,7 +451,6 @@ describe(Router, () => {
             const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
             expect(netYtIn).toEqBN(expectYtIn);
             expect(balanceAfter.usdBalance).toBeGtBN(balanceBefore.usdBalance);
-            await checkState();
         });
 
         /*
@@ -610,7 +592,6 @@ describe(Router, () => {
         let userAmount = balanceSnapshot.scyBalance.div(USER_SWAP_FACTOR);
 
         return getIn ? minBN(marketAmount, userAmount) : marketAmount;
-
     }
 
     function getPtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
