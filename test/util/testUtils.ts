@@ -1,12 +1,12 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
-import { Wallet } from 'ethers';
+import { BigNumber as BN, Wallet } from 'ethers';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../../src';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-Dc7592.json';
+import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-c93916.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
-import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-2b6D02.json';
+import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-b61e7f.json';
 import FUJI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-benqi.json';
 import MUMBAI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-benqi.json';
 
@@ -114,4 +114,8 @@ export const WALLET = () => ({
 
 export function print(message: any): void {
     console.log(inspect(message, { showHidden: false, depth: null, colors: true }));
+}
+
+export function minBN(a: BN, b: BN): BN {
+    return a.lt(b) ? a : b;
 }

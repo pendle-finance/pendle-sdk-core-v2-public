@@ -6,6 +6,7 @@ import {
     networkConnection,
     BLOCK_CONFIRMATION,
     WALLET,
+    minBN,
 } from './util/testUtils';
 import {
     getBalance,
@@ -18,7 +19,8 @@ import {
     DEFAULT_MINT_AMOUNT,
     minBigNumber,
     ERC20_ENTITIES,
-    SWAP_FACTOR,
+    MARKET_SWAP_FACTOR,
+    USER_SWAP_FACTOR,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/BigNumberMatcher';
@@ -249,7 +251,7 @@ describe(Router, () => {
          */
         it('#swapExactPtForScy', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const ptInAmount = getPtSwapAmount(balanceBefore);
+            const ptInAmount = getPtSwapAmount(balanceBefore, true);
 
             await router
                 .swapExactPtForScy(signer.address, currentConfig.marketAddress, ptInAmount, SLIPPAGE_TYPE2)
@@ -262,7 +264,7 @@ describe(Router, () => {
 
         it('#swapPtForExactScy', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectScyOut = getScySwapAmount(balanceBefore);
+            const expectScyOut = getScySwapAmount(balanceBefore, false);
 
             await router
                 .swapPtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
@@ -277,7 +279,7 @@ describe(Router, () => {
 
         it('#swapScyForExactPt', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectPtOut = getPtSwapAmount(balanceBefore);
+            const expectPtOut = getPtSwapAmount(balanceBefore, false);
 
             await router
                 .swapScyForExactPt(signer.address, currentConfig.marketAddress, expectPtOut, SLIPPAGE_TYPE2)
@@ -292,7 +294,7 @@ describe(Router, () => {
 
         it('#swapExactScyForPt', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectScyIn = getScySwapAmount(balanceBefore);
+            const expectScyIn = getScySwapAmount(balanceBefore, true);
 
             await router
                 .swapExactScyForPt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
@@ -311,7 +313,7 @@ describe(Router, () => {
 
         it('#swapExactScyForYt', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectScyIn = getScySwapAmount(balanceBefore);
+            const expectScyIn = getScySwapAmount(balanceBefore, true);
 
             await router
                 .swapExactScyForYt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
@@ -326,7 +328,7 @@ describe(Router, () => {
 
         it('#swapYtForExactScy', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectScyOut = getScySwapAmount(balanceBefore);
+            const expectScyOut = getScySwapAmount(balanceBefore, false);
 
             await router
                 .swapYtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
@@ -340,7 +342,7 @@ describe(Router, () => {
 
         it('#swapScyForExactYt', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectYtOut = getYtSwapAmount(balanceBefore);
+            const expectYtOut = getYtSwapAmount(balanceBefore, false);
 
             await router
                 .swapScyForExactYt(signer.address, currentConfig.marketAddress, expectYtOut, SLIPPAGE_TYPE2)
@@ -354,7 +356,7 @@ describe(Router, () => {
 
         it('#swapExactYtForScy', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectYtIn = getYtSwapAmount(balanceBefore);
+            const expectYtIn = getYtSwapAmount(balanceBefore, true);
 
             await router
                 .swapExactYtForScy(signer.address, currentConfig.marketAddress, expectYtIn, SLIPPAGE_TYPE2)
@@ -372,7 +374,7 @@ describe(Router, () => {
 
         it('#swapExactTokenForPt', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectUsdIn = getUsdSwapAmount(balanceBefore);
+            const expectUsdIn = getUsdSwapAmount(balanceBefore, true);
 
             await router
                 .swapExactTokenForPt(
@@ -393,7 +395,7 @@ describe(Router, () => {
 
         it('#swapExactPtForToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectPtIn = getPtSwapAmount(balanceBefore);
+            const expectPtIn = getPtSwapAmount(balanceBefore, true);
 
             await router
                 .swapExactPtForToken(
@@ -413,7 +415,7 @@ describe(Router, () => {
 
         it('#swapExactTokenForYt', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectUsdIn = getUsdSwapAmount(balanceBefore);
+            const expectUsdIn = getUsdSwapAmount(balanceBefore, true);
 
             await router
                 .swapExactTokenForYt(
@@ -433,7 +435,7 @@ describe(Router, () => {
 
         it('#swapExactYtForToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectYtIn = getYtSwapAmount(balanceBefore);
+            const expectYtIn = getYtSwapAmount(balanceBefore, true);
 
             await router
                 .swapExactYtForToken(
@@ -585,17 +587,26 @@ describe(Router, () => {
         };
     }
 
-    function getScySwapAmount(balanceSnapshot: BalanceSnapshot) {
-        return balanceSnapshot.marketScyBalance.div(SWAP_FACTOR);
+    function getScySwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean): BN {
+        let marketAmount = balanceSnapshot.marketScyBalance.div(MARKET_SWAP_FACTOR);
+        let userAmount = balanceSnapshot.scyBalance.div(USER_SWAP_FACTOR);
+
+        return getIn ? minBN(marketAmount, userAmount) : marketAmount;
     }
 
-    function getPtSwapAmount(balanceSnapshot: BalanceSnapshot) {
-        return balanceSnapshot.marketPtBalance.div(SWAP_FACTOR);
+    function getPtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
+        let marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
+        let userAmount = balanceSnapshot.ptBalance.div(USER_SWAP_FACTOR);
+
+        return getIn ? minBN(marketAmount, userAmount) : marketAmount;
     }
 
-    function getYtSwapAmount(balanceSnapshot: BalanceSnapshot) {
-        // not a typo here
-        return balanceSnapshot.marketPtBalance.div(SWAP_FACTOR);
+    function getYtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
+        // `pt` is not a typo here
+        let marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
+        let userAmount = balanceSnapshot.ytBalance.div(USER_SWAP_FACTOR);
+
+        return getIn ? minBN(marketAmount, userAmount) : marketAmount;
     }
 
     /**
@@ -606,7 +617,7 @@ describe(Router, () => {
      *
      * TODO: Fix this?
      */
-    function getUsdSwapAmount(balanceSnapshot: BalanceSnapshot) {
+    function getUsdSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
         return DEFAULT_SWAP_AMOUNT;
     }
 
@@ -631,7 +642,7 @@ describe(Router, () => {
     function verifyLpBalanceChanges(balanceBefore: LpBalanceSnapshot, balanceAfter: LpBalanceSnapshot) {
         const lpBalanceDiff = balanceAfter.lpBalance.sub(balanceBefore.lpBalance);
         const lpTotalSupplyDiff = balanceAfter.lpTotalSupply.sub(balanceBefore.lpTotalSupply);
-        expect(lpBalanceDiff).toEqBN(lpTotalSupplyDiff.mul(-1));
+        expect(lpBalanceDiff).toEqBN(lpTotalSupplyDiff);
         // Balance should change
         expect(lpBalanceDiff).not.toEqBN(0);
     }
