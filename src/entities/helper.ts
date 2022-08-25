@@ -10,6 +10,7 @@ import {
     MUMBAI_ADDRESSES,
     PERCENTAGE_DECIMALS,
 } from '../constants';
+import { Address } from './types';
 
 export function decimalFactor(decimals: number): BN {
     return BN.from(10).pow(decimals);
@@ -50,6 +51,10 @@ export function getContractAddresses(chainId: number): ContractAddresses {
 
 export function isMainchain(chainId: number): boolean {
     return chainId === CHAIN_ID.ETHEREUM || chainId === CHAIN_ID.FUJI;
+}
+
+export function isSameAddress(address1: Address, address2: Address): boolean {
+    return address1.toLowerCase() === address2.toLowerCase();
 }
 
 export class InvalidSlippageError extends Error {
