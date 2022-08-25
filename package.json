@@ -34,7 +34,7 @@
         "test:coverage": "yarn jest --coverage --maxWorkers=1"
     },
     "dependencies": {
-        "@pendle/core-v2": "0.10.2-testnet",
+        "@pendle/core-v2": "0.10.3-testnet",
         "axios": "^0.27.2",
         "bignumber.js": "^9.1.0",
         "ethers": "^5.7.0"
