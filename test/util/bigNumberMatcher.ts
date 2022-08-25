@@ -12,13 +12,13 @@ export const BigNumberMatchers = {
             const pass = BigNumber.from(received).eq(value);
             return pass
                 ? {
-                    pass: true,
-                    message: () => `Expected "${received}" NOT to be equal ${value}`,
-                }
+                      pass: true,
+                      message: () => `Expected "${received}" NOT to be equal ${value}`,
+                  }
                 : {
-                    pass: false,
-                    message: () => `Expected "${received}" to be equal ${value}`,
-                };
+                      pass: false,
+                      message: () => `Expected "${received}" to be equal ${value}`,
+                  };
         }
         slippage = Math.trunc(slippage * 100);
         const offset = BigNumber.from(value).mul(slippage).div(100).abs();
@@ -27,13 +27,13 @@ export const BigNumberMatchers = {
         const pass = BigNumber.from(received).gte(lowerBound) && BigNumber.from(received).lte(upperBound);
         return pass
             ? {
-                pass: true,
-                message: () => `Expected "${received}" NOT to be within ${lowerBound} and ${upperBound}`,
-            }
+                  pass: true,
+                  message: () => `Expected "${received}" NOT to be within ${lowerBound} and ${upperBound}`,
+              }
             : {
-                pass: false,
-                message: () => `Expected "${received}" to be within ${lowerBound} and ${upperBound}`,
-            };
+                  pass: false,
+                  message: () => `Expected "${received}" to be within ${lowerBound} and ${upperBound}`,
+              };
     },
     toBeGtBN(received: BigNumberish, value: BigNumberish) {
         const pass = BigNumber.from(received).gt(value);
