@@ -17,10 +17,17 @@ import {
     Contract,
 } from 'ethers';
 import { KYBER_API, KYBER_SWAP_NATIVE_ADDRESS } from '../constants';
-import { calcSlippedDownAmount, calcSlippedUpAmount, getContractAddresses, isSameAddress } from './helper';
+import {
+    calcSlippedDownAmount,
+    calcSlippedUpAmount,
+    getContractAddresses,
+    getRouterStatic,
+    isSameAddress,
+} from './helper';
 import { Market } from './Market';
 import { SCY as SCYEntity } from './SCY';
 import { YT as YTEntity } from './YT';
+import { RouterStatic } from '@pendle/core-v2/typechain-types';
 
 export type KybercallData = {
     amountInUsd?: number;
@@ -40,6 +47,7 @@ export class Router {
         eps: BN.from(10).pow(15),
     };
     readonly contract: IPAllAction;
+    readonly routerStatic: RouterStatic;
 
     constructor(
         readonly address: Address,
@@ -47,6 +55,7 @@ export class Router {
         readonly chainId: number
     ) {
         this.contract = new Contract(address, IPAllActionABI, networkConnection.provider) as IPAllAction;
+        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
     static getRouter(networkConnection: NetworkConnection, chainId: number): Router {
@@ -122,6 +131,45 @@ export class Router {
             return { netOut, input, kybercallData };
         });
         return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
+    }
+
+    // TODO: find a way to avoid this duplication
+    async zapInputParams<T extends { netLpOut: BN; netPtFromSwap: BN }>(
+        tokenIn: Address,
+        netTokenIn: BigNumberish,
+        tokenMintScyList: Address[],
+        fn: (input: TokenInputStruct) => Promise<T>
+    ): Promise<{
+        netLpOut: BN;
+        netPtFromSwap: BN;
+        input: TokenInputStruct;
+        kybercallData: KybercallData;
+    }> {
+        const possibleOutAmounts = tokenMintScyList.map(async (tokenMintScy) => {
+            const kybercallData = await this.kybercall(tokenIn, tokenMintScy, netTokenIn);
+            const input = {
+                tokenIn,
+                netTokenIn,
+                tokenMintScy,
+                kybercall: kybercallData.encodedSwapData,
+            } as TokenInputStruct;
+
+            // return -1 to avoid swapping through this token
+            if (kybercallData.encodedSwapData === undefined) {
+                return {
+                    netLpOut: etherConstants.NegativeOne,
+                    netPtFromSwap: etherConstants.NegativeOne,
+                    input,
+                    kybercallData,
+                };
+            }
+
+            const { netLpOut, netPtFromSwap } = await fn(input);
+            return { netLpOut, netPtFromSwap, input, kybercallData };
+        });
+        return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) =>
+            cur.netLpOut.gt(prev.netLpOut) ? cur : prev
+        );
     }
 
     async outputParams(
@@ -227,19 +275,20 @@ export class Router {
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netLpOut = await this.contract
-            .connect(this.networkConnection.signer!)
-            .callStatic.addLiquiditySinglePt(receiver, market, netPtIn, Router.MIN_AMOUNT, Router.STATIC_APPROX_PARAMS);
-        return this.contract.connect(this.networkConnection.signer!).addLiquiditySinglePt(
-            receiver,
+        const { netLpOut, netPtToSwap } = await this.routerStatic.callStatic.addLiquiditySinglePtStatic(
             market,
-            netPtIn,
-            Router.MIN_AMOUNT,
-            Router.STATIC_APPROX_PARAMS,
-            // calcSlippedDownAmount(netLpOut, slippage),
-            // Router.swapApproxParams(netLpOut, slippage),
-            overrides
+            netPtIn
         );
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .addLiquiditySinglePt(
+                receiver,
+                market,
+                netPtIn,
+                calcSlippedDownAmount(netLpOut, slippage),
+                Router.swapApproxParams(netPtToSwap, slippage),
+                overrides
+            );
     }
 
     async addLiquiditySingleScy(
@@ -249,25 +298,21 @@ export class Router {
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netLpOut = await this.contract
+        const { netLpOut, netPtFromSwap } = await this.routerStatic.callStatic.addLiquiditySingleScyStatic(
+            market,
+            netScyIn
+        );
+
+        return this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.addLiquiditySingleScy(
+            .addLiquiditySingleScy(
                 receiver,
                 market,
                 netScyIn,
-                Router.MIN_AMOUNT,
-                Router.STATIC_APPROX_PARAMS
+                calcSlippedDownAmount(netLpOut, slippage),
+                Router.swapApproxParams(netPtFromSwap, slippage),
+                overrides
             );
-        return this.contract.connect(this.networkConnection.signer!).addLiquiditySingleScy(
-            receiver,
-            market,
-            netScyIn,
-            Router.MIN_AMOUNT,
-            Router.STATIC_APPROX_PARAMS,
-            // calcSlippedDownAmount(netLpOut, slippage),
-            // Router.swapApproxParams(netLpOut, slippage),
-            overrides
-        );
     }
 
     async addLiquiditySingleToken(
@@ -284,28 +329,25 @@ export class Router {
             this.networkConnection,
             this.chainId
         ).contract.callStatic.getTokensIn();
-        const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
-            this.contract
-                .connect(this.networkConnection.signer!)
-                .callStatic.addLiquiditySingleToken(
-                    receiver,
-                    market,
-                    Router.MIN_AMOUNT,
-                    Router.STATIC_APPROX_PARAMS,
-                    input
-                )
+
+        const { netLpOut, netPtFromSwap, input } = await this.zapInputParams(
+            tokenIn,
+            netTokenIn,
+            tokenMintScyList,
+            (input) =>
+                this.routerStatic.callStatic.addLiquiditySingleBaseTokenStatic(market, input.tokenIn, input.netTokenIn)
         );
 
-        return this.contract.connect(this.networkConnection.signer!).addLiquiditySingleToken(
-            receiver,
-            market,
-            Router.MIN_AMOUNT,
-            Router.STATIC_APPROX_PARAMS,
-            // calcSlippedDownAmount(netOut, slippage),
-            // Router.swapApproxParams(netOut, slippage),
-            input,
-            overrides
-        );
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .addLiquiditySingleToken(
+                receiver,
+                market,
+                calcSlippedDownAmount(netLpOut, slippage),
+                Router.swapApproxParams(netPtFromSwap, slippage),
+                input,
+                overrides
+            );
     }
 
     async removeLiquidityDualScyAndPt(
@@ -368,25 +410,20 @@ export class Router {
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netLpOut = await this.contract
+        const { netPtOut, netPtFromSwap } = await this.routerStatic.callStatic.removeLiquiditySinglePtStatic(
+            market,
+            lpToRemove
+        );
+        return this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.removeLiquiditySinglePt(
+            .removeLiquiditySinglePt(
                 receiver,
                 market,
                 lpToRemove,
-                Router.MIN_AMOUNT,
-                Router.STATIC_APPROX_PARAMS
+                calcSlippedDownAmount(netPtOut, slippage),
+                Router.swapApproxParams(netPtFromSwap, slippage),
+                overrides
             );
-        return this.contract.connect(this.networkConnection.signer!).removeLiquiditySinglePt(
-            receiver,
-            market,
-            lpToRemove,
-            Router.MIN_AMOUNT,
-            Router.STATIC_APPROX_PARAMS,
-            // calcSlippedDownAmount(netLpOut, slippage),
-            // Router.swapApproxParams(netLpOut, slippage),
-            overrides
-        );
     }
 
     async removeLiquiditySingleScy(
@@ -396,17 +433,16 @@ export class Router {
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const netLpOut = await this.contract
+        const { netScyOut } = await this.routerStatic.callStatic.removeLiquiditySingleScyStatic(market, lpToRemove);
+        return this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.removeLiquiditySingleScy(receiver, market, lpToRemove, Router.MIN_AMOUNT);
-        return this.contract.connect(this.networkConnection.signer!).removeLiquiditySingleScy(
-            receiver,
-            market,
-            lpToRemove,
-            Router.MIN_AMOUNT,
-            // calcSlippedDownAmount(netLpOut, slippage),
-            overrides
-        );
+            .removeLiquiditySingleScy(
+                receiver,
+                market,
+                lpToRemove,
+                calcSlippedDownAmount(netScyOut, slippage),
+                overrides
+            );
     }
 
     async removeLiquiditySingleToken(
@@ -436,8 +472,6 @@ export class Router {
                     .callStatic.removeLiquiditySingleToken(receiver, market, lpToRemove, output),
             slippage
         );
-        // TODO: Fix this
-        output.minTokenOut = 0;
         return this.contract
             .connect(this.networkConnection.signer!)
             .removeLiquiditySingleToken(receiver, market, lpToRemove, output, overrides);
