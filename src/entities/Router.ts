@@ -13,11 +13,11 @@ import {
     type ContractTransaction,
     type Overrides,
     BigNumber as BN,
-    constants,
+    constants as etherConstants,
     Contract,
 } from 'ethers';
-import { KYBER_API } from '../constants';
-import { calcSlippedDownAmount, calcSlippedUpAmount, getContractAddresses } from './helper';
+import { KYBER_API, KYBER_SWAP_NATIVE_ADDRESS } from '../constants';
+import { calcSlippedDownAmount, calcSlippedUpAmount, getContractAddresses, isSameAddress } from './helper';
 import { Market } from './Market';
 import { SCY as SCYEntity } from './SCY';
 import { YT as YTEntity } from './YT';
@@ -31,7 +31,7 @@ export type KybercallData = {
 
 export class Router {
     static readonly MIN_AMOUNT = 0;
-    static readonly MAX_AMOUNT = constants.MaxUint256;
+    static readonly MAX_AMOUNT = etherConstants.MaxUint256;
     static readonly STATIC_APPROX_PARAMS = {
         guessMin: Router.MIN_AMOUNT,
         guessMax: Router.MAX_AMOUNT,
@@ -63,7 +63,14 @@ export class Router {
     }
 
     async kybercall(tokenIn: Address, tokenOut: Address, amountIn: BigNumberish): Promise<KybercallData> {
-        if (tokenIn.toLowerCase() === tokenOut.toLowerCase()) return { outputAmount: amountIn, encodedSwapData: [] };
+        if (isSameAddress(tokenIn, tokenOut)) return { outputAmount: amountIn, encodedSwapData: [] };
+        // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
+        if (isSameAddress(tokenIn, etherConstants.AddressZero)) {
+            tokenIn = KYBER_SWAP_NATIVE_ADDRESS;
+        }
+        if (isSameAddress(tokenOut, etherConstants.AddressZero)) {
+            tokenOut = KYBER_SWAP_NATIVE_ADDRESS;
+        }
         const { data } = await axios
             .get(KYBER_API[this.chainId], {
                 params: {
@@ -108,7 +115,7 @@ export class Router {
 
             // return -1 to avoid swapping through this token
             if (kybercallData.encodedSwapData === undefined) {
-                return { netOut: constants.NegativeOne, input, kybercallData };
+                return { netOut: etherConstants.NegativeOne, input, kybercallData };
             }
 
             const netOut = await fn(input);
@@ -145,7 +152,7 @@ export class Router {
 
             // return -1 to avoid swapping through this token
             if (kybercallData.encodedSwapData === undefined) {
-                return { netOut: constants.NegativeOne, output, kybercallData };
+                return { netOut: etherConstants.NegativeOne, output, kybercallData };
             }
 
             const netOut = await fn(output);
@@ -640,7 +647,7 @@ export class Router {
         ).contract.callStatic.getTokensOut();
         const { output } = await this.outputParams(
             SCY,
-            BN.from(netPyIn).mul(constants.WeiPerEther).div(pyIndex),
+            BN.from(netPyIn).mul(etherConstants.WeiPerEther).div(pyIndex),
             tokenOut,
             tokenRedeemScyList,
             (output) =>

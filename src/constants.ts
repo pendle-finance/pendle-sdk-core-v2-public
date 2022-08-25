@@ -49,3 +49,5 @@ export const KYBER_API = {
     [CHAIN_ID.AVALANCHE]: 'https://aggregator-api.kyberswap.com/avalanche/route/encode',
     [CHAIN_ID.FUJI]: 'https://aggregator-api.stg.kyberengineering.io/fuji/route/encode',
 } as const;
+
+export const KYBER_SWAP_NATIVE_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
