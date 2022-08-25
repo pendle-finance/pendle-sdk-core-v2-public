@@ -1802,10 +1802,10 @@
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.7.3.tgz#939534757a81f8d69cc854c7692805684ff3111e"
   integrity sha512-dGRS0agJzu8ybo44pCIf3xBaPQN/65AIXNgK8+4gzKd5kbvlqyxryUYVLJv7fK98Seyd2hDZzVEHSWAh0Bt1Yw==
 
-"@pendle/core-v2@0.10.2-testnet":
-  version "0.10.2-testnet"
-  resolved "https://registry.yarnpkg.com/@pendle/core-v2/-/core-v2-0.10.2-testnet.tgz#8483b1f040dfe34a7f11172a0d60c0f4879a2f16"
-  integrity sha512-lVvt9lcQE5F+f2wLm8XBiDpkF3ovPci466tlO9Brq4+WyLyMK6lpTGibXShCybwsmaFO20jNkIhlmF6ZRVMLqQ==
+"@pendle/core-v2@0.10.3-testnet":
+  version "0.10.3-testnet"
+  resolved "https://registry.yarnpkg.com/@pendle/core-v2/-/core-v2-0.10.3-testnet.tgz#db853bd89785af755e793a11e801be76af9dc1b3"
+  integrity sha512-yQmHEiuXTaK9gnly1bowgE9VRfIs91QszQrK/thb/Le8uoX52RY8NnGcfeuvTwgOrzM3ndJ5jVtHlZ0C4178iw==
   dependencies:
     "@openzeppelin/contracts" "^4.5.0"
     "@openzeppelin/contracts-upgradeable" "^4.5.2"
