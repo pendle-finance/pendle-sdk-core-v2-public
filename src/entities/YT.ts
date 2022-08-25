@@ -3,6 +3,7 @@ import type { Address, NetworkConnection, TokenAmount } from './types';
 import { type BigNumber as BN, Contract } from 'ethers';
 import { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldToken.sol/PendleYieldToken.json';
 import { getRouterStatic } from './helper';
+import { ERC20 } from './ERC20';
 
 export type UserPYInfo = {
     yt: Address;
@@ -25,19 +26,18 @@ export type RewardIndex = {
 };
 
 export class YT {
-    address: Address;
-    contract: PendleYieldToken;
-    chainId: number;
+    readonly ERC20: ERC20;
+    readonly contract: PendleYieldToken;
+    protected readonly routerStatic: RouterStatic;
 
-    protected networkConnection: NetworkConnection;
-    protected routerStatic: RouterStatic;
-
-    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
-        this.address = _address;
-        this.networkConnection = _networkConnection;
-        this.chainId = _chainId;
-        this.contract = new Contract(_address, PendleYieldTokenABI, _networkConnection.provider) as PendleYieldToken;
-        this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
+    constructor(
+        readonly address: Address,
+        protected readonly networkConnection: NetworkConnection,
+        readonly chainId: number
+    ) {
+        this.ERC20 = new ERC20(address, networkConnection, chainId);
+        this.contract = new Contract(address, PendleYieldTokenABI, networkConnection.provider) as PendleYieldToken;
+        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
     async userInfo(user: Address): Promise<UserPYInfo> {
@@ -45,7 +45,6 @@ export class YT {
     }
 
     async getInfo(): Promise<PYInfo> {
-        const [exchangeRate, totalSupply, rewardIndexes] = await this.routerStatic.callStatic.getPYInfo(this.address);
-        return { exchangeRate, totalSupply, rewardIndexes };
+        return this.routerStatic.callStatic.getPYInfo(this.address);
     }
 }

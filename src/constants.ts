@@ -10,6 +10,8 @@ export type ContractAddresses = {
     VOTING_CONTROLLER?: Address;
 };
 
+export const PERCENTAGE_DECIMALS = 6;
+
 export const CHAIN_ID = {
     ETHEREUM: 1,
     AVALANCHE: 43114,
@@ -41,3 +43,11 @@ export const MUMBAI_ADDRESSES: ContractAddresses = {
     PENDLE: MUMBAI_CORE_ADDRESSES.PENDLE,
     VEPENDLE: MUMBAI_CORE_ADDRESSES.vePendle,
 };
+
+export const KYBER_API = {
+    [CHAIN_ID.ETHEREUM]: 'https://aggregator-api.kyberswap.com/ethereum/route/encode',
+    [CHAIN_ID.AVALANCHE]: 'https://aggregator-api.kyberswap.com/avalanche/route/encode',
+    [CHAIN_ID.FUJI]: 'https://aggregator-api.stg.kyberengineering.io/fuji/route/encode',
+} as const;
+
+export const KYBER_SWAP_NATIVE_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';

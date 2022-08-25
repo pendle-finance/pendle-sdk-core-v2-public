@@ -3,6 +3,7 @@ import type { Address, NetworkConnection, TokenAmount } from './types';
 import { type BigNumber as BN, type BigNumberish, type ContractTransaction, type Overrides, Contract } from 'ethers';
 import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/base-implementations/SCYBase.sol/SCYBase.json';
 import { calcSlippedDownAmount, getRouterStatic } from './helper';
+import { ERC20 } from './ERC20';
 
 export type UserSCYInfo = {
     balance: BN;
@@ -10,19 +11,18 @@ export type UserSCYInfo = {
 };
 
 export class SCY {
-    address: Address;
-    contract: SCYBase;
-    chainId: number;
+    readonly ERC20: ERC20;
+    readonly contract: SCYBase;
+    protected readonly routerStatic: RouterStatic;
 
-    protected networkConnection: NetworkConnection;
-    protected routerStatic: RouterStatic;
-
-    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
-        this.address = _address;
-        this.networkConnection = _networkConnection;
-        this.chainId = _chainId;
-        this.contract = new Contract(_address, SCYBaseABI, _networkConnection.provider) as SCYBase;
-        this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
+    constructor(
+        readonly address: Address,
+        protected readonly networkConnection: NetworkConnection,
+        readonly chainId: number
+    ) {
+        this.ERC20 = new ERC20(address, networkConnection, chainId);
+        this.contract = new Contract(address, SCYBaseABI, networkConnection.provider) as SCYBase;
+        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
     /**
@@ -37,7 +37,7 @@ export class SCY {
         baseAssetIn: Address,
         amountBaseToPull: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const amountScyOut = await this.contract
             .connect(this.networkConnection.signer!)
@@ -55,7 +55,7 @@ export class SCY {
         baseAssetOut: Address,
         amountScyToPull: BigNumberish,
         slippage: number,
-        overrides?: Overrides
+        overrides: Overrides = {}
     ): Promise<ContractTransaction> {
         const amountBaseOut = await this.contract
             .connect(this.networkConnection.signer!)

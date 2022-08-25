@@ -8,7 +8,7 @@ module.exports = {
         ecmaVersion: 2020,
         sourceType: 'module',
     },
-    plugins: ['prettier'],
+    plugins: ['prettier', 'unused-imports'],
     rules: {
         'prettier/prettier': ['error'],
         indent: ['error', 4, { SwitchCase: 1 }],
@@ -16,5 +16,6 @@ module.exports = {
         quotes: ['error', 'single', { avoidEscape: true }],
         semi: ['error', 'always'],
         'spaced-comment': ['error', 'always', { exceptions: ['-', '+'] }],
+        'unused-imports/no-unused-imports': 'error',
     },
 };

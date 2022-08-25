@@ -4,25 +4,26 @@ import type { UserPYInfo, PYInfo } from './YT';
 import { abi as PendlePrincipalTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendlePrincipalToken.sol/PendlePrincipalToken.json';
 import { Contract } from 'ethers';
 import { getRouterStatic } from './helper';
+import { ERC20 } from './ERC20';
 
 export class PT {
-    address: Address;
-    contract: PendlePrincipalToken;
-    chainId: number;
+    readonly ERC20: ERC20;
+    readonly contract: PendlePrincipalToken;
 
-    protected networkConnection: NetworkConnection;
-    protected routerStatic: RouterStatic;
+    protected readonly routerStatic: RouterStatic;
 
-    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
-        this.address = _address;
-        this.networkConnection = _networkConnection;
-        this.chainId = _chainId;
+    constructor(
+        readonly address: Address,
+        protected readonly networkConnection: NetworkConnection,
+        readonly chainId: number
+    ) {
+        this.ERC20 = new ERC20(address, networkConnection, chainId);
         this.contract = new Contract(
-            _address,
+            address,
             PendlePrincipalTokenABI,
-            _networkConnection.provider
+            networkConnection.provider
         ) as PendlePrincipalToken;
-        this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
+        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
     async userInfo(user: Address): Promise<UserPYInfo> {
@@ -30,7 +31,6 @@ export class PT {
     }
 
     async getInfo(): Promise<PYInfo> {
-        const [exchangeRate, totalSupply, rewardIndexes] = await this.routerStatic.callStatic.getPYInfo(this.address);
-        return { exchangeRate, totalSupply, rewardIndexes };
+        return this.routerStatic.callStatic.getPYInfo(this.address);
     }
 }

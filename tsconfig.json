@@ -14,10 +14,17 @@
         "resolveJsonModule": true,
         "forceConsistentCasingInFileNames": true,
         "typeRoots": ["./node_modules/@types"],
-        "plugins": [{ "transform": "@zerollup/ts-transform-paths" }]
+        "plugins": [{ "transform": "@zerollup/ts-transform-paths" }],
+        "strict": true
     },
     "ts-node": {
-        "files": true
+        "files": true,
+        "compilerOptions": {
+            "module": "CommonJS"
+        },
+        "ignore": [
+            "/node_modules/(?!@pendle/core-v2/typechain-types)"
+        ]
     },
     "include": ["src/**/*"]
 }

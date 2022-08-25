@@ -1,16 +1,18 @@
 import type { PendleMarket, RouterStatic } from '@pendle/core-v2/typechain-types';
-import type { MarketStateStruct } from '@pendle/core-v2/typechain-types/PendleMarket';
+import type { MarketStateStructOutput } from '@pendle/core-v2/typechain-types/PendleMarket';
 import type { IPRouterStatic } from '@pendle/core-v2/typechain-types/IPRouterStatic';
 import type { Address, NetworkConnection, TokenAmount } from './types';
 import { abi as PendleMarketABI } from '@pendle/core-v2/build/artifacts/contracts/core/Market/PendleMarket.sol/PendleMarket.json';
 import { type BigNumber as BN, Contract } from 'ethers';
 import { getRouterStatic } from './helper';
+import { ERC20 } from './ERC20';
 
 export type MarketInfo = {
     pt: Address;
     scy: Address;
-    state: MarketStateStruct;
+    state: MarketStateStructOutput;
     impliedYield: BN;
+    exchangeRate: BN;
 };
 
 export type UserMarketInfo = {
@@ -18,23 +20,23 @@ export type UserMarketInfo = {
     lpBalance: BN;
     ptBalance: TokenAmount;
     scyBalance: TokenAmount;
-    assetBalance: IPRouterStatic.AssetAmountStruct;
+    assetBalance: IPRouterStatic.AssetAmountStructOutput;
 };
 
 export class Market {
-    address: Address;
-    contract: PendleMarket;
-    chainId: number;
+    readonly ERC20: ERC20;
+    readonly contract: PendleMarket;
 
-    protected networkConnection: NetworkConnection;
-    protected routerStatic: RouterStatic;
+    protected readonly routerStatic: RouterStatic;
 
-    constructor(_address: Address, _networkConnection: NetworkConnection, _chainId: number) {
-        this.address = _address;
-        this.networkConnection = _networkConnection;
-        this.chainId = _chainId;
-        this.contract = new Contract(_address, PendleMarketABI, _networkConnection.provider) as PendleMarket;
-        this.routerStatic = getRouterStatic(_networkConnection.provider, _chainId);
+    constructor(
+        readonly address: Address,
+        protected readonly networkConnection: NetworkConnection,
+        readonly chainId: number
+    ) {
+        this.ERC20 = new ERC20(address, networkConnection, chainId);
+        this.contract = new Contract(address, PendleMarketABI, networkConnection.provider) as PendleMarket;
+        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
     async getMarketInfo(): Promise<MarketInfo> {
