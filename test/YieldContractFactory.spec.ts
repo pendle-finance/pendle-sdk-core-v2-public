@@ -3,6 +3,8 @@ import { YieldContractFactory } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 
 describe(YieldContractFactory, () => {
+    const ptAddress = currentConfig.market.PT;
+    const ytAddress = currentConfig.market.YT;
     const yieldFactory = new YieldContractFactory(
         currentConfig.yieldContractFactory,
         networkConnection,
@@ -19,10 +21,10 @@ describe(YieldContractFactory, () => {
 
     it('#contract', async () => {
         const contract = yieldFactory.contract;
-        expect(await contract.functions.isPT(currentConfig.ptAddress)).toStrictEqual([true]);
-        expect(await contract.functions.isYT(currentConfig.ytAddress)).toStrictEqual([true]);
+        expect(await contract.functions.isPT(ptAddress)).toStrictEqual([true]);
+        expect(await contract.functions.isYT(ytAddress)).toStrictEqual([true]);
 
-        expect(await contract.functions.isPT(currentConfig.ytAddress)).toStrictEqual([false]);
-        expect(await contract.functions.isYT(currentConfig.ptAddress)).toStrictEqual([false]);
+        expect(await contract.functions.isPT(ytAddress)).toStrictEqual([false]);
+        expect(await contract.functions.isYT(ptAddress)).toStrictEqual([false]);
     });
 });

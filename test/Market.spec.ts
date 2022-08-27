@@ -5,10 +5,11 @@ import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './uti
 import './util/BigNumberMatcher';
 
 describe(Market, () => {
-    const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const currentMarket = currentConfig.market;
+    const market = new Market(currentMarket.market, networkConnection, ACTIVE_CHAIN_ID);
     const contract = market.contract;
     const sender = WALLET().wallet;
-    const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const scy = new SCY(currentMarket.SCY, networkConnection, ACTIVE_CHAIN_ID);
     const routerStatic = getRouterStatic(networkConnection.provider, ACTIVE_CHAIN_ID);
 
     it('#constructor', () => {
@@ -29,9 +30,9 @@ describe(Market, () => {
         ]);
 
         expect(totalSupply).toBeGteBN(0);
-        expect(tokens._PT).toBe(currentConfig.ptAddress);
-        expect(tokens._YT).toBe(currentConfig.ytAddress);
-        expect(tokens._SCY).toBe(currentConfig.scyAddress);
+        expect(tokens._PT).toBe(currentMarket.PT);
+        expect(tokens._YT).toBe(currentMarket.YT);
+        expect(tokens._SCY).toBe(currentMarket.SCY);
         expect(isExpired).toBe(false);
     });
 
@@ -39,8 +40,8 @@ describe(Market, () => {
         const marketInfo = await market.getMarketInfo();
         const exchangerate = await routerStatic.callStatic.getExchangeRate(market.address);
 
-        expect(marketInfo.pt).toBe(currentConfig.ptAddress);
-        expect(marketInfo.scy).toBe(currentConfig.scyAddress);
+        expect(marketInfo.pt).toBe(currentMarket.PT);
+        expect(marketInfo.scy).toBe(currentMarket.SCY);
         // expect(marketInfo.exchangeRate).toEqBN(exchangerate);
     });
 
@@ -55,8 +56,8 @@ describe(Market, () => {
 
         // Verify addresses
         expect(userMarketInfo.market).toBe(currentConfig.marketAddress);
-        expect(userMarketInfo.ptBalance.token).toBe(currentConfig.ptAddress);
-        expect(userMarketInfo.scyBalance.token).toBe(currentConfig.scyAddress);
+        expect(userMarketInfo.ptBalance.token).toBe(currentMarket.PT);
+        expect(userMarketInfo.scyBalance.token).toBe(currentMarket.SCY);
 
         // Verify lp balance
         expect(userMarketInfo.lpBalance).toEqBN(userBalance);

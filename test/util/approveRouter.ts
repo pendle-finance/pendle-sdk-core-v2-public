@@ -1,15 +1,30 @@
 import { ethers } from 'ethers';
-import { ERC20_ENTITIES } from './testHelper';
-import { BLOCK_CONFIRMATION, currentConfig, networkConnection } from './testUtils';
+import { isSameAddress } from '../../src/entities/helper';
+import { approveHelper, getAllowance } from './testHelper';
+import { currentConfig, networkConnection } from './testUtils';
 
 const INF = ethers.constants.MaxUint256;
 async function main() {
-    for (let entity of Object.values(ERC20_ENTITIES)) {
-        console.log('approving ' + (await entity.name()));
-        let allowance = await entity.allowance(await networkConnection.signer!.getAddress(), currentConfig.router);
+    // Approve all tokens & all scy, pt, yt, lp to the router
+    let tokens = [
+        Object.values(currentConfig.tokens),
+        currentConfig.markets.map((m) => m.SCY),
+        currentConfig.markets.map((m) => m.PT),
+        currentConfig.markets.map((m) => m.YT),
+        currentConfig.markets.map((m) => m.market),
+    ].flat();
+
+    const signerAddress = await networkConnection.signer?.getAddress()!;
+    for (let token of tokens) {
+        if (isSameAddress(token, currentConfig.faucet) || isSameAddress(token, currentConfig.fundKeeper)) {
+            continue;
+        }
+        let allowance = await getAllowance(token, signerAddress, currentConfig.router);
         if (allowance.lt(INF.div(2))) {
-            console.log('approving ');
-            await entity.approve(currentConfig.router, INF).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+            console.log('approving', token);
+            await approveHelper(token, currentConfig.router, INF);
+        } else {
+            console.log('skip approving', token);
         }
     }
 }

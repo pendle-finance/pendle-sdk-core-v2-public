@@ -5,6 +5,7 @@ const toTest = [
     'SCY',
     'YT',
     'PT',
+    'PY',
     'YieldContractFactory',
     'SDK',
     'Market',

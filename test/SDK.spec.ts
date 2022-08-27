@@ -6,10 +6,16 @@ import './util/BigNumberMatcher';
 
 describe(SDK, () => {
     const sdk = new SDK(networkConnection, ACTIVE_CHAIN_ID);
-    const pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const yt = new YT(currentConfig.ytAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const market = new Market(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
+
+    const marketAddress = currentConfig.market.market;
+    const scyAddress = currentConfig.market.SCY;
+    const ptAddress = currentConfig.market.PT;
+    const ytAddress = currentConfig.market.YT;
+
+    const pt = new PT(ptAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const yt = new YT(ytAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const market = new Market(marketAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const scy = new SCY(scyAddress, networkConnection, ACTIVE_CHAIN_ID);
 
     it('#constructor', async () => {
         expect(sdk).toBeInstanceOf(SDK);
@@ -18,7 +24,7 @@ describe(SDK, () => {
 
     it('#getUserPYPositionsByPYs', async () => {
         const [userPYPositions, userPtBalance, userYtBalance, interestToken, interestAmount] = await Promise.all([
-            sdk.getUserPYPositionsByPYs(currentConfig.deployer, [currentConfig.ytAddress, currentConfig.ptAddress]),
+            sdk.getUserPYPositionsByPYs(currentConfig.deployer, [ytAddress, ptAddress]),
             pt.ERC20.balanceOf(currentConfig.deployer),
             yt.ERC20.balanceOf(currentConfig.deployer),
             yt.contract.callStatic.SCY(),
@@ -28,10 +34,10 @@ describe(SDK, () => {
         expect(userPYPositions[0]).toEqual(userPYPositions[1]);
         const userInfo = userPYPositions[0];
 
-        expect(userInfo.pt).toBe(currentConfig.ptAddress);
+        expect(userInfo.pt).toBe(ptAddress);
         expect(userInfo.ptBalance).toEqBN(userPtBalance);
 
-        expect(userInfo.yt).toBe(currentConfig.ytAddress);
+        expect(userInfo.yt).toBe(ytAddress);
         expect(userInfo.ytBalance).toEqBN(userYtBalance);
 
         const interest = userInfo.unclaimedInterest;
@@ -66,12 +72,12 @@ describe(SDK, () => {
 
         expect(userMarketInfo.lpBalance).toEqBN(userBalance);
 
-        expect(userMarketInfo.ptBalance.token).toBe(currentConfig.ptAddress);
+        expect(userMarketInfo.ptBalance.token).toBe(ptAddress);
         expect(userMarketInfo.ptBalance.amount).toEqBN(
             userBalance.mul(marketInfo.state.totalPt).div(marketInfo.state.totalLp)
         );
 
-        expect(userMarketInfo.scyBalance.token).toBe(currentConfig.scyAddress);
+        expect(userMarketInfo.scyBalance.token).toBe(scyAddress);
         expect(userMarketInfo.scyBalance.amount).toEqBN(
             userBalance.mul(marketInfo.state.totalScy).div(marketInfo.state.totalLp)
         );

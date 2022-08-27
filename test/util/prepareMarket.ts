@@ -1,84 +1,83 @@
-import { BigNumber as BN, Contract, ethers } from 'ethers';
-import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, networkConnection } from './testUtils';
+import { Contract, ethers } from 'ethers';
+import { Router } from '../../src';
 import FUND_KEEPER_ABI from './fundKeeperAbi.json';
-import { ERC20, PT, Router, SCY } from '../../src';
-import { SLIPPAGE_TYPE3 } from './testHelper';
-import { IQiErc20, IQiErc20__factory } from '@pendle/core-v2/typechain-types';
+import { approveHelper, getBalance, SLIPPAGE_TYPE3 } from './testHelper';
+import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, networkConnection } from './testUtils';
 
 const INF = ethers.constants.MaxUint256;
-const FUND_AMOUNT: BN = BN.from(10).pow(23);
-const USD_TO_MINT_PY = FUND_AMOUNT.div(10).mul(4);
-// A bit higher than PY, so that the SCY price will higher than PT price
-const USD_TO_MINT_SCY = FUND_AMOUNT.div(10).mul(5);
-const USD_TO_MINT_QIUSD = FUND_AMOUNT.div(20);
+
+const FUND_FACTOR = 100;
+
+const MINT_PY_PERCENTAGE = 40;
+const MINT_SCY_PERCENTAGE = 50;
+
+// typechain for fundKeeper is not available
+const FUND_KEEPER = new Contract(currentConfig.fundKeeper, FUND_KEEPER_ABI, networkConnection.signer);
+
+async function fundToken(token: string, user: string) {
+    const fund_amount = (await getBalance(token, currentConfig.fundKeeper)).div(FUND_FACTOR);
+    if (fund_amount.eq(0)) {
+        throw new Error(`Insufficient balance for ${token} to fund`);
+    }
+    await FUND_KEEPER.transferToMany(token, [user], fund_amount).then((tx: any) => tx.wait(BLOCK_CONFIRMATION));
+}
 
 async function main() {
-    let signerAddress = await networkConnection.signer?.getAddress()!;
-    // typehcain for fundkeeper is not available
-    let benQiFundKeeper = new Contract(currentConfig.fundKeeper, FUND_KEEPER_ABI, networkConnection.signer);
-    let pendleTreasury = new Contract(currentConfig.pendleTreasury, FUND_KEEPER_ABI, networkConnection.signer);
-    let usd = new ERC20(currentConfig.usdAddress, networkConnection, ACTIVE_CHAIN_ID);
-    let router = new Router(currentConfig.router, networkConnection, ACTIVE_CHAIN_ID);
-    let scy = new SCY(currentConfig.scyAddress, networkConnection, ACTIVE_CHAIN_ID);
-    let pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const signerAddress = await networkConnection.signer!.getAddress()!;
+    const tokenIn = currentConfig.market.token;
+    const routerAddress = currentConfig.router;
+    const ytAddress = currentConfig.market.YT;
+    const scyAddress = currentConfig.market.SCY;
+    const ptAddress = currentConfig.market.PT;
 
-    console.log('funding USD');
-    await benQiFundKeeper
-        .transferToMany(currentConfig.usdAddress, [signerAddress], FUND_AMOUNT)
-        .then((tx: any) => tx.wait(BLOCK_CONFIRMATION));
+    const router = new Router(routerAddress, networkConnection, ACTIVE_CHAIN_ID);
 
-    console.log('mint qiUSD');
-    let qiusdontract = new Contract(
-        currentConfig.qiUsdAddress,
-        IQiErc20__factory.abi,
-        networkConnection.signer
-    ) as IQiErc20;
-    await usd.approve(qiusdontract.address, USD_TO_MINT_QIUSD).then((tx: any) => tx.wait());
-    await qiusdontract.mint(USD_TO_MINT_QIUSD).then((tx: any) => tx.wait());
+    // Inner working of this script:
+    // 1. Fund accounts with a tokenIn
+    // 2. Mint PY and SCY with the tokenIn
+    // 3. Add liquidity for the market
 
-    console.log('funding Pendle');
-    await pendleTreasury
-        .transferToMany(currentConfig.pendle, [signerAddress], FUND_AMOUNT)
-        .then((tx: any) => tx.wait(BLOCK_CONFIRMATION));
+    console.log('funding TokenIn');
+    await fundToken(tokenIn, signerAddress);
 
-    console.log('approving USD');
-    await usd.approve(currentConfig.router, INF).then((tx) => tx.wait(BLOCK_CONFIRMATION));
-
-    console.log('minting PY');
-    await router
-        .mintPyFromToken(
-            signerAddress,
-            currentConfig.ytAddress,
-            currentConfig.usdAddress,
-            USD_TO_MINT_PY,
-            SLIPPAGE_TYPE3
-        )
-        .then((tx: any) => tx.wait());
+    console.log('approve TokenIn');
+    await approveHelper(tokenIn, routerAddress, INF);
 
     console.log('minting SCY');
     await router
         .mintScyFromToken(
             signerAddress,
-            currentConfig.scyAddress,
-            currentConfig.usdAddress,
-            USD_TO_MINT_SCY,
+            scyAddress,
+            tokenIn,
+            (await getBalance(tokenIn, signerAddress)).mul(MINT_SCY_PERCENTAGE).div(100),
             SLIPPAGE_TYPE3
         )
         .then(async (tx: any) => await tx.wait());
 
+    console.log('minting PY');
+    await router
+        .mintPyFromToken(
+            signerAddress,
+            ytAddress,
+            tokenIn,
+            (await getBalance(tokenIn, signerAddress)).mul(MINT_PY_PERCENTAGE).div(100),
+            SLIPPAGE_TYPE3
+        )
+        .then((tx: any) => tx.wait());
+
     console.log('approving SCY');
-    await scy.ERC20.approve(currentConfig.router, INF).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+    await approveHelper(scyAddress, routerAddress, INF);
 
     console.log('approving PT');
-    await pt.ERC20.approve(currentConfig.router, INF).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+    await approveHelper(ptAddress, routerAddress, INF);
 
     console.log('add liquidity');
     await router
         .addLiquidityDualScyAndPt(
             signerAddress,
             currentConfig.marketAddress,
-            (await scy.ERC20.balanceOf(signerAddress)).div(10).mul(9),
-            (await pt.ERC20.balanceOf(signerAddress)).div(10).mul(9),
+            (await getBalance(scyAddress, signerAddress)).div(10).mul(9),
+            (await getBalance(ptAddress, signerAddress)).div(10).mul(9),
             SLIPPAGE_TYPE3
         )
         .then((tx: any) => tx.wait());

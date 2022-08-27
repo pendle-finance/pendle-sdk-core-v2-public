@@ -12,8 +12,8 @@ e.g. adding liquidity to pools), run all tests with the following script:
 yarn test:all
 ```
 
-If the market have just deployed, you should add liquidity for the market before
-running the tests:
+Before running the test, you might want to funds your account with some test
+assets by:
 
 ```sh
 yarn test:prepare
@@ -24,11 +24,14 @@ By default, write function tests are disabled. To enable them, uncomment the
 
 ### Notes
 
-Most of the test is to make sure that the SDK is working as expected (calling
+- Most of the test is to make sure that the SDK is working as expected (calling
 the correct functions, using the correct parameters, calculating the correct
-number).
+number). SDK tests are not meant to test the actual functionality of the contracts.
 
-SDK tests are not meant to test the actual functionality of the contracts.
+
+- When testing for write functions, it is better to use a local RPC (can set it up
+with hardhat), so that you won't need real funds and it is faster and more stable
+to run test on a local RPC.
 
 ### Limitations
 

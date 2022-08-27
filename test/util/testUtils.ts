@@ -1,14 +1,20 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
-import { BigNumber as BN, Wallet } from 'ethers';
+import { Wallet } from 'ethers';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../../src';
+
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import FUJI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-c93916.json';
+import FUJI_QIUSDC_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-35237d.json';
+import FUJI_QIWETH_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-438DAA.json';
+import FUJI_QIWAVAX_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-a45e40.json';
+
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
-import MUMBAI_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-b61e7f.json';
-import FUJI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/43113-benqi.json';
-import MUMBAI_TEST_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-benqi.json';
+import MUMBAI_QIAVAX_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-b61e7f.json';
+import MUMBAI_QIUSDC_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-3b8BD1.json';
+
+import FUJI_TEST_ENV from '@pendle/core-v2/deployments/43113-testenv.json';
+import MUMBAI_TEST_ENV from '@pendle/core-v2/deployments/80001-testenv.json';
 
 config();
 
@@ -20,8 +26,7 @@ const USE_LOCAL = process.env.USE_LOCAL === '1';
 export const describeWrite = (fn: () => any) =>
     (process.env.INCLUDE_WRITE === '1' ? describe : describe.skip)('Write functions', fn);
 
-// How much blocks to wait for a transaction to be confirmed, should set to 1 for local RPC
-export const BLOCK_CONFIRMATION = 1;
+export const BLOCK_CONFIRMATION = USE_LOCAL ? 1 : parseInt(process.env.BLOCK_CONFIRMATION ?? '1');
 
 const providerUrls = {
     [CHAIN_ID.ETHEREUM]: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
@@ -52,15 +57,24 @@ export const CONTRACT_ADDRESSES = {
             PENDLE_TREASURY: FUJI_CORE_ADDRESSES.treasury,
         },
         BENQI: {
-            SCY: FUJI_BENQI_ADDRESSES.SCY,
-            MARKET: FUJI_BENQI_ADDRESSES.market,
-            PT: FUJI_BENQI_ADDRESSES.PT,
-            YT: FUJI_BENQI_ADDRESSES.YT,
-            USD: FUJI_TEST_BENQI_ADDRESSES.USD,
-            QI: FUJI_TEST_BENQI_ADDRESSES.QI,
-            QIUSD: FUJI_TEST_BENQI_ADDRESSES.qiUSD,
-            FUND_KEEPER: FUJI_TEST_BENQI_ADDRESSES.fundKeeper,
+            FUND_KEEPER: FUJI_TEST_ENV.tokens.fundKeeper,
+            FAUCET: FUJI_TEST_ENV.tokens.faucet,
+            MARKETS: [
+                {
+                    ...FUJI_QIUSDC_MARKET_ADDRESSES,
+                    token: FUJI_TEST_ENV.tokens.qiUSDC,
+                },
+                {
+                    ...FUJI_QIWAVAX_MARKET_ADDRESSES,
+                    token: FUJI_TEST_ENV.tokens.qiAVAX,
+                },
+                {
+                    ...FUJI_QIWETH_MARKET_ADDRESSES,
+                    token: FUJI_TEST_ENV.tokens.qiWETH,
+                },
+            ],
         },
+        TOKENS: FUJI_TEST_ENV.tokens,
     },
     [CHAIN_ID.MUMBAI]: {
         CORE: {
@@ -74,36 +88,44 @@ export const CONTRACT_ADDRESSES = {
             PENDLE_TREASURY: MUMBAI_CORE_ADDRESSES.treasury,
         },
         BENQI: {
-            SCY: MUMBAI_BENQI_ADDRESSES.SCY,
-            MARKET: MUMBAI_BENQI_ADDRESSES.market,
-            PT: MUMBAI_BENQI_ADDRESSES.PT,
-            YT: MUMBAI_BENQI_ADDRESSES.YT,
-            USD: MUMBAI_TEST_BENQI_ADDRESSES.USD,
-            QI: MUMBAI_TEST_BENQI_ADDRESSES.QI,
-            QIUSD: MUMBAI_TEST_BENQI_ADDRESSES.qiUSD,
-            FUND_KEEPER: MUMBAI_TEST_BENQI_ADDRESSES.fundKeeper,
+            FUND_KEEPER: MUMBAI_TEST_ENV.tokens.fundKeeper,
+            FAUCET: MUMBAI_TEST_ENV.tokens.faucet,
+            MARKETS: [
+                // Ignore for now since markets on Mumbai are out-synced
+                {
+                    ...MUMBAI_QIAVAX_BENQI_ADDRESSES,
+                    token: MUMBAI_TEST_ENV.tokens.qiAVAX,
+                },
+                {
+                    ...MUMBAI_QIUSDC_BENQI_ADDRESSES,
+                    token: MUMBAI_TEST_ENV.tokens.qiUSDC,
+                },
+            ],
         },
+        TOKENS: MUMBAI_TEST_ENV.tokens,
     },
 };
 
 export const testConfig = (chainId: number) => ({
-    scyAddress: CONTRACT_ADDRESSES[chainId].BENQI.SCY,
     deployer: CONTRACT_ADDRESSES[chainId].CORE.DEPLOYER,
-    marketAddress: CONTRACT_ADDRESSES[chainId].BENQI.MARKET,
-    ytAddress: CONTRACT_ADDRESSES[chainId].BENQI.YT,
-    ptAddress: CONTRACT_ADDRESSES[chainId].BENQI.PT,
     marketFactory: CONTRACT_ADDRESSES[chainId].CORE.MARKET_FACTORY,
     router: CONTRACT_ADDRESSES[chainId].CORE.ROUTER,
     routerStatic: CONTRACT_ADDRESSES[chainId].CORE.ROUTER_STATIC,
     yieldContractFactory: CONTRACT_ADDRESSES[chainId].CORE.YT_FACTORY,
     veAddress: CONTRACT_ADDRESSES[chainId].CORE.VE,
     votingController: CONTRACT_ADDRESSES[chainId].CORE.VOTING_CONTROLLER,
-    usdAddress: CONTRACT_ADDRESSES[chainId].BENQI.USD,
-    qiUsdAddress: CONTRACT_ADDRESSES[chainId].BENQI.QIUSD,
-    qiAddress: CONTRACT_ADDRESSES[chainId].BENQI.QI,
     pendle: CONTRACT_ADDRESSES[chainId].CORE.PENDLE,
     fundKeeper: CONTRACT_ADDRESSES[chainId].BENQI.FUND_KEEPER,
+    faucet: CONTRACT_ADDRESSES[chainId].BENQI.FAUCET,
     pendleTreasury: CONTRACT_ADDRESSES[chainId].CORE.PENDLE_TREASURY,
+    tokens: CONTRACT_ADDRESSES[chainId].TOKENS,
+    markets: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS,
+
+    // choose the markets you want to test here
+    market: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[0],
+    marketAddress: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[0].market,
+    // choose the token to test for swap from raw token -> py
+    tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.USDC,
 });
 
 export const currentConfig = testConfig(ACTIVE_CHAIN_ID);
@@ -114,8 +136,4 @@ export const WALLET = () => ({
 
 export function print(message: any): void {
     console.log(inspect(message, { showHidden: false, depth: null, colors: true }));
-}
-
-export function minBN(a: BN, b: BN): BN {
-    return a.lt(b) ? a : b;
 }

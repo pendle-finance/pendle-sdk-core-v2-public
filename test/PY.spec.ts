@@ -3,8 +3,9 @@ import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUt
 import './util/BigNumberMatcher';
 
 describe('PY', () => {
-    const pt = new PT(currentConfig.ptAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const yt = new YT(currentConfig.ytAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const currentMarket = currentConfig.market;
+    const pt = new PT(currentMarket.PT, networkConnection, ACTIVE_CHAIN_ID);
+    const yt = new YT(currentMarket.YT, networkConnection, ACTIVE_CHAIN_ID);
 
     it('#userInfo & #contract', async () => {
         const [userInfo, userPtBalance, userYtBalance, interestToken, interestAmount] = await Promise.all([
@@ -15,10 +16,10 @@ describe('PY', () => {
             yt.contract.callStatic.userInterest(currentConfig.deployer),
         ]);
 
-        expect(userInfo.pt).toBe(currentConfig.ptAddress);
+        expect(userInfo.pt).toBe(currentMarket.PT);
         expect(userInfo.ptBalance).toEqBN(userPtBalance);
 
-        expect(userInfo.yt).toBe(currentConfig.ytAddress);
+        expect(userInfo.yt).toBe(currentMarket.YT);
         expect(userInfo.ytBalance).toEqBN(userYtBalance);
 
         const interest = userInfo.unclaimedInterest;

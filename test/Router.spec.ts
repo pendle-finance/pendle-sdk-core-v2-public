@@ -1,4 +1,4 @@
-import { Router } from '../src';
+import { Router, SCY } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -6,7 +6,6 @@ import {
     networkConnection,
     BLOCK_CONFIRMATION,
     WALLET,
-    minBN,
 } from './util/testUtils';
 import {
     getBalance,
@@ -18,9 +17,9 @@ import {
     DEFAULT_SWAP_AMOUNT,
     DEFAULT_MINT_AMOUNT,
     minBigNumber,
-    ERC20_ENTITIES,
     MARKET_SWAP_FACTOR,
     USER_SWAP_FACTOR,
+    trimAddress,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/BigNumberMatcher';
@@ -29,7 +28,7 @@ type BalanceSnapshot = {
     ptBalance: BN;
     scyBalance: BN;
     ytBalance: BN;
-    usdBalance: BN;
+    tokenBalance: BN;
     marketPtBalance: BN;
     marketScyBalance: BN;
 };
@@ -42,6 +41,11 @@ type LpBalanceSnapshot = {
 describe(Router, () => {
     const router = Router.getRouter(networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
+    const marketAddress = currentConfig.market.market;
+    const scyAddress = currentConfig.market.SCY;
+    const ptAddress = currentConfig.market.PT;
+    const ytAddress = currentConfig.market.YT;
+    const scySdk = new SCY(scyAddress, networkConnection, ACTIVE_CHAIN_ID);
 
     it('#constructor', async () => {
         expect(router).toBeInstanceOf(Router);
@@ -50,17 +54,23 @@ describe(Router, () => {
 
     describeWrite(() => {
         it('#addLiquidityDualScyAndPt', async () => {
-            const scyAdd = (await getBalance('SCY', signer.address)).div(ADD_LIQUIDITY_FACTOR);
-            const ptAdd = (await getBalance('PT', signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            const scyAdd = (await getBalance(scyAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            const ptAdd = (await getBalance(ptAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
 
-            const lpBalanceBefore = await getBalance('MARKET', signer.address);
-            const marketSupplyBefore = await getTotalSupply('MARKET');
+            if (scyAdd.eq(0) || ptAdd.eq(0)) {
+                console.log('skip test because scyAdd or ptAdd is 0');
+                return;
+            }
+
+            const lpBalanceBefore = await getBalance(marketAddress, signer.address);
+            const marketSupplyBefore = await getTotalSupply(marketAddress);
 
             await router
                 .addLiquidityDualScyAndPt(signer.address, currentConfig.marketAddress, scyAdd, ptAdd, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
-            const lpBalanceAfter = await getBalance('MARKET', signer.address);
-            const marketSupplyAfter = await getTotalSupply('MARKET');
+
+            const lpBalanceAfter = await getBalance(marketAddress, signer.address);
+            const marketSupplyAfter = await getTotalSupply(marketAddress);
 
             expect(lpBalanceAfter).toBeGtBN(lpBalanceBefore);
             expect(marketSupplyAfter).toBeGtBN(marketSupplyBefore);
@@ -69,28 +79,33 @@ describe(Router, () => {
         });
 
         it('#addLiquidityDualTokenAndPt', async () => {
-            // TODO: should revise this test
-            let tokens = ['QIUSD', 'USD'];
-            for (let token of tokens) {
+            // TODO: add liquidity from other raw tokens
+            let tokensIn = await scySdk.contract.getTokensIn();
+            for (let token of tokensIn) {
                 const tokenAddAmount = (await getBalance(token, signer.address)).div(ADD_LIQUIDITY_FACTOR);
-                const ptAdd = (await getBalance('PT', signer.address)).div(ADD_LIQUIDITY_FACTOR);
+                const ptAdd = (await getBalance(ptAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
 
-                const lpBalanceBefore = await getBalance('MARKET', signer.address);
-                const marketSupplyBefore = await getTotalSupply('MARKET');
+                if (tokenAddAmount.eq(0) || ptAdd.eq(0)) {
+                    console.log(`[${trimAddress(token)}] Skip test because tokenAddAmount or ptAdd is 0`);
+                    continue;
+                }
+
+                const lpBalanceBefore = await getBalance(marketAddress, signer.address);
+                const marketSupplyBefore = await getTotalSupply(marketAddress);
 
                 await router
                     .addLiquidityDualTokenAndPt(
                         signer.address,
                         currentConfig.marketAddress,
-                        ERC20_ENTITIES[token].address,
+                        token,
                         tokenAddAmount,
                         ptAdd,
                         SLIPPAGE_TYPE2
                     )
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-                const lpBalanceAfter = await getBalance('MARKET', signer.address);
-                const marketSupplyAfter = await getTotalSupply('MARKET');
+                const lpBalanceAfter = await getBalance(marketAddress, signer.address);
+                const marketSupplyAfter = await getTotalSupply(marketAddress);
 
                 expect(lpBalanceAfter).toBeGtBN(lpBalanceBefore);
                 expect(marketSupplyAfter).toBeGtBN(marketSupplyBefore);
@@ -100,7 +115,11 @@ describe(Router, () => {
         });
 
         it('#addLiquiditySinglePt', async () => {
-            const ptAdd = (await getBalance('PT', signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            const ptAdd = (await getBalance(ptAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            if (ptAdd.eq(0)) {
+                console.log('skip test because ptAdd is 0');
+                return;
+            }
             const balanceBefore = await getLpBalanceSnapshot();
 
             await router
@@ -112,7 +131,11 @@ describe(Router, () => {
         });
 
         it('#addLiquiditySingleScy', async () => {
-            const scyAdd = (await getBalance('SCY', signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            const scyAdd = (await getBalance(scyAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            if (scyAdd.eq(0)) {
+                console.log('skip test because scyAdd is 0');
+                return;
+            }
             const balanceBefore = await getLpBalanceSnapshot();
 
             await router
@@ -124,16 +147,22 @@ describe(Router, () => {
         });
 
         it('#addLiquiditySingleToken', async () => {
-            let tokens = ['QIUSD', 'USD'];
-            for (let token of tokens) {
+            // TODO: zap from other raw tokens
+            let tokensIn = await scySdk.contract.getTokensIn();
+            for (let token of tokensIn) {
                 const tokenAddAmount = (await getBalance(token, signer.address)).div(ADD_LIQUIDITY_FACTOR);
+
+                if (tokenAddAmount.eq(0)) {
+                    console.log(`[${trimAddress(token)}] Skip test because tokenAddAmount is 0`);
+                    continue;
+                }
                 const balanceBefore = await getLpBalanceSnapshot();
 
                 await router
                     .addLiquiditySingleToken(
                         signer.address,
                         currentConfig.marketAddress,
-                        ERC20_ENTITIES[token].address,
+                        token,
                         tokenAddAmount,
                         SLIPPAGE_TYPE2
                     )
@@ -145,9 +174,14 @@ describe(Router, () => {
         });
 
         it('#removeLiquidityDualScyAndPt', async () => {
-            const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
-            const lpBalanceBefore = await getBalance('MARKET', signer.address);
-            const marketSupplyBefore = await getTotalSupply('MARKET');
+            const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+
+            if (liquidityRemove.eq(0)) {
+                console.log('skip test because liquidityRemove is 0');
+                return;
+            }
+            const lpBalanceBefore = await getBalance(marketAddress, signer.address);
+            const marketSupplyBefore = await getTotalSupply(marketAddress);
 
             await router
                 .removeLiquidityDualScyAndPt(
@@ -158,8 +192,8 @@ describe(Router, () => {
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-            const lpBalanceAfter = await getBalance('MARKET', signer.address);
-            const marketSupplyAfter = await getTotalSupply('MARKET');
+            const lpBalanceAfter = await getBalance(marketAddress, signer.address);
+            const marketSupplyAfter = await getTotalSupply(marketAddress);
 
             // lp balance reduced amount equals to liquidity removed
             expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
@@ -167,25 +201,29 @@ describe(Router, () => {
         });
 
         it('#removeLiquidityDualTokenAndPt', async () => {
-            // TODO: should revise this test
-            let tokens = ['QIUSD', 'USD'];
-            for (let token of tokens) {
-                const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
-                const lpBalanceBefore = await getBalance('MARKET', signer.address);
-                const marketSupplyBefore = await getTotalSupply('MARKET');
+            // TODO: remove liquidity to other raw tokens
+            let tokensIn = await scySdk.contract.getTokensIn();
+            for (let token of tokensIn) {
+                const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+                if (liquidityRemove.eq(0)) {
+                    console.log(`[${trimAddress(token)}] Skip test because liquidityRemove is 0`);
+                    return; // return here since the liquidity will not changed in this for loop
+                }
+                const lpBalanceBefore = await getBalance(marketAddress, signer.address);
+                const marketSupplyBefore = await getTotalSupply(marketAddress);
 
                 await router
                     .removeLiquidityDualTokenAndPt(
                         signer.address,
                         currentConfig.marketAddress,
                         liquidityRemove,
-                        ERC20_ENTITIES[token].address,
+                        token,
                         SLIPPAGE_TYPE2
                     )
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-                const lpBalanceAfter = await getBalance('MARKET', signer.address);
-                const marketSupplyAfter = await getTotalSupply('MARKET');
+                const lpBalanceAfter = await getBalance(marketAddress, signer.address);
+                const marketSupplyAfter = await getTotalSupply(marketAddress);
 
                 expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
                 expect(marketSupplyBefore.sub(marketSupplyAfter)).toEqBN(liquidityRemove);
@@ -193,7 +231,11 @@ describe(Router, () => {
         });
 
         it('#removeLiquiditySinglePt', async () => {
-            const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            if (liquidityRemove.eq(0)) {
+                console.log('skip test because liquidityRemove is 0');
+                return;
+            }
             const balanceBefore = await getLpBalanceSnapshot();
 
             await router
@@ -208,7 +250,10 @@ describe(Router, () => {
         });
 
         it('#removeLiquiditySingleScy', async () => {
-            const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            if (liquidityRemove.eq(0)) {
+                console.log('skip test because liquidityRemove is 0');
+            }
             const balanceBefore = await getLpBalanceSnapshot();
 
             await router
@@ -223,9 +268,14 @@ describe(Router, () => {
         });
 
         it('#removeLiquiditySingleToken', async () => {
-            let tokens = ['QIUSD', 'USD'];
-            for (let token of tokens) {
-                const liquidityRemove = (await getBalance('MARKET', signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            // TODO: remove liquidity to other raw tokens
+            let tokensIn = await scySdk.contract.getTokensIn();
+            for (let token of tokensIn) {
+                const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+                if (liquidityRemove.eq(0)) {
+                    console.log(`[${trimAddress(token)}] Skip test because liquidityRemove is 0`);
+                    return;
+                }
                 const balanceBefore = await getLpBalanceSnapshot();
 
                 await router
@@ -233,7 +283,7 @@ describe(Router, () => {
                         signer.address,
                         currentConfig.marketAddress,
                         liquidityRemove,
-                        ERC20_ENTITIES[token].address,
+                        token,
                         SLIPPAGE_TYPE2
                     )
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION));
@@ -252,6 +302,10 @@ describe(Router, () => {
         it('#swapExactPtForScy', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const ptInAmount = getPtSwapAmount(balanceBefore, true);
+            if (ptInAmount.eq(0)) {
+                console.log('skip test because ptInAmount is 0');
+                return;
+            }
 
             await router
                 .swapExactPtForScy(signer.address, currentConfig.marketAddress, ptInAmount, SLIPPAGE_TYPE2)
@@ -265,6 +319,10 @@ describe(Router, () => {
         it('#swapPtForExactScy', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyOut = getScySwapAmount(balanceBefore, false);
+            if (expectScyOut.eq(0)) {
+                console.log('skip test because expectScyOut is 0');
+                return;
+            }
 
             await router
                 .swapPtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
@@ -280,6 +338,10 @@ describe(Router, () => {
         it('#swapScyForExactPt', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectPtOut = getPtSwapAmount(balanceBefore, false);
+            if (expectPtOut.eq(0)) {
+                console.log('skip test because expectPtOut is 0');
+                return;
+            }
 
             await router
                 .swapScyForExactPt(signer.address, currentConfig.marketAddress, expectPtOut, SLIPPAGE_TYPE2)
@@ -295,6 +357,10 @@ describe(Router, () => {
         it('#swapExactScyForPt', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyIn = getScySwapAmount(balanceBefore, true);
+            if (expectScyIn.eq(0)) {
+                console.log('skip test because expectScyIn is 0');
+                return;
+            }
 
             await router
                 .swapExactScyForPt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
@@ -314,6 +380,10 @@ describe(Router, () => {
         it('#swapExactScyForYt', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyIn = getScySwapAmount(balanceBefore, true);
+            if (expectScyIn.eq(0)) {
+                console.log('skip test because expectScyIn is 0');
+                return;
+            }
 
             await router
                 .swapExactScyForYt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
@@ -329,6 +399,10 @@ describe(Router, () => {
         it('#swapYtForExactScy', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyOut = getScySwapAmount(balanceBefore, false);
+            if (expectScyOut.eq(0)) {
+                console.log('skip test because expectScyOut is 0');
+                return;
+            }
 
             await router
                 .swapYtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
@@ -343,6 +417,10 @@ describe(Router, () => {
         it('#swapScyForExactYt', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtOut = getYtSwapAmount(balanceBefore, false);
+            if (expectYtOut.eq(0)) {
+                console.log('skip test because expectYtOut is 0');
+                return;
+            }
 
             await router
                 .swapScyForExactYt(signer.address, currentConfig.marketAddress, expectYtOut, SLIPPAGE_TYPE2)
@@ -357,6 +435,10 @@ describe(Router, () => {
         it('#swapExactYtForScy', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtIn = getYtSwapAmount(balanceBefore, true);
+            if (expectYtIn.eq(0)) {
+                console.log('skip test because expectYtIn is 0');
+                return;
+            }
 
             await router
                 .swapExactYtForScy(signer.address, currentConfig.marketAddress, expectYtIn, SLIPPAGE_TYPE2)
@@ -370,39 +452,48 @@ describe(Router, () => {
 
         /*
          * Type 3: Token with PT & YT
+         * TODO: check swap from other raw tokens
          */
 
         it('#swapExactTokenForPt', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectUsdIn = getUsdSwapAmount(balanceBefore, true);
+            const expectRawTokenIn = getTokenSwapAmount(balanceBefore, true);
+            if (expectRawTokenIn.eq(0)) {
+                console.log('skip test because expectRawTokenIn is 0');
+                return;
+            }
 
             await router
                 .swapExactTokenForPt(
                     signer.address,
                     currentConfig.marketAddress,
-                    currentConfig.usdAddress,
-                    expectUsdIn,
+                    currentConfig.tokenToSwap,
+                    expectRawTokenIn,
                     SLIPPAGE_TYPE2
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
-            const netUsdIn = balanceAfter.usdBalance.sub(balanceBefore.usdBalance).mul(-1);
+            const netRawTokenIn = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance).mul(-1);
 
-            expect(netUsdIn).toEqBN(expectUsdIn);
+            expect(netRawTokenIn).toEqBN(expectRawTokenIn);
             expect(balanceAfter.ptBalance).toBeGtBN(balanceBefore.ptBalance);
         });
 
         it('#swapExactPtForToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectPtIn = getPtSwapAmount(balanceBefore, true);
+            if (expectPtIn.eq(0)) {
+                console.log('skip test because expectPtIn is 0');
+                return;
+            }
 
             await router
                 .swapExactPtForToken(
                     signer.address,
                     currentConfig.marketAddress,
                     expectPtIn,
-                    currentConfig.usdAddress,
+                    currentConfig.tokenToSwap,
                     SLIPPAGE_TYPE2
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
@@ -410,39 +501,47 @@ describe(Router, () => {
             const balanceAfter = await getBalanceSnapshot();
             const netPtIn = balanceAfter.ptBalance.sub(balanceBefore.ptBalance).mul(-1);
             expect(netPtIn).toEqBN(expectPtIn);
-            expect(balanceAfter.usdBalance).toBeGtBN(balanceBefore.usdBalance);
+            expect(balanceAfter.tokenBalance).toBeGtBN(balanceBefore.tokenBalance);
         });
 
         it('#swapExactTokenForYt', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectUsdIn = getUsdSwapAmount(balanceBefore, true);
+            const expectRawTokenIn = getTokenSwapAmount(balanceBefore, true);
+            if (expectRawTokenIn.eq(0)) {
+                console.log('skip test because expectRawTokenIn is 0');
+                return;
+            }
 
             await router
                 .swapExactTokenForYt(
                     signer.address,
                     currentConfig.marketAddress,
-                    currentConfig.usdAddress,
-                    expectUsdIn,
+                    currentConfig.tokenToSwap,
+                    expectRawTokenIn,
                     SLIPPAGE_TYPE2
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
-            const netUsdIn = balanceAfter.usdBalance.sub(balanceBefore.usdBalance).mul(-1);
-            expect(netUsdIn).toEqBN(expectUsdIn);
+            const netRawTokenIn = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance).mul(-1);
+            expect(netRawTokenIn).toEqBN(expectRawTokenIn);
             expect(balanceAfter.ytBalance).toBeGtBN(balanceBefore.ytBalance);
         });
 
         it('#swapExactYtForToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtIn = getYtSwapAmount(balanceBefore, true);
+            if (expectYtIn.eq(0)) {
+                console.log('skip test because expectYtIn is 0');
+                return;
+            }
 
             await router
                 .swapExactYtForToken(
                     signer.address,
                     currentConfig.marketAddress,
                     expectYtIn,
-                    currentConfig.usdAddress,
+                    currentConfig.tokenToSwap,
                     SLIPPAGE_TYPE2
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
@@ -450,7 +549,7 @@ describe(Router, () => {
             const balanceAfter = await getBalanceSnapshot();
             const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
             expect(netYtIn).toEqBN(expectYtIn);
-            expect(balanceAfter.usdBalance).toBeGtBN(balanceBefore.usdBalance);
+            expect(balanceAfter.tokenBalance).toBeGtBN(balanceBefore.tokenBalance);
         });
 
         /*
@@ -458,21 +557,25 @@ describe(Router, () => {
          */
         it('#mintPyFromToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectUsdIn = DEFAULT_MINT_AMOUNT;
+            const expectRawTokenIn = DEFAULT_MINT_AMOUNT;
+            if (expectRawTokenIn.eq(0)) {
+                console.log('skip test because expectRawTokenIn is 0');
+                return;
+            }
 
             await router
                 .mintPyFromToken(
                     signer.address,
-                    currentConfig.ytAddress,
-                    currentConfig.usdAddress,
-                    expectUsdIn,
+                    currentConfig.market.YT,
+                    currentConfig.tokenToSwap,
+                    expectRawTokenIn,
                     SLIPPAGE_TYPE2
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
-            const netUsdIn = balanceAfter.usdBalance.sub(balanceBefore.usdBalance).mul(-1);
-            expect(netUsdIn).toEqBN(expectUsdIn);
+            const netRawTokenIn = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance).mul(-1);
+            expect(netRawTokenIn).toEqBN(expectRawTokenIn);
 
             const mintedPt = balanceAfter.ptBalance.sub(balanceBefore.ptBalance);
             const mintedYt = balanceAfter.ytBalance.sub(balanceBefore.ytBalance);
@@ -483,17 +586,17 @@ describe(Router, () => {
         it('#redeemPyToToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectPyIn = getPyRedeemAmount(balanceBefore);
-
             if (expectPyIn.eq(0)) {
+                console.log('skip test because expectPyIn is 0');
                 return;
             }
 
             await router
                 .redeemPyToToken(
                     signer.address,
-                    currentConfig.ytAddress,
+                    currentConfig.market.YT,
                     expectPyIn,
-                    currentConfig.usdAddress,
+                    currentConfig.tokenToSwap,
                     SLIPPAGE_TYPE2
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
@@ -505,43 +608,47 @@ describe(Router, () => {
             expect(netYtIn).toEqBN(expectPyIn);
             expect(netPtIn).toEqBN(expectPyIn);
 
-            expect(balanceAfter.usdBalance).toBeGtBN(balanceBefore.usdBalance);
+            expect(balanceAfter.tokenBalance).toBeGtBN(balanceBefore.tokenBalance);
         });
 
         it('#mintScyFromToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectUsdIn = DEFAULT_MINT_AMOUNT;
+            const expectRawTokenIn = DEFAULT_MINT_AMOUNT;
+            if (expectRawTokenIn.eq(0)) {
+                console.log('skip test because expectRawTokenIn is 0');
+                return;
+            }
 
             await router
                 .mintScyFromToken(
                     signer.address,
-                    currentConfig.scyAddress,
-                    currentConfig.usdAddress,
-                    expectUsdIn,
+                    currentConfig.market.SCY,
+                    currentConfig.tokenToSwap,
+                    expectRawTokenIn,
                     SLIPPAGE_TYPE2
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
-            const netUsdIn = balanceAfter.usdBalance.sub(balanceBefore.usdBalance).mul(-1);
-            expect(netUsdIn).toEqBN(expectUsdIn);
+            const netRawTokenIn = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance).mul(-1);
+            expect(netRawTokenIn).toEqBN(expectRawTokenIn);
             expect(balanceAfter.scyBalance).toBeGtBN(balanceBefore.scyBalance);
         });
 
         it('#redeemScyToToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyIn = getScyRedeemAmount(balanceBefore);
-
             if (expectScyIn.eq(0)) {
+                console.log('skip test because expectScyIn is 0');
                 return;
             }
 
             await router
                 .redeemScyToToken(
                     signer.address,
-                    currentConfig.scyAddress,
+                    currentConfig.market.SCY,
                     expectScyIn,
-                    currentConfig.usdAddress,
+                    currentConfig.tokenToSwap,
                     SLIPPAGE_TYPE2
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
@@ -549,7 +656,7 @@ describe(Router, () => {
             const balanceAfter = await getBalanceSnapshot();
             const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
             expect(netScyIn).toEqBN(expectScyIn);
-            expect(balanceAfter.usdBalance).toBeGtBN(balanceBefore.usdBalance);
+            expect(balanceAfter.tokenBalance).toBeGtBN(balanceBefore.tokenBalance);
         });
     });
 
@@ -558,19 +665,19 @@ describe(Router, () => {
      * Helper function to get balance snapshot of the market
      */
     async function getBalanceSnapshot(): Promise<BalanceSnapshot> {
-        const [ptBalance, scyBalance, ytBalance, usdBalance, marketPtBalance, marketScyBalance] = await Promise.all([
-            getBalance('PT', signer.address),
-            getBalance('SCY', signer.address),
-            getBalance('YT', signer.address),
-            getBalance('USD', signer.address),
-            getBalance('PT', currentConfig.marketAddress),
-            getBalance('SCY', currentConfig.marketAddress),
+        const [ptBalance, scyBalance, ytBalance, tokenBalance, marketPtBalance, marketScyBalance] = await Promise.all([
+            getBalance(ptAddress, signer.address),
+            getBalance(scyAddress, signer.address),
+            getBalance(ytAddress, signer.address),
+            getBalance(currentConfig.tokenToSwap, signer.address),
+            getBalance(ptAddress, currentConfig.marketAddress),
+            getBalance(scyAddress, currentConfig.marketAddress),
         ]);
         return {
             ptBalance,
             scyBalance,
             ytBalance,
-            usdBalance,
+            tokenBalance,
             marketPtBalance,
             marketScyBalance,
         };
@@ -578,8 +685,8 @@ describe(Router, () => {
 
     async function getLpBalanceSnapshot(): Promise<LpBalanceSnapshot> {
         const [lpTotalSupply, lpBalance] = await Promise.all([
-            getTotalSupply('MARKET'),
-            getBalance('MARKET', signer.address),
+            getTotalSupply(marketAddress),
+            getBalance(marketAddress, signer.address),
         ]);
         return {
             lpTotalSupply,
@@ -591,14 +698,14 @@ describe(Router, () => {
         let marketAmount = balanceSnapshot.marketScyBalance.div(MARKET_SWAP_FACTOR);
         let userAmount = balanceSnapshot.scyBalance.div(USER_SWAP_FACTOR);
 
-        return getIn ? minBN(marketAmount, userAmount) : marketAmount;
+        return getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
     }
 
     function getPtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
         let marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
         let userAmount = balanceSnapshot.ptBalance.div(USER_SWAP_FACTOR);
 
-        return getIn ? minBN(marketAmount, userAmount) : marketAmount;
+        return getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
     }
 
     function getYtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
@@ -606,19 +713,19 @@ describe(Router, () => {
         let marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
         let userAmount = balanceSnapshot.ytBalance.div(USER_SWAP_FACTOR);
 
-        return getIn ? minBN(marketAmount, userAmount) : marketAmount;
+        return getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
     }
 
     /**
-     * Get a safe amount of USD to swap in router.
+     * Get a safe amount of token to swap through router.
      *
      * Ideally, this function should calculate the swap amount
      * base on the balanceSnapshot.
      *
      * TODO: Fix this?
      */
-    function getUsdSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
-        return DEFAULT_SWAP_AMOUNT;
+    function getTokenSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
+        return minBigNumber(DEFAULT_SWAP_AMOUNT, balanceSnapshot.tokenBalance.div(USER_SWAP_FACTOR));
     }
 
     function getPyRedeemAmount(balanceSnapshot: BalanceSnapshot) {
