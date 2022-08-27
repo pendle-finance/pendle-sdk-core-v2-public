@@ -339,14 +339,7 @@ export class Router {
             netTokenIn,
             tokenMintScyList,
             (input) =>
-                this.routerStatic.callStatic.addLiquiditySingleBaseTokenStatic(
-                    market,
-                    input.tokenIn,
-                    input.netTokenIn,
-                    {
-                        value: isNativeToken(input.tokenIn) ? input.netTokenIn : undefined,
-                    }
-                )
+                this.routerStatic.callStatic.addLiquiditySingleBaseTokenStatic(market, input.tokenIn, input.netTokenIn)
         );
 
         return this.contract
