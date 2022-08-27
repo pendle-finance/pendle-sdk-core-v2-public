@@ -24,11 +24,13 @@ import {
     getRouterStatic,
     isNativeToken,
     isSameAddress,
+    NoRouteFoundError,
 } from './helper';
 import { Market } from './Market';
 import { SCY as SCYEntity } from './SCY';
 import { YT as YTEntity } from './YT';
 import { RouterStatic } from '@pendle/core-v2/typechain-types';
+import { PT } from './PT';
 
 export type KybercallData = {
     amountInUsd?: number;
@@ -342,6 +344,10 @@ export class Router {
                 this.routerStatic.callStatic.addLiquiditySingleBaseTokenStatic(market, input.tokenIn, input.netTokenIn)
         );
 
+        if (netLpOut.eq(etherConstants.NegativeOne)) {
+            throw NoRouteFoundError.action('zap in', tokenIn, market);
+        }
+
         return this.contract
             .connect(this.networkConnection.signer!)
             .addLiquiditySingleToken(
@@ -468,7 +474,7 @@ export class Router {
                 .callStatic.removeLiquiditySingleScy(receiver, market, lpToRemove, Router.MIN_AMOUNT),
         ]);
 
-        const { output } = await this.outputParams(
+        const { output, netOut } = await this.outputParams(
             scy,
             approxScyIn,
             tokenOut,
@@ -479,6 +485,11 @@ export class Router {
                     .callStatic.removeLiquiditySingleToken(receiver, market, lpToRemove, output),
             slippage
         );
+
+        if (netOut.eq(etherConstants.NegativeOne)) {
+            throw NoRouteFoundError.action('zap out', market, tokenOut);
+        }
+
         return this.contract
             .connect(this.networkConnection.signer!)
             .removeLiquiditySingleToken(receiver, market, lpToRemove, output, overrides);
@@ -570,6 +581,11 @@ export class Router {
                     }
                 )
         );
+
+        if (netOut.eq(etherConstants.NegativeOne)) {
+            throw NoRouteFoundError.action('swap', tokenIn, market);
+        }
+
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapExactTokenForPt(
@@ -625,6 +641,11 @@ export class Router {
                 .connect(this.networkConnection.signer!)
                 .callStatic.mintScyFromToken(receiver, SCY, Router.MIN_AMOUNT, input)
         );
+
+        if (netOut.eq(etherConstants.NegativeOne)) {
+            throw NoRouteFoundError.action('mint', tokenIn, SCY);
+        }
+
         return this.contract
             .connect(this.networkConnection.signer!)
             .mintScyFromToken(receiver, SCY, calcSlippedDownAmount(netOut, slippage), input, overrides);
@@ -643,7 +664,7 @@ export class Router {
             this.networkConnection,
             this.chainId
         ).contract.callStatic.getTokensOut();
-        const { output } = await this.outputParams(
+        const { output, netOut } = await this.outputParams(
             SCY,
             netScyIn,
             tokenOut,
@@ -654,6 +675,11 @@ export class Router {
                     .callStatic.redeemScyToToken(receiver, SCY, netScyIn, output),
             slippage
         );
+
+        if (netOut.eq(etherConstants.NegativeOne)) {
+            throw NoRouteFoundError.action('redeem', SCY, tokenOut);
+        }
+
         return this.contract
             .connect(this.networkConnection.signer!)
             .redeemScyToToken(receiver, SCY, netScyIn, output, overrides);
@@ -678,6 +704,12 @@ export class Router {
                 .connect(this.networkConnection.signer!)
                 .callStatic.mintPyFromToken(receiver, YT, Router.MIN_AMOUNT, input)
         );
+
+        if (netOut.eq(etherConstants.NegativeOne)) {
+            // TODO: should we use `mintPY` as the action name instead of `mint`?
+            throw NoRouteFoundError.action('mint', tokenIn, YT);
+        }
+
         return this.contract
             .connect(this.networkConnection.signer!)
             .mintPyFromToken(receiver, YT, calcSlippedDownAmount(netOut, slippage), input, overrides);
@@ -698,7 +730,7 @@ export class Router {
             this.networkConnection,
             this.chainId
         ).contract.callStatic.getTokensOut();
-        const { output } = await this.outputParams(
+        const { output, netOut } = await this.outputParams(
             SCY,
             BN.from(netPyIn).mul(etherConstants.WeiPerEther).div(pyIndex),
             tokenOut,
@@ -709,6 +741,11 @@ export class Router {
                     .callStatic.redeemPyToToken(receiver, YT, netPyIn, output),
             slippage
         );
+
+        if (netOut.eq(etherConstants.NegativeOne)) {
+            throw NoRouteFoundError.action('redeem', YT, tokenOut);
+        }
+
         return this.contract
             .connect(this.networkConnection.signer!)
             .redeemPyToToken(receiver, YT, netPyIn, output, overrides);
@@ -772,14 +809,14 @@ export class Router {
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
+        const { scy, pt } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
         const [tokenRedeemScyList, netScyIn] = await Promise.all([
             new SCYEntity(scy, this.networkConnection, this.chainId).contract.callStatic.getTokensOut(),
             this.contract
                 .connect(this.networkConnection.signer!)
                 .callStatic.swapExactPtForScy(receiver, market, exactPtIn, Router.MIN_AMOUNT),
         ]);
-        const { output } = await this.outputParams(
+        const { output, netOut } = await this.outputParams(
             scy,
             netScyIn,
             tokenOut,
@@ -790,6 +827,11 @@ export class Router {
                     .callStatic.swapExactPtForToken(receiver, market, exactPtIn, output),
             slippage
         );
+
+        if (netOut.eq(etherConstants.NegativeOne)) {
+            throw NoRouteFoundError.action('swap', pt, tokenOut);
+        }
+
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapExactPtForToken(receiver, market, exactPtIn, output, overrides);
@@ -833,7 +875,7 @@ export class Router {
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
+        const { scy, pt } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
         const tokenMintScyList = await new SCYEntity(
             scy,
             this.networkConnection,
@@ -853,6 +895,13 @@ export class Router {
                     }
                 )
         );
+
+        if (netOut.eq(etherConstants.NegativeOne)) {
+            // TODO: One additional call to get the YT address, does it worth it?
+            let yt = await new PT(pt, this.networkConnection, this.chainId).contract.callStatic.YT();
+            throw NoRouteFoundError.action('swap', tokenIn, yt);
+        }
+
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapExactTokenForYt(
@@ -876,14 +925,14 @@ export class Router {
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
+        const { scy, pt } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
         const [tokenRedeemScyList, netScyIn] = await Promise.all([
             new SCYEntity(scy, this.networkConnection, this.chainId).contract.callStatic.getTokensOut(),
             this.contract
                 .connect(this.networkConnection.signer!)
                 .callStatic.swapExactYtForScy(receiver, market, exactYtIn, Router.MIN_AMOUNT),
         ]);
-        const { output } = await this.outputParams(
+        const { output, netOut } = await this.outputParams(
             scy,
             netScyIn,
             tokenOut,
@@ -894,6 +943,13 @@ export class Router {
                     .callStatic.swapExactYtForToken(receiver, market, exactYtIn, output),
             slippage
         );
+
+        if (netOut.eq(etherConstants.NegativeOne)) {
+            // TODO: One additional call to get the YT address, does it worth it?
+            let yt = await new PT(pt, this.networkConnection, this.chainId).contract.callStatic.YT();
+            throw NoRouteFoundError.action('swap', yt, tokenOut);
+        }
+
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapExactYtForToken(receiver, market, exactYtIn, output, overrides);

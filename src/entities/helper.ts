@@ -72,3 +72,14 @@ export class InvalidSlippageError extends Error {
         if (slippage < 0 || slippage > 1) throw new InvalidSlippageError();
     }
 }
+
+export class NoRouteFoundError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'NoRouteFoundError';
+    }
+
+    static action(actionName: string, from: string, to: string) {
+        return new NoRouteFoundError(`No route found to ${actionName} from ${from} to ${to}`);
+    }
+}
