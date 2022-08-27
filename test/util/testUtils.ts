@@ -106,6 +106,10 @@ export const CONTRACT_ADDRESSES = {
     },
 };
 
+// choose the markets you want to test here
+// 0n fuji: 0 for qiUSDC, 1 for qiAVAX, 2 for qiWETH
+const MARKET_TO_TEST = 1;
+
 export const testConfig = (chainId: number) => ({
     deployer: CONTRACT_ADDRESSES[chainId].CORE.DEPLOYER,
     marketFactory: CONTRACT_ADDRESSES[chainId].CORE.MARKET_FACTORY,
@@ -121,11 +125,10 @@ export const testConfig = (chainId: number) => ({
     tokens: CONTRACT_ADDRESSES[chainId].TOKENS,
     markets: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS,
 
-    // choose the markets you want to test here
-    market: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[0],
-    marketAddress: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[0].market,
+    market: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST],
+    marketAddress: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST].market,
     // choose the token to test for swap from raw token -> py
-    tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.USDC,
+    tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.WETH,
 });
 
 export const currentConfig = testConfig(ACTIVE_CHAIN_ID);

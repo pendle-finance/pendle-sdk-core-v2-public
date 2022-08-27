@@ -19,7 +19,7 @@ import {
     minBigNumber,
     MARKET_SWAP_FACTOR,
     USER_SWAP_FACTOR,
-    trimAddress,
+    getERC20Name,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/BigNumberMatcher';
@@ -58,7 +58,7 @@ describe(Router, () => {
             const ptAdd = (await getBalance(ptAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
 
             if (scyAdd.eq(0) || ptAdd.eq(0)) {
-                console.log('skip test because scyAdd or ptAdd is 0');
+                console.warn('skip test because scyAdd or ptAdd is 0');
                 return;
             }
 
@@ -86,7 +86,7 @@ describe(Router, () => {
                 const ptAdd = (await getBalance(ptAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
 
                 if (tokenAddAmount.eq(0) || ptAdd.eq(0)) {
-                    console.log(`[${trimAddress(token)}] Skip test because tokenAddAmount or ptAdd is 0`);
+                    console.warn(`[${await getERC20Name(token)}] Skip test because tokenAddAmount or ptAdd is 0`);
                     continue;
                 }
 
@@ -117,7 +117,7 @@ describe(Router, () => {
         it('#addLiquiditySinglePt', async () => {
             const ptAdd = (await getBalance(ptAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
             if (ptAdd.eq(0)) {
-                console.log('skip test because ptAdd is 0');
+                console.warn('skip test because ptAdd is 0');
                 return;
             }
             const balanceBefore = await getLpBalanceSnapshot();
@@ -133,7 +133,7 @@ describe(Router, () => {
         it('#addLiquiditySingleScy', async () => {
             const scyAdd = (await getBalance(scyAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
             if (scyAdd.eq(0)) {
-                console.log('skip test because scyAdd is 0');
+                console.warn('skip test because scyAdd is 0');
                 return;
             }
             const balanceBefore = await getLpBalanceSnapshot();
@@ -153,7 +153,7 @@ describe(Router, () => {
                 const tokenAddAmount = (await getBalance(token, signer.address)).div(ADD_LIQUIDITY_FACTOR);
 
                 if (tokenAddAmount.eq(0)) {
-                    console.log(`[${trimAddress(token)}] Skip test because tokenAddAmount is 0`);
+                    console.warn(`[${await getERC20Name(token)}] Skip test because tokenAddAmount is 0`);
                     continue;
                 }
                 const balanceBefore = await getLpBalanceSnapshot();
@@ -177,7 +177,7 @@ describe(Router, () => {
             const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
 
             if (liquidityRemove.eq(0)) {
-                console.log('skip test because liquidityRemove is 0');
+                console.warn('skip test because liquidityRemove is 0');
                 return;
             }
             const lpBalanceBefore = await getBalance(marketAddress, signer.address);
@@ -206,7 +206,7 @@ describe(Router, () => {
             for (let token of tokensIn) {
                 const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
                 if (liquidityRemove.eq(0)) {
-                    console.log(`[${trimAddress(token)}] Skip test because liquidityRemove is 0`);
+                    console.warn(`[${await getERC20Name(token)}] Skip test because liquidityRemove is 0`);
                     return; // return here since the liquidity will not changed in this for loop
                 }
                 const lpBalanceBefore = await getBalance(marketAddress, signer.address);
@@ -233,7 +233,7 @@ describe(Router, () => {
         it('#removeLiquiditySinglePt', async () => {
             const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
             if (liquidityRemove.eq(0)) {
-                console.log('skip test because liquidityRemove is 0');
+                console.warn('skip test because liquidityRemove is 0');
                 return;
             }
             const balanceBefore = await getLpBalanceSnapshot();
@@ -252,7 +252,7 @@ describe(Router, () => {
         it('#removeLiquiditySingleScy', async () => {
             const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
             if (liquidityRemove.eq(0)) {
-                console.log('skip test because liquidityRemove is 0');
+                console.warn('skip test because liquidityRemove is 0');
             }
             const balanceBefore = await getLpBalanceSnapshot();
 
@@ -273,7 +273,7 @@ describe(Router, () => {
             for (let token of tokensIn) {
                 const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
                 if (liquidityRemove.eq(0)) {
-                    console.log(`[${trimAddress(token)}] Skip test because liquidityRemove is 0`);
+                    console.warn(`[${await getERC20Name(token)}] Skip test because liquidityRemove is 0`);
                     return;
                 }
                 const balanceBefore = await getLpBalanceSnapshot();
@@ -303,7 +303,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const ptInAmount = getPtSwapAmount(balanceBefore, true);
             if (ptInAmount.eq(0)) {
-                console.log('skip test because ptInAmount is 0');
+                console.warn('skip test because ptInAmount is 0');
                 return;
             }
 
@@ -320,7 +320,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyOut = getScySwapAmount(balanceBefore, false);
             if (expectScyOut.eq(0)) {
-                console.log('skip test because expectScyOut is 0');
+                console.warn('skip test because expectScyOut is 0');
                 return;
             }
 
@@ -339,7 +339,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectPtOut = getPtSwapAmount(balanceBefore, false);
             if (expectPtOut.eq(0)) {
-                console.log('skip test because expectPtOut is 0');
+                console.warn('skip test because expectPtOut is 0');
                 return;
             }
 
@@ -358,7 +358,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyIn = getScySwapAmount(balanceBefore, true);
             if (expectScyIn.eq(0)) {
-                console.log('skip test because expectScyIn is 0');
+                console.warn('skip test because expectScyIn is 0');
                 return;
             }
 
@@ -381,7 +381,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyIn = getScySwapAmount(balanceBefore, true);
             if (expectScyIn.eq(0)) {
-                console.log('skip test because expectScyIn is 0');
+                console.warn('skip test because expectScyIn is 0');
                 return;
             }
 
@@ -400,7 +400,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyOut = getScySwapAmount(balanceBefore, false);
             if (expectScyOut.eq(0)) {
-                console.log('skip test because expectScyOut is 0');
+                console.warn('skip test because expectScyOut is 0');
                 return;
             }
 
@@ -418,7 +418,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtOut = getYtSwapAmount(balanceBefore, false);
             if (expectYtOut.eq(0)) {
-                console.log('skip test because expectYtOut is 0');
+                console.warn('skip test because expectYtOut is 0');
                 return;
             }
 
@@ -436,7 +436,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtIn = getYtSwapAmount(balanceBefore, true);
             if (expectYtIn.eq(0)) {
-                console.log('skip test because expectYtIn is 0');
+                console.warn('skip test because expectYtIn is 0');
                 return;
             }
 
@@ -459,7 +459,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectRawTokenIn = getTokenSwapAmount(balanceBefore, true);
             if (expectRawTokenIn.eq(0)) {
-                console.log('skip test because expectRawTokenIn is 0');
+                console.warn('skip test because expectRawTokenIn is 0');
                 return;
             }
 
@@ -484,7 +484,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectPtIn = getPtSwapAmount(balanceBefore, true);
             if (expectPtIn.eq(0)) {
-                console.log('skip test because expectPtIn is 0');
+                console.warn('skip test because expectPtIn is 0');
                 return;
             }
 
@@ -508,7 +508,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectRawTokenIn = getTokenSwapAmount(balanceBefore, true);
             if (expectRawTokenIn.eq(0)) {
-                console.log('skip test because expectRawTokenIn is 0');
+                console.warn('skip test because expectRawTokenIn is 0');
                 return;
             }
 
@@ -532,7 +532,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtIn = getYtSwapAmount(balanceBefore, true);
             if (expectYtIn.eq(0)) {
-                console.log('skip test because expectYtIn is 0');
+                console.warn('skip test because expectYtIn is 0');
                 return;
             }
 
@@ -559,7 +559,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectRawTokenIn = DEFAULT_MINT_AMOUNT;
             if (expectRawTokenIn.eq(0)) {
-                console.log('skip test because expectRawTokenIn is 0');
+                console.warn('skip test because expectRawTokenIn is 0');
                 return;
             }
 
@@ -587,7 +587,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectPyIn = getPyRedeemAmount(balanceBefore);
             if (expectPyIn.eq(0)) {
-                console.log('skip test because expectPyIn is 0');
+                console.warn('skip test because expectPyIn is 0');
                 return;
             }
 
@@ -615,7 +615,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectRawTokenIn = DEFAULT_MINT_AMOUNT;
             if (expectRawTokenIn.eq(0)) {
-                console.log('skip test because expectRawTokenIn is 0');
+                console.warn('skip test because expectRawTokenIn is 0');
                 return;
             }
 
@@ -639,7 +639,7 @@ describe(Router, () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyIn = getScyRedeemAmount(balanceBefore);
             if (expectScyIn.eq(0)) {
-                console.log('skip test because expectScyIn is 0');
+                console.warn('skip test because expectScyIn is 0');
                 return;
             }
 

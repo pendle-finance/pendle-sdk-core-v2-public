@@ -1,7 +1,7 @@
 import { Contract, ethers } from 'ethers';
 import { Router } from '../../src';
 import FUND_KEEPER_ABI from './fundKeeperAbi.json';
-import { approveHelper, getBalance, SLIPPAGE_TYPE3 } from './testHelper';
+import { approveHelper, getBalance, SLIPPAGE_TYPE3, stalkAccount } from './testHelper';
 import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, networkConnection } from './testUtils';
 
 const INF = ethers.constants.MaxUint256;
@@ -81,6 +81,8 @@ async function main() {
             SLIPPAGE_TYPE3
         )
         .then((tx: any) => tx.wait());
+
+    await stalkAccount(signerAddress, [currentConfig.market]);
 }
 
 main()

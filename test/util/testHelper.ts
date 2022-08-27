@@ -1,6 +1,7 @@
 import { PendleERC20 } from '@pendle/core-v2/typechain-types';
-import { BigNumber as BN, BigNumberish } from 'ethers';
-import { ERC20, Address } from '../../src';
+import { BigNumber as BN, BigNumberish, constants } from 'ethers';
+import { ERC20, Address, Market } from '../../src';
+import { isNativeToken } from '../../src/entities/helper';
 import { ACTIVE_CHAIN_ID, networkConnection, BLOCK_CONFIRMATION } from './testUtils';
 
 type EntitiesMapType = {
@@ -20,32 +21,65 @@ const ERC20_CREATE_HANDLER = {
 
 const ERC20_ENTITIES: EntitiesMapType = new Proxy({}, ERC20_CREATE_HANDLER);
 
-export async function getBalance(contract: Address, user: Address): Promise<BN> {
-    return ERC20_ENTITIES[contract].balanceOf(user);
+export async function getBalance(token: Address, user: Address): Promise<BN> {
+    if (isNativeToken(token)) {
+        return networkConnection.provider.getBalance(user);
+    }
+    return ERC20_ENTITIES[token].balanceOf(user);
 }
 
-export async function getTotalSupply(contract: Address): Promise<BN> {
-    return ERC20_ENTITIES[contract].totalSupply();
+export async function getTotalSupply(token: Address): Promise<BN> {
+    if (isNativeToken(token)) {
+        // throw an error here because this function should not be called
+        // if the tests are written correctly
+        throw new Error('Cannot get total supply of native token');
+    }
+    return ERC20_ENTITIES[token].totalSupply();
 }
 
-export async function getAllowance(contract: Address, user: Address, spender: Address): Promise<BN> {
-    return ERC20_ENTITIES[contract].allowance(user, spender);
+export async function getAllowance(token: Address, user: Address, spender: Address): Promise<BN> {
+    if (isNativeToken(token)) {
+        return constants.MaxUint256;
+    }
+    return ERC20_ENTITIES[token].allowance(user, spender);
 }
 
-export async function approveHelper(contract: Address, user: Address, amount: BigNumberish) {
-    await ERC20_ENTITIES[contract].approve(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+export async function approveHelper(token: Address, user: Address, amount: BigNumberish) {
+    if (isNativeToken(token)) {
+        return;
+    }
+    await ERC20_ENTITIES[token].approve(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 }
 
-export async function transferHelper(contract: Address, user: Address, amount: BN) {
-    await ERC20_ENTITIES[contract].transfer(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+export async function transferHelper(token: Address, user: Address, amount: BN) {
+    await ERC20_ENTITIES[token].transfer(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 }
 
 export function minBigNumber(a: BN, b: BN): BN {
     return a.lt(b) ? a : b;
 }
 
-export function trimAddress(address: Address) {
-    return address.slice(0, 5) + '...' + address.slice(-3);
+export async function getERC20Name(token: Address): Promise<string> {
+    if (isNativeToken(token)) {
+        return 'Native';
+    }
+    return ERC20_ENTITIES[token].name();
+}
+
+export async function stalkAccount(user: Address, markets: any[]) {
+    for (let market of markets) {
+        console.log('Market: ', market.symbol);
+        console.log('Portfolio');
+
+        const marketContract = new Market(market.market, networkConnection, ACTIVE_CHAIN_ID).contract;
+
+        console.log('balanceOf');
+        console.log('market                 :', (await marketContract.balanceOf(user)).toString());
+        console.log('market active balance  :', (await marketContract.activeBalance(user)).toString());
+        console.log('yt                     :', (await getBalance(market.YT, user)).toString());
+        console.log('pt                     :', (await getBalance(market.PT, user)).toString());
+        console.log('scy                    :', (await getBalance(market.SCY, user)).toString());
+    }
 }
 
 export const DEFAULT_SWAP_AMOUNT = BN.from(10).pow(15);
