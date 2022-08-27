@@ -16,12 +16,13 @@ import {
     constants as etherConstants,
     Contract,
 } from 'ethers';
-import { KYBER_API, KYBER_SWAP_NATIVE_ADDRESS } from '../constants';
+import { KYBER_API, NATIVE_ADDRESS_0xEE } from '../constants';
 import {
     calcSlippedDownAmount,
     calcSlippedUpAmount,
     getContractAddresses,
     getRouterStatic,
+    isNativeToken,
     isSameAddress,
 } from './helper';
 import { Market } from './Market';
@@ -74,12 +75,9 @@ export class Router {
     async kybercall(tokenIn: Address, tokenOut: Address, amountIn: BigNumberish): Promise<KybercallData> {
         if (isSameAddress(tokenIn, tokenOut)) return { outputAmount: amountIn, encodedSwapData: [] };
         // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
-        if (isSameAddress(tokenIn, etherConstants.AddressZero)) {
-            tokenIn = KYBER_SWAP_NATIVE_ADDRESS;
-        }
-        if (isSameAddress(tokenOut, etherConstants.AddressZero)) {
-            tokenOut = KYBER_SWAP_NATIVE_ADDRESS;
-        }
+        if (isNativeToken(tokenIn)) tokenIn = NATIVE_ADDRESS_0xEE;
+        if (isNativeToken(tokenOut)) tokenOut = NATIVE_ADDRESS_0xEE;
+
         const { data } = await axios
             .get(KYBER_API[this.chainId], {
                 params: {
@@ -253,7 +251,10 @@ export class Router {
                 tokenIn,
                 tokenDesired,
                 ptDesired,
-                Router.MIN_AMOUNT
+                Router.MIN_AMOUNT,
+                {
+                    value: isNativeToken(tokenIn) ? tokenDesired : undefined,
+                }
             );
         return this.contract
             .connect(this.networkConnection.signer!)
@@ -264,7 +265,10 @@ export class Router {
                 tokenDesired,
                 ptDesired,
                 calcSlippedDownAmount(netLpOut, slippage),
-                overrides
+                {
+                    ...overrides,
+                    value: isNativeToken(tokenIn) ? tokenDesired : undefined,
+                }
             );
     }
 
@@ -335,7 +339,14 @@ export class Router {
             netTokenIn,
             tokenMintScyList,
             (input) =>
-                this.routerStatic.callStatic.addLiquiditySingleBaseTokenStatic(market, input.tokenIn, input.netTokenIn)
+                this.routerStatic.callStatic.addLiquiditySingleBaseTokenStatic(
+                    market,
+                    input.tokenIn,
+                    input.netTokenIn,
+                    {
+                        value: isNativeToken(input.tokenIn) ? input.netTokenIn : undefined,
+                    }
+                )
         );
 
         return this.contract
@@ -346,7 +357,10 @@ export class Router {
                 calcSlippedDownAmount(netLpOut, slippage),
                 Router.swapApproxParams(netPtFromSwap, slippage),
                 input,
-                overrides
+                {
+                    ...overrides,
+                    value: isNativeToken(input.tokenIn) ? input.netTokenIn : undefined,
+                }
             );
     }
 
@@ -552,7 +566,16 @@ export class Router {
         const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
             this.contract
                 .connect(this.networkConnection.signer!)
-                .callStatic.swapExactTokenForPt(receiver, market, Router.MIN_AMOUNT, Router.STATIC_APPROX_PARAMS, input)
+                .callStatic.swapExactTokenForPt(
+                    receiver,
+                    market,
+                    Router.MIN_AMOUNT,
+                    Router.STATIC_APPROX_PARAMS,
+                    input,
+                    {
+                        value: isNativeToken(tokenIn) ? netTokenIn : undefined,
+                    }
+                )
         );
         return this.contract
             .connect(this.networkConnection.signer!)
@@ -562,7 +585,10 @@ export class Router {
                 calcSlippedDownAmount(netOut, slippage),
                 Router.swapApproxParams(netOut, slippage),
                 input,
-                overrides
+                {
+                    ...overrides,
+                    value: isNativeToken(tokenIn) ? netTokenIn : undefined,
+                }
             );
     }
 
@@ -823,7 +849,16 @@ export class Router {
         const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
             this.contract
                 .connect(this.networkConnection.signer!)
-                .callStatic.swapExactTokenForYt(receiver, market, Router.MIN_AMOUNT, Router.STATIC_APPROX_PARAMS, input)
+                .callStatic.swapExactTokenForYt(
+                    receiver,
+                    market,
+                    Router.MIN_AMOUNT,
+                    Router.STATIC_APPROX_PARAMS,
+                    input,
+                    {
+                        value: isNativeToken(tokenIn) ? netTokenIn : undefined,
+                    }
+                )
         );
         return this.contract
             .connect(this.networkConnection.signer!)
@@ -833,7 +868,10 @@ export class Router {
                 calcSlippedDownAmount(netOut, slippage),
                 Router.swapApproxParams(netOut, slippage),
                 input,
-                overrides
+                {
+                    ...overrides,
+                    value: isNativeToken(tokenIn) ? netTokenIn : undefined,
+                }
             );
     }
 

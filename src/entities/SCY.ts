@@ -2,7 +2,7 @@ import type { RouterStatic, SCYBase } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, TokenAmount } from './types';
 import { type BigNumber as BN, type BigNumberish, type ContractTransaction, type Overrides, Contract } from 'ethers';
 import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/base-implementations/SCYBase.sol/SCYBase.json';
-import { calcSlippedDownAmount, getRouterStatic } from './helper';
+import { calcSlippedDownAmount, getRouterStatic, isNativeToken } from './helper';
 import { ERC20 } from './ERC20';
 
 export type UserSCYInfo = {
@@ -41,10 +41,15 @@ export class SCY {
     ): Promise<ContractTransaction> {
         const amountScyOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0);
+            .callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0, {
+                value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined,
+            });
         return this.contract
             .connect(this.networkConnection.signer!)
-            .deposit(receiver, baseAssetIn, amountBaseToPull, calcSlippedDownAmount(amountScyOut, slippage), overrides);
+            .deposit(receiver, baseAssetIn, amountBaseToPull, calcSlippedDownAmount(amountScyOut, slippage), {
+                ...overrides,
+                value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined,
+            });
     }
 
     /**

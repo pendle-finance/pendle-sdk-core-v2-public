@@ -1,6 +1,7 @@
 import type { Address } from './entities';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
+import { constants as ethersConstants } from 'ethers';
 
 export type ContractAddresses = {
     ROUTER: Address;
@@ -50,4 +51,6 @@ export const KYBER_API = {
     [CHAIN_ID.FUJI]: 'https://aggregator-api.stg.kyberengineering.io/fuji/route/encode',
 } as const;
 
-export const KYBER_SWAP_NATIVE_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+export const NATIVE_ADDRESS_0x00 = ethersConstants.AddressZero;
+
+export const NATIVE_ADDRESS_0xEE = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';

@@ -9,6 +9,8 @@ import {
     FUJI_ADDRESSES,
     MUMBAI_ADDRESSES,
     PERCENTAGE_DECIMALS,
+    NATIVE_ADDRESS_0x00,
+    NATIVE_ADDRESS_0xEE,
 } from '../constants';
 import { Address } from './types';
 
@@ -55,6 +57,10 @@ export function isMainchain(chainId: number): boolean {
 
 export function isSameAddress(address1: Address, address2: Address): boolean {
     return address1.toLowerCase() === address2.toLowerCase();
+}
+
+export function isNativeToken(address: Address): boolean {
+    return isSameAddress(address, NATIVE_ADDRESS_0x00) || isSameAddress(address, NATIVE_ADDRESS_0xEE);
 }
 
 export class InvalidSlippageError extends Error {
