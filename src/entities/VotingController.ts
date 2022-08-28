@@ -1,5 +1,5 @@
 import type { PendleVotingControllerUpg } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection } from './types';
+import type { Address, NetworkConnection } from '../types';
 import { BigNumber } from 'bignumber.js';
 import type { ContractTransaction, Overrides } from 'ethers';
 import { BigNumber as BN, Contract, constants } from 'ethers';

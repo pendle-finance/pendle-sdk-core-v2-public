@@ -13,7 +13,7 @@ import {
     NATIVE_ADDRESS_0x00,
     NATIVE_ADDRESS_0xEE,
 } from '../constants';
-import { Address } from './types';
+import { Address } from '../types';
 
 export function decimalFactor(decimals: number): BN {
     return BN.from(10).pow(decimals);
@@ -62,52 +62,4 @@ export function isSameAddress(address1: Address, address2: Address): boolean {
 
 export function isNativeToken(address: Address): boolean {
     return isSameAddress(address, NATIVE_ADDRESS_0x00) || isSameAddress(address, NATIVE_ADDRESS_0xEE);
-}
-
-export class InvalidSlippageError extends Error {
-    constructor() {
-        super('Slippage must be a decimal value in the range [0, 1]');
-    }
-
-    static verify(slippage: number) {
-        if (slippage < 0 || slippage > 1) throw new InvalidSlippageError();
-    }
-}
-
-export class NoRouteFoundError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = 'NoRouteFoundError';
-    }
-
-    static action(actionName: string, from: string, to: string) {
-        return new NoRouteFoundError(`No route found to ${actionName} from ${from} to ${to}`);
-    }
-}
-
-export class ApproximateError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = 'ApproximateError';
-    }
-}
-
-// Don't need syncCatchError since most of the time we are using async functions
-export function asyncCatchError(handler: (error: any) => Promise<any>) {
-    return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-        const fn = descriptor.value;
-        descriptor.value = async function (...args: any) {
-            return Promise.resolve(fn.apply(this, args)).catch(handler);
-        };
-    };
-}
-
-export function catchApproxFail(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    return asyncCatchError((error: any) => {
-        console.log(error.reason);
-        if (error.reason === 'approx fail') {
-            throw new ApproximateError(error.message);
-        }
-        return Promise.reject(error);
-    })(target, propertyKey, descriptor);
 }

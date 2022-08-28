@@ -1,5 +1,5 @@
 import type { RouterStatic } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection } from './types';
+import type { Address, NetworkConnection } from '../types';
 import type { UserPYInfo } from './YT';
 import type { UserMarketInfo } from './Market';
 import { getRouterStatic } from './helper';
