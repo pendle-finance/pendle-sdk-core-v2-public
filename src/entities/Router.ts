@@ -13,6 +13,7 @@ import { KYBER_API, NATIVE_ADDRESS_0xEE } from '../constants';
 import {
     calcSlippedDownAmount,
     calcSlippedUpAmount,
+    catchApproxFail,
     getContractAddresses,
     getRouterStatic,
     isNativeToken,
@@ -267,6 +268,7 @@ export class Router {
             );
     }
 
+    @catchApproxFail
     async addLiquiditySinglePt(
         receiver: Address,
         market: Address,
@@ -290,6 +292,7 @@ export class Router {
             );
     }
 
+    @catchApproxFail
     async addLiquiditySingleScy(
         receiver: Address,
         market: Address,
@@ -314,6 +317,7 @@ export class Router {
             );
     }
 
+    @catchApproxFail
     async addLiquiditySingleToken(
         receiver: Address,
         market: Address,
@@ -409,6 +413,7 @@ export class Router {
             );
     }
 
+    @catchApproxFail
     async removeLiquiditySinglePt(
         receiver: Address,
         market: Address,
@@ -503,6 +508,7 @@ export class Router {
             .swapExactPtForScy(receiver, market, exactPtIn, calcSlippedDownAmount(netScyOut, slippage), overrides);
     }
 
+    @catchApproxFail
     async swapPtForExactScy(
         receiver: Address,
         market: Address,
@@ -546,6 +552,7 @@ export class Router {
             .swapScyForExactPt(receiver, market, exactPtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
     }
 
+    @catchApproxFail
     async swapExactTokenForPt(
         receiver: Address,
         market: Address,
@@ -594,6 +601,7 @@ export class Router {
             );
     }
 
+    @catchApproxFail
     async swapExactScyForPt(
         receiver: Address,
         market: Address,
@@ -744,6 +752,7 @@ export class Router {
             .redeemPyToToken(receiver, YT, netPyIn, output, overrides);
     }
 
+    @catchApproxFail
     async swapExactScyForYt(
         receiver: Address,
         market: Address,
@@ -766,6 +775,7 @@ export class Router {
             );
     }
 
+    @catchApproxFail
     async swapYtForExactScy(
         receiver: Address,
         market: Address,
@@ -860,6 +870,7 @@ export class Router {
             .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
     }
 
+    @catchApproxFail
     async swapExactTokenForYt(
         receiver: Address,
         market: Address,

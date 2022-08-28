@@ -84,3 +84,30 @@ export class NoRouteFoundError extends Error {
         return new NoRouteFoundError(`No route found to ${actionName} from ${from} to ${to}`);
     }
 }
+
+export class ApproximateError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'ApproximateError';
+    }
+}
+
+// Don't need syncCatchError since most of the time we are using async functions
+export function asyncCatchError(handler: (error: any) => Promise<any>) {
+    return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+        const fn = descriptor.value;
+        descriptor.value = async function (...args: any) {
+            return Promise.resolve(fn.apply(this, args)).catch(handler);
+        };
+    };
+}
+
+export function catchApproxFail(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    return asyncCatchError((error: any) => {
+        console.log(error.reason);
+        if (error.reason === 'approx fail') {
+            throw new ApproximateError(error.message);
+        }
+        return Promise.reject(error);
+    })(target, propertyKey, descriptor);
+}

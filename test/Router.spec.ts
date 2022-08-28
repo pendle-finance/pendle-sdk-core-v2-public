@@ -24,7 +24,7 @@ import {
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/BigNumberMatcher';
-import { getRouterStatic, NoRouteFoundError } from '../src/entities/helper';
+import { ApproximateError, getRouterStatic, NoRouteFoundError } from '../src/entities/helper';
 
 type BalanceSnapshot = {
     ptBalance: BN;
@@ -109,15 +109,7 @@ describe(Router, () => {
                         ptAdd,
                         SLIPPAGE_TYPE2
                     )
-                    .then((tx) => tx.wait(BLOCK_CONFIRMATION))
-                    .catch((e) => {
-                        if (e instanceof NoRouteFoundError) {
-                            flag = true;
-                            console.warn(e.message);
-                            return;
-                        }
-                        throw e;
-                    });
+                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
                 if (flag) continue;
 
@@ -139,9 +131,20 @@ describe(Router, () => {
             }
             const balanceBefore = await getLpBalanceSnapshot();
 
+            let flag = false;
             await router
                 .addLiquiditySinglePt(signer.address, currentConfig.marketAddress, ptAdd, SLIPPAGE_TYPE2)
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof ApproximateError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getLpBalanceSnapshot();
             verifyLpBalanceChanges(balanceBefore, balanceAfter);
@@ -155,9 +158,20 @@ describe(Router, () => {
             }
             const balanceBefore = await getLpBalanceSnapshot();
 
+            let flag = false;
             await router
                 .addLiquiditySingleScy(signer.address, currentConfig.marketAddress, scyAdd, SLIPPAGE_TYPE2)
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof ApproximateError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getLpBalanceSnapshot();
             verifyLpBalanceChanges(balanceBefore, balanceAfter);
@@ -189,7 +203,7 @@ describe(Router, () => {
                     )
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                     .catch((e) => {
-                        if (e instanceof NoRouteFoundError) {
+                        if (e instanceof NoRouteFoundError || e instanceof ApproximateError) {
                             flag = true;
                             console.warn(e.message);
                             return;
@@ -254,15 +268,7 @@ describe(Router, () => {
                         token,
                         SLIPPAGE_TYPE2
                     )
-                    .then((tx) => tx.wait(BLOCK_CONFIRMATION))
-                    .catch((e) => {
-                        if (e instanceof NoRouteFoundError) {
-                            flag = true;
-                            console.warn(e.message);
-                            return;
-                        }
-                        throw e;
-                    });
+                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
                 if (flag) continue;
 
@@ -282,9 +288,20 @@ describe(Router, () => {
             }
             const balanceBefore = await getLpBalanceSnapshot();
 
+            let flag = false;
             await router
                 .removeLiquiditySinglePt(signer.address, currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2)
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof ApproximateError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getLpBalanceSnapshot();
 
@@ -381,9 +398,20 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .swapPtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof ApproximateError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             verifyBalanceChanges(balanceBefore, balanceAfter);
@@ -419,9 +447,20 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .swapExactScyForPt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof ApproximateError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             verifyBalanceChanges(balanceBefore, balanceAfter);
@@ -442,9 +481,20 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .swapExactScyForYt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof ApproximateError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             // Cannot use `verifyBalanceChanges` because the underlying logic of swapping YT/SCY
@@ -463,9 +513,20 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .swapYtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof ApproximateError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             const netScyOut = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
@@ -533,7 +594,7 @@ describe(Router, () => {
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    if (e instanceof NoRouteFoundError) {
+                    if (e instanceof NoRouteFoundError || e instanceof ApproximateError) {
                         flag = true;
                         console.warn(e.message);
                         return;
@@ -604,7 +665,7 @@ describe(Router, () => {
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    if (e instanceof NoRouteFoundError) {
+                    if (e instanceof NoRouteFoundError || e instanceof ApproximateError) {
                         flag = true;
                         console.warn(e.message);
                         return;
