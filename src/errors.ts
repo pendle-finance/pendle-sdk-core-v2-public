@@ -5,6 +5,10 @@ import { Logger } from '@ethersproject/logger';
 export class InvalidSlippageError extends Error {
     constructor() {
         super('Slippage must be a decimal value in the range [0, 1]');
+
+        // Set the prototype explicitly.
+        // See: https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
+        Object.setPrototypeOf(this, InvalidSlippageError.prototype);
     }
 
     static verify(slippage: number) {
@@ -16,6 +20,7 @@ export class NoRouteFoundError extends Error {
     constructor(message: string) {
         super(message);
         this.name = 'NoRouteFoundError';
+        Object.setPrototypeOf(this, NoRouteFoundError.prototype);
     }
 
     static action(actionName: string, from: string, to: string) {
@@ -43,6 +48,7 @@ export class EtherError extends Error {
         Object.assign(this, err);
 
         this.name = 'EtherError';
+        Object.setPrototypeOf(this, EtherError.prototype);
     }
 
     public getReadableMessage(): string {
@@ -59,6 +65,7 @@ export class ApproximateError extends EtherError {
     constructor(err: Error) {
         super(err);
         this.name = 'ApproximateError';
+        Object.setPrototypeOf(this, ApproximateError.prototype);
     }
 
     static isApproximateError(err: Error): boolean {
@@ -70,6 +77,7 @@ export class InsufficientFundError extends EtherError {
     constructor(err: Error) {
         super(err);
         this.name = 'InsufficientFundError';
+        Object.setPrototypeOf(this, InsufficientFundError.prototype);
     }
 
     static isInsufficientFundError(err: Error) {
