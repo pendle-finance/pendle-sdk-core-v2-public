@@ -1,4 +1,4 @@
-import { EtherErrorCode } from 'types';
+import { EtherErrorCode } from './types';
 import { ErrorCode } from '@ethersproject/logger';
 import { Logger } from '@ethersproject/logger';
 
