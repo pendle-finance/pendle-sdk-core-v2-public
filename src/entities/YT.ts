@@ -1,6 +1,6 @@
 import type { PendleYieldToken, RouterStatic } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, TokenAmount } from './types';
-import { type BigNumber as BN, Contract } from 'ethers';
+import { BigNumber as BN, Contract } from 'ethers';
 import { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldToken.sol/PendleYieldToken.json';
 import { getRouterStatic } from './helper';
 import { ERC20 } from './ERC20';

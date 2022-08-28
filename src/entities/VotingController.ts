@@ -1,7 +1,8 @@
 import type { PendleVotingControllerUpg } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection } from './types';
 import { BigNumber } from 'bignumber.js';
-import { type ContractTransaction, type Overrides, BigNumber as BN, Contract, constants } from 'ethers';
+import type { ContractTransaction, Overrides } from 'ethers';
+import { BigNumber as BN, Contract, constants } from 'ethers';
 import { abi as PendleVotingControllerUpgABI } from '@pendle/core-v2/build/artifacts/contracts/core/LiquidityMining/VotingController/PendleVotingControllerUpg.sol/PendleVotingControllerUpg.json';
 import { isMainchain } from './helper';
 import { Market } from './Market';

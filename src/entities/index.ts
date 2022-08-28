@@ -9,3 +9,4 @@ export * from './YieldContractFactory';
 export * from './Router';
 export * from './VePendle';
 export * from './VotingController';
+export * from './helper';

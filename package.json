@@ -4,6 +4,12 @@
     "description": "SDK of Pendle Protocol.",
     "license": "MIT",
     "version": "0.0.23",
+    "main": "dist/index.js",
+    "typings": "dist/index.d.ts",
+    "files": [
+        "dist",
+        "src"
+    ],
     "homepage": "https://pendle.finance",
     "keywords": [
         "pendle",
@@ -17,12 +23,6 @@
     "bugs": {
         "url": "https://github.com/pendle-finance/pendle-sdk-core-v2/issues"
     },
-    "main": "index.js",
-    "files": [
-        "dist",
-        "src",
-        "index.ts"
-    ],
     "scripts": {
         "format": "yarn prettier --write \"{src,test}/**/*.{ts,js}\"",
         "lint": "yarn eslint \"{src,test}/**/*.{ts,js}\" --fix",
@@ -31,7 +31,9 @@
         "test:prepare": "yarn ts-node test/util/prepareMarket.ts && yarn test:approveRouter",
         "test:approveRouter": "yarn ts-node test/util/approveRouter.ts",
         "test:all": "yarn node test/all.js",
-        "test:coverage": "yarn jest --coverage --maxWorkers=1"
+        "test:coverage": "yarn jest --coverage --maxWorkers=1",
+        "build": "tsdx build",
+        "prepare": "tsdx build"
     },
     "dependencies": {
         "@pendle/core-v2": "0.10.5-testnet",

@@ -3,7 +3,7 @@ import type { MarketStateStructOutput } from '@pendle/core-v2/typechain-types/Pe
 import type { IPRouterStatic } from '@pendle/core-v2/typechain-types/IPRouterStatic';
 import type { Address, NetworkConnection, TokenAmount } from './types';
 import { abi as PendleMarketABI } from '@pendle/core-v2/build/artifacts/contracts/core/Market/PendleMarket.sol/PendleMarket.json';
-import { type BigNumber as BN, Contract } from 'ethers';
+import { BigNumber as BN, Contract } from 'ethers';
 import { getRouterStatic } from './helper';
 import { ERC20 } from './ERC20';
 

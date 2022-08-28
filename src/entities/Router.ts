@@ -7,15 +7,8 @@ import type {
 import type { Address, NetworkConnection } from './types';
 import axios from 'axios';
 import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
-import {
-    type BigNumberish,
-    type BytesLike,
-    type ContractTransaction,
-    type Overrides,
-    BigNumber as BN,
-    constants as etherConstants,
-    Contract,
-} from 'ethers';
+import type { BigNumberish, BytesLike, ContractTransaction, Overrides } from 'ethers';
+import { BigNumber as BN, constants as etherConstants, Contract } from 'ethers';
 import { KYBER_API, NATIVE_ADDRESS_0xEE } from '../constants';
 import {
     calcSlippedDownAmount,

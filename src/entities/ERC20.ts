@@ -1,7 +1,8 @@
 import type { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection } from './types';
 import { abi as PendleERC20ABI } from '@pendle/core-v2/build/artifacts/contracts/core/PendleERC20.sol/PendleERC20.json';
-import { type BigNumberish, type ContractTransaction, type Overrides, BigNumber as BN, Contract } from 'ethers';
+import type { BigNumberish, ContractTransaction, Overrides } from 'ethers';
+import { BigNumber as BN, Contract } from 'ethers';
 
 export class ERC20 {
     readonly contract: PendleERC20;
