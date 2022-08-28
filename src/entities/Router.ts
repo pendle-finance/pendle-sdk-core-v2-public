@@ -23,7 +23,7 @@ import { SCY as SCYEntity } from './SCY';
 import { YT as YTEntity } from './YT';
 import { RouterStatic } from '@pendle/core-v2/typechain-types';
 import { PT } from './PT';
-import { catchEtherError, NoRouteFoundError } from 'errors';
+import { NoRouteFoundError } from '../errors';
 
 export type KybercallData = {
     amountInUsd?: number;
@@ -206,7 +206,6 @@ export class Router {
         return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
     }
 
-    @catchEtherError
     async addLiquidityDualScyAndPt(
         receiver: Address,
         market: Address,
@@ -230,7 +229,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async addLiquidityDualTokenAndPt(
         receiver: Address,
         market: Address,
@@ -269,7 +267,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async addLiquiditySinglePt(
         receiver: Address,
         market: Address,
@@ -293,7 +290,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async addLiquiditySingleScy(
         receiver: Address,
         market: Address,
@@ -318,7 +314,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async addLiquiditySingleToken(
         receiver: Address,
         market: Address,
@@ -361,7 +356,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async removeLiquidityDualScyAndPt(
         receiver: Address,
         market: Address,
@@ -384,7 +378,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async removeLiquidityDualTokenAndPt(
         receiver: Address,
         market: Address,
@@ -416,7 +409,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async removeLiquiditySinglePt(
         receiver: Address,
         market: Address,
@@ -440,7 +432,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async removeLiquiditySingleScy(
         receiver: Address,
         market: Address,
@@ -460,7 +451,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async removeLiquiditySingleToken(
         receiver: Address,
         market: Address,
@@ -498,7 +488,6 @@ export class Router {
             .removeLiquiditySingleToken(receiver, market, lpToRemove, output, overrides);
     }
 
-    @catchEtherError
     async swapExactPtForScy(
         receiver: Address,
         market: Address,
@@ -514,7 +503,6 @@ export class Router {
             .swapExactPtForScy(receiver, market, exactPtIn, calcSlippedDownAmount(netScyOut, slippage), overrides);
     }
 
-    @catchEtherError
     async swapPtForExactScy(
         receiver: Address,
         market: Address,
@@ -543,7 +531,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async swapScyForExactPt(
         receiver: Address,
         market: Address,
@@ -559,7 +546,6 @@ export class Router {
             .swapScyForExactPt(receiver, market, exactPtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
     }
 
-    @catchEtherError
     async swapExactTokenForPt(
         receiver: Address,
         market: Address,
@@ -608,7 +594,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async swapExactScyForPt(
         receiver: Address,
         market: Address,
@@ -631,7 +616,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async mintScyFromToken(
         receiver: Address,
         SCY: Address,
@@ -660,7 +644,6 @@ export class Router {
             .mintScyFromToken(receiver, SCY, calcSlippedDownAmount(netOut, slippage), input, overrides);
     }
 
-    @catchEtherError
     async redeemScyToToken(
         receiver: Address,
         SCY: Address,
@@ -695,7 +678,6 @@ export class Router {
             .redeemScyToToken(receiver, SCY, netScyIn, output, overrides);
     }
 
-    @catchEtherError
     async mintPyFromToken(
         receiver: Address,
         YT: Address,
@@ -726,7 +708,6 @@ export class Router {
             .mintPyFromToken(receiver, YT, calcSlippedDownAmount(netOut, slippage), input, overrides);
     }
 
-    @catchEtherError
     async redeemPyToToken(
         receiver: Address,
         YT: Address,
@@ -763,7 +744,6 @@ export class Router {
             .redeemPyToToken(receiver, YT, netPyIn, output, overrides);
     }
 
-    @catchEtherError
     async swapExactScyForYt(
         receiver: Address,
         market: Address,
@@ -786,7 +766,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async swapYtForExactScy(
         receiver: Address,
         market: Address,
@@ -815,7 +794,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async swapExactPtForToken(
         receiver: Address,
         market: Address,
@@ -852,7 +830,6 @@ export class Router {
             .swapExactPtForToken(receiver, market, exactPtIn, output, overrides);
     }
 
-    @catchEtherError
     async swapExactYtForScy(
         receiver: Address,
         market: Address,
@@ -868,7 +845,6 @@ export class Router {
             .swapExactYtForScy(receiver, market, exactYtIn, calcSlippedDownAmount(netScyOut, slippage), overrides);
     }
 
-    @catchEtherError
     async swapScyForExactYt(
         receiver: Address,
         market: Address,
@@ -884,7 +860,6 @@ export class Router {
             .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
     }
 
-    @catchEtherError
     async swapExactTokenForYt(
         receiver: Address,
         market: Address,
@@ -935,7 +910,6 @@ export class Router {
             );
     }
 
-    @catchEtherError
     async swapExactYtForToken(
         receiver: Address,
         market: Address,

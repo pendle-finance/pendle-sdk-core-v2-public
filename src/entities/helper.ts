@@ -14,6 +14,7 @@ import {
     NATIVE_ADDRESS_0xEE,
 } from '../constants';
 import { Address } from '../types';
+import { InvalidSlippageError } from '../errors';
 
 export function decimalFactor(decimals: number): BN {
     return BN.from(10).pow(decimals);

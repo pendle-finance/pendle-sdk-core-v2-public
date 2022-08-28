@@ -24,7 +24,8 @@ import {
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/BigNumberMatcher';
-import { ApproximateError, getRouterStatic, NoRouteFoundError } from '../src/entities/helper';
+import { getRouterStatic } from '../src/entities/helper';
+import { ApproximateError, NoRouteFoundError } from '../src/errors';
 
 type BalanceSnapshot = {
     ptBalance: BN;
@@ -392,7 +393,7 @@ describe(Router, () => {
 
         it('#swapPtForExactScy', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectScyOut = getScySwapAmount(balanceBefore, false);
+            const expectScyOut = getScySwapAmount(balanceBefore, false).div(100);
             if (expectScyOut.eq(0)) {
                 console.warn('skip test because expectScyOut is 0');
                 return;
@@ -965,7 +966,9 @@ describe(Router, () => {
     function verifyScyOut(expectScyOut: BN, netScyOut: BN) {
         // netScyOut will differ from expectScyOut by 0.1%
         expect(netScyOut).toBeGteBN(expectScyOut);
-        // netScyOut < expectScyOut * 100.1%
-        expect(netScyOut).toBeLtBN(expectScyOut.add(expectScyOut.div(1000)));
+        // netScyOut <= expectScyOut * 100.1%
+
+        // Add 10 in case the expect ScyOut is too small
+        expect(netScyOut).toBeLteBN(expectScyOut.add(expectScyOut.div(1000)).add(10));
     }
 });
