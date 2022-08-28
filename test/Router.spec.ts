@@ -11,18 +11,20 @@ import {
     getBalance,
     REDEEM_FACTOR,
     SLIPPAGE_TYPE2,
-    ADD_LIQUIDITY_FACTOR,
     getTotalSupply,
-    REMOVE_LIQUIDITY_FACTOR,
+    REMOVE_LIQUIDITY_FACTOR_ZAP,
     DEFAULT_SWAP_AMOUNT,
     DEFAULT_MINT_AMOUNT,
     minBigNumber,
     MARKET_SWAP_FACTOR,
     USER_SWAP_FACTOR,
     getERC20Name,
+    REMOVE_LIQUIDITY_FACTOR,
+    ADD_LIQUIDITY_DEFAULT_AMOUNT,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/BigNumberMatcher';
+import { getRouterStatic, NoRouteFoundError } from '../src/entities/helper';
 
 type BalanceSnapshot = {
     ptBalance: BN;
@@ -40,6 +42,7 @@ type LpBalanceSnapshot = {
 
 describe(Router, () => {
     const router = Router.getRouter(networkConnection, ACTIVE_CHAIN_ID);
+    const routerStatic = getRouterStatic(networkConnection.provider, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
     const marketAddress = currentConfig.market.market;
     const scyAddress = currentConfig.market.SCY;
@@ -54,8 +57,8 @@ describe(Router, () => {
 
     describeWrite(() => {
         it('#addLiquidityDualScyAndPt', async () => {
-            const scyAdd = (await getBalance(scyAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
-            const ptAdd = (await getBalance(ptAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            const scyAdd = minBigNumber(ADD_LIQUIDITY_DEFAULT_AMOUNT, await getBalance(scyAddress, signer.address));
+            const ptAdd = minBigNumber(ADD_LIQUIDITY_DEFAULT_AMOUNT, await getBalance(ptAddress, signer.address));
 
             if (scyAdd.eq(0) || ptAdd.eq(0)) {
                 console.warn('skip test because scyAdd or ptAdd is 0');
@@ -82,8 +85,11 @@ describe(Router, () => {
             // TODO: add liquidity from other raw tokens
             let tokensIn = await scySdk.contract.getTokensIn();
             for (let token of tokensIn) {
-                const tokenAddAmount = (await getBalance(token, signer.address)).div(ADD_LIQUIDITY_FACTOR);
-                const ptAdd = (await getBalance(ptAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
+                const tokenAddAmount = minBigNumber(
+                    ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                    await getBalance(token, signer.address)
+                );
+                const ptAdd = minBigNumber(ADD_LIQUIDITY_DEFAULT_AMOUNT, await getBalance(ptAddress, signer.address));
 
                 if (tokenAddAmount.eq(0) || ptAdd.eq(0)) {
                     console.warn(`[${await getERC20Name(token)}] Skip test because tokenAddAmount or ptAdd is 0`);
@@ -93,6 +99,7 @@ describe(Router, () => {
                 const lpBalanceBefore = await getBalance(marketAddress, signer.address);
                 const marketSupplyBefore = await getTotalSupply(marketAddress);
 
+                let flag = false;
                 await router
                     .addLiquidityDualTokenAndPt(
                         signer.address,
@@ -102,7 +109,17 @@ describe(Router, () => {
                         ptAdd,
                         SLIPPAGE_TYPE2
                     )
-                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                    .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                    .catch((e) => {
+                        if (e instanceof NoRouteFoundError) {
+                            flag = true;
+                            console.warn(e.message);
+                            return;
+                        }
+                        throw e;
+                    });
+
+                if (flag) continue;
 
                 const lpBalanceAfter = await getBalance(marketAddress, signer.address);
                 const marketSupplyAfter = await getTotalSupply(marketAddress);
@@ -115,7 +132,7 @@ describe(Router, () => {
         });
 
         it('#addLiquiditySinglePt', async () => {
-            const ptAdd = (await getBalance(ptAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            const ptAdd = minBigNumber(ADD_LIQUIDITY_DEFAULT_AMOUNT, await getBalance(ptAddress, signer.address));
             if (ptAdd.eq(0)) {
                 console.warn('skip test because ptAdd is 0');
                 return;
@@ -131,7 +148,7 @@ describe(Router, () => {
         });
 
         it('#addLiquiditySingleScy', async () => {
-            const scyAdd = (await getBalance(scyAddress, signer.address)).div(ADD_LIQUIDITY_FACTOR);
+            const scyAdd = minBigNumber(ADD_LIQUIDITY_DEFAULT_AMOUNT, await getBalance(scyAddress, signer.address));
             if (scyAdd.eq(0)) {
                 console.warn('skip test because scyAdd is 0');
                 return;
@@ -150,7 +167,10 @@ describe(Router, () => {
             // TODO: zap from other raw tokens
             let tokensIn = await scySdk.contract.getTokensIn();
             for (let token of tokensIn) {
-                const tokenAddAmount = (await getBalance(token, signer.address)).div(ADD_LIQUIDITY_FACTOR);
+                const tokenAddAmount = minBigNumber(
+                    ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                    await getBalance(token, signer.address)
+                );
 
                 if (tokenAddAmount.eq(0)) {
                     console.warn(`[${await getERC20Name(token)}] Skip test because tokenAddAmount is 0`);
@@ -158,6 +178,7 @@ describe(Router, () => {
                 }
                 const balanceBefore = await getLpBalanceSnapshot();
 
+                let flag = false;
                 await router
                     .addLiquiditySingleToken(
                         signer.address,
@@ -166,7 +187,17 @@ describe(Router, () => {
                         tokenAddAmount,
                         SLIPPAGE_TYPE2
                     )
-                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                    .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                    .catch((e) => {
+                        if (e instanceof NoRouteFoundError) {
+                            flag = true;
+                            console.warn(e.message);
+                            return;
+                        }
+                        throw e;
+                    });
+
+                if (flag) continue;
 
                 const balanceAfter = await getLpBalanceSnapshot();
                 verifyLpBalanceChanges(balanceBefore, balanceAfter);
@@ -204,7 +235,9 @@ describe(Router, () => {
             // TODO: remove liquidity to other raw tokens
             let tokensIn = await scySdk.contract.getTokensIn();
             for (let token of tokensIn) {
-                const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+                const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(
+                    REMOVE_LIQUIDITY_FACTOR_ZAP
+                );
                 if (liquidityRemove.eq(0)) {
                     console.warn(`[${await getERC20Name(token)}] Skip test because liquidityRemove is 0`);
                     return; // return here since the liquidity will not changed in this for loop
@@ -212,6 +245,7 @@ describe(Router, () => {
                 const lpBalanceBefore = await getBalance(marketAddress, signer.address);
                 const marketSupplyBefore = await getTotalSupply(marketAddress);
 
+                let flag = false;
                 await router
                     .removeLiquidityDualTokenAndPt(
                         signer.address,
@@ -220,7 +254,17 @@ describe(Router, () => {
                         token,
                         SLIPPAGE_TYPE2
                     )
-                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                    .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                    .catch((e) => {
+                        if (e instanceof NoRouteFoundError) {
+                            flag = true;
+                            console.warn(e.message);
+                            return;
+                        }
+                        throw e;
+                    });
+
+                if (flag) continue;
 
                 const lpBalanceAfter = await getBalance(marketAddress, signer.address);
                 const marketSupplyAfter = await getTotalSupply(marketAddress);
@@ -231,7 +275,7 @@ describe(Router, () => {
         });
 
         it('#removeLiquiditySinglePt', async () => {
-            const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR_ZAP);
             if (liquidityRemove.eq(0)) {
                 console.warn('skip test because liquidityRemove is 0');
                 return;
@@ -250,7 +294,7 @@ describe(Router, () => {
         });
 
         it('#removeLiquiditySingleScy', async () => {
-            const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR_ZAP);
             if (liquidityRemove.eq(0)) {
                 console.warn('skip test because liquidityRemove is 0');
             }
@@ -271,13 +315,16 @@ describe(Router, () => {
             // TODO: remove liquidity to other raw tokens
             let tokensIn = await scySdk.contract.getTokensIn();
             for (let token of tokensIn) {
-                const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+                const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(
+                    REMOVE_LIQUIDITY_FACTOR_ZAP
+                );
                 if (liquidityRemove.eq(0)) {
                     console.warn(`[${await getERC20Name(token)}] Skip test because liquidityRemove is 0`);
                     return;
                 }
                 const balanceBefore = await getLpBalanceSnapshot();
 
+                let flag = false;
                 await router
                     .removeLiquiditySingleToken(
                         signer.address,
@@ -286,7 +333,17 @@ describe(Router, () => {
                         token,
                         SLIPPAGE_TYPE2
                     )
-                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                    .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                    .catch((e) => {
+                        if (e instanceof NoRouteFoundError) {
+                            flag = true;
+                            console.warn(e.message);
+                            return;
+                        }
+                        throw e;
+                    });
+
+                if (flag) continue;
 
                 const balanceAfter = await getLpBalanceSnapshot();
 
@@ -398,7 +455,9 @@ describe(Router, () => {
 
         it('#swapYtForExactScy', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectScyOut = getScySwapAmount(balanceBefore, false);
+            // Swap with YT involves approximation, so we divide the amount by 10
+            // to avoid approx fail
+            const expectScyOut = getScySwapAmount(balanceBefore, false).div(10);
             if (expectScyOut.eq(0)) {
                 console.warn('skip test because expectScyOut is 0');
                 return;
@@ -463,6 +522,7 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .swapExactTokenForPt(
                     signer.address,
@@ -471,7 +531,17 @@ describe(Router, () => {
                     expectRawTokenIn,
                     SLIPPAGE_TYPE2
                 )
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof NoRouteFoundError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             const netRawTokenIn = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance).mul(-1);
@@ -488,6 +558,7 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .swapExactPtForToken(
                     signer.address,
@@ -496,7 +567,17 @@ describe(Router, () => {
                     currentConfig.tokenToSwap,
                     SLIPPAGE_TYPE2
                 )
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof NoRouteFoundError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             const netPtIn = balanceAfter.ptBalance.sub(balanceBefore.ptBalance).mul(-1);
@@ -512,6 +593,7 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .swapExactTokenForYt(
                     signer.address,
@@ -520,7 +602,17 @@ describe(Router, () => {
                     expectRawTokenIn,
                     SLIPPAGE_TYPE2
                 )
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof NoRouteFoundError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             const netRawTokenIn = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance).mul(-1);
@@ -536,6 +628,7 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .swapExactYtForToken(
                     signer.address,
@@ -544,7 +637,17 @@ describe(Router, () => {
                     currentConfig.tokenToSwap,
                     SLIPPAGE_TYPE2
                 )
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof NoRouteFoundError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
@@ -563,6 +666,7 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .mintPyFromToken(
                     signer.address,
@@ -571,7 +675,17 @@ describe(Router, () => {
                     expectRawTokenIn,
                     SLIPPAGE_TYPE2
                 )
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof NoRouteFoundError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             const netRawTokenIn = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance).mul(-1);
@@ -591,6 +705,7 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .redeemPyToToken(
                     signer.address,
@@ -599,7 +714,17 @@ describe(Router, () => {
                     currentConfig.tokenToSwap,
                     SLIPPAGE_TYPE2
                 )
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof NoRouteFoundError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
@@ -619,6 +744,7 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .mintScyFromToken(
                     signer.address,
@@ -627,7 +753,17 @@ describe(Router, () => {
                     expectRawTokenIn,
                     SLIPPAGE_TYPE2
                 )
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof NoRouteFoundError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             const netRawTokenIn = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance).mul(-1);
@@ -643,6 +779,7 @@ describe(Router, () => {
                 return;
             }
 
+            let flag = false;
             await router
                 .redeemScyToToken(
                     signer.address,
@@ -651,7 +788,17 @@ describe(Router, () => {
                     currentConfig.tokenToSwap,
                     SLIPPAGE_TYPE2
                 )
-                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION))
+                .catch((e) => {
+                    if (e instanceof NoRouteFoundError) {
+                        flag = true;
+                        console.warn(e.message);
+                        return;
+                    }
+                    throw e;
+                });
+
+            if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
             const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
