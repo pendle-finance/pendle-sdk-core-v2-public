@@ -695,7 +695,9 @@ export class Router {
         const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
             this.contract
                 .connect(this.networkConnection.signer!)
-                .callStatic.mintPyFromToken(receiver, YT, Router.MIN_AMOUNT, input)
+                .callStatic.mintPyFromToken(receiver, YT, Router.MIN_AMOUNT, input, {
+                    value: isNativeToken(tokenIn) ? netTokenIn : undefined,
+                })
         );
 
         if (netOut.eq(etherConstants.NegativeOne)) {
@@ -705,7 +707,10 @@ export class Router {
 
         return this.contract
             .connect(this.networkConnection.signer!)
-            .mintPyFromToken(receiver, YT, calcSlippedDownAmount(netOut, slippage), input, overrides);
+            .mintPyFromToken(receiver, YT, calcSlippedDownAmount(netOut, slippage), input, {
+                ...overrides,
+                value: isNativeToken(tokenIn) ? netTokenIn : undefined,
+            });
     }
 
     async redeemPyToToken(
@@ -927,7 +932,7 @@ export class Router {
         ]);
         const { output, netOut } = await this.outputParams(
             scy,
-            netScyIn,
+            calcSlippedDownAmount(netScyIn, slippage),
             tokenOut,
             tokenRedeemScyList,
             (output) =>

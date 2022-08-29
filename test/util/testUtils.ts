@@ -5,13 +5,11 @@ import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID } from '../../src';
 
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import FUJI_QIUSDC_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-35237d.json';
-import FUJI_QIWETH_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-438DAA.json';
-import FUJI_QIWAVAX_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-a45e40.json';
+import FUJI_QIUSDC_SEP22_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-9fbD64.json';
+import FUJI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-10D931.json';
+import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-A12361.json';
 
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
-import MUMBAI_QIAVAX_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-b61e7f.json';
-import MUMBAI_QIUSDC_BENQI_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-3b8BD1.json';
 
 import FUJI_TEST_ENV from '@pendle/core-v2/deployments/43113-testenv.json';
 import MUMBAI_TEST_ENV from '@pendle/core-v2/deployments/80001-testenv.json';
@@ -61,15 +59,15 @@ export const CONTRACT_ADDRESSES = {
             FAUCET: FUJI_TEST_ENV.tokens.faucet,
             MARKETS: [
                 {
-                    ...FUJI_QIUSDC_MARKET_ADDRESSES,
+                    ...FUJI_QIUSDC_SEP22_MARKET_ADDRESSES,
                     token: FUJI_TEST_ENV.tokens.qiUSDC,
                 },
                 {
-                    ...FUJI_QIWAVAX_MARKET_ADDRESSES,
-                    token: FUJI_TEST_ENV.tokens.qiAVAX,
+                    ...FUJI_QIUSDC_FEB03_MARKET_ADDRESSES,
+                    token: FUJI_TEST_ENV.tokens.qiUSDC,
                 },
                 {
-                    ...FUJI_QIWETH_MARKET_ADDRESSES,
+                    ...FUJI_QIWETH_DEC01_ADDRESSES,
                     token: FUJI_TEST_ENV.tokens.qiWETH,
                 },
             ],
@@ -92,14 +90,6 @@ export const CONTRACT_ADDRESSES = {
             FAUCET: MUMBAI_TEST_ENV.tokens.faucet,
             MARKETS: [
                 // Ignore for now since markets on Mumbai are out-synced
-                {
-                    ...MUMBAI_QIAVAX_BENQI_ADDRESSES,
-                    token: MUMBAI_TEST_ENV.tokens.qiAVAX,
-                },
-                {
-                    ...MUMBAI_QIUSDC_BENQI_ADDRESSES,
-                    token: MUMBAI_TEST_ENV.tokens.qiUSDC,
-                },
             ],
         },
         TOKENS: MUMBAI_TEST_ENV.tokens,

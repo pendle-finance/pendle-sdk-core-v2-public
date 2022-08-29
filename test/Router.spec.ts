@@ -17,7 +17,7 @@ import {
     DEFAULT_MINT_AMOUNT,
     minBigNumber,
     MARKET_SWAP_FACTOR,
-    USER_SWAP_FACTOR,
+    USER_BALANCE_FACTOR,
     getERC20Name,
     REMOVE_LIQUIDITY_FACTOR,
     ADD_LIQUIDITY_DEFAULT_AMOUNT,
@@ -58,8 +58,14 @@ describe(Router, () => {
 
     describeWrite(() => {
         it('#addLiquidityDualScyAndPt', async () => {
-            const scyAdd = minBigNumber(ADD_LIQUIDITY_DEFAULT_AMOUNT, await getBalance(scyAddress, signer.address));
-            const ptAdd = minBigNumber(ADD_LIQUIDITY_DEFAULT_AMOUNT, await getBalance(ptAddress, signer.address));
+            const scyAdd = minBigNumber(
+                ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                (await getBalance(scyAddress, signer.address)).div(USER_BALANCE_FACTOR)
+            );
+            const ptAdd = minBigNumber(
+                ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                (await getBalance(ptAddress, signer.address)).div(USER_BALANCE_FACTOR)
+            );
 
             if (scyAdd.eq(0) || ptAdd.eq(0)) {
                 console.warn('skip test because scyAdd or ptAdd is 0');
@@ -88,9 +94,12 @@ describe(Router, () => {
             for (let token of tokensIn) {
                 const tokenAddAmount = minBigNumber(
                     ADD_LIQUIDITY_DEFAULT_AMOUNT,
-                    await getBalance(token, signer.address)
+                    (await getBalance(token, signer.address)).div(USER_BALANCE_FACTOR)
                 );
-                const ptAdd = minBigNumber(ADD_LIQUIDITY_DEFAULT_AMOUNT, await getBalance(ptAddress, signer.address));
+                const ptAdd = minBigNumber(
+                    ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                    (await getBalance(ptAddress, signer.address)).div(USER_BALANCE_FACTOR)
+                );
 
                 if (tokenAddAmount.eq(0) || ptAdd.eq(0)) {
                     console.warn(`[${await getERC20Name(token)}] Skip test because tokenAddAmount or ptAdd is 0`);
@@ -125,7 +134,10 @@ describe(Router, () => {
         });
 
         it('#addLiquiditySinglePt', async () => {
-            const ptAdd = minBigNumber(ADD_LIQUIDITY_DEFAULT_AMOUNT, await getBalance(ptAddress, signer.address));
+            const ptAdd = minBigNumber(
+                ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                (await getBalance(ptAddress, signer.address)).div(USER_BALANCE_FACTOR)
+            );
             if (ptAdd.eq(0)) {
                 console.warn('skip test because ptAdd is 0');
                 return;
@@ -152,7 +164,10 @@ describe(Router, () => {
         });
 
         it('#addLiquiditySingleScy', async () => {
-            const scyAdd = minBigNumber(ADD_LIQUIDITY_DEFAULT_AMOUNT, await getBalance(scyAddress, signer.address));
+            const scyAdd = minBigNumber(
+                ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                (await getBalance(scyAddress, signer.address)).div(USER_BALANCE_FACTOR)
+            );
             if (scyAdd.eq(0)) {
                 console.warn('skip test because scyAdd is 0');
                 return;
@@ -184,7 +199,7 @@ describe(Router, () => {
             for (let token of tokensIn) {
                 const tokenAddAmount = minBigNumber(
                     ADD_LIQUIDITY_DEFAULT_AMOUNT,
-                    await getBalance(token, signer.address)
+                    (await getBalance(token, signer.address)).div(USER_BALANCE_FACTOR)
                 );
 
                 if (tokenAddAmount.eq(0)) {
@@ -905,14 +920,14 @@ describe(Router, () => {
 
     function getScySwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean): BN {
         let marketAmount = balanceSnapshot.marketScyBalance.div(MARKET_SWAP_FACTOR);
-        let userAmount = balanceSnapshot.scyBalance.div(USER_SWAP_FACTOR);
+        let userAmount = balanceSnapshot.scyBalance.div(USER_BALANCE_FACTOR);
 
         return getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
     }
 
     function getPtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
         let marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
-        let userAmount = balanceSnapshot.ptBalance.div(USER_SWAP_FACTOR);
+        let userAmount = balanceSnapshot.ptBalance.div(USER_BALANCE_FACTOR);
 
         return getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
     }
@@ -920,7 +935,7 @@ describe(Router, () => {
     function getYtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
         // `pt` is not a typo here
         let marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
-        let userAmount = balanceSnapshot.ytBalance.div(USER_SWAP_FACTOR);
+        let userAmount = balanceSnapshot.ytBalance.div(USER_BALANCE_FACTOR);
 
         return getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
     }
@@ -934,7 +949,7 @@ describe(Router, () => {
      * TODO: Fix this?
      */
     function getTokenSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
-        return minBigNumber(DEFAULT_SWAP_AMOUNT, balanceSnapshot.tokenBalance.div(USER_SWAP_FACTOR));
+        return minBigNumber(DEFAULT_SWAP_AMOUNT, balanceSnapshot.tokenBalance.div(USER_BALANCE_FACTOR));
     }
 
     function getPyRedeemAmount(balanceSnapshot: BalanceSnapshot) {
