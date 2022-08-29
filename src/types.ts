@@ -1,5 +1,5 @@
 import type { BigNumber as BN, providers, Signer } from 'ethers';
-import { ErrorCode } from '@ethersproject/logger/src.ts';
+import { ErrorCode } from '@ethersproject/logger';
 
 export type NetworkConnection = {
     provider: providers.Provider;
