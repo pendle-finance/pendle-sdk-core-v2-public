@@ -2,7 +2,13 @@ import { EtherErrorCode } from './types';
 import { ErrorCode } from '@ethersproject/logger';
 import { Logger } from '@ethersproject/logger';
 
-export class InvalidSlippageError extends Error {
+export class CustomError extends Error {
+    getReadableMessage(): string {
+        return this.message;
+    }
+}
+
+export class InvalidSlippageError extends CustomError {
     constructor() {
         super('Slippage must be a decimal value in the range [0, 1]');
 
@@ -16,7 +22,7 @@ export class InvalidSlippageError extends Error {
     }
 }
 
-export class NoRouteFoundError extends Error {
+export class NoRouteFoundError extends CustomError {
     constructor(message: string) {
         super(message);
         this.name = 'NoRouteFoundError';
@@ -37,7 +43,7 @@ export class NoRouteFoundError extends Error {
  *
  * See https://github.com/ethers-io/ethers.js/blob/01b5badbb616b29fd8b69ef7c3cc3833062da3d7/packages/logger/src.ts/index.ts#L197
  */
-export class EtherError extends Error {
+export class EtherError extends CustomError {
     readonly code: EtherErrorCode = ErrorCode.UNKNOWN_ERROR;
     readonly reason: string = '';
 
