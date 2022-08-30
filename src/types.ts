@@ -16,4 +16,4 @@ export type TokenAmount = {
 // The list of error code is here
 // https://docs.ethers.io/v5/troubleshooting/errors/
 // The following is done to convert an enum into union.
-export type EtherErrorCode = ErrorCode[keyof ErrorCode];
+export type EthersJsErrorCode = ErrorCode[keyof ErrorCode];

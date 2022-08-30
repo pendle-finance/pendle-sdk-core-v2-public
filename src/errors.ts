@@ -1,20 +1,29 @@
-import { EtherErrorCode } from './types';
+import { EthersJsErrorCode } from './types';
 import { ErrorCode } from '@ethersproject/logger';
 import { Logger } from '@ethersproject/logger';
 
-export class CustomError extends Error {
-    getReadableMessage(): string {
-        return this.message;
-    }
-}
-
-export class InvalidSlippageError extends CustomError {
-    constructor() {
-        super('Slippage must be a decimal value in the range [0, 1]');
+/**
+ * Pendle SDK Error base class to be extended by all errors.
+ *
+ * We use this class for later error handling and wrapping.
+ *
+ * By wrapping all the errors throw by Ethers.js with this class, we can show
+ * user-friendly error messages to users.
+ */
+export class PendleSdkError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = this.constructor.name;
 
         // Set the prototype explicitly.
         // See: https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
-        Object.setPrototypeOf(this, InvalidSlippageError.prototype);
+        Object.setPrototypeOf(this, this.constructor.prototype);
+    }
+}
+
+export class InvalidSlippageError extends PendleSdkError {
+    constructor() {
+        super('Slippage must be a decimal value in the range [0, 1]');
     }
 
     static verify(slippage: number) {
@@ -22,13 +31,7 @@ export class InvalidSlippageError extends CustomError {
     }
 }
 
-export class NoRouteFoundError extends CustomError {
-    constructor(message: string) {
-        super(message);
-        this.name = 'NoRouteFoundError';
-        Object.setPrototypeOf(this, NoRouteFoundError.prototype);
-    }
-
+export class NoRouteFoundError extends PendleSdkError {
     static action(actionName: string, from: string, to: string) {
         return new NoRouteFoundError(`No route found to ${actionName} from ${from} to ${to}`);
     }
@@ -43,22 +46,39 @@ export class NoRouteFoundError extends CustomError {
  *
  * See https://github.com/ethers-io/ethers.js/blob/01b5badbb616b29fd8b69ef7c3cc3833062da3d7/packages/logger/src.ts/index.ts#L197
  */
-export class EtherError extends CustomError {
-    readonly code: EtherErrorCode = ErrorCode.UNKNOWN_ERROR;
-    readonly reason: string = '';
+export class EthersJsError extends PendleSdkError {
+    static USE_SIMPLE_MESSAGE: boolean = false;
+    // @ts-ignore
+    readonly code: EthersJsErrorCode;
+    // @ts-ignore
+    readonly reason: string;
+
+    readonly originalMessage: string;
 
     // must assume that err is the error thrown by ether's logger, because it does not has a type.
     constructor(err: Error) {
         super(err.message);
-        // copy over the properties from the err error
-        Object.assign(this, err);
 
-        this.name = 'EtherError';
-        Object.setPrototypeOf(this, EtherError.prototype);
+        Object.assign(this, err);
+        this.originalMessage = this.message;
+
+        // Instead of using console.log(err.simpleMessage), we override the default
+        // message with the simple message, So that console.log(err) will show the simple message.
+
+        // This behavior is controlled by the static property USE_SIMPLE_MESSAGE, which is set to false
+        // by default to keep the original message in case of debugging.
+        if (EthersJsError.USE_SIMPLE_MESSAGE) {
+            this.message = this.simpleMessage;
+        }
+
+        // Override again because the Object.assign above
+        this.name = this.constructor.name;
+        Object.setPrototypeOf(this, EthersJsError.prototype);
     }
 
-    public getReadableMessage(): string {
-        return `${this.name}: ${this.reason}`;
+    get simpleMessage(): string {
+        // Should be overridden by subclasses
+        return this.reason;
     }
 
     static errorArgsInclude(err: Error, substring: string): boolean {
@@ -67,27 +87,18 @@ export class EtherError extends CustomError {
     }
 }
 
-export class ApproximateError extends EtherError {
-    constructor(err: Error) {
-        super(err);
-        this.name = 'ApproximateError';
-        Object.setPrototypeOf(this, ApproximateError.prototype);
-    }
-
+export class ApproximateError extends EthersJsError {
     static isApproximateError(err: Error): boolean {
-        return EtherError.errorArgsInclude(err, 'approx fail');
+        return EthersJsError.errorArgsInclude(err, 'approx fail');
     }
 }
 
-export class InsufficientFundError extends EtherError {
-    constructor(err: Error) {
-        super(err);
-        this.name = 'InsufficientFundError';
-        Object.setPrototypeOf(this, InsufficientFundError.prototype);
-    }
-
+export class InsufficientFundError extends EthersJsError {
     static isInsufficientFundError(err: Error) {
-        return EtherError.errorArgsInclude(err, 'insufficient');
+        return (
+            EthersJsError.errorArgsInclude(err, 'insufficient') ||
+            EthersJsError.errorArgsInclude(err, 'max proportion exceeded')
+        );
     }
 }
 
@@ -101,7 +112,7 @@ const oldMakeError = Logger.prototype.makeError;
 /**
  *  If you want to check more types of errors, add the callback to this array.
  */
-export const MAKE_ERROR_CALLBACKS: ((e: Error) => EtherError | undefined)[] = [];
+export const MAKE_ERROR_CALLBACKS: ((e: Error) => EthersJsError | undefined)[] = [];
 
 Logger.prototype.makeError = function (message: string, code?: ErrorCode, params?: any): Error {
     if (typeof params === 'object' && params.reason == undefined) {
@@ -134,5 +145,5 @@ Logger.prototype.makeError = function (message: string, code?: ErrorCode, params
         }
     }
 
-    return new EtherError(err);
+    return new EthersJsError(err);
 };
