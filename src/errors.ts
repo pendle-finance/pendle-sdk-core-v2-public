@@ -85,6 +85,12 @@ export class EthersJsError extends PendleSdkError {
         const errorArgs = (err as any).errorArgs as string[];
         return Array.isArray(errorArgs) && errorArgs.length > 0 && errorArgs[0].includes(substring);
     }
+
+    /**
+     *  If you want to check more types of errors, add a callback to this array.
+     */
+    static readonly MAKE_ERROR_CALLBACKS: ((e: Error) => EthersJsError | undefined)[] = [];
+    static makeEtherJsError: (err: Error) => EthersJsError;
 }
 
 export class ApproximateError extends EthersJsError {
@@ -102,17 +108,31 @@ export class InsufficientFundError extends EthersJsError {
     }
 }
 
+EthersJsError.makeEtherJsError = function (err: Error) {
+    if (InsufficientFundError.isInsufficientFundError(err)) {
+        return new InsufficientFundError(err);
+    }
+
+    if (ApproximateError.isApproximateError(err)) {
+        return new ApproximateError(err);
+    }
+
+    for (const callback of EthersJsError.MAKE_ERROR_CALLBACKS) {
+        const result = callback(err);
+        if (result !== undefined) {
+            return result;
+        }
+    }
+
+    return new EthersJsError(err);
+};
+
 /**
  * Wrap Error thrown by ethers.js with EtherError.
  *
  * This method will try to identify the error and wrap it with the appropriate error class.
  */
 const oldMakeError = Logger.prototype.makeError;
-
-/**
- *  If you want to check more types of errors, add the callback to this array.
- */
-export const MAKE_ERROR_CALLBACKS: ((e: Error) => EthersJsError | undefined)[] = [];
 
 Logger.prototype.makeError = function (message: string, code?: ErrorCode, params?: any): Error {
     if (typeof params === 'object' && params.reason == undefined) {
@@ -130,20 +150,5 @@ Logger.prototype.makeError = function (message: string, code?: ErrorCode, params
 
     let err = oldMakeError.call(this, message, code, params);
 
-    if (InsufficientFundError.isInsufficientFundError(err)) {
-        return new InsufficientFundError(err);
-    }
-
-    if (ApproximateError.isApproximateError(err)) {
-        return new ApproximateError(err);
-    }
-
-    for (const callback of MAKE_ERROR_CALLBACKS) {
-        const result = callback(err);
-        if (result !== undefined) {
-            return result;
-        }
-    }
-
-    return new EthersJsError(err);
+    return EthersJsError.makeEtherJsError(err);
 };
