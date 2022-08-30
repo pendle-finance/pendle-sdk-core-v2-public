@@ -68,7 +68,7 @@ export class EthersJsError extends PendleSdkError {
         // This behavior is controlled by the static property USE_SIMPLE_MESSAGE, which is set to false
         // by default to keep the original message in case of debugging.
         if (EthersJsError.USE_SIMPLE_MESSAGE) {
-            this.message = this.simpleMessage;
+            this.message = this.simpleMessage();
         }
 
         // Override again because the Object.assign above
@@ -76,7 +76,7 @@ export class EthersJsError extends PendleSdkError {
         Object.setPrototypeOf(this, EthersJsError.prototype);
     }
 
-    get simpleMessage(): string {
+    simpleMessage(): string {
         // Should be overridden by subclasses
         return this.reason;
     }
