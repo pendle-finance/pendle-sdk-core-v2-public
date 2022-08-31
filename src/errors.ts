@@ -1,6 +1,4 @@
 import { EthersJsErrorCode } from './types';
-import { ErrorCode } from '@ethersproject/logger';
-import { Logger } from '@ethersproject/logger';
 
 /**
  * Pendle SDK Error base class to be extended by all errors.
@@ -86,11 +84,15 @@ export class EthersJsError extends PendleSdkError {
         return Array.isArray(errorArgs) && errorArgs.length > 0 && errorArgs[0].includes(substring);
     }
 
+    static isEtherJsError(err: Error): boolean {
+        return 'reason' in err && 'code' in err;
+    }
+
     /**
      *  If you want to check more types of errors, add a callback to this array.
      */
     static readonly MAKE_ERROR_CALLBACKS: ((e: Error) => EthersJsError | undefined)[] = [];
-    static makeEtherJsError: (err: Error) => EthersJsError;
+    static makeEtherJsError: (err: Error) => EthersJsError | Error;
 }
 
 export class ApproximateError extends EthersJsError {
@@ -102,13 +104,18 @@ export class ApproximateError extends EthersJsError {
 export class InsufficientFundError extends EthersJsError {
     static isInsufficientFundError(err: Error) {
         return (
-            EthersJsError.errorArgsInclude(err, 'insufficient') ||
+            (EthersJsError.errorArgsInclude(err, 'insufficient') &&
+                !EthersJsError.errorArgsInclude(err, 'insufficient allowance')) ||
             EthersJsError.errorArgsInclude(err, 'max proportion exceeded')
         );
     }
 }
 
 EthersJsError.makeEtherJsError = function (err: Error) {
+    if (!EthersJsError.isEtherJsError(err)) {
+        return err;
+    }
+
     if (InsufficientFundError.isInsufficientFundError(err)) {
         return new InsufficientFundError(err);
     }
@@ -128,27 +135,31 @@ EthersJsError.makeEtherJsError = function (err: Error) {
 };
 
 /**
+ * Somehow we cannot override Logger.prototype.makeError, so skipped this part for now
+ */
+
+/**
  * Wrap Error thrown by ethers.js with EtherError.
  *
  * This method will try to identify the error and wrap it with the appropriate error class.
  */
-const oldMakeError = Logger.prototype.makeError;
+// const oldMakeError = Logger.prototype.makeError;
 
-Logger.prototype.makeError = function (message: string, code?: ErrorCode, params?: any): Error {
-    if (typeof params === 'object' && params.reason == undefined) {
-        /**
-         *
-         * As in https://github.com/ethers-io/ethers.js/blob/01b5badbb616b29fd8b69ef7c3cc3833062da3d7/packages/logger/src.ts/index.ts#L197
-         * the method Logger#makeError will first set reason and code to the error, and then copy the params into the error.
-         * But in https://github.com/ethers-io/ethers.js/blob/ec1b9583039a14a0e0fa15d0a2a6082a2f41cf5b/packages/abi/src.ts/interface.ts#L383
-         * there is possibility of reason (of the params) being null, and it will overwrite the reason of the error.
-         *
-         * This hack will try to prevent that kind of overwrite.
-         */
-        params.reason = message;
-    }
+// Logger.prototype.makeError = function (message: string, code?: ErrorCode, params?: any): Error {
+//     if (typeof params === 'object' && params.reason == undefined) {
+//         /**
+//          *
+//          * As in https://github.com/ethers-io/ethers.js/blob/01b5badbb616b29fd8b69ef7c3cc3833062da3d7/packages/logger/src.ts/index.ts#L197
+//          * the method Logger#makeError will first set reason and code to the error, and then copy the params into the error.
+//          * But in https://github.com/ethers-io/ethers.js/blob/ec1b9583039a14a0e0fa15d0a2a6082a2f41cf5b/packages/abi/src.ts/interface.ts#L383
+//          * there is possibility of reason (of the params) being null, and it will overwrite the reason of the error.
+//          *
+//          * This hack will try to prevent that kind of overwrite.
+//          */
+//         params.reason = message;
+//     }
 
-    let err = oldMakeError.call(this, message, code, params);
+//     let err = oldMakeError.call(this, message, code, params);
 
-    return EthersJsError.makeEtherJsError(err);
-};
+//     return EthersJsError.makeEtherJsError(err);
+// };
