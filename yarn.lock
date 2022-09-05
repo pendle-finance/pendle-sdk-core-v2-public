@@ -1802,10 +1802,10 @@
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.7.3.tgz#939534757a81f8d69cc854c7692805684ff3111e"
   integrity sha512-dGRS0agJzu8ybo44pCIf3xBaPQN/65AIXNgK8+4gzKd5kbvlqyxryUYVLJv7fK98Seyd2hDZzVEHSWAh0Bt1Yw==
 
-"@pendle/core-v2@0.11.0-testnet":
-  version "0.11.0-testnet"
-  resolved "https://registry.yarnpkg.com/@pendle/core-v2/-/core-v2-0.11.0-testnet.tgz#0dd75d59489fb506d6a533de0b0befb21c0f15bf"
-  integrity sha512-KDQIpRAyBabTh3fyw8jeAM2+K4xPjvvxQcuiWQnx6RL4eY021Yqg7VKxXI3fLtlTSPl89EeyeS2QShQ6hwol2g==
+"@pendle/core-v2@0.11.2-testnet":
+  version "0.11.2-testnet"
+  resolved "https://registry.yarnpkg.com/@pendle/core-v2/-/core-v2-0.11.2-testnet.tgz#cde6167546498361bfdccf0f5336ef7da7d246b6"
+  integrity sha512-JIGc/Sp25zLd1fKNf6WqToQZPEtPV+O3EEupQYeNv03+WpE04YkGFyqPOP5Uru/Xb3JkA/Zq4RtkBSoXItzF4g==
   dependencies:
     "@openzeppelin/contracts" "^4.5.0"
     "@openzeppelin/contracts-upgradeable" "^4.5.2"
@@ -7988,12 +7988,7 @@ typedarray-to-buffer@^3.1.5:
   dependencies:
     is-typedarray "^1.0.0"
 
-typescript@^3.7.3:
-  version "3.9.10"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.9.10.tgz#70f3910ac7a51ed6bef79da7800690b19bf778b8"
-  integrity sha512-w6fIxVE/H1PkLKcCPsFqKE7Kv7QUwhU8qQY2MueZXWx5cPZdwFupLgKK3vntcK98BtNHZtAF4LA/yl2a7k8R6Q==
-
-typescript@^4.7.4:
+typescript@^3.7.3, typescript@^4.7.4:
   version "4.7.4"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.7.4.tgz#1a88596d1cf47d59507a1bcdfb5b9dfe4d488235"
   integrity sha512-C0WQT0gezHuw6AdY1M2jxUO83Rjf0HP7Sk1DtXj6j1EwkQNZrHAg2XPWlq62oqEhYvONq5pkC2Y9oPljWToLmQ==
