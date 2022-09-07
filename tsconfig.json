@@ -7,7 +7,7 @@
         "sourceMap": true,
         "outDir": "./dist",
         "baseUrl": "./src",
-        "rootDir": "./src",
+        "rootDirs": ["./src", "./test"],
         "incremental": true,
         "skipLibCheck": true,
         "moduleResolution": "node",
