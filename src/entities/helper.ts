@@ -1,6 +1,7 @@
 import type { RouterStatic } from '@pendle/core-v2/typechain-types';
 import { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/RouterStatic.sol/RouterStatic.json';
-import { BigNumber as BN, Contract, type BigNumberish, constants as ethersConstants } from 'ethers';
+import { BigNumber as BN, Contract, constants as ethersConstants } from 'ethers';
+import type { BigNumberish } from 'ethers';
 import type { providers } from 'ethers';
 import type { ContractAddresses } from '../constants';
 import {
