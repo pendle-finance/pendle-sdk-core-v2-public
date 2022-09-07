@@ -25,14 +25,15 @@
     "scripts": {
         "format": "yarn prettier --write \"{src,test}/**/*.{ts,js}\"",
         "lint": "yarn eslint \"{src,test}/**/*.{ts,js}\" --fix",
-        "check-types": "tsc --noemit",
+        "check-types": "tsc --noemit --project tsconfig.build.json",
         "test": "yarn jest",
         "test:prepare": "yarn ts-node test/util/prepareMarket.ts && yarn test:approveRouter",
         "test:approveRouter": "yarn ts-node test/util/approveRouter.ts",
         "test:all": "yarn node test/all.js",
         "test:coverage": "yarn jest --coverage --maxWorkers=1",
-        "build": "tsdx build",
-        "prepare": "tsdx build"
+        "build": "tsdx build --tsconfig tsconfig.build.json",
+        "prepare": "tsdx build --tsconfig tsconfig.build.json",
+        "clean": "rm -rf dist/"
     },
     "dependencies": {
         "@pendle/core-v2": "0.11.2-testnet",

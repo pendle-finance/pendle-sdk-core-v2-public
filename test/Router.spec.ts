@@ -23,7 +23,7 @@ import {
     ADD_LIQUIDITY_DEFAULT_AMOUNT,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
-import './util/BigNumberMatcher';
+import './util/bigNumberMatcher';
 import { getRouterStatic } from '../src/entities/helper';
 import { ApproximateError, EthersJsError, NoRouteFoundError } from '../src/errors';
 

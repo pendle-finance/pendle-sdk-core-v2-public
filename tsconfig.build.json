@@ -19,13 +19,7 @@
         "strict": true
     },
     "ts-node": {
-        "files": true,
-        "compilerOptions": {
-            "module": "CommonJS"
-        },
-        "ignore": [
-            "/node_modules/(?!@pendle/core-v2/typechain-types)"
-        ]
+        "files": true
     },
-    "include": ["src/**/*", "test/**/*"]
+    "include": ["src/**/*"]
 }

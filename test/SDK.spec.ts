@@ -2,7 +2,7 @@ import { SDK } from '../src/entities/SDK';
 import { Market, PT, SCY, YT } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 import { decimalFactor } from '../src/entities/helper';
-import './util/BigNumberMatcher';
+import './util/bigNumberMatcher';
 
 describe(SDK, () => {
     const sdk = new SDK(networkConnection, ACTIVE_CHAIN_ID);

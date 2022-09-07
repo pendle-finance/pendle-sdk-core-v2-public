@@ -9,7 +9,7 @@ import {
     WALLET,
 } from './util/testUtils';
 import { getBalance, approveHelper, REDEEM_FACTOR, SLIPPAGE_TYPE2, DEFAULT_MINT_AMOUNT } from './util/testHelper';
-import './util/BigNumberMatcher';
+import './util/bigNumberMatcher';
 
 describe(SCY, () => {
     const scyAddress = currentConfig.market.SCY;

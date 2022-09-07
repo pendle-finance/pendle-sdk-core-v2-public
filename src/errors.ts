@@ -20,12 +20,12 @@ export class PendleSdkError extends Error {
 }
 
 export class InvalidSlippageError extends PendleSdkError {
-    constructor() {
-        super('Slippage must be a decimal value in the range [0, 1]');
+    constructor(invalidSlippage: number) {
+        super(`Slippage must be a decimal value in the range [0, 1], but found ${invalidSlippage}`);
     }
 
     static verify(slippage: number) {
-        if (slippage < 0 || slippage > 1) throw new InvalidSlippageError();
+        if (slippage < 0 || slippage > 1) throw new InvalidSlippageError(slippage);
     }
 }
 

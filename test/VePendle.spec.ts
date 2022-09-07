@@ -9,7 +9,7 @@ import {
     BLOCK_CONFIRMATION,
     WALLET,
 } from './util/testUtils';
-import './util/BigNumberMatcher';
+import './util/bigNumberMatcher';
 
 describe(VePendle, () => {
     const ve = new VePendle(currentConfig.veAddress, networkConnection, ACTIVE_CHAIN_ID);

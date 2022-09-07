@@ -17,6 +17,7 @@ import {
     getRouterStatic,
     isNativeToken,
     isSameAddress,
+    bnClamp,
 } from './helper';
 import { Market } from './Market';
 import { SCY as SCYEntity } from './SCY';
@@ -59,11 +60,11 @@ export class Router {
     }
 
     static swapApproxParams(netAmountOut: BN, slippage: number): ApproxParamsStruct {
-        const MAX_UPSIDE = 0.5;
         return {
             ...Router.STATIC_APPROX_PARAMS,
-            guessMin: calcSlippedDownAmount(netAmountOut, slippage),
-            guessMax: calcSlippedUpAmount(netAmountOut, MAX_UPSIDE),
+            guessMin: calcSlippedDownAmount(netAmountOut, 2 * slippage),
+            guessMax: calcSlippedUpAmount(netAmountOut, 10 * slippage),
+            guessOffchain: netAmountOut,
         };
     }
 

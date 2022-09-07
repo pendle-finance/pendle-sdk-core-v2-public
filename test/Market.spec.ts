@@ -2,7 +2,7 @@ import { Contract } from 'ethers';
 import { Market, SCY } from '../src';
 import { decimalFactor, getRouterStatic } from '../src/entities/helper';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testUtils';
-import './util/BigNumberMatcher';
+import './util/bigNumberMatcher';
 
 describe(Market, () => {
     const currentMarket = currentConfig.market;

@@ -1,6 +1,6 @@
 import { PT, YT } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
-import './util/BigNumberMatcher';
+import './util/bigNumberMatcher';
 
 describe('PY', () => {
     const currentMarket = currentConfig.market;

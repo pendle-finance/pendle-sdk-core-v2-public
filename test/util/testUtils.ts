@@ -31,7 +31,7 @@ const providerUrls = {
     [CHAIN_ID.AVALANCHE]: 'https://api.avax.network/ext/bc/C/rpc',
     [CHAIN_ID.FUJI]: 'https://api.avax-test.network/ext/bc/C/rpc',
     [CHAIN_ID.MUMBAI]: 'https://matic-mumbai.chainstacklabs.com',
-    [LOCAL_CHAIN_ID]: 'http://localhost:8545',
+    [LOCAL_CHAIN_ID]: 'http://127.0.0.1:8545',
 };
 
 export const networkConnection: NetworkConnection = {

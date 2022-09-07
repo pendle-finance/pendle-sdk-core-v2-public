@@ -2,7 +2,7 @@ import { BigNumber as BN } from 'ethers';
 import { CHAIN_ID } from '../src';
 import { calcSlippedDownAmount, calcSlippedUpAmount, getContractAddresses, isMainchain } from '../src/entities/helper';
 import { InvalidSlippageError } from '../src/errors';
-import './util/BigNumberMatcher';
+import './util/bigNumberMatcher';
 
 describe('Misc', () => {
     it('#InvalidSlippageError', () => {

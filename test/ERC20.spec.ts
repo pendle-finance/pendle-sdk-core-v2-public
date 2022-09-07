@@ -9,7 +9,7 @@ import {
     BLOCK_CONFIRMATION,
     WALLET,
 } from './util/testUtils';
-import './util/BigNumberMatcher';
+import './util/bigNumberMatcher';
 
 describe(ERC20, () => {
     const usd = new ERC20(currentConfig.tokens.USDC, networkConnection, ACTIVE_CHAIN_ID);
