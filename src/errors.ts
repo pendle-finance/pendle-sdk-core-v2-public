@@ -104,10 +104,19 @@ export class ApproximateError extends EthersJsError {
 export class InsufficientFundError extends EthersJsError {
     static isInsufficientFundError(err: Error) {
         return (
-            (EthersJsError.errorArgsInclude(err, 'insufficient') &&
-                !EthersJsError.errorArgsInclude(err, 'insufficient allowance')) ||
-            EthersJsError.errorArgsInclude(err, 'max proportion exceeded')
+            EthersJsError.errorArgsInclude(err, 'insufficient') &&
+            !EthersJsError.errorArgsInclude(err, 'insufficient allowance')
         );
+    }
+}
+
+export class InsufficientPtError extends EthersJsError {
+    static isInsufficientPtError(err: Error) {
+        return EthersJsError.errorArgsInclude(err, 'max proportion exceeded');
+    }
+
+    simpleMessage(): string {
+        return 'Insufficient PT to perform this action';
     }
 }
 
@@ -122,6 +131,10 @@ EthersJsError.makeEtherJsError = function (err: Error) {
 
     if (ApproximateError.isApproximateError(err)) {
         return new ApproximateError(err);
+    }
+
+    if (InsufficientPtError.isInsufficientPtError(err)) {
+        return new InsufficientPtError(err);
     }
 
     for (const callback of EthersJsError.MAKE_ERROR_CALLBACKS) {
