@@ -17,7 +17,6 @@ import {
     getRouterStatic,
     isNativeToken,
     isSameAddress,
-    bnClamp,
 } from './helper';
 import { Market } from './Market';
 import { SCY as SCYEntity } from './SCY';
