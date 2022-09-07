@@ -46,6 +46,11 @@ export class NoRouteFoundError extends PendleSdkError {
  */
 export class EthersJsError extends PendleSdkError {
     static USE_SIMPLE_MESSAGE: boolean = false;
+    /**
+     *  If you want to check more types of errors, add a callback to this array.
+     */
+    static readonly MAKE_ERROR_CALLBACKS: ((e: Error) => EthersJsError | undefined)[] = [];
+
     // @ts-ignore
     readonly code: EthersJsErrorCode;
     // @ts-ignore
@@ -84,35 +89,53 @@ export class EthersJsError extends PendleSdkError {
         return Array.isArray(errorArgs) && errorArgs.length > 0 && errorArgs[0].includes(substring);
     }
 
-    static isEtherJsError(err: Error): boolean {
+    static isEthersJsError(err: Error): boolean {
         return 'reason' in err && 'code' in err;
     }
 
-    /**
-     *  If you want to check more types of errors, add a callback to this array.
-     */
-    static readonly MAKE_ERROR_CALLBACKS: ((e: Error) => EthersJsError | undefined)[] = [];
-    static makeEtherJsError: (err: Error) => EthersJsError | Error;
+    static makeEthersJsError(err: Error): EthersJsError | Error {
+        if (!EthersJsError.isEthersJsError(err)) {
+            return err;
+        }
+
+        for (const callback of EthersJsError.MAKE_ERROR_CALLBACKS) {
+            const result = callback(err);
+            if (result !== undefined) {
+                return result;
+            }
+        }
+
+        return new EthersJsError(err);
+    }
 }
 
 export class ApproximateError extends EthersJsError {
-    static isApproximateError(err: Error): boolean {
-        return EthersJsError.errorArgsInclude(err, 'approx fail');
+    static makeError(err: Error): EthersJsError | undefined {
+        if (!EthersJsError.errorArgsInclude(err, 'approx fail')) {
+            return undefined;
+        }
+        return new ApproximateError(err);
     }
 }
 
 export class InsufficientFundError extends EthersJsError {
-    static isInsufficientFundError(err: Error) {
-        return (
-            EthersJsError.errorArgsInclude(err, 'insufficient') &&
-            !EthersJsError.errorArgsInclude(err, 'insufficient allowance')
-        );
+    static makeError(err: Error): EthersJsError | undefined {
+        if (
+            !EthersJsError.errorArgsInclude(err, 'insufficient') ||
+            EthersJsError.errorArgsInclude(err, 'insufficient allowance')
+        ) {
+            return undefined;
+        }
+        return new InsufficientFundError(err);
     }
 }
 
 export class InsufficientPtError extends EthersJsError {
-    static isInsufficientPtError(err: Error) {
-        return EthersJsError.errorArgsInclude(err, 'max proportion exceeded');
+    static makeError(err: Error) {
+        if (!EthersJsError.errorArgsInclude(err, 'max proportion exceeded')) {
+            return undefined;
+        }
+        return new InsufficientPtError(err);
     }
 
     simpleMessage(): string {
@@ -120,32 +143,11 @@ export class InsufficientPtError extends EthersJsError {
     }
 }
 
-EthersJsError.makeEtherJsError = function (err: Error) {
-    if (!EthersJsError.isEtherJsError(err)) {
-        return err;
-    }
-
-    if (InsufficientFundError.isInsufficientFundError(err)) {
-        return new InsufficientFundError(err);
-    }
-
-    if (ApproximateError.isApproximateError(err)) {
-        return new ApproximateError(err);
-    }
-
-    if (InsufficientPtError.isInsufficientPtError(err)) {
-        return new InsufficientPtError(err);
-    }
-
-    for (const callback of EthersJsError.MAKE_ERROR_CALLBACKS) {
-        const result = callback(err);
-        if (result !== undefined) {
-            return result;
-        }
-    }
-
-    return new EthersJsError(err);
-};
+EthersJsError.MAKE_ERROR_CALLBACKS.push(
+    ApproximateError.makeError,
+    InsufficientFundError.makeError,
+    InsufficientPtError.makeError
+);
 
 /**
  * Somehow we cannot override Logger.prototype.makeError, so skipped this part for now
