@@ -130,23 +130,37 @@ export class InsufficientFundError extends EthersJsError {
     }
 }
 
-export class InsufficientPtError extends EthersJsError {
+export class MaxProportionExceededError extends EthersJsError {
     static makeError(err: Error) {
         if (!EthersJsError.errorArgsInclude(err, 'max proportion exceeded')) {
             return undefined;
         }
-        return new InsufficientPtError(err);
+        return new MaxProportionExceededError(err);
     }
 
     simpleMessage(): string {
-        return 'Insufficient PT to perform this action';
+        return 'Insufficient SCY in the liquidity pool to execute the action';
+    }
+}
+
+export class ExchangeRateBelowOneError extends EthersJsError {
+    static makeError(err: Error) {
+        if (!EthersJsError.errorArgsInclude(err, 'exchange rate below 1')) {
+            return undefined;
+        }
+        return new ExchangeRateBelowOneError(err);
+    }
+
+    simpleMessage(): string {
+        return 'Insufficient PT in the liquidity pool to execute the action';
     }
 }
 
 EthersJsError.MAKE_ERROR_CALLBACKS.push(
     ApproximateError.makeError,
     InsufficientFundError.makeError,
-    InsufficientPtError.makeError
+    MaxProportionExceededError.makeError,
+    ExchangeRateBelowOneError.makeError
 );
 
 /**
