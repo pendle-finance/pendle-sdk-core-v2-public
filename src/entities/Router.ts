@@ -58,12 +58,21 @@ export class Router {
         return new Router(getContractAddresses(chainId).ROUTER, networkConnection, chainId);
     }
 
-    static swapApproxParams(netAmountOut: BN, slippage: number): ApproxParamsStruct {
+    static guessOutApproxParams(guessAmountOut: BN, slippage: number): ApproxParamsStruct {
         return {
             ...Router.STATIC_APPROX_PARAMS,
-            guessMin: calcSlippedDownAmount(netAmountOut, 2 * slippage),
-            guessMax: calcSlippedUpAmount(netAmountOut, 10 * slippage),
-            guessOffchain: netAmountOut,
+            guessMin: calcSlippedDownAmount(guessAmountOut, 2 * slippage),
+            guessMax: calcSlippedUpAmount(guessAmountOut, 10 * slippage),
+            guessOffchain: guessAmountOut,
+        };
+    }
+
+    static guessInApproxParams(guessAmountIn: BN, slippage: number): ApproxParamsStruct {
+        return {
+            ...Router.STATIC_APPROX_PARAMS,
+            guessMin: calcSlippedDownAmount(guessAmountIn, 10 * slippage),
+            guessMax: calcSlippedUpAmount(guessAmountIn, 2 * slippage),
+            guessOffchain: guessAmountIn,
         };
     }
 
@@ -285,7 +294,7 @@ export class Router {
                 market,
                 netPtIn,
                 calcSlippedDownAmount(netLpOut, slippage),
-                Router.swapApproxParams(netPtToSwap, slippage),
+                Router.guessInApproxParams(netPtToSwap, slippage),
                 overrides
             );
     }
@@ -309,7 +318,7 @@ export class Router {
                 market,
                 netScyIn,
                 calcSlippedDownAmount(netLpOut, slippage),
-                Router.swapApproxParams(netPtFromSwap, slippage),
+                Router.guessOutApproxParams(netPtFromSwap, slippage),
                 overrides
             );
     }
@@ -347,7 +356,7 @@ export class Router {
                 receiver,
                 market,
                 calcSlippedDownAmount(netLpOut, slippage),
-                Router.swapApproxParams(netPtFromSwap, slippage),
+                Router.guessOutApproxParams(netPtFromSwap, slippage),
                 input,
                 {
                     ...overrides,
@@ -427,7 +436,7 @@ export class Router {
                 market,
                 lpToRemove,
                 calcSlippedDownAmount(netPtOut, slippage),
-                Router.swapApproxParams(netPtFromSwap, slippage),
+                Router.guessOutApproxParams(netPtFromSwap, slippage),
                 overrides
             );
     }
@@ -526,7 +535,7 @@ export class Router {
                 market,
                 exactScyOut,
                 calcSlippedUpAmount(netPtIn, slippage),
-                Router.swapApproxParams(netPtIn, slippage),
+                Router.guessInApproxParams(netPtIn, slippage),
                 overrides
             );
     }
@@ -585,7 +594,7 @@ export class Router {
                 receiver,
                 market,
                 calcSlippedDownAmount(netOut, slippage),
-                Router.swapApproxParams(netOut, slippage),
+                Router.guessOutApproxParams(netOut, slippage),
                 input,
                 {
                     ...overrides,
@@ -611,7 +620,7 @@ export class Router {
                 market,
                 exactScyIn,
                 calcSlippedDownAmount(netPtOut, slippage),
-                Router.swapApproxParams(netPtOut, slippage),
+                Router.guessOutApproxParams(netPtOut, slippage),
                 overrides
             );
     }
@@ -766,7 +775,7 @@ export class Router {
                 market,
                 exactScyIn,
                 calcSlippedDownAmount(netYtOut, slippage),
-                Router.swapApproxParams(netYtOut, slippage),
+                Router.guessOutApproxParams(netYtOut, slippage),
                 overrides
             );
     }
@@ -794,7 +803,7 @@ export class Router {
                 market,
                 exactScyOut,
                 calcSlippedUpAmount(netYtIn, slippage),
-                Router.swapApproxParams(netYtIn, slippage),
+                Router.guessInApproxParams(netYtIn, slippage),
                 overrides
             );
     }
@@ -906,7 +915,7 @@ export class Router {
                 receiver,
                 market,
                 calcSlippedDownAmount(netOut, slippage),
-                Router.swapApproxParams(netOut, slippage),
+                Router.guessOutApproxParams(netOut, slippage),
                 input,
                 {
                     ...overrides,
@@ -932,7 +941,7 @@ export class Router {
         ]);
         const { output, netOut } = await this.outputParams(
             scy,
-            calcSlippedDownAmount(netScyIn, slippage),
+            netScyIn,
             tokenOut,
             tokenRedeemScyList,
             (output) =>
