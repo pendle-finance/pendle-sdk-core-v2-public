@@ -76,7 +76,7 @@ export class EthersJsError extends PendleSdkError {
 
         // Override again because the Object.assign above
         this.name = this.constructor.name;
-        Object.setPrototypeOf(this, EthersJsError.prototype);
+        Object.setPrototypeOf(this, this.constructor.prototype);
     }
 
     simpleMessage(): string {
