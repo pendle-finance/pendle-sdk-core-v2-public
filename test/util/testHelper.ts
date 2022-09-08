@@ -66,6 +66,13 @@ export async function getERC20Name(token: Address): Promise<string> {
     return ERC20_ENTITIES[token].name();
 }
 
+export async function getERC20Decimals(token: Address): Promise<number> {
+    if (isNativeToken(token)) {
+        return 18;
+    }
+    return ERC20_ENTITIES[token].decimals();
+}
+
 export async function stalkAccount(user: Address, markets: any[]) {
     for (let market of markets) {
         console.log('Market: ', market.symbol);
@@ -84,6 +91,11 @@ export async function stalkAccount(user: Address, markets: any[]) {
 
 export const DEFAULT_SWAP_AMOUNT = BN.from(10).pow(15);
 
+export const MAX_PT_SWAP_AMOUNT = BN.from(10).pow(6);
+export const MAX_YT_SWAP_AMOUNT = BN.from(10).pow(6);
+
+export const MAX_SCY_SWAP_AMOUNT = BN.from(10).pow(8);
+
 export const MARKET_SWAP_FACTOR = 50; // swap amount at most (market balance / 50)
 
 export const USER_BALANCE_FACTOR = 5;
@@ -98,7 +110,13 @@ export const SLIPPAGE_TYPE3 = 1;
 
 export const REDEEM_FACTOR = 10; // Redeem 1/10 of SCY balance
 
-export const ADD_LIQUIDITY_DEFAULT_AMOUNT = BN.from(10).pow(12);
+export const MAX_TOKEN_ADD_AMOUNT = BN.from(10).pow(6);
+
+export const MAX_PT_ADD_AMOUNT = BN.from(10).pow(6);
+
+export const MAX_YT_ADD_AMOUNT = BN.from(10).pow(6);
+
+export const MAX_SCY_ADD_AMOUNT = BN.from(10).pow(8);
 
 export const REMOVE_LIQUIDITY_FACTOR = 40; // Remove 1/40 of LP balance from liquidity pool
 

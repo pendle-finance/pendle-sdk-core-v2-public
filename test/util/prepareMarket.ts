@@ -1,7 +1,7 @@
-import { Contract, ethers } from 'ethers';
+import { BigNumber as BN, Contract, ethers } from 'ethers';
 import { Router } from '../../src';
 import FUND_KEEPER_ABI from './fundKeeperAbi.json';
-import { approveHelper, getBalance, SLIPPAGE_TYPE3, stalkAccount } from './testHelper';
+import { approveHelper, getBalance, getERC20Decimals, minBigNumber, SLIPPAGE_TYPE3, stalkAccount } from './testHelper';
 import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, networkConnection } from './testUtils';
 
 const INF = ethers.constants.MaxUint256;
@@ -15,7 +15,15 @@ const MINT_SCY_PERCENTAGE = 50;
 const FUND_KEEPER = new Contract(currentConfig.fundKeeper, FUND_KEEPER_ABI, networkConnection.signer);
 
 async function fundToken(token: string, user: string) {
-    const fund_amount = (await getBalance(token, currentConfig.fundKeeper)).div(FUND_FACTOR);
+    let decimal = await getERC20Decimals(token);
+
+    // 1/50 of the fundKeeper balance, or 100 tokens.
+
+    const fund_amount = minBigNumber(
+        (await getBalance(token, currentConfig.fundKeeper)).div(FUND_FACTOR),
+        BN.from(10).pow(decimal).mul(100)
+    );
+
     if (fund_amount.eq(0)) {
         throw new Error(`Insufficient balance for ${token} to fund`);
     }

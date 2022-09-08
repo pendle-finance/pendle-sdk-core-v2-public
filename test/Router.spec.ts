@@ -20,7 +20,12 @@ import {
     USER_BALANCE_FACTOR,
     getERC20Name,
     REMOVE_LIQUIDITY_FACTOR,
-    ADD_LIQUIDITY_DEFAULT_AMOUNT,
+    MAX_SCY_SWAP_AMOUNT,
+    MAX_PT_SWAP_AMOUNT,
+    MAX_YT_SWAP_AMOUNT,
+    MAX_PT_ADD_AMOUNT,
+    MAX_TOKEN_ADD_AMOUNT,
+    MAX_SCY_ADD_AMOUNT,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/bigNumberMatcher';
@@ -59,11 +64,11 @@ describe(Router, () => {
     describeWrite(() => {
         it('#addLiquidityDualScyAndPt', async () => {
             const scyAdd = minBigNumber(
-                ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                MAX_SCY_ADD_AMOUNT,
                 (await getBalance(scyAddress, signer.address)).div(USER_BALANCE_FACTOR)
             );
             const ptAdd = minBigNumber(
-                ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                MAX_PT_ADD_AMOUNT,
                 (await getBalance(ptAddress, signer.address)).div(USER_BALANCE_FACTOR)
             );
 
@@ -93,11 +98,11 @@ describe(Router, () => {
             let tokensIn = await scySdk.contract.getTokensIn();
             for (let token of tokensIn) {
                 const tokenAddAmount = minBigNumber(
-                    ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                    MAX_TOKEN_ADD_AMOUNT,
                     (await getBalance(token, signer.address)).div(USER_BALANCE_FACTOR)
                 );
                 const ptAdd = minBigNumber(
-                    ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                    MAX_PT_ADD_AMOUNT,
                     (await getBalance(ptAddress, signer.address)).div(USER_BALANCE_FACTOR)
                 );
 
@@ -135,7 +140,7 @@ describe(Router, () => {
 
         it('#addLiquiditySinglePt', async () => {
             const ptAdd = minBigNumber(
-                ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                MAX_PT_ADD_AMOUNT,
                 (await getBalance(ptAddress, signer.address)).div(USER_BALANCE_FACTOR)
             );
             if (ptAdd.eq(0)) {
@@ -166,7 +171,7 @@ describe(Router, () => {
 
         it('#addLiquiditySingleScy', async () => {
             const scyAdd = minBigNumber(
-                ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                MAX_SCY_ADD_AMOUNT,
                 (await getBalance(scyAddress, signer.address)).div(USER_BALANCE_FACTOR)
             );
             if (scyAdd.eq(0)) {
@@ -200,7 +205,7 @@ describe(Router, () => {
             let tokensIn = await scySdk.contract.getTokensIn();
             for (let token of tokensIn) {
                 const tokenAddAmount = minBigNumber(
-                    ADD_LIQUIDITY_DEFAULT_AMOUNT,
+                    MAX_TOKEN_ADD_AMOUNT,
                     (await getBalance(token, signer.address)).div(USER_BALANCE_FACTOR)
                 );
 
@@ -939,14 +944,18 @@ describe(Router, () => {
         let marketAmount = balanceSnapshot.marketScyBalance.div(MARKET_SWAP_FACTOR);
         let userAmount = balanceSnapshot.scyBalance.div(USER_BALANCE_FACTOR);
 
-        return getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
+        let amount = getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
+
+        return minBigNumber(amount, MAX_SCY_SWAP_AMOUNT);
     }
 
     function getPtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
         let marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
         let userAmount = balanceSnapshot.ptBalance.div(USER_BALANCE_FACTOR);
 
-        return getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
+        let amount = getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
+
+        return minBigNumber(amount, MAX_PT_SWAP_AMOUNT);
     }
 
     function getYtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
@@ -954,7 +963,9 @@ describe(Router, () => {
         let marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
         let userAmount = balanceSnapshot.ytBalance.div(USER_BALANCE_FACTOR);
 
-        return getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
+        let amount = getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
+
+        return minBigNumber(amount, MAX_YT_SWAP_AMOUNT);
     }
 
     /**
@@ -984,15 +995,13 @@ describe(Router, () => {
 
         const scyBalanceDiff = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
         const marketScyBalanceDiff = balanceAfter.marketScyBalance.sub(balanceBefore.marketScyBalance);
-        expect(scyBalanceDiff).toBeLtBN(marketScyBalanceDiff.mul(-1));
+        expect(scyBalanceDiff).toBeLteBN(marketScyBalanceDiff.mul(-1));
     }
 
     function verifyLpBalanceChanges(balanceBefore: LpBalanceSnapshot, balanceAfter: LpBalanceSnapshot) {
         const lpBalanceDiff = balanceAfter.lpBalance.sub(balanceBefore.lpBalance);
         const lpTotalSupplyDiff = balanceAfter.lpTotalSupply.sub(balanceBefore.lpTotalSupply);
         expect(lpBalanceDiff).toEqBN(lpTotalSupplyDiff);
-        // Balance should change
-        expect(lpBalanceDiff).not.toEqBN(0);
     }
 
     function verifyScyOut(expectScyOut: BN, netScyOut: BN) {
@@ -1000,7 +1009,7 @@ describe(Router, () => {
         expect(netScyOut).toBeGteBN(expectScyOut);
         // netScyOut <= expectScyOut * 100.1%
 
-        // Add 10 in case the expect ScyOut is too small
-        expect(netScyOut).toBeLteBN(expectScyOut.add(expectScyOut.div(1000)).add(10));
+        // Add 10_000 in case the expect ScyOut is too small
+        expect(netScyOut).toBeLteBN(expectScyOut.add(expectScyOut.div(1000)).add(10_000));
     }
 });
