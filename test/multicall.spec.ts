@@ -1,13 +1,13 @@
 import { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import { ERC20 } from '../src';
 import { BigNumber as BN, ethers } from 'ethers';
-import { Multicall, Market, PT } from '../src';
+import { Market, PT } from '../src';
 import './util/bigNumberMatcher.ts';
 import { currentConfig, networkConnection } from './util/testUtils';
 
 describe('Multicall', () => {
     const chainId = currentConfig.chainId;
-    const multicall = new Multicall({ chainId, provider: networkConnection.provider });
+    const multicall = currentConfig.multicall;
     let market: Market;
     let pt: PendleERC20, yt: PendleERC20, scy: PendleERC20, dummy: PendleERC20;
 

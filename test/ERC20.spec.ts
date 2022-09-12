@@ -1,5 +1,5 @@
 import { Contract } from 'ethers';
-import { ERC20 } from '../src';
+import { ERC20, Multicall } from '../src';
 import { decimalFactor } from '../src/entities/helper';
 import {
     ACTIVE_CHAIN_ID,
@@ -29,6 +29,20 @@ describe(ERC20, () => {
             usd.name(),
             usd.symbol(),
             usd.totalSupply(),
+        ]);
+        expect(decimal).toBeGreaterThanOrEqual(6);
+        expect(name).toBeDefined();
+        expect(symbol).toBeDefined();
+        expect(totalSupply).toBeGteBN(0);
+    });
+    
+    it('#contract with multicall', async () => {
+        const multicall = currentConfig.multicall;
+        const [decimal, name, symbol, totalSupply] = await Promise.all([
+            usd.decimals(multicall),
+            usd.name(multicall),
+            usd.symbol(multicall),
+            usd.totalSupply(multicall),
         ]);
         expect(decimal).toBeGreaterThanOrEqual(6);
         expect(name).toBeDefined();

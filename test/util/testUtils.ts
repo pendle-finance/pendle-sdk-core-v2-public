@@ -2,7 +2,7 @@ import { JsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
 import { Wallet } from 'ethers';
 import { inspect } from 'util';
-import { type NetworkConnection, CHAIN_ID } from '../../src';
+import { type NetworkConnection, CHAIN_ID, Multicall } from '../../src';
 
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
 import FUJI_QIUSDC_SEP22_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-9fbD64.json';
@@ -129,6 +129,10 @@ export const testConfig = (chainId: number) => ({
     tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.WETH,
 
     userAddress: WALLET().wallet.address,
+    multicall: new Multicall({
+        chainId,
+        provider: networkConnection.provider
+    }),
 });
 
 export const currentConfig = testConfig(ACTIVE_CHAIN_ID);
