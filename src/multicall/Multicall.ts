@@ -75,7 +75,7 @@ export class Multicall {
      * This function is useful in case where the user when to choose whether to use multicall
      * by themselves.
      */
-    static wrap<T extends Contract>(contract: T, multicall?: Multicall): MulticallStatic<T> {
+    static wrap<T extends Contract>(contract: T, multicall: Multicall | undefined): MulticallStatic<T> {
         return multicall ? multicall.wrap(contract) : (contract as unknown as MulticallStatic<T>);
     }
 

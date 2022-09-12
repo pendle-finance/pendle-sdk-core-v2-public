@@ -143,6 +143,6 @@ export function print(message: any): void {
 
 // use for test 2 version: with multicall and without multicall
 export function describeWithMulticall(fn: (multicall: Multicall | undefined) => any) {
-    describe('without multicall', () => fn(undefined));
     describe('with multicall', () => fn(currentConfig.multicall));
+    describe('without multicall', () => fn(undefined));
 }

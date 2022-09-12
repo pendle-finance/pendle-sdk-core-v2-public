@@ -1,7 +1,7 @@
 import { Contract } from 'ethers';
-import { Market, SCY } from '../src';
+import { Market, SCY, Multicall } from '../src';
 import { decimalFactor, getRouterStatic } from '../src/entities/helper';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET, describeWithMulticall } from './util/testUtils';
 import './util/bigNumberMatcher';
 
 describe(Market, () => {
@@ -21,74 +21,76 @@ describe(Market, () => {
         expect(market.contract.address).toBe(currentConfig.marketAddress);
     });
 
-    it('#contract', async () => {
-        const [totalSupply, tokens, isExpired, rewardTokens, state] = await Promise.all([
-            contract.totalSupply(),
-            contract.readTokens(),
-            contract.isExpired(),
-            contract.getRewardTokens(),
-            contract.readState(),
-        ]);
+    describeWithMulticall((multicall) => {
+        it('#contract', async () => {
+            const [totalSupply, tokens, isExpired, rewardTokens, state] = await Promise.all([
+                contract.totalSupply(),
+                contract.readTokens(),
+                contract.isExpired(),
+                contract.getRewardTokens(),
+                contract.readState(),
+            ]);
 
-        expect(totalSupply).toBeGteBN(0);
-        expect(tokens._PT).toBe(currentMarket.PT);
-        expect(tokens._YT).toBe(currentMarket.YT);
-        expect(tokens._SCY).toBe(currentMarket.SCY);
-        expect(isExpired).toBe(false);
-    });
+            expect(totalSupply).toBeGteBN(0);
+            expect(tokens._PT).toBe(currentMarket.PT);
+            expect(tokens._YT).toBe(currentMarket.YT);
+            expect(tokens._SCY).toBe(currentMarket.SCY);
+            expect(isExpired).toBe(false);
+        });
 
-    it('#marketInfo', async () => {
-        const marketInfo = await market.getMarketInfo();
-        const exchangerate = await routerStatic.callStatic.getExchangeRate(market.address);
+        it('#marketInfo', async () => {
+            const marketInfo = await market.getMarketInfo();
+            const exchangerate = await routerStatic.callStatic.getExchangeRate(market.address);
 
-        expect(marketInfo.pt).toBe(currentMarket.PT);
-        expect(marketInfo.scy).toBe(currentMarket.SCY);
-        
-        // value mismatch because of different block.
-        // expect(marketInfo.exchangeRate).toEqBN(exchangerate);
-    });
-    
-    it('#marketInfo with multicall', async () => {
-        const [marketInfo, exchangeRate] = await Promise.all([
-            market.getMarketInfo(multicall),
-            multicall.wrap(routerStatic).callStatic.getExchangeRate(market.address)
-        ]);
+            expect(marketInfo.pt).toBe(currentMarket.PT);
+            expect(marketInfo.scy).toBe(currentMarket.SCY);
 
-        expect(marketInfo.pt).toBe(currentMarket.PT);
-        expect(marketInfo.scy).toBe(currentMarket.SCY);
-        
-        // SHOULD be the same, because multicall should query data in the same block.
-        expect(marketInfo.exchangeRate).toEqBN(exchangeRate, 0);
-    });
+            // value mismatch because of different block.
+            // expect(marketInfo.exchangeRate).toEqBN(exchangerate);
+        });
 
-    it('#userMarketInfo', async () => {
-        const [marketInfo, userMarketInfo, userBalance, scyInfo, scyExchangeRate] = await Promise.all([
-            market.getMarketInfo(multicall),
-            market.getUserMarketInfo(sender.address, multicall),
-            multicall.wrap(market.contract).callStatic.balanceOf(sender.address),
-            scy.contract.assetInfo(),
-            scy.contract.exchangeRate(),
-        ]);
+        it('#marketInfo', async () => {
+            const [marketInfo, exchangeRate] = await Promise.all([
+                market.getMarketInfo(multicall),
+                Multicall.wrap(routerStatic, multicall).callStatic.getExchangeRate(market.address),
+            ]);
 
-        // Verify addresses
-        expect(userMarketInfo.market).toBe(currentConfig.marketAddress);
-        expect(userMarketInfo.ptBalance.token).toBe(currentMarket.PT);
-        expect(userMarketInfo.scyBalance.token).toBe(currentMarket.SCY);
+            expect(marketInfo.pt).toBe(currentMarket.PT);
+            expect(marketInfo.scy).toBe(currentMarket.SCY);
 
-        // Verify lp balance
-        expect(userMarketInfo.lpBalance).toEqBN(userBalance);
-        expect(userMarketInfo.ptBalance.amount).toEqBN(
-            userBalance.mul(marketInfo.state.totalPt).div(marketInfo.state.totalLp)
-        );
-        expect(userMarketInfo.scyBalance.amount).toEqBN(
-            userBalance.mul(marketInfo.state.totalScy).div(marketInfo.state.totalLp)
-        );
+            const eps = multicall ? 0 : 0.01;  // if !multicall, requests might be in different block
+            expect(marketInfo.exchangeRate).toEqBN(exchangeRate, eps);
+        });
 
-        // Verify underlying balance
-        expect(userMarketInfo.assetBalance.assetType).toBe(scyInfo.assetType);
-        expect(userMarketInfo.assetBalance.assetAddress).toBe(scyInfo.assetAddress);
-        expect(userMarketInfo.assetBalance.amount).toEqBN(
-            userMarketInfo.scyBalance.amount.mul(scyExchangeRate).div(decimalFactor(18))
-        );
+        it('#userMarketInfo', async () => {
+            const [marketInfo, userMarketInfo, userBalance, scyInfo, scyExchangeRate] = await Promise.all([
+                market.getMarketInfo(multicall),
+                market.getUserMarketInfo(sender.address, multicall),
+                Multicall.wrap(market.contract, multicall).callStatic.balanceOf(sender.address),
+                scy.contract.assetInfo(),
+                scy.contract.exchangeRate(),
+            ]);
+
+            // Verify addresses
+            expect(userMarketInfo.market).toBe(currentConfig.marketAddress);
+            expect(userMarketInfo.ptBalance.token).toBe(currentMarket.PT);
+            expect(userMarketInfo.scyBalance.token).toBe(currentMarket.SCY);
+
+            // Verify lp balance
+            expect(userMarketInfo.lpBalance).toEqBN(userBalance);
+            expect(userMarketInfo.ptBalance.amount).toEqBN(
+                userBalance.mul(marketInfo.state.totalPt).div(marketInfo.state.totalLp)
+            );
+            expect(userMarketInfo.scyBalance.amount).toEqBN(
+                userBalance.mul(marketInfo.state.totalScy).div(marketInfo.state.totalLp)
+            );
+
+            // Verify underlying balance
+            expect(userMarketInfo.assetBalance.assetType).toBe(scyInfo.assetType);
+            expect(userMarketInfo.assetBalance.assetAddress).toBe(scyInfo.assetAddress);
+            expect(userMarketInfo.assetBalance.amount).toEqBN(
+                userMarketInfo.scyBalance.amount.mul(scyExchangeRate).div(decimalFactor(18))
+            );
+        });
     });
 });
