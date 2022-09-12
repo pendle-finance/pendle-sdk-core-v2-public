@@ -5,6 +5,7 @@ import { BigNumber as BN, Contract } from 'ethers';
 import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/base-implementations/SCYBase.sol/SCYBase.json';
 import { calcSlippedDownAmount, getRouterStatic, isNativeToken } from './helper';
 import { ERC20 } from './ERC20';
+import { Multicall } from '../multicall';
 
 export type UserSCYInfo = {
     balance: BN;
@@ -71,7 +72,7 @@ export class SCY {
             .redeem(receiver, amountScyToPull, baseAssetOut, calcSlippedDownAmount(amountBaseOut, slippage), overrides);
     }
 
-    async userInfo(user: Address): Promise<UserSCYInfo> {
-        return this.routerStatic.callStatic.getUserSCYInfo(this.address, user);
+    async userInfo(user: Address, multicall?: Multicall): Promise<UserSCYInfo> {
+        return Multicall.wrap(this.routerStatic, multicall).callStatic.getUserSCYInfo(this.address, user);
     }
 }
