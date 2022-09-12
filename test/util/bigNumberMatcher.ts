@@ -7,8 +7,8 @@ import { BigNumber, BigNumberish } from 'ethers';
 // different: https://github.com/facebook/jest/issues/6243
 
 export const BigNumberMatchers = {
-    toEqBN(received: BigNumberish, value: BigNumberish, slippage: number = 0.01) {
-        if (slippage == 0) {
+    toEqBN(received: BigNumberish, value: BigNumberish, eps: number = 0) {
+        if (eps == 0) {
             const pass = BigNumber.from(received).eq(value);
             return pass
                 ? {
@@ -20,8 +20,8 @@ export const BigNumberMatchers = {
                       message: () => `Expected "${received}" to be equal ${value}`,
                   };
         }
-        slippage = Math.trunc(slippage * 100);
-        const offset = BigNumber.from(value).mul(slippage).div(100).abs();
+        eps = Math.trunc(eps * 100);
+        const offset = BigNumber.from(value).mul(eps).div(100).abs();
         const lowerBound = BigNumber.from(value).sub(offset);
         const upperBound = BigNumber.from(value).add(offset);
         const pass = BigNumber.from(received).gte(lowerBound) && BigNumber.from(received).lte(upperBound);
