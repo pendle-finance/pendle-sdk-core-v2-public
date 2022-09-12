@@ -33,4 +33,8 @@ export class PT {
     async getInfo(): Promise<PYInfo> {
         return this.routerStatic.callStatic.getPYInfo(this.address);
     }
+
+    async YT(): Promise<Address> {
+        return this.contract.callStatic.YT();
+    }
 }

@@ -96,11 +96,16 @@ export const CONTRACT_ADDRESSES = {
     },
 };
 
+export const WALLET = () => ({
+    wallet: new Wallet(process.env.PRIVATE_KEY!).connect(networkConnection.provider),
+});
+
 // choose the markets you want to test here
 // 0n fuji: 0 for qiUSDC, 1 for qiAVAX, 2 for qiWETH
 const MARKET_TO_TEST = 1;
 
 export const testConfig = (chainId: number) => ({
+    chainId,
     deployer: CONTRACT_ADDRESSES[chainId].CORE.DEPLOYER,
     marketFactory: CONTRACT_ADDRESSES[chainId].CORE.MARKET_FACTORY,
     router: CONTRACT_ADDRESSES[chainId].CORE.ROUTER,
@@ -119,13 +124,11 @@ export const testConfig = (chainId: number) => ({
     marketAddress: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST].market,
     // choose the token to test for swap from raw token -> py
     tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.WETH,
+
+    userAddress: WALLET().wallet.address,
 });
 
 export const currentConfig = testConfig(ACTIVE_CHAIN_ID);
-
-export const WALLET = () => ({
-    wallet: new Wallet(process.env.PRIVATE_KEY!).connect(networkConnection.provider),
-});
 
 export function print(message: any): void {
     console.log(inspect(message, { showHidden: false, depth: null, colors: true }));
