@@ -131,7 +131,7 @@ export const testConfig = (chainId: number) => ({
     userAddress: WALLET().wallet.address,
     multicall: new Multicall({
         chainId,
-        provider: networkConnection.provider
+        provider: networkConnection.provider,
     }),
 });
 

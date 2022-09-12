@@ -58,7 +58,7 @@ describe(Market, () => {
             expect(marketInfo.pt).toBe(currentMarket.PT);
             expect(marketInfo.scy).toBe(currentMarket.SCY);
 
-            const eps = multicall ? 0 : 0.01;  // if !multicall, requests might be in different block
+            const eps = multicall ? 0 : 0.01; // if !multicall, requests might be in different block
             expect(marketInfo.exchangeRate).toEqBN(exchangeRate, eps);
         });
 

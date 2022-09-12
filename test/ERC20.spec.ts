@@ -8,7 +8,7 @@ import {
     networkConnection,
     BLOCK_CONFIRMATION,
     WALLET,
-    describeWithMulticall
+    describeWithMulticall,
 } from './util/testUtils';
 import './util/bigNumberMatcher';
 

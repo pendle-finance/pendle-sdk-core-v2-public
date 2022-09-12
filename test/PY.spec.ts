@@ -55,23 +55,22 @@ describe('PY', () => {
                 Multicall.wrap(yt.contract, multicall).callStatic.pyIndexCurrent(),
                 Multicall.wrap(yt.contract, multicall).callStatic.getRewardTokens(),
             ]);
-            
-            const eps = multicall ? 0 : 0.01;  // if !multicall, requests might be in different block
+
+            const eps = multicall ? 0 : 0.01; // if !multicall, requests might be in different block
 
             expect(ptInfo.exchangeRate).toEqBN(ytInfo.exchangeRate, eps);
             expect(ptInfo.exchangeRate).toEqBN(ytIndexCurrent);
-            
+
             expect(ptInfo.totalSupply).toEqBN(ytInfo.totalSupply, eps);
             expect(ptInfo.totalSupply).toEqBN(ytTotalSupply);
 
             for (let i = 0; i < rewardToken.length; i++) {
                 expect(ptInfo.rewardIndexes[i].index).toBeGtBN(0);
                 expect(ptInfo.rewardIndexes[i].rewardToken).toBe(rewardToken[i]);
-                
+
                 expect(ptInfo.rewardIndexes[i].index).toEqBN(ytInfo.rewardIndexes[i].index, eps);
                 expect(ptInfo.rewardIndexes[i].rewardToken).toEqBN(ytInfo.rewardIndexes[i].rewardToken);
             }
-                
         });
     });
 });
