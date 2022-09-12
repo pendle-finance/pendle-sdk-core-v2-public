@@ -9,8 +9,6 @@ describe('Misc', () => {
         InvalidSlippageError.verify(0);
         InvalidSlippageError.verify(1);
         InvalidSlippageError.verify(0.5);
-        expect(() => InvalidSlippageError.verify(-1)).toThrowError(InvalidSlippageError);
-        expect(() => InvalidSlippageError.verify(1.1)).toThrowError(InvalidSlippageError);
     });
 
     it('#calcSlippedDownAmount', () => {
@@ -19,8 +17,6 @@ describe('Misc', () => {
         expect(calcSlippedDownAmount(amount, 0.3)).toEqBN(amount.mul(70).div(100));
         expect(calcSlippedDownAmount(amount, 0.5)).toEqBN(amount.mul(50).div(100));
         expect(calcSlippedDownAmount(amount, 1)).toEqBN(0);
-        expect(() => calcSlippedDownAmount(amount, -1)).toThrowError(InvalidSlippageError);
-        expect(() => calcSlippedDownAmount(amount, 1.1)).toThrowError(InvalidSlippageError);
     });
 
     it('#calcSlippedUpAmount', () => {
@@ -29,8 +25,6 @@ describe('Misc', () => {
         expect(calcSlippedUpAmount(amount, 0.3)).toEqBN(amount.mul(130).div(100));
         expect(calcSlippedUpAmount(amount, 0.5)).toEqBN(amount.mul(150).div(100));
         expect(calcSlippedUpAmount(amount, 1)).toEqBN(amount.mul(2));
-        expect(() => calcSlippedUpAmount(amount, -1)).toThrowError(InvalidSlippageError);
-        expect(() => calcSlippedUpAmount(amount, 1.1)).toThrowError(InvalidSlippageError);
     });
 
     it('#getContractAddresses', () => {
