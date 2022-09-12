@@ -97,7 +97,10 @@ export const CONTRACT_ADDRESSES = {
 };
 
 export const WALLET = () => ({
-    wallet: new Wallet(process.env.PRIVATE_KEY!).connect(networkConnection.provider),
+    wallet: (process.env.PRIVATE_KEY
+        ? new Wallet(process.env.PRIVATE_KEY!)
+        : Wallet.fromMnemonic('test '.repeat(11) + 'junk')
+    ).connect(networkConnection.provider),
 });
 
 // choose the markets you want to test here
