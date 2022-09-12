@@ -4,6 +4,7 @@ import { BigNumber as BN, Contract } from 'ethers';
 import { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldToken.sol/PendleYieldToken.json';
 import { getRouterStatic } from './helper';
 import { ERC20 } from './ERC20';
+import { Multicall } from '../multicall';
 
 export type UserPYInfo = {
     yt: Address;
@@ -40,11 +41,15 @@ export class YT {
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
-    async userInfo(user: Address): Promise<UserPYInfo> {
-        return this.routerStatic.callStatic.getUserPYInfo(this.address, user);
+    async userInfo(user: Address, multicall?: Multicall): Promise<UserPYInfo> {
+        return Multicall.wrap(this.routerStatic, multicall).callStatic.getUserPYInfo(this.address, user);
     }
 
-    async getInfo(): Promise<PYInfo> {
-        return this.routerStatic.callStatic.getPYInfo(this.address);
+    async getInfo(multicall?: Multicall): Promise<PYInfo> {
+        return Multicall.wrap(this.routerStatic, multicall).callStatic.getPYInfo(this.address);
+    }
+
+    async PT(multicall?: Multicall): Promise<Address> {
+        return Multicall.wrap(this.contract, multicall).callStatic.PT();
     }
 }

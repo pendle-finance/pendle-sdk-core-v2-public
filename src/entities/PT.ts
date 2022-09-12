@@ -5,6 +5,7 @@ import { abi as PendlePrincipalTokenABI } from '@pendle/core-v2/build/artifacts/
 import { Contract } from 'ethers';
 import { getRouterStatic } from './helper';
 import { ERC20 } from './ERC20';
+import { Multicall } from '../multicall';
 
 export class PT {
     readonly ERC20: ERC20;
@@ -26,15 +27,15 @@ export class PT {
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
-    async userInfo(user: Address): Promise<UserPYInfo> {
-        return this.routerStatic.callStatic.getUserPYInfo(this.address, user);
+    async userInfo(user: Address, multicall?: Multicall): Promise<UserPYInfo> {
+        return Multicall.wrap(this.routerStatic, multicall).callStatic.getUserPYInfo(this.address, user);
     }
 
-    async getInfo(): Promise<PYInfo> {
-        return this.routerStatic.callStatic.getPYInfo(this.address);
+    async getInfo(multicall?: Multicall): Promise<PYInfo> {
+        return Multicall.wrap(this.routerStatic, multicall).callStatic.getPYInfo(this.address);
     }
 
-    async YT(): Promise<Address> {
-        return this.contract.callStatic.YT();
+    async YT(multicall?: Multicall): Promise<Address> {
+        return Multicall.wrap(this.contract, multicall).callStatic.YT();
     }
 }

@@ -140,3 +140,9 @@ export const currentConfig = testConfig(ACTIVE_CHAIN_ID);
 export function print(message: any): void {
     console.log(inspect(message, { showHidden: false, depth: null, colors: true }));
 }
+
+// use for test 2 version: with multicall and without multicall
+export function describeWithMulticall(fn: (multicall: Multicall | undefined) => any) {
+    describe('without multicall', () => fn(undefined));
+    describe('with multicall', () => fn(currentConfig.multicall));
+}
