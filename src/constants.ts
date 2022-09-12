@@ -54,3 +54,11 @@ export const KYBER_API = {
 export const NATIVE_ADDRESS_0x00 = ethersConstants.AddressZero;
 
 export const NATIVE_ADDRESS_0xEE = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+
+export const MULTICALL_ADDRESSES = {
+    [CHAIN_ID.ETHEREUM]: '0x5ba1e12693dc8f9c48aad8770482f4739beed696',
+    [CHAIN_ID.AVALANCHE]: '0x11b8399bc71e8b67a0f7cca2663612af1ca38536',
+    [CHAIN_ID.FUJI]: '0x07e46d95cc98f0d7493d679e89e396ea99020185',
+    [CHAIN_ID.MUMBAI]: '0x08411add0b5aa8ee47563b146743c13b3556c9cc',
+};
+
