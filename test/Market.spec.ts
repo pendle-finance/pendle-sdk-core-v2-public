@@ -11,6 +11,7 @@ describe(Market, () => {
     const sender = WALLET().wallet;
     const scy = new SCY(currentMarket.SCY, networkConnection, ACTIVE_CHAIN_ID);
     const routerStatic = getRouterStatic(networkConnection.provider, ACTIVE_CHAIN_ID);
+    const multicall = currentConfig.multicall;
 
     it('#constructor', () => {
         expect(market).toBeInstanceOf(Market);
@@ -42,14 +43,29 @@ describe(Market, () => {
 
         expect(marketInfo.pt).toBe(currentMarket.PT);
         expect(marketInfo.scy).toBe(currentMarket.SCY);
+        
+        // value mismatch because of different block.
         // expect(marketInfo.exchangeRate).toEqBN(exchangerate);
+    });
+    
+    it('#marketInfo with multicall', async () => {
+        const [marketInfo, exchangeRate] = await Promise.all([
+            market.getMarketInfo(multicall),
+            multicall.wrap(routerStatic).callStatic.getExchangeRate(market.address)
+        ]);
+
+        expect(marketInfo.pt).toBe(currentMarket.PT);
+        expect(marketInfo.scy).toBe(currentMarket.SCY);
+        
+        // SHOULD be the same, because multicall should query data in the same block.
+        expect(marketInfo.exchangeRate).toEqBN(exchangeRate, 0);
     });
 
     it('#userMarketInfo', async () => {
         const [marketInfo, userMarketInfo, userBalance, scyInfo, scyExchangeRate] = await Promise.all([
-            market.getMarketInfo(),
-            market.getUserMarketInfo(sender.address),
-            market.contract.callStatic.balanceOf(sender.address),
+            market.getMarketInfo(multicall),
+            market.getUserMarketInfo(sender.address, multicall),
+            multicall.wrap(market.contract).callStatic.balanceOf(sender.address),
             scy.contract.assetInfo(),
             scy.contract.exchangeRate(),
         ]);

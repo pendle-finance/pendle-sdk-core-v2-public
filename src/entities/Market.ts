@@ -6,6 +6,7 @@ import { abi as PendleMarketABI } from '@pendle/core-v2/build/artifacts/contract
 import { BigNumber as BN, Contract } from 'ethers';
 import { getRouterStatic } from './helper';
 import { ERC20 } from './ERC20';
+import { Multicall } from '../multicall';
 
 export type MarketInfo = {
     pt: Address;
@@ -39,11 +40,11 @@ export class Market {
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
-    async getMarketInfo(): Promise<MarketInfo> {
-        return this.routerStatic.callStatic.getMarketInfo(this.address);
+    async getMarketInfo(multicall?: Multicall): Promise<MarketInfo> {
+        return Multicall.wrap(this.routerStatic, multicall).callStatic.getMarketInfo(this.address);
     }
 
-    async getUserMarketInfo(user: Address): Promise<UserMarketInfo> {
-        return this.routerStatic.callStatic.getUserMarketInfo(this.address, user);
+    async getUserMarketInfo(user: Address, multicall?: Multicall): Promise<UserMarketInfo> {
+        return Multicall.wrap(this.routerStatic, multicall).callStatic.getUserMarketInfo(this.address, user);
     }
 }
