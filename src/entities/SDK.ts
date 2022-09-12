@@ -3,6 +3,7 @@ import type { Address, NetworkConnection } from '../types';
 import type { UserPYInfo } from './YT';
 import type { UserMarketInfo } from './Market';
 import { getRouterStatic } from './helper';
+import { Multicall } from '../multicall';
 
 export class SDK {
     protected readonly routerStatic: RouterStatic;
@@ -17,11 +18,11 @@ export class SDK {
      * @param pys PT and YT token addresses that we want to check
      * @returns UserPYInfo object array representing user's PY positions
      */
-    async getUserPYPositionsByPYs(user: Address, pys: Address[]): Promise<UserPYInfo[]> {
-        return this.routerStatic.callStatic.getUserPYPositionsByPYs(user, pys);
+    async getUserPYPositionsByPYs(user: Address, pys: Address[], multicall?: Multicall): Promise<UserPYInfo[]> {
+        return Multicall.wrap(this.routerStatic, multicall).callStatic.getUserPYPositionsByPYs(user, pys);
     }
 
-    async getUserMarketPositions(user: Address, markets: Address[]): Promise<UserMarketInfo[]> {
-        return this.routerStatic.callStatic.getUserMarketPositions(user, markets);
+    async getUserMarketPositions(user: Address, markets: Address[], multicall?: Multicall): Promise<UserMarketInfo[]> {
+        return Multicall.wrap(this.routerStatic, multicall).callStatic.getUserMarketPositions(user, markets);
     }
 }
