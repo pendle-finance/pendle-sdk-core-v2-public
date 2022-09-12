@@ -141,8 +141,11 @@ export function print(message: any): void {
     console.log(inspect(message, { showHidden: false, depth: null, colors: true }));
 }
 
-// use for test 2 version: with multicall and without multicall
 export function describeWithMulticall(fn: (multicall: Multicall | undefined) => any) {
-    describe('with multicall', () => fn(currentConfig.multicall));
-    describe('without multicall', () => fn(undefined));
+    if (process.env.DISABLE_TEST_WITH_MULTICALL !== '1') {
+        describe('with multicall', () => fn(currentConfig.multicall));
+    }
+    if (process.env.DISABLE_TEST_WITHOUT_MULTICALL !== '1') {
+        describe('without multicall', () => fn(undefined));
+    }
 }
