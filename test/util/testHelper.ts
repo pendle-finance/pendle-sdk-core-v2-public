@@ -100,7 +100,7 @@ export const MARKET_SWAP_FACTOR = 50; // swap amount at most (market balance / 5
 
 export const USER_BALANCE_FACTOR = 5;
 
-export const DEFAULT_MINT_AMOUNT = BN.from(10).pow(12);
+export const DEFAULT_MINT_AMOUNT = BN.from(10).pow(6);
 
 export const SLIPPAGE_TYPE1 = 0.1;
 
