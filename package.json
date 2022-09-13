@@ -3,7 +3,7 @@
     "author": "Pendle Labs",
     "description": "SDK of Pendle Protocol.",
     "license": "MIT",
-    "version": "0.0.33",
+    "version": "0.0.34",
     "main": "dist/index.js",
     "typings": "dist/index.d.ts",
     "files": [
@@ -36,7 +36,7 @@
         "clean": "rm -rf dist/"
     },
     "dependencies": {
-        "@pendle/core-v2": "0.11.2-testnet",
+        "@pendle/core-v2": "0.11.4-testnet",
         "axios": "^0.27.2",
         "bignumber.js": "^9.1.0",
         "ethers": "^5.7.0"
