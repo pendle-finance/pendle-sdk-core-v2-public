@@ -39,17 +39,6 @@ describe(Market, () => {
         });
 
         it('#marketInfo', async () => {
-            const marketInfo = await market.getMarketInfo();
-            const exchangerate = await routerStatic.callStatic.getExchangeRate(market.address);
-
-            expect(marketInfo.pt).toBe(currentMarket.PT);
-            expect(marketInfo.scy).toBe(currentMarket.SCY);
-
-            // value mismatch because of different block.
-            // expect(marketInfo.exchangeRate).toEqBN(exchangerate);
-        });
-
-        it('#marketInfo', async () => {
             const [marketInfo, exchangeRate] = await Promise.all([
                 market.getMarketInfo(multicall),
                 Multicall.wrap(routerStatic, multicall).callStatic.getExchangeRate(market.address),
