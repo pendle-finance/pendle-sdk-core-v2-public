@@ -4,6 +4,8 @@ import { Wallet } from 'ethers';
 import { inspect } from 'util';
 import { type NetworkConnection, CHAIN_ID, Multicall } from '../../src';
 
+import assert from 'assert';
+
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
 import FUJI_QIUSDC_SEP22_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-9fbD64.json';
 import FUJI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-10D931.json';
@@ -23,8 +25,16 @@ export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID!) as TestChain
 const LOCAL_CHAIN_ID = 31337;
 const USE_LOCAL = process.env.USE_LOCAL === '1';
 
-export const describeWrite = (fn: () => any) =>
-    (process.env.INCLUDE_WRITE === '1' ? describe : describe.skip)('Write functions', fn);
+export function describeWrite(name: string, fn: () => void): void;
+export function describeWrite(fn: () => void): void;
+export function describeWrite(name: string | (() => void), fn?: () => void) {
+    if (typeof name !== 'string') {
+        fn = name;
+        name = 'Write function';
+    }
+    assert(fn !== undefined);
+    (process.env.INCLUDE_WRITE === '1' ? describe : describe.skip)(name, fn);
+}
 
 export const BLOCK_CONFIRMATION = USE_LOCAL ? 1 : parseInt(process.env.BLOCK_CONFIRMATION ?? '1');
 

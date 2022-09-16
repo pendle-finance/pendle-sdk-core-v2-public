@@ -61,7 +61,7 @@ describe(Router, () => {
         expect(router.address).toBe(currentConfig.router);
     });
 
-    describeWrite(() => {
+    describeWrite('Overall write functions', () => {
         it('#addLiquidityDualScyAndPt', async () => {
             const scyAdd = minBigNumber(
                 MAX_SCY_ADD_AMOUNT,
@@ -395,10 +395,9 @@ describe(Router, () => {
                 expect(balanceBefore.lpBalance.sub(balanceAfter.lpBalance)).toEqBN(liquidityRemove);
             }
         });
+    });
 
-        /*
-         *  Type 1 of swap between Scy and PT
-         */
+    describeWrite('Type 1: swap between Scy and PT', () => {
         it('#swapExactPtForScy', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const ptInAmount = getPtSwapAmount(balanceBefore, true);
@@ -496,11 +495,9 @@ describe(Router, () => {
             const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
             expect(netScyIn).toEqBN(expectScyIn);
         });
+    });
 
-        /*
-         * Type 2 of swap between Scy and YT
-         */
-
+    describeWrite('Type 2: swap between Scy and YT', () => {
         it('#swapExactScyForYt', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectScyIn = getScySwapAmount(balanceBefore, true);
@@ -599,12 +596,10 @@ describe(Router, () => {
             expect(netYtIn).toEqBN(expectYtIn);
             expect(balanceAfter.scyBalance).toBeGtBN(balanceBefore.scyBalance);
         });
+    });
 
-        /*
-         * Type 3: Token with PT & YT
-         * TODO: check swap from other raw tokens
-         */
-
+    describeWrite('Type 3: swap Token with PT & YT', () => {
+        // TODO check swap from other raw tokens
         it('#swapExactTokenForPt', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectRawTokenIn = getTokenSwapAmount(balanceBefore, true);
@@ -749,10 +744,12 @@ describe(Router, () => {
             expect(netYtIn).toEqBN(expectYtIn);
             expect(balanceAfter.tokenBalance).toBeGtBN(balanceBefore.tokenBalance);
         });
+    });
 
-        /*
-         * Type 4: Mint, redeem PY & SCY -> Token
-         */
+    /*
+     * Type 4: Mint, redeem PY & SCY -> Token
+     */
+    describeWrite('Type 4: mint, redeem PY & SCY -> Token', () => {
         it('#mintPyFromToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectRawTokenIn = DEFAULT_MINT_AMOUNT;
@@ -903,6 +900,44 @@ describe(Router, () => {
             const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
             expect(netScyIn).toEqBN(expectScyIn);
             expect(balanceAfter.tokenBalance).toBeGtBN(balanceBefore.tokenBalance);
+        });
+    });
+
+    describeWrite('Type 5: YT <-> PT', () => {
+        it('#swapExactYtForPt', async () => {
+            const balanceBefore = await getBalanceSnapshot();
+            const expectYtIn = getYtSwapAmount(balanceBefore, true);
+            if (expectYtIn.eq(0)) {
+                console.warn('skip test because expectYtIn is 0');
+                return;
+            }
+
+            await router
+                .swapExactYtForPt(signer.address, currentConfig.marketAddress, expectYtIn, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+
+            const balanceAfter = await getBalanceSnapshot();
+            const netYtIn = balanceBefore.ytBalance.sub(balanceAfter.ytBalance);
+            expect(netYtIn).toEqBN(expectYtIn);
+            expect(balanceAfter.ptBalance).toBeGtBN(balanceBefore.ptBalance);
+        });
+
+        it('#swapExactPtForYt', async () => {
+            const balanceBefore = await getBalanceSnapshot();
+            const expectPtIn = getPtSwapAmount(balanceBefore, true);
+            if (expectPtIn.eq(0)) {
+                console.warn('skip test because expectPtIn is 0');
+                return;
+            }
+
+            await router
+                .swapExactPtForYt(signer.address, currentConfig.marketAddress, expectPtIn, SLIPPAGE_TYPE2)
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+
+            const balanceAfter = await getBalanceSnapshot();
+            const netPtIn = balanceBefore.ptBalance.sub(balanceAfter.ptBalance);
+            expect(netPtIn).toEqBN(expectPtIn);
+            expect(balanceAfter.ytBalance).toBeGtBN(balanceBefore.ytBalance);
         });
     });
 

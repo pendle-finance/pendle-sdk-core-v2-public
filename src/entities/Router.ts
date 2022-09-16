@@ -1018,4 +1018,52 @@ export class Router {
             .connect(this.networkConnection.signer!)
             .swapExactYtForToken(receiver, marketAddr, exactYtIn, output, overrides);
     }
+
+    async swapExactYtForPt(
+        receiver: Address,
+        market: Address | MarketEntity,
+        exactYtIn: BigNumberish,
+        slippage: number,
+        overrides: Overrides = {}
+    ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
+        const { netPtOut, totalPtSwapped } = await this.routerStatic.callStatic.swapExactYtForPtStatic(
+            marketAddr,
+            exactYtIn
+        );
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapExactYtForPt(
+                receiver,
+                marketAddr,
+                exactYtIn,
+                calcSlippedDownAmount(netPtOut, slippage),
+                Router.guessInApproxParams(totalPtSwapped, slippage),
+                overrides
+            );
+    }
+
+    async swapExactPtForYt(
+        receiver: Address,
+        market: Address | MarketEntity,
+        exactPtIn: BigNumberish,
+        slippage: number,
+        overrides: Overrides = {}
+    ) {
+        const marketAddr = typeof market === 'string' ? market : market.address;
+        const { netYtOut, totalPtToSwap } = await this.routerStatic.callStatic.swapExactPtForYtStatic(
+            marketAddr,
+            exactPtIn
+        );
+        return this.contract
+            .connect(this.networkConnection.signer!)
+            .swapExactPtForYt(
+                receiver,
+                marketAddr,
+                exactPtIn,
+                calcSlippedDownAmount(netYtOut, slippage),
+                Router.guessInApproxParams(totalPtToSwap, slippage),
+                overrides
+            );
+    }
 }
