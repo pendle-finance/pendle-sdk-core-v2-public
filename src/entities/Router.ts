@@ -4,7 +4,7 @@ import type {
     TokenInputStruct,
     TokenOutputStruct,
 } from '@pendle/core-v2/typechain-types/IPAllAction';
-import type { Address, NetworkConnection } from '../types';
+import type { Address, NetworkConnection, ChainId } from '../types';
 import axios from 'axios';
 import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
 import type { BigNumberish, BytesLike, ContractTransaction, Overrides } from 'ethers';
@@ -17,6 +17,7 @@ import {
     getRouterStatic,
     isNativeToken,
     isSameAddress,
+    isKyberSupportedChain,
 } from './helper';
 import { Market } from './Market';
 import { SCY as SCYEntity } from './SCY';
@@ -48,13 +49,13 @@ export class Router {
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: number
+        readonly chainId: ChainId
     ) {
         this.contract = new Contract(address, IPAllActionABI, networkConnection.provider) as IPAllAction;
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
-    static getRouter(networkConnection: NetworkConnection, chainId: number): Router {
+    static getRouter(networkConnection: NetworkConnection, chainId: ChainId): Router {
         return new Router(getContractAddresses(chainId).ROUTER, networkConnection, chainId);
     }
 
@@ -77,6 +78,9 @@ export class Router {
     }
 
     async kybercall(tokenIn: Address, tokenOut: Address, amountIn: BigNumberish): Promise<KybercallData> {
+        if (!isKyberSupportedChain(this.chainId)) {
+            throw new Error(`Chain ${this.chainId} is not supported for kybercall.`);
+        }
         if (isSameAddress(tokenIn, tokenOut)) return { outputAmount: amountIn, encodedSwapData: [] };
         // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
         if (isNativeToken(tokenIn)) tokenIn = NATIVE_ADDRESS_0xEE;

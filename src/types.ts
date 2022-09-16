@@ -1,5 +1,6 @@
 import type { BigNumber as BN, providers, Signer } from 'ethers';
 import { ErrorCode } from '@ethersproject/logger';
+import { CHAIN_ID } from './constants';
 
 export type NetworkConnection = {
     provider: providers.Provider;
@@ -17,3 +18,6 @@ export type TokenAmount = {
 // https://docs.ethers.io/v5/troubleshooting/errors/
 // The following is done to convert an enum into union.
 export type EthersJsErrorCode = ErrorCode[keyof ErrorCode];
+
+export { ChainId } from './constants';
+export type MainchainId = typeof CHAIN_ID.ETHEREUM | typeof CHAIN_ID.FUJI;

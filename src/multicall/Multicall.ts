@@ -5,6 +5,7 @@ import { Contract } from 'ethers';
 import { FunctionFragment, Interface } from 'ethers/lib/utils';
 import { MULTICALL_ADDRESSES } from '../constants';
 import { abi as MulticallABI } from './Multicall2.json';
+import { ChainId } from '../types';
 
 /**
  * Multicall implementation, allowing to call function of contract.callStatic functions
@@ -85,7 +86,7 @@ export class Multicall {
         blockTag,
         callLimit,
     }: {
-        chainId: number;
+        chainId: ChainId;
         provider: Provider;
         blockTag?: BlockTag;
         callLimit?: number;

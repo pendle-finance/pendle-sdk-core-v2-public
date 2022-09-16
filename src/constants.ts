@@ -18,7 +18,9 @@ export const CHAIN_ID = {
     AVALANCHE: 43114,
     FUJI: 43113,
     MUMBAI: 80001,
-};
+} as const;
+
+export type ChainId = typeof CHAIN_ID[keyof typeof CHAIN_ID];
 
 // TODO: Update addresses after deployment
 export const ETHEREUM_ADDRESSES: ContractAddresses = {
@@ -45,6 +47,13 @@ export const MUMBAI_ADDRESSES: ContractAddresses = {
     VEPENDLE: MUMBAI_CORE_ADDRESSES.vePendle,
 };
 
+export const CONTRACT_ADDRESSES: Record<ChainId, ContractAddresses> = {
+    [CHAIN_ID.ETHEREUM]: ETHEREUM_ADDRESSES,
+    [CHAIN_ID.AVALANCHE]: AVALANCHE_ADDRESSES,
+    [CHAIN_ID.MUMBAI]: MUMBAI_ADDRESSES,
+    [CHAIN_ID.FUJI]: FUJI_ADDRESSES,
+} as const;
+
 export const KYBER_API = {
     [CHAIN_ID.ETHEREUM]: 'https://aggregator-api.kyberswap.com/ethereum/route/encode',
     [CHAIN_ID.AVALANCHE]: 'https://aggregator-api.kyberswap.com/avalanche/route/encode',
@@ -55,9 +64,9 @@ export const NATIVE_ADDRESS_0x00 = ethersConstants.AddressZero;
 
 export const NATIVE_ADDRESS_0xEE = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 
-export const MULTICALL_ADDRESSES = {
+export const MULTICALL_ADDRESSES: Record<ChainId, Address> = {
     [CHAIN_ID.ETHEREUM]: '0x5ba1e12693dc8f9c48aad8770482f4739beed696',
     [CHAIN_ID.AVALANCHE]: '0x11b8399bc71e8b67a0f7cca2663612af1ca38536',
     [CHAIN_ID.FUJI]: '0x07e46d95cc98f0d7493d679e89e396ea99020185',
     [CHAIN_ID.MUMBAI]: '0x08411add0b5aa8ee47563b146743c13b3556c9cc',
-};
+} as const;

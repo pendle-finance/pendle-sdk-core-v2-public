@@ -1,5 +1,5 @@
 import type { RouterStatic } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection } from '../types';
+import type { Address, NetworkConnection, ChainId } from '../types';
 import type { UserPYInfo } from './YT';
 import type { UserMarketInfo } from './Market';
 import { getRouterStatic } from './helper';
@@ -8,7 +8,7 @@ import { Multicall } from '../multicall';
 export class SDK {
     protected readonly routerStatic: RouterStatic;
 
-    constructor(protected readonly networkConnection: NetworkConnection, readonly chainId: number) {
+    constructor(protected readonly networkConnection: NetworkConnection, readonly chainId: ChainId) {
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 

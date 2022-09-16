@@ -1,5 +1,4 @@
-import { VotingEscrowPendleMainchain } from '@pendle/core-v2/typechain-types';
-import { ERC20, VePendle } from '../src';
+import { ERC20, VePendle, VePendleMainchain, isMainchain } from '../src';
 import { decimalFactor } from '../src/entities/helper';
 import {
     ACTIVE_CHAIN_ID,
@@ -26,10 +25,15 @@ describe(VePendle, () => {
 });
 
 describe('#contract', () => {
-    const ve = new VePendle(currentConfig.veAddress, networkConnection, ACTIVE_CHAIN_ID);
+    // only test if ACTIVE_CHAIN_ID is mainchain
+    if (!isMainchain(ACTIVE_CHAIN_ID)) {
+        console.info(`Testing chain ${ACTIVE_CHAIN_ID} is not mainchain. No #contract methods have been tested.`);
+        return;
+    }
+    const ve = new VePendleMainchain(currentConfig.veAddress, networkConnection, ACTIVE_CHAIN_ID);
     const pendle = new ERC20(currentConfig.pendle, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
-    const contract: VotingEscrowPendleMainchain = ve.contract as VotingEscrowPendleMainchain;
+    const contract = ve.contract;
 
     it('read contract', async () => {
         const pendleAddress = await contract.pendle();

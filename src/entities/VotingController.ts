@@ -1,5 +1,5 @@
 import type { PendleVotingControllerUpg } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection } from '../types';
+import type { Address, NetworkConnection, ChainId } from '../types';
 import { BigNumber } from 'bignumber.js';
 import type { ContractTransaction, Overrides } from 'ethers';
 import { BigNumber as BN, Contract, constants } from 'ethers';
@@ -13,7 +13,7 @@ export class VotingController {
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: number
+        readonly chainId: ChainId
     ) {
         if (!isMainchain(chainId)) {
             throw Error('Voting only available on main chain (Ethereum)');

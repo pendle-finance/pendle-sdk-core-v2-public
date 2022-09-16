@@ -4,6 +4,7 @@ import { abi as PendleERC20ABI } from '@pendle/core-v2/build/artifacts/contracts
 import type { BigNumberish, ContractTransaction, Overrides } from 'ethers';
 import { BigNumber as BN, Contract } from 'ethers';
 import { Multicall } from '../multicall';
+import { ChainId } from '../types';
 
 export class ERC20 {
     readonly contract: PendleERC20;
@@ -11,7 +12,7 @@ export class ERC20 {
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: number
+        readonly chainId: ChainId
     ) {
         this.contract = new Contract(address, PendleERC20ABI, networkConnection.provider) as PendleERC20;
     }

@@ -1,5 +1,5 @@
 import type { PendlePrincipalToken, RouterStatic } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection } from '../types';
+import type { Address, NetworkConnection, ChainId } from '../types';
 import type { UserPYInfo, PYInfo } from './YT';
 import { abi as PendlePrincipalTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendlePrincipalToken.sol/PendlePrincipalToken.json';
 import { Contract } from 'ethers';
@@ -16,7 +16,7 @@ export class PT {
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: number
+        readonly chainId: ChainId
     ) {
         this.ERC20 = new ERC20(address, networkConnection, chainId);
         this.contract = new Contract(

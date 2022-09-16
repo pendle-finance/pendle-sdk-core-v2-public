@@ -11,7 +11,6 @@ describe(Market, () => {
     const sender = WALLET().wallet;
     const scy = new SCY(currentMarket.SCY, networkConnection, ACTIVE_CHAIN_ID);
     const routerStatic = getRouterStatic(networkConnection.provider, ACTIVE_CHAIN_ID);
-    const multicall = currentConfig.multicall;
 
     it('#constructor', () => {
         expect(market).toBeInstanceOf(Market);

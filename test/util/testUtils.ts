@@ -16,8 +16,10 @@ import MUMBAI_TEST_ENV from '@pendle/core-v2/deployments/80001-testenv.json';
 
 config();
 
+type TestChainId = typeof CHAIN_ID.FUJI | typeof CHAIN_ID.MUMBAI;
+
 // Change this to the current active network
-export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID!);
+export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID!) as TestChainId;
 const LOCAL_CHAIN_ID = 31337;
 const USE_LOCAL = process.env.USE_LOCAL === '1';
 
@@ -82,6 +84,7 @@ export const CONTRACT_ADDRESSES = {
             ROUTER: MUMBAI_CORE_ADDRESSES.router,
             ROUTER_STATIC: MUMBAI_CORE_ADDRESSES.routerStatic,
             VE: MUMBAI_CORE_ADDRESSES.vePendle,
+            VOTING_CONTROLLER: 'NOT EXISTED',
             PENDLE: MUMBAI_CORE_ADDRESSES.PENDLE,
             PENDLE_TREASURY: MUMBAI_CORE_ADDRESSES.treasury,
         },
@@ -94,7 +97,7 @@ export const CONTRACT_ADDRESSES = {
         },
         TOKENS: MUMBAI_TEST_ENV.tokens,
     },
-};
+} as const;
 
 export const WALLET = () => ({
     wallet: (process.env.PRIVATE_KEY
@@ -107,7 +110,7 @@ export const WALLET = () => ({
 // 0n fuji: 0 for qiUSDC, 1 for qiAVAX, 2 for qiWETH
 const MARKET_TO_TEST = 1;
 
-export const testConfig = (chainId: number) => ({
+export const testConfig = (chainId: TestChainId) => ({
     chainId,
     deployer: CONTRACT_ADDRESSES[chainId].CORE.DEPLOYER,
     marketFactory: CONTRACT_ADDRESSES[chainId].CORE.MARKET_FACTORY,
@@ -123,8 +126,9 @@ export const testConfig = (chainId: number) => ({
     tokens: CONTRACT_ADDRESSES[chainId].TOKENS,
     markets: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS,
 
-    market: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST],
-    marketAddress: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST].market,
+    // TODO remove ! since MUMBAI does not has any market
+    market: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST]!,
+    marketAddress: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST]!.market,
     // choose the token to test for swap from raw token -> py
     tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.WETH,
 

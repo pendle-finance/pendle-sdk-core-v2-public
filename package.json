@@ -25,7 +25,7 @@
     "scripts": {
         "format": "yarn prettier --write \"{src,test}/**/*.{ts,js}\"",
         "lint": "yarn eslint \"{src,test}/**/*.{ts,js}\" --fix",
-        "check-types": "tsc --noemit --project tsconfig.build.json",
+        "check-types": "tsc --noemit --project tsconfig.json",
         "test": "yarn jest",
         "test:prepare": "yarn ts-node test/util/prepareMarket.ts && yarn test:approveRouter",
         "test:approveRouter": "yarn ts-node test/util/approveRouter.ts",
@@ -36,7 +36,7 @@
         "clean": "rm -rf dist/"
     },
     "dependencies": {
-        "@pendle/core-v2": "0.11.4-testnet",
+        "@pendle/core-v2": "0.11.8-testnet",
         "axios": "^0.27.2",
         "bignumber.js": "^9.1.0",
         "ethers": "^5.7.0"

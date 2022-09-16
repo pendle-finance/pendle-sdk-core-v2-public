@@ -1,5 +1,5 @@
 import type { PendleYieldToken, RouterStatic } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection, TokenAmount } from '../types';
+import type { Address, NetworkConnection, TokenAmount, ChainId } from '../types';
 import { BigNumber as BN, Contract } from 'ethers';
 import { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldToken.sol/PendleYieldToken.json';
 import { getRouterStatic } from './helper';
@@ -34,7 +34,7 @@ export class YT {
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: number
+        readonly chainId: ChainId
     ) {
         this.ERC20 = new ERC20(address, networkConnection, chainId);
         this.contract = new Contract(address, PendleYieldTokenABI, networkConnection.provider) as PendleYieldToken;
