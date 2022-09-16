@@ -7,12 +7,12 @@ import { calcSlippedDownAmount, getRouterStatic, isNativeToken } from './helper'
 import { ERC20 } from './ERC20';
 import { Multicall } from '../multicall';
 
-export type UserSCYInfo = {
+export type UserScyInfo = {
     balance: BN;
     rewards: TokenAmount[];
 };
 
-export class SCY {
+export class ScyEntity {
     readonly ERC20: ERC20;
     readonly contract: SCYBase;
     protected readonly routerStatic: RouterStatic;
@@ -25,6 +25,10 @@ export class SCY {
         this.ERC20 = new ERC20(address, networkConnection, chainId);
         this.contract = new Contract(address, SCYBaseABI, networkConnection.provider) as SCYBase;
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
+    }
+
+    async name(multicall?: Multicall) {
+        return Multicall.wrap(this.contract, multicall).callStatic.name();
     }
 
     /**
@@ -72,7 +76,19 @@ export class SCY {
             .redeem(receiver, amountScyToPull, baseAssetOut, calcSlippedDownAmount(amountBaseOut, slippage), overrides);
     }
 
-    async userInfo(user: Address, multicall?: Multicall): Promise<UserSCYInfo> {
+    async userInfo(user: Address, multicall?: Multicall): Promise<UserScyInfo> {
         return Multicall.wrap(this.routerStatic, multicall).callStatic.getUserSCYInfo(this.address, user);
+    }
+
+    async getTokensIn(multicall?: Multicall) {
+        return Multicall.wrap(this.contract, multicall).callStatic.getTokensIn();
+    }
+
+    async getTokensOut(multicall?: Multicall) {
+        return Multicall.wrap(this.contract, multicall).callStatic.getTokensOut();
+    }
+
+    async getRewardTokens(multicall?: Multicall) {
+        return Multicall.wrap(this.contract, multicall).callStatic.getRewardTokens();
     }
 }

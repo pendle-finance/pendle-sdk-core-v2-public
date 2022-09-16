@@ -1,21 +1,21 @@
 import { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import { ERC20 } from '../src';
 import { BigNumber as BN, ethers } from 'ethers';
-import { Market, PT } from '../src';
+import { MarketEntity, PtEntity } from '../src';
 import './util/bigNumberMatcher.ts';
 import { currentConfig, networkConnection } from './util/testUtils';
 
 describe('Multicall', () => {
     const chainId = currentConfig.chainId;
     const multicall = currentConfig.multicall;
-    let market: Market;
+    let market: MarketEntity;
     let pt: PendleERC20, yt: PendleERC20, scy: PendleERC20, dummy: PendleERC20;
 
     beforeAll(async () => {
-        market = new Market(currentConfig.marketAddress, networkConnection, chainId);
+        market = new MarketEntity(currentConfig.marketAddress, networkConnection, chainId);
         const marketInfo = await market.getMarketInfo();
         pt = new ERC20(marketInfo.pt, networkConnection, chainId).contract;
-        yt = new ERC20(await new PT(marketInfo.pt, networkConnection, chainId).YT(), networkConnection, chainId)
+        yt = new ERC20(await new PtEntity(marketInfo.pt, networkConnection, chainId).YT(), networkConnection, chainId)
             .contract;
         scy = new ERC20(marketInfo.scy, networkConnection, chainId).contract;
         dummy = new ERC20(ethers.constants.AddressZero, networkConnection, chainId).contract;

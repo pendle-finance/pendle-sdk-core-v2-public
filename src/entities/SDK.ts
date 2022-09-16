@@ -1,7 +1,7 @@
 import type { RouterStatic } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, ChainId } from '../types';
-import type { UserPYInfo } from './YT';
-import type { UserMarketInfo } from './Market';
+import type { UserPyInfo } from './YtEntity';
+import type { UserMarketInfo } from './MarketEntity';
 import { getRouterStatic } from './helper';
 import { Multicall } from '../multicall';
 
@@ -18,7 +18,7 @@ export class SDK {
      * @param pys PT and YT token addresses that we want to check
      * @returns UserPYInfo object array representing user's PY positions
      */
-    async getUserPYPositionsByPYs(user: Address, pys: Address[], multicall?: Multicall): Promise<UserPYInfo[]> {
+    async getUserPYPositionsByPYs(user: Address, pys: Address[], multicall?: Multicall): Promise<UserPyInfo[]> {
         return Multicall.wrap(this.routerStatic, multicall).callStatic.getUserPYPositionsByPYs(user, pys);
     }
 

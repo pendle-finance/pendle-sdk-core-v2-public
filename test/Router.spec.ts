@@ -1,4 +1,4 @@
-import { Router, SCY } from '../src';
+import { Router, ScyEntity } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -54,7 +54,7 @@ describe(Router, () => {
     const scyAddress = currentConfig.market.SCY;
     const ptAddress = currentConfig.market.PT;
     const ytAddress = currentConfig.market.YT;
-    const scySdk = new SCY(scyAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const scySdk = new ScyEntity(scyAddress, networkConnection, ACTIVE_CHAIN_ID);
 
     it('#constructor', async () => {
         expect(router).toBeInstanceOf(Router);

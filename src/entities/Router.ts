@@ -19,11 +19,10 @@ import {
     isSameAddress,
     isKyberSupportedChain,
 } from './helper';
-import { Market } from './Market';
-import { SCY as SCYEntity } from './SCY';
-import { YT as YTEntity } from './YT';
+import { MarketEntity } from './MarketEntity';
+import { ScyEntity } from './ScyEntity';
+import { YtEntity } from './YtEntity';
 import { RouterStatic } from '@pendle/core-v2/typechain-types';
-import { PT } from './PT';
 import { NoRouteFoundError } from '../errors';
 
 export type KybercallData = {
@@ -121,12 +120,12 @@ export class Router {
     }> {
         const possibleOutAmounts = tokenMintScyList.map(async (tokenMintScy) => {
             const kybercallData = await this.kybercall(tokenIn, tokenMintScy, netTokenIn);
-            const input = {
+            const input: TokenInputStruct = {
                 tokenIn,
                 netTokenIn,
                 tokenMintScy,
                 kybercall: kybercallData.encodedSwapData,
-            } as TokenInputStruct;
+            };
 
             // return -1 to avoid swapping through this token
             if (kybercallData.encodedSwapData === undefined) {
@@ -153,12 +152,12 @@ export class Router {
     }> {
         const possibleOutAmounts = tokenMintScyList.map(async (tokenMintScy) => {
             const kybercallData = await this.kybercall(tokenIn, tokenMintScy, netTokenIn);
-            const input = {
+            const input: TokenInputStruct = {
                 tokenIn,
                 netTokenIn,
                 tokenMintScy,
                 kybercall: kybercallData.encodedSwapData,
-            } as TokenInputStruct;
+            };
 
             // return -1 to avoid swapping through this token
             if (kybercallData.encodedSwapData === undefined) {
@@ -191,7 +190,7 @@ export class Router {
         kybercallData: KybercallData;
     }> {
         const possibleOutAmounts = tokenRedeemScyList.map(async (tokenRedeemScy) => {
-            const amountIn = await new SCYEntity(
+            const amountIn = await new ScyEntity(
                 SCY,
                 this.networkConnection,
                 this.chainId
@@ -221,20 +220,21 @@ export class Router {
 
     async addLiquidityDualScyAndPt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         scyDesired: BigNumberish,
         ptDesired: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const [netLpOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.addLiquidityDualScyAndPt(receiver, market, scyDesired, ptDesired, Router.MIN_AMOUNT);
+            .callStatic.addLiquidityDualScyAndPt(receiver, marketAddr, scyDesired, ptDesired, Router.MIN_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
             .addLiquidityDualScyAndPt(
                 receiver,
-                market,
+                marketAddr,
                 scyDesired,
                 ptDesired,
                 calcSlippedDownAmount(netLpOut, slippage),
@@ -244,18 +244,19 @@ export class Router {
 
     async addLiquidityDualTokenAndPt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         tokenIn: Address,
         tokenDesired: BigNumberish,
         ptDesired: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const [netLpOut] = await this.contract
             .connect(this.networkConnection.signer!)
             .callStatic.addLiquidityDualTokenAndPt(
                 receiver,
-                market,
+                marketAddr,
                 tokenIn,
                 tokenDesired,
                 ptDesired,
@@ -268,7 +269,7 @@ export class Router {
             .connect(this.networkConnection.signer!)
             .addLiquidityDualTokenAndPt(
                 receiver,
-                market,
+                marketAddr,
                 tokenIn,
                 tokenDesired,
                 ptDesired,
@@ -282,20 +283,21 @@ export class Router {
 
     async addLiquiditySinglePt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         netPtIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const { netLpOut, netPtToSwap } = await this.routerStatic.callStatic.addLiquiditySinglePtStatic(
-            market,
+            marketAddr,
             netPtIn
         );
         return this.contract
             .connect(this.networkConnection.signer!)
             .addLiquiditySinglePt(
                 receiver,
-                market,
+                marketAddr,
                 netPtIn,
                 calcSlippedDownAmount(netLpOut, slippage),
                 Router.guessInApproxParams(netPtToSwap, slippage),
@@ -305,13 +307,14 @@ export class Router {
 
     async addLiquiditySingleScy(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         netScyIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const { netLpOut, netPtFromSwap } = await this.routerStatic.callStatic.addLiquiditySingleScyStatic(
-            market,
+            marketAddr,
             netScyIn
         );
 
@@ -319,7 +322,7 @@ export class Router {
             .connect(this.networkConnection.signer!)
             .addLiquiditySingleScy(
                 receiver,
-                market,
+                marketAddr,
                 netScyIn,
                 calcSlippedDownAmount(netLpOut, slippage),
                 Router.guessOutApproxParams(netPtFromSwap, slippage),
@@ -329,36 +332,39 @@ export class Router {
 
     async addLiquiditySingleToken(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         tokenIn: Address,
         netTokenIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
-        const tokenMintScyList = await new SCYEntity(
-            scy,
-            this.networkConnection,
-            this.chainId
-        ).contract.callStatic.getTokensIn();
+        if (typeof market === 'string') {
+            market = new MarketEntity(market, this.networkConnection, this.chainId);
+        }
+        const marketAddr = market.address;
+        const tokenMintScyList = await market.scyEntity().then((scy) => scy.getTokensIn());
 
         const { netLpOut, netPtFromSwap, input } = await this.zapInputParams(
             tokenIn,
             netTokenIn,
             tokenMintScyList,
             (input) =>
-                this.routerStatic.callStatic.addLiquiditySingleBaseTokenStatic(market, input.tokenIn, input.netTokenIn)
+                this.routerStatic.callStatic.addLiquiditySingleBaseTokenStatic(
+                    marketAddr,
+                    input.tokenIn,
+                    input.netTokenIn
+                )
         );
 
         if (netLpOut.eq(etherConstants.NegativeOne)) {
-            throw NoRouteFoundError.action('zap in', tokenIn, market);
+            throw NoRouteFoundError.action('zap in', tokenIn, marketAddr);
         }
 
         return this.contract
             .connect(this.networkConnection.signer!)
             .addLiquiditySingleToken(
                 receiver,
-                market,
+                marketAddr,
                 calcSlippedDownAmount(netLpOut, slippage),
                 Router.guessOutApproxParams(netPtFromSwap, slippage),
                 input,
@@ -371,19 +377,26 @@ export class Router {
 
     async removeLiquidityDualScyAndPt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         lpToRemove: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const [netScyOut, netPtOut] = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.removeLiquidityDualScyAndPt(receiver, market, lpToRemove, Router.MIN_AMOUNT, Router.MIN_AMOUNT);
+            .callStatic.removeLiquidityDualScyAndPt(
+                receiver,
+                marketAddr,
+                lpToRemove,
+                Router.MIN_AMOUNT,
+                Router.MIN_AMOUNT
+            );
         return this.contract
             .connect(this.networkConnection.signer!)
             .removeLiquidityDualScyAndPt(
                 receiver,
-                market,
+                marketAddr,
                 lpToRemove,
                 calcSlippedDownAmount(netScyOut, slippage),
                 calcSlippedDownAmount(netPtOut, slippage),
@@ -393,17 +406,18 @@ export class Router {
 
     async removeLiquidityDualTokenAndPt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         lpToRemove: BigNumberish,
         tokenOut: Address,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const [netIbTokenOut, netPtOut] = await this.contract
             .connect(this.networkConnection.signer!)
             .callStatic.removeLiquidityDualTokenAndPt(
                 receiver,
-                market,
+                marketAddr,
                 lpToRemove,
                 tokenOut,
                 Router.MIN_AMOUNT,
@@ -413,7 +427,7 @@ export class Router {
             .connect(this.networkConnection.signer!)
             .removeLiquidityDualTokenAndPt(
                 receiver,
-                market,
+                marketAddr,
                 lpToRemove,
                 tokenOut,
                 calcSlippedDownAmount(netIbTokenOut, slippage),
@@ -424,20 +438,21 @@ export class Router {
 
     async removeLiquiditySinglePt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         lpToRemove: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const { netPtOut, netPtFromSwap } = await this.routerStatic.callStatic.removeLiquiditySinglePtStatic(
-            market,
+            marketAddr,
             lpToRemove
         );
         return this.contract
             .connect(this.networkConnection.signer!)
             .removeLiquiditySinglePt(
                 receiver,
-                market,
+                marketAddr,
                 lpToRemove,
                 calcSlippedDownAmount(netPtOut, slippage),
                 Router.guessOutApproxParams(netPtFromSwap, slippage),
@@ -447,17 +462,18 @@ export class Router {
 
     async removeLiquiditySingleScy(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         lpToRemove: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const { netScyOut } = await this.routerStatic.callStatic.removeLiquiditySingleScyStatic(market, lpToRemove);
+        const marketAddr = typeof market === 'string' ? market : market.address;
+        const { netScyOut } = await this.routerStatic.callStatic.removeLiquiditySingleScyStatic(marketAddr, lpToRemove);
         return this.contract
             .connect(this.networkConnection.signer!)
             .removeLiquiditySingleScy(
                 receiver,
-                market,
+                marketAddr,
                 lpToRemove,
                 calcSlippedDownAmount(netScyOut, slippage),
                 overrides
@@ -466,68 +482,75 @@ export class Router {
 
     async removeLiquiditySingleToken(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         lpToRemove: BigNumberish,
         tokenOut: Address,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
-        const [tokenRedeemScyList, approxScyIn] = await Promise.all([
-            new SCYEntity(scy, this.networkConnection, this.chainId).contract.callStatic.getTokensOut(),
+        if (typeof market === 'string') {
+            market = new MarketEntity(market, this.networkConnection, this.chainId);
+        }
+        const marketAddr = market.address;
+        const getSCYPromise = market.scyEntity();
+        const [scy, tokenRedeemScyList, approxScyIn] = await Promise.all([
+            getSCYPromise,
+            getSCYPromise.then((scy) => scy.getTokensOut()),
             this.contract
                 .connect(this.networkConnection.signer!)
-                .callStatic.removeLiquiditySingleScy(receiver, market, lpToRemove, Router.MIN_AMOUNT),
+                .callStatic.removeLiquiditySingleScy(receiver, marketAddr, lpToRemove, Router.MIN_AMOUNT),
         ]);
 
         const { output, netOut } = await this.outputParams(
-            scy,
+            scy.address,
             approxScyIn,
             tokenOut,
             tokenRedeemScyList,
             (output) =>
                 this.contract
                     .connect(this.networkConnection.signer!)
-                    .callStatic.removeLiquiditySingleToken(receiver, market, lpToRemove, output),
+                    .callStatic.removeLiquiditySingleToken(receiver, marketAddr, lpToRemove, output),
             slippage
         );
 
         if (netOut.eq(etherConstants.NegativeOne)) {
-            throw NoRouteFoundError.action('zap out', market, tokenOut);
+            throw NoRouteFoundError.action('zap out', marketAddr, tokenOut);
         }
 
         return this.contract
             .connect(this.networkConnection.signer!)
-            .removeLiquiditySingleToken(receiver, market, lpToRemove, output, overrides);
+            .removeLiquiditySingleToken(receiver, marketAddr, lpToRemove, output, overrides);
     }
 
     async swapExactPtForScy(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         exactPtIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const netScyOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapExactPtForScy(receiver, market, exactPtIn, Router.MIN_AMOUNT);
+            .callStatic.swapExactPtForScy(receiver, marketAddr, exactPtIn, Router.MIN_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
-            .swapExactPtForScy(receiver, market, exactPtIn, calcSlippedDownAmount(netScyOut, slippage), overrides);
+            .swapExactPtForScy(receiver, marketAddr, exactPtIn, calcSlippedDownAmount(netScyOut, slippage), overrides);
     }
 
     async swapPtForExactScy(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         exactScyOut: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const netPtIn = await this.contract
             .connect(this.networkConnection.signer!)
             .callStatic.swapPtForExactScy(
                 receiver,
-                market,
+                marketAddr,
                 exactScyOut,
                 Router.MAX_AMOUNT,
                 Router.STATIC_APPROX_PARAMS
@@ -536,7 +559,7 @@ export class Router {
             .connect(this.networkConnection.signer!)
             .swapPtForExactScy(
                 receiver,
-                market,
+                marketAddr,
                 exactScyOut,
                 calcSlippedUpAmount(netPtIn, slippage),
                 Router.guessInApproxParams(netPtIn, slippage),
@@ -546,39 +569,39 @@ export class Router {
 
     async swapScyForExactPt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         exactPtOut: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const netScyIn = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapScyForExactPt(receiver, market, exactPtOut, Router.MAX_AMOUNT);
+            .callStatic.swapScyForExactPt(receiver, marketAddr, exactPtOut, Router.MAX_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
-            .swapScyForExactPt(receiver, market, exactPtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
+            .swapScyForExactPt(receiver, marketAddr, exactPtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
     }
 
     async swapExactTokenForPt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         tokenIn: Address,
         netTokenIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const { scy } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
-        const tokenMintScyList = await new SCYEntity(
-            scy,
-            this.networkConnection,
-            this.chainId
-        ).contract.callStatic.getTokensIn();
+        if (typeof market === 'string') {
+            market = new MarketEntity(market, this.networkConnection, this.chainId);
+        }
+        const marketAddr = market.address;
+        const tokenMintScyList = await market.scyEntity().then((scy) => scy.getTokensIn());
         const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
             this.contract
                 .connect(this.networkConnection.signer!)
                 .callStatic.swapExactTokenForPt(
                     receiver,
-                    market,
+                    marketAddr,
                     Router.MIN_AMOUNT,
                     Router.STATIC_APPROX_PARAMS,
                     input,
@@ -589,14 +612,14 @@ export class Router {
         );
 
         if (netOut.eq(etherConstants.NegativeOne)) {
-            throw NoRouteFoundError.action('swap', tokenIn, market);
+            throw NoRouteFoundError.action('swap', tokenIn, marketAddr);
         }
 
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapExactTokenForPt(
                 receiver,
-                market,
+                marketAddr,
                 calcSlippedDownAmount(netOut, slippage),
                 Router.guessOutApproxParams(netOut, slippage),
                 input,
@@ -609,19 +632,26 @@ export class Router {
 
     async swapExactScyForPt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         exactScyIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const netPtOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapExactScyForPt(receiver, market, exactScyIn, Router.MIN_AMOUNT, Router.STATIC_APPROX_PARAMS);
+            .callStatic.swapExactScyForPt(
+                receiver,
+                marketAddr,
+                exactScyIn,
+                Router.MIN_AMOUNT,
+                Router.STATIC_APPROX_PARAMS
+            );
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapExactScyForPt(
                 receiver,
-                market,
+                marketAddr,
                 exactScyIn,
                 calcSlippedDownAmount(netPtOut, slippage),
                 Router.guessOutApproxParams(netPtOut, slippage),
@@ -631,96 +661,96 @@ export class Router {
 
     async mintScyFromToken(
         receiver: Address,
-        SCY: Address,
+        SCY: Address | ScyEntity,
         tokenIn: Address,
         netTokenIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const tokenMintScyList = await new SCYEntity(
-            SCY,
-            this.networkConnection,
-            this.chainId
-        ).contract.callStatic.getTokensIn();
+        if (typeof SCY === 'string') {
+            SCY = new ScyEntity(SCY, this.networkConnection, this.chainId);
+        }
+        const SCYAddr = SCY.address;
+        const tokenMintScyList = await SCY.getTokensIn();
         const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
             this.contract
                 .connect(this.networkConnection.signer!)
-                .callStatic.mintScyFromToken(receiver, SCY, Router.MIN_AMOUNT, input)
+                .callStatic.mintScyFromToken(receiver, SCYAddr, Router.MIN_AMOUNT, input)
         );
 
         if (netOut.eq(etherConstants.NegativeOne)) {
-            throw NoRouteFoundError.action('mint', tokenIn, SCY);
+            throw NoRouteFoundError.action('mint', tokenIn, SCYAddr);
         }
 
         return this.contract
             .connect(this.networkConnection.signer!)
-            .mintScyFromToken(receiver, SCY, calcSlippedDownAmount(netOut, slippage), input, overrides);
+            .mintScyFromToken(receiver, SCYAddr, calcSlippedDownAmount(netOut, slippage), input, overrides);
     }
 
     async redeemScyToToken(
         receiver: Address,
-        SCY: Address,
+        SCY: Address | ScyEntity,
         netScyIn: BigNumberish,
         tokenOut: Address,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const tokenRedeemScyList = await new SCYEntity(
-            SCY,
-            this.networkConnection,
-            this.chainId
-        ).contract.callStatic.getTokensOut();
+        if (typeof SCY === 'string') {
+            SCY = new ScyEntity(SCY, this.networkConnection, this.chainId);
+        }
+        const SCYAddr = SCY.address;
+        const tokenRedeemScyList = await SCY.getTokensOut();
         const { output, netOut } = await this.outputParams(
-            SCY,
+            SCY.address,
             netScyIn,
             tokenOut,
             tokenRedeemScyList,
             (output) =>
                 this.contract
                     .connect(this.networkConnection.signer!)
-                    .callStatic.redeemScyToToken(receiver, SCY, netScyIn, output),
+                    .callStatic.redeemScyToToken(receiver, SCYAddr, netScyIn, output),
             slippage
         );
 
         if (netOut.eq(etherConstants.NegativeOne)) {
-            throw NoRouteFoundError.action('redeem', SCY, tokenOut);
+            throw NoRouteFoundError.action('redeem', SCY.address, tokenOut);
         }
 
         return this.contract
             .connect(this.networkConnection.signer!)
-            .redeemScyToToken(receiver, SCY, netScyIn, output, overrides);
+            .redeemScyToToken(receiver, SCY.address, netScyIn, output, overrides);
     }
 
     async mintPyFromToken(
         receiver: Address,
-        YT: Address,
+        yt: Address | YtEntity,
         tokenIn: Address,
         netTokenIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const SCY = await new YTEntity(YT, this.networkConnection, this.chainId).contract.callStatic.SCY();
-        const tokenMintScyList = await new SCYEntity(
-            SCY,
-            this.networkConnection,
-            this.chainId
-        ).contract.callStatic.getTokensIn();
+        if (typeof yt === 'string') {
+            yt = new YtEntity(yt, this.networkConnection, this.chainId);
+        }
+        const ytAddr = yt.address;
+        const SCY = await yt.scyEntity();
+        const tokenMintScyList = await SCY.getTokensIn();
         const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
             this.contract
                 .connect(this.networkConnection.signer!)
-                .callStatic.mintPyFromToken(receiver, YT, Router.MIN_AMOUNT, input, {
+                .callStatic.mintPyFromToken(receiver, ytAddr, Router.MIN_AMOUNT, input, {
                     value: isNativeToken(tokenIn) ? netTokenIn : undefined,
                 })
         );
 
         if (netOut.eq(etherConstants.NegativeOne)) {
             // TODO: should we use `mintPY` as the action name instead of `mint`?
-            throw NoRouteFoundError.action('mint', tokenIn, YT);
+            throw NoRouteFoundError.action('mint', tokenIn, ytAddr);
         }
 
         return this.contract
             .connect(this.networkConnection.signer!)
-            .mintPyFromToken(receiver, YT, calcSlippedDownAmount(netOut, slippage), input, {
+            .mintPyFromToken(receiver, ytAddr, calcSlippedDownAmount(netOut, slippage), input, {
                 ...overrides,
                 value: isNativeToken(tokenIn) ? netTokenIn : undefined,
             });
@@ -728,55 +758,65 @@ export class Router {
 
     async redeemPyToToken(
         receiver: Address,
-        YT: Address,
+        yt: Address | YtEntity,
         netPyIn: BigNumberish,
         tokenOut: Address,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const ytStatic = new YTEntity(YT, this.networkConnection, this.chainId).contract.callStatic;
-        const [SCY, pyIndex] = await Promise.all([ytStatic.SCY(), ytStatic.pyIndexCurrent()]);
-        const tokenRedeemScyList = await new SCYEntity(
-            SCY,
-            this.networkConnection,
-            this.chainId
-        ).contract.callStatic.getTokensOut();
+        if (typeof yt === 'string') {
+            yt = new YtEntity(yt, this.networkConnection, this.chainId);
+        }
+        const ytAddr = yt.address;
+        const getSCYPromise = yt.scyEntity();
+        const [SCY, tokenRedeemScyList, pyIndex] = await Promise.all([
+            getSCYPromise,
+            getSCYPromise.then((scy) => scy.getTokensOut()),
+            yt.pyIndexCurrent(),
+        ]);
         const { output, netOut } = await this.outputParams(
-            SCY,
+            SCY.address,
             BN.from(netPyIn).mul(etherConstants.WeiPerEther).div(pyIndex),
             tokenOut,
             tokenRedeemScyList,
             (output) =>
                 this.contract
                     .connect(this.networkConnection.signer!)
-                    .callStatic.redeemPyToToken(receiver, YT, netPyIn, output),
+                    .callStatic.redeemPyToToken(receiver, ytAddr, netPyIn, output),
             slippage
         );
 
         if (netOut.eq(etherConstants.NegativeOne)) {
-            throw NoRouteFoundError.action('redeem', YT, tokenOut);
+            throw NoRouteFoundError.action('redeem', ytAddr, tokenOut);
         }
 
         return this.contract
             .connect(this.networkConnection.signer!)
-            .redeemPyToToken(receiver, YT, netPyIn, output, overrides);
+            .redeemPyToToken(receiver, ytAddr, netPyIn, output, overrides);
     }
 
     async swapExactScyForYt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         exactScyIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const netYtOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapExactScyForYt(receiver, market, exactScyIn, Router.MIN_AMOUNT, Router.STATIC_APPROX_PARAMS);
+            .callStatic.swapExactScyForYt(
+                receiver,
+                marketAddr,
+                exactScyIn,
+                Router.MIN_AMOUNT,
+                Router.STATIC_APPROX_PARAMS
+            );
         return this.contract
             .connect(this.networkConnection.signer!)
             .swapExactScyForYt(
                 receiver,
-                market,
+                marketAddr,
                 exactScyIn,
                 calcSlippedDownAmount(netYtOut, slippage),
                 Router.guessOutApproxParams(netYtOut, slippage),
@@ -786,16 +826,17 @@ export class Router {
 
     async swapYtForExactScy(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         exactScyOut: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const netYtIn = await this.contract
             .connect(this.networkConnection.signer!)
             .callStatic.swapYtForExactScy(
                 receiver,
-                market,
+                marketAddr,
                 exactScyOut,
                 Router.MAX_AMOUNT,
                 Router.STATIC_APPROX_PARAMS
@@ -804,7 +845,7 @@ export class Router {
             .connect(this.networkConnection.signer!)
             .swapYtForExactScy(
                 receiver,
-                market,
+                marketAddr,
                 exactScyOut,
                 calcSlippedUpAmount(netYtIn, slippage),
                 Router.guessInApproxParams(netYtIn, slippage),
@@ -814,90 +855,97 @@ export class Router {
 
     async swapExactPtForToken(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         exactPtIn: BigNumberish,
         tokenOut: Address,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const { scy, pt } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
-        const [tokenRedeemScyList, netScyIn] = await Promise.all([
-            new SCYEntity(scy, this.networkConnection, this.chainId).contract.callStatic.getTokensOut(),
+        if (typeof market === 'string') {
+            market = new MarketEntity(market, this.networkConnection, this.chainId);
+        }
+        const marketAddr = market.address;
+        const getSCYPromise = market.scyEntity();
+        const [scy, tokenRedeemScyList, netScyIn] = await Promise.all([
+            getSCYPromise,
+            getSCYPromise.then((scy) => scy.getTokensOut()),
             this.contract
                 .connect(this.networkConnection.signer!)
-                .callStatic.swapExactPtForScy(receiver, market, exactPtIn, Router.MIN_AMOUNT),
+                .callStatic.swapExactPtForScy(receiver, marketAddr, exactPtIn, Router.MIN_AMOUNT),
         ]);
         const { output, netOut } = await this.outputParams(
-            scy,
+            scy.address,
             netScyIn,
             tokenOut,
             tokenRedeemScyList,
             (output) =>
                 this.contract
                     .connect(this.networkConnection.signer!)
-                    .callStatic.swapExactPtForToken(receiver, market, exactPtIn, output),
+                    .callStatic.swapExactPtForToken(receiver, marketAddr, exactPtIn, output),
             slippage
         );
 
         if (netOut.eq(etherConstants.NegativeOne)) {
-            throw NoRouteFoundError.action('swap', pt, tokenOut);
+            throw NoRouteFoundError.action('swap', await market.pt(), tokenOut);
         }
 
         return this.contract
             .connect(this.networkConnection.signer!)
-            .swapExactPtForToken(receiver, market, exactPtIn, output, overrides);
+            .swapExactPtForToken(receiver, marketAddr, exactPtIn, output, overrides);
     }
 
     async swapExactYtForScy(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         exactYtIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const netScyOut = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapExactYtForScy(receiver, market, exactYtIn, 0);
+            .callStatic.swapExactYtForScy(receiver, marketAddr, exactYtIn, 0);
         return this.contract
             .connect(this.networkConnection.signer!)
-            .swapExactYtForScy(receiver, market, exactYtIn, calcSlippedDownAmount(netScyOut, slippage), overrides);
+            .swapExactYtForScy(receiver, marketAddr, exactYtIn, calcSlippedDownAmount(netScyOut, slippage), overrides);
     }
 
     async swapScyForExactYt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         exactYtOut: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
+        const marketAddr = typeof market === 'string' ? market : market.address;
         const netScyIn = await this.contract
             .connect(this.networkConnection.signer!)
-            .callStatic.swapScyForExactYt(receiver, market, exactYtOut, Router.MAX_AMOUNT);
+            .callStatic.swapScyForExactYt(receiver, marketAddr, exactYtOut, Router.MAX_AMOUNT);
         return this.contract
             .connect(this.networkConnection.signer!)
-            .swapScyForExactYt(receiver, market, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
+            .swapScyForExactYt(receiver, marketAddr, exactYtOut, calcSlippedUpAmount(netScyIn, slippage), overrides);
     }
 
     async swapExactTokenForYt(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         tokenIn: Address,
         netTokenIn: BigNumberish,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const { scy, pt } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
-        const tokenMintScyList = await new SCYEntity(
-            scy,
-            this.networkConnection,
-            this.chainId
-        ).contract.callStatic.getTokensIn();
+        if (typeof market === 'string') {
+            market = new MarketEntity(market, this.networkConnection, this.chainId);
+        }
+        const marketAddr = market.address;
+        const scy = await market.scyEntity();
+        const tokenMintScyList = await scy.getTokensIn();
         const { netOut, input } = await this.inputParams(tokenIn, netTokenIn, tokenMintScyList, (input) =>
             this.contract
                 .connect(this.networkConnection.signer!)
                 .callStatic.swapExactTokenForYt(
                     receiver,
-                    market,
+                    marketAddr,
                     Router.MIN_AMOUNT,
                     Router.STATIC_APPROX_PARAMS,
                     input,
@@ -908,8 +956,8 @@ export class Router {
         );
 
         if (netOut.eq(etherConstants.NegativeOne)) {
-            // TODO: One additional call to get the YT address, does it worth it?
-            let yt = await new PT(pt, this.networkConnection, this.chainId).contract.callStatic.YT();
+            // TODO: One additional call to get the yt address, does it worth it?
+            let yt = await market.ptEntity().then((pt) => pt.yt());
             throw NoRouteFoundError.action('swap', tokenIn, yt);
         }
 
@@ -917,7 +965,7 @@ export class Router {
             .connect(this.networkConnection.signer!)
             .swapExactTokenForYt(
                 receiver,
-                market,
+                marketAddr,
                 calcSlippedDownAmount(netOut, slippage),
                 Router.guessOutApproxParams(netOut, slippage),
                 input,
@@ -930,39 +978,44 @@ export class Router {
 
     async swapExactYtForToken(
         receiver: Address,
-        market: Address,
+        market: Address | MarketEntity,
         exactYtIn: BigNumberish,
         tokenOut: Address,
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const { scy, pt } = await new Market(market, this.networkConnection, this.chainId).getMarketInfo();
-        const [tokenRedeemScyList, netScyIn] = await Promise.all([
-            new SCYEntity(scy, this.networkConnection, this.chainId).contract.callStatic.getTokensOut(),
+        if (typeof market === 'string') {
+            market = new MarketEntity(market, this.networkConnection, this.chainId);
+        }
+        const marketAddr = market.address;
+        const getSCYPromise = market.scyEntity();
+        const [scy, tokenRedeemScyList, netScyIn] = await Promise.all([
+            getSCYPromise,
+            getSCYPromise.then((scy) => scy.getTokensOut()),
             this.contract
                 .connect(this.networkConnection.signer!)
-                .callStatic.swapExactYtForScy(receiver, market, exactYtIn, Router.MIN_AMOUNT),
+                .callStatic.swapExactYtForScy(receiver, marketAddr, exactYtIn, Router.MIN_AMOUNT),
         ]);
         const { output, netOut } = await this.outputParams(
-            scy,
+            scy.address,
             netScyIn,
             tokenOut,
             tokenRedeemScyList,
             (output) =>
                 this.contract
                     .connect(this.networkConnection.signer!)
-                    .callStatic.swapExactYtForToken(receiver, market, exactYtIn, output),
+                    .callStatic.swapExactYtForToken(receiver, marketAddr, exactYtIn, output),
             slippage
         );
 
         if (netOut.eq(etherConstants.NegativeOne)) {
-            // TODO: One additional call to get the YT address, does it worth it?
-            let yt = await new PT(pt, this.networkConnection, this.chainId).contract.callStatic.YT();
+            // TODO: One additional call to get the yt address, does it worth it?
+            let yt = await market.ptEntity().then((pt) => pt.yt());
             throw NoRouteFoundError.action('swap', yt, tokenOut);
         }
 
         return this.contract
             .connect(this.networkConnection.signer!)
-            .swapExactYtForToken(receiver, market, exactYtIn, output, overrides);
+            .swapExactYtForToken(receiver, marketAddr, exactYtIn, output, overrides);
     }
 }

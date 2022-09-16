@@ -1,5 +1,5 @@
 import { Contract } from 'ethers';
-import { ERC20, SCY, Multicall } from '../src';
+import { ERC20, ScyEntity, Multicall } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -12,13 +12,13 @@ import {
 import { getBalance, approveHelper, REDEEM_FACTOR, SLIPPAGE_TYPE2, DEFAULT_MINT_AMOUNT } from './util/testHelper';
 import './util/bigNumberMatcher';
 
-describe(SCY, () => {
+describe(ScyEntity, () => {
     const scyAddress = currentConfig.market.SCY;
-    const scy = new SCY(scyAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const scy = new ScyEntity(scyAddress, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
 
     it('#constructor', () => {
-        expect(scy).toBeInstanceOf(SCY);
+        expect(scy).toBeInstanceOf(ScyEntity);
         expect(scy.address).toBe(scyAddress);
         expect(scy.chainId).toBe(ACTIVE_CHAIN_ID);
         expect(scy.contract).toBeInstanceOf(Contract);

@@ -1,12 +1,12 @@
 import { Contract } from 'ethers';
-import { ERC20, PT } from '../src';
+import { ERC20, PtEntity } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 
-describe(PT, () => {
-    const pt = new PT(currentConfig.market.PT, networkConnection, ACTIVE_CHAIN_ID);
+describe(PtEntity, () => {
+    const pt = new PtEntity(currentConfig.market.PT, networkConnection, ACTIVE_CHAIN_ID);
 
     it('#constructor', async () => {
-        expect(pt).toBeInstanceOf(PT);
+        expect(pt).toBeInstanceOf(PtEntity);
         expect(pt.address).toBe(currentConfig.market.PT);
         expect(pt.chainId).toBe(ACTIVE_CHAIN_ID);
         expect(pt.contract).toBeInstanceOf(Contract);

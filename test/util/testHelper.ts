@@ -1,6 +1,6 @@
 import { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import { BigNumber as BN, BigNumberish, constants } from 'ethers';
-import { ERC20, Address, Market } from '../../src';
+import { ERC20, Address, MarketEntity } from '../../src';
 import { isNativeToken } from '../../src/entities/helper';
 import { ACTIVE_CHAIN_ID, networkConnection, BLOCK_CONFIRMATION } from './testUtils';
 
@@ -78,7 +78,7 @@ export async function stalkAccount(user: Address, markets: any[]) {
         console.log('Market: ', market.symbol);
         console.log('Portfolio');
 
-        const marketContract = new Market(market.market, networkConnection, ACTIVE_CHAIN_ID).contract;
+        const marketContract = new MarketEntity(market.market, networkConnection, ACTIVE_CHAIN_ID).contract;
 
         console.log('balanceOf');
         console.log('market                 :', (await marketContract.balanceOf(user)).toString());

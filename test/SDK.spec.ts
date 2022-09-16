@@ -1,5 +1,5 @@
 import { SDK } from '../src/entities/SDK';
-import { Market, PT, SCY, YT, Multicall } from '../src';
+import { MarketEntity, PtEntity, ScyEntity, YtEntity, Multicall } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, describeWithMulticall } from './util/testUtils';
 import { decimalFactor } from '../src/entities/helper';
 import './util/bigNumberMatcher';
@@ -12,10 +12,10 @@ describe(SDK, () => {
     const ptAddress = currentConfig.market.PT;
     const ytAddress = currentConfig.market.YT;
 
-    const pt = new PT(ptAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const yt = new YT(ytAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const market = new Market(marketAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const scy = new SCY(scyAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const pt = new PtEntity(ptAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const yt = new YtEntity(ytAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const market = new MarketEntity(marketAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const scy = new ScyEntity(scyAddress, networkConnection, ACTIVE_CHAIN_ID);
 
     it('#constructor', async () => {
         expect(sdk).toBeInstanceOf(SDK);

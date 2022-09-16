@@ -1,19 +1,19 @@
 import { Contract } from 'ethers';
-import { Market, SCY, Multicall } from '../src';
+import { MarketEntity, ScyEntity, Multicall } from '../src';
 import { decimalFactor, getRouterStatic } from '../src/entities/helper';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET, describeWithMulticall } from './util/testUtils';
 import './util/bigNumberMatcher';
 
-describe(Market, () => {
+describe(MarketEntity, () => {
     const currentMarket = currentConfig.market;
-    const market = new Market(currentMarket.market, networkConnection, ACTIVE_CHAIN_ID);
+    const market = new MarketEntity(currentMarket.market, networkConnection, ACTIVE_CHAIN_ID);
     const contract = market.contract;
     const sender = WALLET().wallet;
-    const scy = new SCY(currentMarket.SCY, networkConnection, ACTIVE_CHAIN_ID);
+    const scy = new ScyEntity(currentMarket.SCY, networkConnection, ACTIVE_CHAIN_ID);
     const routerStatic = getRouterStatic(networkConnection.provider, ACTIVE_CHAIN_ID);
 
     it('#constructor', () => {
-        expect(market).toBeInstanceOf(Market);
+        expect(market).toBeInstanceOf(MarketEntity);
         expect(market.address).toBe(currentConfig.marketAddress);
         expect(market.chainId).toBe(ACTIVE_CHAIN_ID);
         expect(market.contract).toBeInstanceOf(Contract);
@@ -79,6 +79,12 @@ describe(Market, () => {
             expect(userMarketInfo.assetBalance.amount).toEqBN(
                 userMarketInfo.scyBalance.amount.mul(scyExchangeRate).div(decimalFactor(18))
             );
+        });
+
+        it('#getSCY and #getPT', async () => {
+            const [scy, pt] = await Promise.all([market.scyEntity(multicall), market.ptEntity(multicall)]);
+            expect(scy.address).toBe(currentMarket.SCY);
+            expect(pt.address).toBe(currentMarket.PT);
         });
     });
 });

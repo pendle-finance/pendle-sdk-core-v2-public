@@ -1,11 +1,11 @@
-import { PT, YT, Multicall } from '../src';
+import { PtEntity, YtEntity, Multicall } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, describeWithMulticall } from './util/testUtils';
 import './util/bigNumberMatcher';
 
 describe('PY', () => {
     const currentMarket = currentConfig.market;
-    const pt = new PT(currentMarket.PT, networkConnection, ACTIVE_CHAIN_ID);
-    const yt = new YT(currentMarket.YT, networkConnection, ACTIVE_CHAIN_ID);
+    const pt = new PtEntity(currentMarket.PT, networkConnection, ACTIVE_CHAIN_ID);
+    const yt = new YtEntity(currentMarket.YT, networkConnection, ACTIVE_CHAIN_ID);
 
     describeWithMulticall((multicall) => {
         it('#userInfo & #contract', async () => {
