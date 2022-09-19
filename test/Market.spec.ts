@@ -17,6 +17,7 @@ describe(MarketEntity, () => {
         expect(market.address).toBe(currentConfig.marketAddress);
         expect(market.chainId).toBe(ACTIVE_CHAIN_ID);
         expect(market.contract).toBeInstanceOf(Contract);
+        expect(market.pendleMarketContract).toBeInstanceOf(Contract);
         expect(market.contract.address).toBe(currentConfig.marketAddress);
     });
 

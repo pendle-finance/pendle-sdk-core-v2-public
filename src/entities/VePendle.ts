@@ -1,30 +1,22 @@
 import type { VotingEscrowTokenBase, VotingEscrowPendleMainchain } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, ChainId, MainchainId } from '../types';
-import { Contract } from 'ethers';
+import { ContractInterface } from 'ethers';
 import { abi as VotingEscrowTokenBaseABI } from '@pendle/core-v2/build/artifacts/contracts/core/LiquidityMining/VotingEscrow/VotingEscrowTokenBase.sol/VotingEscrowTokenBase.json';
 import { abi as VotingEscrowPendleMainchainABI } from '@pendle/core-v2/build/artifacts/contracts/core/LiquidityMining/VotingEscrow/VotingEscrowPendleMainchain.sol/VotingEscrowPendleMainchain.json';
-import { isMainchain } from './helper';
 import { ERC20 } from './ERC20';
 
-export class VePendle {
-    readonly ERC20: ERC20;
-    protected _contract: VotingEscrowTokenBase | VotingEscrowPendleMainchain;
-
+export class VePendle extends ERC20 {
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId
+        readonly chainId: ChainId,
+        abi: ContractInterface = VotingEscrowTokenBaseABI
     ) {
-        this.ERC20 = new ERC20(address, networkConnection, chainId);
-        this._contract = new Contract(
-            address,
-            isMainchain(chainId) ? VotingEscrowPendleMainchainABI : VotingEscrowTokenBaseABI,
-            networkConnection.provider
-        ) as VotingEscrowPendleMainchain | VotingEscrowTokenBase;
+        super(address, networkConnection, chainId, abi);
     }
 
-    get contract(): VotingEscrowTokenBase | VotingEscrowPendleMainchain {
-        return this._contract;
+    get votingEscrowTokenBaseContract() {
+        return this.contract as VotingEscrowTokenBase;
     }
 }
 
@@ -32,12 +24,17 @@ export class VePendleMainchain extends VePendle {
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: MainchainId
+        readonly chainId: MainchainId,
+        abi: ContractInterface = VotingEscrowPendleMainchainABI
     ) {
-        super(address, networkConnection, chainId);
+        super(address, networkConnection, chainId, abi);
     }
 
-    get contract(): VotingEscrowPendleMainchain {
-        return this._contract as VotingEscrowPendleMainchain;
+    get votingEscrowPendleMainchainContract(): VotingEscrowPendleMainchain {
+        return this.contract as VotingEscrowPendleMainchain;
+    }
+
+    get vePendleMainchainContract() {
+        return this.votingEscrowPendleMainchainContract;
     }
 }

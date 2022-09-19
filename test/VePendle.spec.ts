@@ -33,7 +33,7 @@ describe('#contract', () => {
     const ve = new VePendleMainchain(currentConfig.veAddress, networkConnection, ACTIVE_CHAIN_ID);
     const pendle = new ERC20(currentConfig.pendle, networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
-    const contract = ve.contract;
+    const contract = ve.vePendleMainchainContract;
 
     it('read contract', async () => {
         const pendleAddress = await contract.pendle();

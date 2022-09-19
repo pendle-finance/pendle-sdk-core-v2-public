@@ -1,7 +1,7 @@
 import type { RouterStatic, SCYBase } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, TokenAmount, ChainId } from '../types';
 import type { BigNumberish, ContractTransaction, Overrides } from 'ethers';
-import { BigNumber as BN, Contract } from 'ethers';
+import { BigNumber as BN, ContractInterface } from 'ethers';
 import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/base-implementations/SCYBase.sol/SCYBase.json';
 import { calcSlippedDownAmount, getRouterStatic, isNativeToken } from './helper';
 import { ERC20 } from './ERC20';
@@ -12,23 +12,25 @@ export type UserScyInfo = {
     rewards: TokenAmount[];
 };
 
-export class ScyEntity {
-    readonly ERC20: ERC20;
-    readonly contract: SCYBase;
+export class ScyEntity extends ERC20 {
     protected readonly routerStatic: RouterStatic;
 
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId
+        readonly chainId: ChainId,
+        abi: ContractInterface = SCYBaseABI
     ) {
-        this.ERC20 = new ERC20(address, networkConnection, chainId);
-        this.contract = new Contract(address, SCYBaseABI, networkConnection.provider) as SCYBase;
+        super(address, networkConnection, chainId, abi);
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
-    async name(multicall?: Multicall) {
-        return Multicall.wrap(this.contract, multicall).callStatic.name();
+    get SCYBaseContract() {
+        return this.contract as SCYBase;
+    }
+
+    get scyContract() {
+        return this.SCYBaseContract;
     }
 
     /**
@@ -45,12 +47,12 @@ export class ScyEntity {
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const amountScyOut = await this.contract
+        const amountScyOut = await this.scyContract
             .connect(this.networkConnection.signer!)
             .callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0, {
                 value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined,
             });
-        return this.contract
+        return this.scyContract
             .connect(this.networkConnection.signer!)
             .deposit(receiver, baseAssetIn, amountBaseToPull, calcSlippedDownAmount(amountScyOut, slippage), {
                 ...overrides,
@@ -68,10 +70,10 @@ export class ScyEntity {
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const amountBaseOut = await this.contract
+        const amountBaseOut = await this.scyContract
             .connect(this.networkConnection.signer!)
             .callStatic.redeem(receiver, amountScyToPull, baseAssetOut, 0);
-        return this.contract
+        return this.scyContract
             .connect(this.networkConnection.signer!)
             .redeem(receiver, amountScyToPull, baseAssetOut, calcSlippedDownAmount(amountBaseOut, slippage), overrides);
     }
@@ -81,14 +83,18 @@ export class ScyEntity {
     }
 
     async getTokensIn(multicall?: Multicall) {
-        return Multicall.wrap(this.contract, multicall).callStatic.getTokensIn();
+        return Multicall.wrap(this.scyContract, multicall).callStatic.getTokensIn();
     }
 
     async getTokensOut(multicall?: Multicall) {
-        return Multicall.wrap(this.contract, multicall).callStatic.getTokensOut();
+        return Multicall.wrap(this.scyContract, multicall).callStatic.getTokensOut();
     }
 
     async getRewardTokens(multicall?: Multicall) {
-        return Multicall.wrap(this.contract, multicall).callStatic.getRewardTokens();
+        return Multicall.wrap(this.scyContract, multicall).callStatic.getRewardTokens();
+    }
+
+    async previewRedeem(tokenOut: Address, amountSharesToRedeem: BigNumberish, multicall?: Multicall): Promise<BN> {
+        return Multicall.wrap(this.scyContract, multicall).callStatic.previewRedeem(tokenOut, amountSharesToRedeem);
     }
 }

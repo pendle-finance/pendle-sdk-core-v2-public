@@ -3,7 +3,7 @@ import type { MarketStateStructOutput } from '@pendle/core-v2/typechain-types/Pe
 import type { IPRouterStatic } from '@pendle/core-v2/typechain-types/IPRouterStatic';
 import type { Address, NetworkConnection, TokenAmount } from '../types';
 import { abi as PendleMarketABI } from '@pendle/core-v2/build/artifacts/contracts/core/Market/PendleMarket.sol/PendleMarket.json';
-import { BigNumber as BN, Contract } from 'ethers';
+import { BigNumber as BN, ContractInterface } from 'ethers';
 import { getRouterStatic } from './helper';
 import { ERC20 } from './ERC20';
 import { Multicall } from '../multicall';
@@ -27,10 +27,7 @@ export type UserMarketInfo = {
     assetBalance: IPRouterStatic.AssetAmountStructOutput;
 };
 
-export class MarketEntity {
-    readonly ERC20: ERC20;
-    readonly contract: PendleMarket;
-
+export class MarketEntity extends ERC20 {
     protected readonly routerStatic: RouterStatic;
     protected _ptAddress: Address | undefined;
     protected _scyAddress: Address | undefined;
@@ -38,15 +35,19 @@ export class MarketEntity {
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId
+        readonly chainId: ChainId,
+        abi: ContractInterface = PendleMarketABI
     ) {
-        this.ERC20 = new ERC20(address, networkConnection, chainId);
-        this.contract = new Contract(address, PendleMarketABI, networkConnection.provider) as PendleMarket;
+        super(address, networkConnection, chainId, abi);
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
-    async name(multicall?: Multicall) {
-        return Multicall.wrap(this.contract, multicall).callStatic.name();
+    get pendleMarketContract() {
+        return this.contract as PendleMarket;
+    }
+
+    get marketContract() {
+        return this.pendleMarketContract;
     }
 
     async getMarketInfo(multicall?: Multicall): Promise<MarketInfo> {
@@ -97,6 +98,6 @@ export class MarketEntity {
     }
 
     async getRewardTokens(multicall?: Multicall) {
-        return Multicall.wrap(this.contract, multicall).callStatic.getRewardTokens();
+        return Multicall.wrap(this.marketContract, multicall).callStatic.getRewardTokens();
     }
 }

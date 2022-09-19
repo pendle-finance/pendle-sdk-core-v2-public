@@ -1,5 +1,5 @@
 import { Contract } from 'ethers';
-import { ERC20, PtEntity } from '../src';
+import { PtEntity } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 
 describe(PtEntity, () => {
@@ -10,8 +10,8 @@ describe(PtEntity, () => {
         expect(pt.address).toBe(currentConfig.market.PT);
         expect(pt.chainId).toBe(ACTIVE_CHAIN_ID);
         expect(pt.contract).toBeInstanceOf(Contract);
+        expect(pt.ptContract).toBeInstanceOf(Contract);
         expect(pt.contract.address).toBe(currentConfig.market.PT);
-        expect(pt.ERC20).toBeInstanceOf(ERC20);
     });
 
     // Refer to test/PY.spec.ts for others tests

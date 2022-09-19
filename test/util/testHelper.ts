@@ -11,7 +11,7 @@ type EntitiesMapType = {
 const ERC20_CREATE_HANDLER = {
     get: function (target: EntitiesMapType, address: Address) {
         if (target[address] === undefined) {
-            target[address] = new ERC20(address, networkConnection, ACTIVE_CHAIN_ID).contract.connect(
+            target[address] = new ERC20(address, networkConnection, ACTIVE_CHAIN_ID).ERC20Contract.connect(
                 networkConnection.signer!
             );
         }

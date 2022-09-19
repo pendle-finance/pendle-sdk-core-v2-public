@@ -1,5 +1,5 @@
 import { Contract } from 'ethers';
-import { ERC20, ScyEntity, Multicall } from '../src';
+import { ScyEntity, Multicall } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -22,7 +22,7 @@ describe(ScyEntity, () => {
         expect(scy.address).toBe(scyAddress);
         expect(scy.chainId).toBe(ACTIVE_CHAIN_ID);
         expect(scy.contract).toBeInstanceOf(Contract);
-        expect(scy.ERC20).toBeInstanceOf(ERC20);
+        expect(scy.scyContract).toBeInstanceOf(Contract);
         expect(scy.contract.address).toBe(scyAddress);
     });
 

@@ -14,11 +14,11 @@ describe('Multicall', () => {
     beforeAll(async () => {
         market = new MarketEntity(currentConfig.marketAddress, networkConnection, chainId);
         const marketInfo = await market.getMarketInfo();
-        pt = new ERC20(marketInfo.pt, networkConnection, chainId).contract;
+        pt = new ERC20(marketInfo.pt, networkConnection, chainId).ERC20Contract;
         yt = new ERC20(await new PtEntity(marketInfo.pt, networkConnection, chainId).YT(), networkConnection, chainId)
-            .contract;
-        scy = new ERC20(marketInfo.scy, networkConnection, chainId).contract;
-        dummy = new ERC20(ethers.constants.AddressZero, networkConnection, chainId).contract;
+            .ERC20Contract;
+        scy = new ERC20(marketInfo.scy, networkConnection, chainId).ERC20Contract;
+        dummy = new ERC20(ethers.constants.AddressZero, networkConnection, chainId).ERC20Contract;
     });
 
     it('Single call', async () => {

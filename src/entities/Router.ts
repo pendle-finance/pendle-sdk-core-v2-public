@@ -190,11 +190,10 @@ export class Router {
         kybercallData: KybercallData;
     }> {
         const possibleOutAmounts = tokenRedeemScyList.map(async (tokenRedeemScy) => {
-            const amountIn = await new ScyEntity(
-                SCY,
-                this.networkConnection,
-                this.chainId
-            ).contract.callStatic.previewRedeem(tokenRedeemScy, netScyIn);
+            const amountIn = await new ScyEntity(SCY, this.networkConnection, this.chainId).previewRedeem(
+                tokenRedeemScy,
+                netScyIn
+            );
             const kybercallData = await this.kybercall(tokenRedeemScy, tokenOut, amountIn);
             const output = {
                 tokenOut,

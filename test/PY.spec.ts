@@ -11,8 +11,8 @@ describe('PY', () => {
         it('#userInfo & #contract', async () => {
             const [userInfo, userPtBalance, userYtBalance, interestToken, interestAmount] = await Promise.all([
                 pt.userInfo(currentConfig.deployer, multicall),
-                pt.ERC20.balanceOf(currentConfig.deployer, multicall),
-                yt.ERC20.balanceOf(currentConfig.deployer, multicall),
+                pt.balanceOf(currentConfig.deployer, multicall),
+                yt.balanceOf(currentConfig.deployer, multicall),
                 Multicall.wrap(yt.contract, multicall).callStatic.SCY(),
                 Multicall.wrap(yt.contract, multicall).callStatic.userInterest(currentConfig.deployer),
             ]);
@@ -51,7 +51,7 @@ describe('PY', () => {
             const [ptInfo, ytInfo, ytTotalSupply, ytIndexCurrent, rewardToken] = await Promise.all([
                 pt.getInfo(multicall),
                 yt.getInfo(multicall),
-                yt.ERC20.totalSupply(multicall),
+                yt.totalSupply(multicall),
                 Multicall.wrap(yt.contract, multicall).callStatic.pyIndexCurrent(),
                 Multicall.wrap(yt.contract, multicall).callStatic.getRewardTokens(),
             ]);

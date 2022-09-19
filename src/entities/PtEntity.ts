@@ -2,35 +2,32 @@ import type { PendlePrincipalToken, RouterStatic } from '@pendle/core-v2/typecha
 import type { Address, NetworkConnection, ChainId } from '../types';
 import type { UserPyInfo, PyInfo } from './YtEntity';
 import { abi as PendlePrincipalTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendlePrincipalToken.sol/PendlePrincipalToken.json';
-import { Contract } from 'ethers';
+import { ContractInterface } from 'ethers';
 import { getRouterStatic } from './helper';
 import { ERC20 } from './ERC20';
 import { Multicall } from '../multicall';
 import { YtEntity } from './YtEntity';
 import { ScyEntity } from './ScyEntity';
 
-export class PtEntity {
-    readonly ERC20: ERC20;
-    readonly contract: PendlePrincipalToken;
-
+export class PtEntity extends ERC20 {
     protected readonly routerStatic: RouterStatic;
 
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId
+        readonly chainId: ChainId,
+        abi: ContractInterface = PendlePrincipalTokenABI
     ) {
-        this.ERC20 = new ERC20(address, networkConnection, chainId);
-        this.contract = new Contract(
-            address,
-            PendlePrincipalTokenABI,
-            networkConnection.provider
-        ) as PendlePrincipalToken;
+        super(address, networkConnection, chainId, abi);
         this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
     }
 
-    async name(multicall?: Multicall) {
-        return Multicall.wrap(this.contract, multicall).callStatic.name();
+    get pendlePrincipalTokenContract() {
+        return this.contract as PendlePrincipalToken;
+    }
+
+    get ptContract() {
+        return this.pendlePrincipalTokenContract;
     }
 
     async userInfo(user: Address, multicall?: Multicall): Promise<UserPyInfo> {
@@ -42,7 +39,7 @@ export class PtEntity {
     }
 
     async SCY(multicall?: Multicall): Promise<Address> {
-        return Multicall.wrap(this.contract, multicall).callStatic.SCY();
+        return Multicall.wrap(this.ptContract, multicall).callStatic.SCY();
     }
 
     /**
@@ -54,7 +51,7 @@ export class PtEntity {
     }
 
     async YT(multicall?: Multicall): Promise<Address> {
-        return Multicall.wrap(this.contract, multicall).callStatic.YT();
+        return Multicall.wrap(this.ptContract, multicall).callStatic.YT();
     }
 
     /**

@@ -26,8 +26,8 @@ describe(SDK, () => {
         it('#getUserPYPositionsByPYs', async () => {
             const [userPYPositions, userPtBalance, userYtBalance, interestToken, interestAmount] = await Promise.all([
                 sdk.getUserPYPositionsByPYs(currentConfig.deployer, [ytAddress, ptAddress], multicall),
-                pt.ERC20.balanceOf(currentConfig.deployer, multicall),
-                yt.ERC20.balanceOf(currentConfig.deployer, multicall),
+                pt.balanceOf(currentConfig.deployer, multicall),
+                yt.balanceOf(currentConfig.deployer, multicall),
                 Multicall.wrap(yt.contract, multicall).callStatic.SCY(),
                 Multicall.wrap(yt.contract, multicall).callStatic.userInterest(currentConfig.deployer),
             ]);
