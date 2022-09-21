@@ -10,3 +10,4 @@ export * from './Router';
 export * from './VePendle';
 export * from './VotingController';
 export * from './helper';
+export * from './math';

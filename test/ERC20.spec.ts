@@ -1,6 +1,6 @@
 import { Contract } from 'ethers';
 import { ERC20 } from '../src';
-import { decimalFactor } from '../src/entities/helper';
+import { decimalFactor } from '../src/entities/math';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,

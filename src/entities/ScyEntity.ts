@@ -3,7 +3,8 @@ import type { Address, NetworkConnection, TokenAmount, ChainId } from '../types'
 import type { BigNumberish, ContractTransaction, Overrides } from 'ethers';
 import { BigNumber as BN, ContractInterface } from 'ethers';
 import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/base-implementations/SCYBase.sol/SCYBase.json';
-import { calcSlippedDownAmount, getRouterStatic, isNativeToken } from './helper';
+import { getRouterStatic, isNativeToken } from './helper';
+import { calcSlippedDownAmount } from './math';
 import { ERC20 } from './ERC20';
 import { Multicall } from '../multicall';
 

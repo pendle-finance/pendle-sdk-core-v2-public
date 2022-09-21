@@ -1,6 +1,7 @@
 import { BigNumber as BN } from 'ethers';
 import { CHAIN_ID } from '../src';
-import { calcSlippedDownAmount, calcSlippedUpAmount, getContractAddresses, isMainchain } from '../src/entities/helper';
+import { getContractAddresses, isMainchain } from '../src/entities/helper';
+import { calcSlippedDownAmount, calcSlippedUpAmount } from '../src/entities/math';
 import { InvalidSlippageError } from '../src/errors';
 import './util/bigNumberMatcher';
 

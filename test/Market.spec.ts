@@ -1,6 +1,7 @@
 import { Contract } from 'ethers';
 import { MarketEntity, ScyEntity, Multicall } from '../src';
-import { decimalFactor, getRouterStatic } from '../src/entities/helper';
+import { getRouterStatic } from '../src/entities/helper';
+import { decimalFactor } from '../src/entities/math';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET, describeWithMulticall } from './util/testUtils';
 import './util/bigNumberMatcher';
 

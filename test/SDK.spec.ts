@@ -1,7 +1,7 @@
 import { SDK } from '../src/entities/SDK';
 import { MarketEntity, PtEntity, ScyEntity, YtEntity, Multicall } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, describeWithMulticall } from './util/testUtils';
-import { decimalFactor } from '../src/entities/helper';
+import { decimalFactor } from '../src/entities/math';
 import './util/bigNumberMatcher';
 
 describe(SDK, () => {

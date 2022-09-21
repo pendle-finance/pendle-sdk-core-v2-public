@@ -10,15 +10,8 @@ import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts
 import type { BigNumberish, BytesLike, ContractTransaction, Overrides } from 'ethers';
 import { BigNumber as BN, constants as etherConstants, Contract } from 'ethers';
 import { KYBER_API, NATIVE_ADDRESS_0xEE } from '../constants';
-import {
-    calcSlippedDownAmount,
-    calcSlippedUpAmount,
-    getContractAddresses,
-    getRouterStatic,
-    isNativeToken,
-    isSameAddress,
-    isKyberSupportedChain,
-} from './helper';
+import { getContractAddresses, getRouterStatic, isNativeToken, isSameAddress, isKyberSupportedChain } from './helper';
+import { calcSlippedDownAmount, calcSlippedUpAmount, PyIndex } from './math';
 import { MarketEntity } from './MarketEntity';
 import { ScyEntity } from './ScyEntity';
 import { YtEntity } from './YtEntity';
@@ -775,7 +768,7 @@ export class Router {
         ]);
         const { output, netOut } = await this.outputParams(
             SCY.address,
-            BN.from(netPyIn).mul(etherConstants.WeiPerEther).div(pyIndex),
+            new PyIndex(pyIndex).assetToScy(netPyIn),
             tokenOut,
             tokenRedeemScyList,
             (output) =>

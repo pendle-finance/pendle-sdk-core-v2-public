@@ -1,5 +1,5 @@
 import { ERC20, VePendle, VePendleMainchain, isMainchain } from '../src';
-import { decimalFactor } from '../src/entities/helper';
+import { decimalFactor } from '../src/entities/math';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
