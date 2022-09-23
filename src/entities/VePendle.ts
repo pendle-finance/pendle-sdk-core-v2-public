@@ -4,6 +4,7 @@ import { ContractInterface } from 'ethers';
 import { abi as VotingEscrowTokenBaseABI } from '@pendle/core-v2/build/artifacts/contracts/core/LiquidityMining/VotingEscrow/VotingEscrowTokenBase.sol/VotingEscrowTokenBase.json';
 import { abi as VotingEscrowPendleMainchainABI } from '@pendle/core-v2/build/artifacts/contracts/core/LiquidityMining/VotingEscrow/VotingEscrowPendleMainchain.sol/VotingEscrowPendleMainchain.json';
 import { ERC20 } from './ERC20';
+import { Multicall } from 'multicall';
 
 export class VePendle extends ERC20 {
     constructor(
@@ -17,6 +18,10 @@ export class VePendle extends ERC20 {
 
     get votingEscrowTokenBaseContract() {
         return this.contract as VotingEscrowTokenBase;
+    }
+
+    async positionData(userAddress: Address, multicall?: Multicall) {
+        return Multicall.wrap(this.votingEscrowTokenBaseContract, multicall).callStatic.positionData(userAddress);
     }
 }
 
