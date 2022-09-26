@@ -9,7 +9,7 @@ export class SDK {
     protected readonly routerStatic: RouterStatic;
 
     constructor(protected readonly networkConnection: NetworkConnection, readonly chainId: ChainId) {
-        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
+        this.routerStatic = getRouterStatic(networkConnection, chainId);
     }
 
     /**

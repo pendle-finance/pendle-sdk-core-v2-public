@@ -39,7 +39,7 @@ export class MarketEntity extends ERC20 {
         abi: ContractInterface = PendleMarketABI
     ) {
         super(address, networkConnection, chainId, abi);
-        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
+        this.routerStatic = getRouterStatic(networkConnection, chainId);
     }
 
     get pendleMarketContract() {

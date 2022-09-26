@@ -19,7 +19,7 @@ export class PtEntity extends ERC20 {
         abi: ContractInterface = PendlePrincipalTokenABI
     ) {
         super(address, networkConnection, chainId, abi);
-        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
+        this.routerStatic = getRouterStatic(networkConnection, chainId);
     }
 
     get pendlePrincipalTokenContract() {

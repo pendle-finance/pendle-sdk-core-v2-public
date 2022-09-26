@@ -48,7 +48,7 @@ type LpBalanceSnapshot = {
 
 describe(Router, () => {
     const router = Router.getRouter(networkConnection, ACTIVE_CHAIN_ID);
-    const routerStatic = getRouterStatic(networkConnection.provider, ACTIVE_CHAIN_ID);
+    const routerStatic = getRouterStatic(networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
     const marketAddress = currentConfig.market.market;
     const scyAddress = currentConfig.market.SCY;

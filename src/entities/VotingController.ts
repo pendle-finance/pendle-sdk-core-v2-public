@@ -2,9 +2,9 @@ import type { PendleVotingControllerUpg } from '@pendle/core-v2/typechain-types'
 import type { Address, NetworkConnection, ChainId } from '../types';
 import { BigNumber } from 'bignumber.js';
 import type { ContractTransaction, Overrides } from 'ethers';
-import { BigNumber as BN, Contract, constants } from 'ethers';
+import { BigNumber as BN, constants } from 'ethers';
 import { abi as PendleVotingControllerUpgABI } from '@pendle/core-v2/build/artifacts/contracts/core/LiquidityMining/VotingController/PendleVotingControllerUpg.sol/PendleVotingControllerUpg.json';
-import { isMainchain } from './helper';
+import { isMainchain, createContractObject, requiresSigner } from './helper';
 import { MarketEntity } from './MarketEntity';
 
 export class VotingController {
@@ -18,11 +18,11 @@ export class VotingController {
         if (!isMainchain(chainId)) {
             throw Error('Voting only available on main chain (Ethereum)');
         }
-        this.contract = new Contract(
+        this.contract = createContractObject<PendleVotingControllerUpg>(
             address,
             PendleVotingControllerUpgABI,
-            networkConnection.provider
-        ) as PendleVotingControllerUpg;
+            networkConnection
+        );
     }
 
     static scaleWeight(weight: number): BN {
@@ -36,11 +36,12 @@ export class VotingController {
     //     return new BigNumber(totalVotedWeight.toString()).div(constants.WeiPerEther.toString()).toNumber();
     // }
 
+    @requiresSigner
     async vote(
         votes: { market: MarketEntity; weight: number }[],
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        return this.contract.connect(this.networkConnection.signer!).vote(
+        return this.contract.vote(
             votes.map(({ market }) => market.address),
             votes.map(({ weight }) => VotingController.scaleWeight(weight)),
             overrides

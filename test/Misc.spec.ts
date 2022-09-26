@@ -1,9 +1,10 @@
 import { BigNumber as BN } from 'ethers';
-import { CHAIN_ID } from '../src';
+import { CHAIN_ID, ERC20 } from '../src';
 import { getContractAddresses, isMainchain } from '../src/entities/helper';
 import { calcSlippedDownAmount, calcSlippedUpAmount } from '../src/entities/math';
 import { InvalidSlippageError } from '../src/errors';
 import './util/bigNumberMatcher';
+import { currentConfig, ACTIVE_CHAIN_ID, networkConnection } from './util/testUtils';
 
 describe('Misc', () => {
     it('#InvalidSlippageError', () => {
@@ -43,5 +44,15 @@ describe('Misc', () => {
         expect(isMainchain(CHAIN_ID.FUJI)).toBe(true);
         expect(isMainchain(CHAIN_ID.AVALANCHE)).toBe(false);
         expect(isMainchain(CHAIN_ID.MUMBAI)).toBe(false);
+    });
+
+    it('test requiresSigner', async () => {
+        const usdWithoutSigner = new ERC20(
+            currentConfig.tokens.USDC,
+            { provider: networkConnection.provider },
+            ACTIVE_CHAIN_ID
+        );
+
+        expect(async () => usdWithoutSigner.transfer(currentConfig.marketAddress, 1)).rejects.toThrowError();
     });
 });

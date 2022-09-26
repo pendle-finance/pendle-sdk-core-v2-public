@@ -2,7 +2,7 @@ import { JsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
 import { Wallet } from 'ethers';
 import { inspect } from 'util';
-import { type NetworkConnection, CHAIN_ID, Multicall } from '../../src';
+import { CHAIN_ID, Multicall } from '../../src';
 
 import assert from 'assert';
 
@@ -46,12 +46,12 @@ const providerUrls = {
     [LOCAL_CHAIN_ID]: 'http://127.0.0.1:8545',
 };
 
-export const networkConnection: NetworkConnection = {
+export const networkConnection = {
     provider: new JsonRpcProvider(USE_LOCAL ? providerUrls[LOCAL_CHAIN_ID] : providerUrls[ACTIVE_CHAIN_ID]),
     get signer() {
         return WALLET().wallet; // this.provider.getSigner();
     },
-};
+} as const;
 
 export const CONTRACT_ADDRESSES = {
     [CHAIN_ID.FUJI]: {

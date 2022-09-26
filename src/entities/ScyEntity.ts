@@ -23,7 +23,7 @@ export class ScyEntity extends ERC20 {
         abi: ContractInterface = SCYBaseABI
     ) {
         super(address, networkConnection, chainId, abi);
-        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
+        this.routerStatic = getRouterStatic(networkConnection, chainId);
     }
 
     get SCYBaseContract() {
@@ -48,17 +48,19 @@ export class ScyEntity extends ERC20 {
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const amountScyOut = await this.scyContract
-            .connect(this.networkConnection.signer!)
-            .callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0, {
-                value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined,
-            });
-        return this.scyContract
-            .connect(this.networkConnection.signer!)
-            .deposit(receiver, baseAssetIn, amountBaseToPull, calcSlippedDownAmount(amountScyOut, slippage), {
+        const amountScyOut = await this.scyContract.callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0, {
+            value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined,
+        });
+        return this.scyContract.deposit(
+            receiver,
+            baseAssetIn,
+            amountBaseToPull,
+            calcSlippedDownAmount(amountScyOut, slippage),
+            {
                 ...overrides,
                 value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined,
-            });
+            }
+        );
     }
 
     /**
@@ -71,12 +73,14 @@ export class ScyEntity extends ERC20 {
         slippage: number,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const amountBaseOut = await this.scyContract
-            .connect(this.networkConnection.signer!)
-            .callStatic.redeem(receiver, amountScyToPull, baseAssetOut, 0);
-        return this.scyContract
-            .connect(this.networkConnection.signer!)
-            .redeem(receiver, amountScyToPull, baseAssetOut, calcSlippedDownAmount(amountBaseOut, slippage), overrides);
+        const amountBaseOut = await this.scyContract.callStatic.redeem(receiver, amountScyToPull, baseAssetOut, 0);
+        return this.scyContract.redeem(
+            receiver,
+            amountScyToPull,
+            baseAssetOut,
+            calcSlippedDownAmount(amountBaseOut, slippage),
+            overrides
+        );
     }
 
     async userInfo(user: Address, multicall?: Multicall): Promise<UserScyInfo> {

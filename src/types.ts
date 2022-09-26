@@ -2,10 +2,11 @@ import type { BigNumber as BN, providers, Signer } from 'ethers';
 import { ErrorCode } from '@ethersproject/logger';
 import { CHAIN_ID } from './constants';
 
-export type NetworkConnection = {
-    provider: providers.Provider;
-    signer?: Signer;
-};
+// Disallow missing both of the properties
+export type NetworkConnection =
+    | { provider: providers.Provider; signer?: undefined }
+    | { provider?: undefined; signer: Signer }
+    | { provider: providers.Provider; signer: Signer };
 
 export type Address = string;
 

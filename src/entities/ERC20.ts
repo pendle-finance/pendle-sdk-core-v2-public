@@ -1,10 +1,10 @@
 import type { PendleERC20 } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection } from '../types';
+import type { Address, NetworkConnection, ChainId } from '../types';
 import { abi as PendleERC20ABI } from '@pendle/core-v2/build/artifacts/contracts/core/PendleERC20.sol/PendleERC20.json';
 import type { BigNumberish, ContractTransaction, Overrides, ContractInterface } from 'ethers';
 import { BigNumber as BN, Contract } from 'ethers';
 import { Multicall } from '../multicall';
-import { ChainId } from '../types';
+import { createContractObject, requiresSigner } from './helper';
 
 export class ERC20 {
     readonly contract: Contract;
@@ -15,7 +15,7 @@ export class ERC20 {
         readonly chainId: ChainId,
         abi: ContractInterface = PendleERC20ABI
     ) {
-        this.contract = new Contract(address, abi, networkConnection.provider);
+        this.contract = createContractObject(address, abi, networkConnection);
     }
 
     get ERC20Contract() {
@@ -46,11 +46,13 @@ export class ERC20 {
         return Multicall.wrap(this.ERC20Contract, multicall).callStatic.totalSupply();
     }
 
+    @requiresSigner
     approve(spender: Address, amount: BigNumberish, overrides: Overrides = {}): Promise<ContractTransaction> {
-        return this.ERC20Contract.connect(this.networkConnection.signer!).approve(spender, amount, overrides);
+        return this.ERC20Contract.approve(spender, amount, overrides);
     }
 
+    @requiresSigner
     transfer(to: Address, amount: BigNumberish, overrides: Overrides = {}): Promise<ContractTransaction> {
-        return this.ERC20Contract.connect(this.networkConnection.signer!).transfer(to, amount, overrides);
+        return this.ERC20Contract.transfer(to, amount, overrides);
     }
 }

@@ -1,7 +1,7 @@
 import type { PendleMarketFactory } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, ChainId } from '../types';
 import { abi as PendleMarketFactoryABI } from '@pendle/core-v2/build/artifacts/contracts/core/Market/PendleMarketFactory.sol/PendleMarketFactory.json';
-import { Contract } from 'ethers';
+import { createContractObject } from './helper';
 
 export class MarketFactory {
     readonly contract: PendleMarketFactory;
@@ -10,10 +10,6 @@ export class MarketFactory {
         protected readonly networkConnection: NetworkConnection,
         readonly chainId: ChainId
     ) {
-        this.contract = new Contract(
-            address,
-            PendleMarketFactoryABI,
-            networkConnection.provider
-        ) as PendleMarketFactory;
+        this.contract = createContractObject<PendleMarketFactory>(address, PendleMarketFactoryABI, networkConnection);
     }
 }

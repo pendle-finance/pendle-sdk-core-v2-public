@@ -11,7 +11,7 @@ describe(MarketEntity, () => {
     const contract = market.contract;
     const sender = WALLET().wallet;
     const scy = new ScyEntity(currentMarket.SCY, networkConnection, ACTIVE_CHAIN_ID);
-    const routerStatic = getRouterStatic(networkConnection.provider, ACTIVE_CHAIN_ID);
+    const routerStatic = getRouterStatic(networkConnection, ACTIVE_CHAIN_ID);
 
     it('#constructor', () => {
         expect(market).toBeInstanceOf(MarketEntity);

@@ -38,7 +38,7 @@ export class YtEntity extends ERC20 {
         abi: ContractInterface = PendleYieldTokenABI
     ) {
         super(address, networkConnection, chainId, abi);
-        this.routerStatic = getRouterStatic(networkConnection.provider, chainId);
+        this.routerStatic = getRouterStatic(networkConnection, chainId);
     }
 
     get pendleYieldTokenContract() {
