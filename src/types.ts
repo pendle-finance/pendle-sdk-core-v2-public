@@ -1,4 +1,4 @@
-import type { BigNumber as BN, providers, Signer } from 'ethers';
+import type { BigNumber as BN, BigNumberish, providers, Signer } from 'ethers';
 import { ErrorCode } from '@ethersproject/logger';
 import { CHAIN_ID } from './constants';
 
@@ -10,9 +10,9 @@ export type NetworkConnection =
 
 export type Address = string;
 
-export type TokenAmount = {
+export type TokenAmount<AmountType extends BigNumberish = BN> = {
     token: Address;
-    amount: BN;
+    amount: AmountType;
 };
 
 // The list of error code is here

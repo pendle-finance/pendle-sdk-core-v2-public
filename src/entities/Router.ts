@@ -5,32 +5,24 @@ import type {
     TokenOutputStruct,
 } from '@pendle/core-v2/typechain-types/IPAllAction';
 import type { Address, NetworkConnection, ChainId } from '../types';
-import axios from 'axios';
 import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
-import type { BigNumberish, BytesLike, ContractTransaction, Overrides } from 'ethers';
+import type { BigNumberish, ContractTransaction, Overrides } from 'ethers';
 import { BigNumber as BN, constants as etherConstants } from 'ethers';
-import { KYBER_API, NATIVE_ADDRESS_0xEE } from '../constants';
-import {
-    getContractAddresses,
-    getRouterStatic,
-    isNativeToken,
-    isSameAddress,
-    isKyberSupportedChain,
-    createContractObject,
-    requiresSigner,
-} from './helper';
+import { getContractAddresses, getRouterStatic, isNativeToken, createContractObject, requiresSigner } from './helper';
 import { calcSlippedDownAmount, calcSlippedUpAmount, PyIndex } from './math';
 import { MarketEntity } from './MarketEntity';
 import { ScyEntity } from './ScyEntity';
 import { YtEntity } from './YtEntity';
 import { RouterStatic } from '@pendle/core-v2/typechain-types';
 import { NoRouteFoundError } from '../errors';
+import { KyberHelper, KybercallData, KyberState, KyberHelperConfig } from './KyberHelper';
 
-export type KybercallData = {
-    amountInUsd?: number;
-    amountOutUsd?: number;
-    outputAmount: BigNumberish;
-    encodedSwapData: BytesLike;
+export type RouterState = {
+    kyberHelper: KyberState;
+};
+
+export type RouterConfig = {
+    kyberHelper: KyberHelperConfig;
 };
 
 export class Router {
@@ -45,14 +37,29 @@ export class Router {
     };
     readonly contract: IPAllAction;
     readonly routerStatic: RouterStatic;
+    readonly kyberHelper: KyberHelper;
 
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId
+        readonly chainId: ChainId,
+        config?: RouterConfig
     ) {
+        const { kyberHelper: kyberHelperConfig } = { ...config };
         this.contract = createContractObject<IPAllAction>(address, IPAllActionABI, networkConnection);
         this.routerStatic = getRouterStatic(networkConnection, chainId);
+
+        this.kyberHelper = new KyberHelper(address, chainId, kyberHelperConfig);
+    }
+
+    get state(): RouterState {
+        return {
+            kyberHelper: this.kyberHelper.state,
+        };
+    }
+
+    set state(value: RouterState) {
+        this.kyberHelper.state = value.kyberHelper;
     }
 
     static getRouter(networkConnection: NetworkConnection, chainId: ChainId): Router {
@@ -77,38 +84,6 @@ export class Router {
         };
     }
 
-    async kybercall(tokenIn: Address, tokenOut: Address, amountIn: BigNumberish): Promise<KybercallData> {
-        if (!isKyberSupportedChain(this.chainId)) {
-            throw new Error(`Chain ${this.chainId} is not supported for kybercall.`);
-        }
-        if (isSameAddress(tokenIn, tokenOut)) return { outputAmount: amountIn, encodedSwapData: [] };
-        // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
-        if (isNativeToken(tokenIn)) tokenIn = NATIVE_ADDRESS_0xEE;
-        if (isNativeToken(tokenOut)) tokenOut = NATIVE_ADDRESS_0xEE;
-
-        const { data } = await axios
-            .get(KYBER_API[this.chainId], {
-                params: {
-                    tokenIn,
-                    tokenOut,
-                    amountIn: BN.from(amountIn).toString(),
-                    to: this.contract.address,
-                    // set the slippage to 20% since we already enforced the minimum output in our contract
-                    slippageTolerance: 2_000,
-                },
-                headers: { 'Accept-Version': 'Latest' },
-            })
-            .catch(() => {
-                return {
-                    data: {
-                        outputAmount: 0,
-                        encodedSwapData: undefined,
-                    },
-                };
-            });
-        return data;
-    }
-
     async inputParams(
         tokenIn: Address,
         netTokenIn: BigNumberish,
@@ -120,12 +95,12 @@ export class Router {
         kybercallData: KybercallData;
     }> {
         const possibleOutAmounts = tokenMintScyList.map(async (tokenMintScy) => {
-            const kybercallData = await this.kybercall(tokenIn, tokenMintScy, netTokenIn);
+            const kybercallData = await this.kyberHelper.makeCall({ token: tokenIn, amount: netTokenIn }, tokenMintScy);
             const input: TokenInputStruct = {
                 tokenIn,
                 netTokenIn,
                 tokenMintScy,
-                kybercall: kybercallData.encodedSwapData,
+                kybercall: kybercallData.encodedSwapData ?? '0x',
             };
 
             // return -1 to avoid swapping through this token
@@ -152,12 +127,12 @@ export class Router {
         kybercallData: KybercallData;
     }> {
         const possibleOutAmounts = tokenMintScyList.map(async (tokenMintScy) => {
-            const kybercallData = await this.kybercall(tokenIn, tokenMintScy, netTokenIn);
+            const kybercallData = await this.kyberHelper.makeCall({ token: tokenIn, amount: netTokenIn }, tokenMintScy);
             const input: TokenInputStruct = {
                 tokenIn,
                 netTokenIn,
                 tokenMintScy,
-                kybercall: kybercallData.encodedSwapData,
+                kybercall: kybercallData.encodedSwapData ?? '0x',
             };
 
             // return -1 to avoid swapping through this token
@@ -195,7 +170,10 @@ export class Router {
                 tokenRedeemScy,
                 netScyIn
             );
-            const kybercallData = await this.kybercall(tokenRedeemScy, tokenOut, amountIn);
+            const kybercallData = await this.kyberHelper.makeCall(
+                { token: tokenRedeemScy, amount: amountIn },
+                tokenOut
+            );
             const output = {
                 tokenOut,
                 tokenRedeemScy,
