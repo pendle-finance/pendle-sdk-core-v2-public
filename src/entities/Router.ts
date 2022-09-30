@@ -49,7 +49,7 @@ export class Router {
         this.contract = createContractObject<IPAllAction>(address, IPAllActionABI, networkConnection);
         this.routerStatic = getRouterStatic(networkConnection, chainId);
 
-        this.kyberHelper = new KyberHelper(address, chainId, kyberHelperConfig);
+        this.kyberHelper = new KyberHelper(address, networkConnection, chainId, kyberHelperConfig);
     }
 
     get state(): RouterState {

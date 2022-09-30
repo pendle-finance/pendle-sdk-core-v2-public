@@ -1,9 +1,11 @@
-import { Address, TokenAmount, ChainId } from '../types';
+import { Address, RawTokenAmount, ChainId, NetworkConnection } from '../types';
 import type { BigNumberish, BytesLike } from 'ethers';
 import { BigNumber as BN } from 'ethers';
 import { isKyberSupportedChain, isSameAddress, isNativeToken } from './helper';
-import { NATIVE_ADDRESS_0xEE, KYBER_API, KYBERSWAP_TEST_AMOUNT } from '../constants';
+import { NATIVE_ADDRESS_0xEE, KYBER_API } from '../constants';
 import axios from 'axios';
+import { ERC20 } from './ERC20';
+import { Multicall } from '../multicall';
 
 type SwappablePairResult = {
     swappable: boolean;
@@ -36,6 +38,7 @@ export class KyberHelper {
     };
 
     readonly chainId: ChainId;
+    readonly networkConnection: NetworkConnection;
     readonly routerAddress: Address;
     readonly cacheTimeout_ms: number;
     protected swappablePairs = new Map<
@@ -43,13 +46,19 @@ export class KyberHelper {
         SwappablePairResult | { pendingResult: Promise<boolean> }
     >();
 
-    constructor(routerAddress: Address, chainId: ChainId, params?: KyberHelperConfig) {
+    constructor(
+        routerAddress: Address,
+        networkConnection: NetworkConnection,
+        chainId: ChainId,
+        params?: KyberHelperConfig
+    ) {
         const { cacheTimeout_ms: swappablePairsExpirationTimeout_ms, state } = {
             ...KyberHelper.DEFAULT_CONFIG,
             ...params,
         };
 
         this.routerAddress = routerAddress;
+        this.networkConnection = networkConnection;
         this.chainId = chainId;
         this.cacheTimeout_ms = swappablePairsExpirationTimeout_ms;
         if (state != undefined) {
@@ -92,7 +101,7 @@ export class KyberHelper {
         };
     }
 
-    async makeCall(input: TokenAmount<BigNumberish>, output: Address): Promise<KybercallData> {
+    async makeCall(input: RawTokenAmount<BigNumberish>, output: Address): Promise<KybercallData> {
         if (!isKyberSupportedChain(this.chainId)) {
             throw new Error(`Chain ${this.chainId} is not supported for kybercall.`);
         }
@@ -101,16 +110,25 @@ export class KyberHelper {
         if (isNativeToken(input.token)) input.token = NATIVE_ADDRESS_0xEE;
         if (isNativeToken(output)) output = NATIVE_ADDRESS_0xEE;
 
+        // Using type here because Rest API doesn't have type
+        const params: {
+            tokenIn: Address;
+            tokenOut: Address;
+            amountIn: string;
+            to: Address;
+            slippageTolerance: number;
+        } = {
+            tokenIn: input.token,
+            tokenOut: output,
+            amountIn: BN.from(input.amount).toString(),
+            to: this.routerAddress,
+            // set the slippage to 20% since we already enforced the minimum output in our contract
+            slippageTolerance: 2_000,
+        };
+
         const { data } = await axios
             .get(KYBER_API[this.chainId], {
-                params: {
-                    tokenIn: input,
-                    tokenOut: output,
-                    amountIn: BN.from(input.amount).toString(),
-                    to: this.routerAddress,
-                    // set the slippage to 20% since we already enforced the minimum output in our contract
-                    slippageTolerance: 2_000,
-                },
+                params,
                 headers: { 'Accept-Version': 'Latest' },
             })
             .catch(() => {
@@ -124,7 +142,11 @@ export class KyberHelper {
         return data;
     }
 
-    async checkSwappablePair(srcTokenAddress: Address, dstTokenAddress: Address): Promise<boolean> {
+    async checkSwappablePair(
+        srcTokenAddress: Address,
+        dstTokenAddress: Address,
+        multicall?: Multicall
+    ): Promise<boolean> {
         srcTokenAddress = srcTokenAddress.toLowerCase();
         dstTokenAddress = dstTokenAddress.toLowerCase();
         const key = `${srcTokenAddress}-${dstTokenAddress}` as const;
@@ -137,7 +159,8 @@ export class KyberHelper {
         }
 
         const res = (async () => {
-            const testAmount = KYBERSWAP_TEST_AMOUNT;
+            const decimals = await new ERC20(srcTokenAddress, this.networkConnection, this.chainId).decimals(multicall);
+            const testAmount = BN.from(10).pow(decimals).mul(100);
             const kybercallData = await this.makeCall({ token: srcTokenAddress, amount: testAmount }, dstTokenAddress);
             const kybercall = kybercallData.encodedSwapData;
             const swappable = kybercall != undefined;

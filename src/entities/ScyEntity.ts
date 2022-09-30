@@ -1,5 +1,5 @@
 import type { RouterStatic, SCYBase } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection, TokenAmount, ChainId } from '../types';
+import type { Address, NetworkConnection, RawTokenAmount, ChainId } from '../types';
 import type { BigNumberish, ContractTransaction, Overrides } from 'ethers';
 import { BigNumber as BN, ContractInterface } from 'ethers';
 import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/base-implementations/SCYBase.sol/SCYBase.json';
@@ -10,7 +10,7 @@ import { Multicall } from '../multicall';
 
 export type UserScyInfo = {
     balance: BN;
-    rewards: TokenAmount[];
+    rewards: RawTokenAmount[];
 };
 
 export class ScyEntity extends ERC20 {

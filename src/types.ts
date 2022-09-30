@@ -10,7 +10,7 @@ export type NetworkConnection =
 
 export type Address = string;
 
-export type TokenAmount<AmountType extends BigNumberish = BN> = {
+export type RawTokenAmount<AmountType extends BigNumberish = BN> = {
     token: Address;
     amount: AmountType;
 };

@@ -1,7 +1,7 @@
 import type { Address } from './entities';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
-import { constants as ethersConstants, BigNumber as BN } from 'ethers';
+import { constants as ethersConstants } from 'ethers';
 
 export type ContractAddresses = {
     ROUTER: Address;
@@ -70,5 +70,3 @@ export const MULTICALL_ADDRESSES: Record<ChainId, Address> = {
     [CHAIN_ID.FUJI]: '0x07e46d95cc98f0d7493d679e89e396ea99020185',
     [CHAIN_ID.MUMBAI]: '0x08411add0b5aa8ee47563b146743c13b3556c9cc',
 } as const;
-
-export const KYBERSWAP_TEST_AMOUNT = BN.from(10).pow(12);

@@ -1,5 +1,5 @@
 import type { PendleYieldToken, RouterStatic } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection, TokenAmount, ChainId } from '../types';
+import type { Address, NetworkConnection, RawTokenAmount, ChainId } from '../types';
 import { BigNumber as BN, ContractInterface } from 'ethers';
 import { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldToken.sol/PendleYieldToken.json';
 import { getRouterStatic } from './helper';
@@ -13,8 +13,8 @@ export type UserPyInfo = {
     ytBalance: BN;
     pt: Address;
     ptBalance: BN;
-    unclaimedInterest: TokenAmount;
-    unclaimedRewards: TokenAmount[];
+    unclaimedInterest: RawTokenAmount;
+    unclaimedRewards: RawTokenAmount[];
 };
 
 export type PyInfo = {
