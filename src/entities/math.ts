@@ -161,16 +161,24 @@ export class MarketExchangeRate {
 
     /**
      * See formula (1.1)
+     * 1 asset = x PT
+     *
+     * So if we have k = assetAmount:
+     * k asset = x * k PT
      */
-    ptToAsset(ptAmount: BigNumberish): BN {
-        return this.exchangeRate.mul(ptAmount).div(ONE);
+    assetToPt(assetAmount: BigNumberish): BN {
+        return this.exchangeRate.mul(assetAmount).div(ONE);
     }
 
     /**
      * See formula (1.2)
+     * 1 PT = 1/x asset
+     *
+     * So if we have k = ptAmount:
+     * k PT = k/x asset
      */
-    assetToPt(assetAmount: BigNumberish): BN {
-        return ONE.mul(assetAmount).div(this.exchangeRate);
+    ptToAsset(ptAmount: BigNumberish): BN {
+        return ONE.mul(ptAmount).div(this.exchangeRate);
     }
 
     /**
@@ -179,9 +187,12 @@ export class MarketExchangeRate {
      * 1 asset = x / (x - 1) / YT
      *         = (this.exchangeRate / ONE) / (this.exchangeRate / ONE - 1) YT
      *         = this.exchangeRate / (this.exchangeRate - ONE) YT
+     *
+     * So if we have k = assetAmount
+     * k asset = k * this.exchangeRate / (this.exchangeRate - ONE) YT
      */
-    ytToAsset(ytAmount: BigNumberish): BN {
-        return this.exchangeRate.mul(ytAmount).div(this.exchangeRate.sub(ONE));
+    assetToYt(assetAmount: BigNumberish): BN {
+        return this.exchangeRate.mul(assetAmount).div(this.exchangeRate.sub(ONE));
     }
 
     /**
@@ -189,8 +200,11 @@ export class MarketExchangeRate {
      * 1 YT = (1 - 1/x) asset = (x - 1) / x asset
      *      = (this.exchangeRate / ONE - 1) / (this.exchangeRate / ONE) asset
      *      = (this.exchangeRate - ONE) / this.exchangeRate asset
+     *
+     * So if we have k = ytAmount
+     * k YT = k * (this.exchangeRate - ONE) / this.exchangeRate asset
      */
-    assetToYt(assetAmount: BigNumberish): BN {
-        return this.exchangeRate.sub(ONE).mul(assetAmount).div(this.exchangeRate);
+    ytToAsset(ytAmount: BigNumberish): BN {
+        return this.exchangeRate.sub(ONE).mul(ytAmount).div(this.exchangeRate);
     }
 }
