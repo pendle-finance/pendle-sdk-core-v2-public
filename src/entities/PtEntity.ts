@@ -8,9 +8,10 @@ import { ERC20 } from './ERC20';
 import { Multicall } from '../multicall';
 import { YtEntity } from './YtEntity';
 import { ScyEntity } from './ScyEntity';
+import { ContractLike } from '../contractHelper';
 
 export class PtEntity extends ERC20 {
-    protected readonly routerStatic: RouterStatic;
+    protected readonly routerStatic: ContractLike<RouterStatic>;
 
     constructor(
         readonly address: Address,
@@ -23,7 +24,7 @@ export class PtEntity extends ERC20 {
     }
 
     get pendlePrincipalTokenContract() {
-        return this.contract as PendlePrincipalToken;
+        return this.contract as ContractLike<PendlePrincipalToken>;
     }
 
     get ptContract() {

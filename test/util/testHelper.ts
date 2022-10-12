@@ -1,18 +1,18 @@
 import { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import { BigNumber as BN, BigNumberish, constants } from 'ethers';
-import { ERC20, Address, MarketEntity } from '../../src';
+import { ERC20, Address, MarketEntity, ContractLike } from '../../src';
 import { isNativeToken } from '../../src/entities/helper';
 import { ACTIVE_CHAIN_ID, networkConnection, BLOCK_CONFIRMATION } from './testUtils';
 
 type EntitiesMapType = {
-    [entity: Address]: PendleERC20;
+    [entity: Address]: ContractLike<PendleERC20>;
 };
 
 const ERC20_CREATE_HANDLER = {
     get: function (target: EntitiesMapType, address: Address) {
         if (target[address] === undefined) {
             target[address] = new ERC20(address, networkConnection, ACTIVE_CHAIN_ID).ERC20Contract.connect(
-                networkConnection.signer!
+                networkConnection.signer
             );
         }
         return target[address];

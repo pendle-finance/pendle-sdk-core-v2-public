@@ -7,7 +7,7 @@
         "sourceMap": true,
         "outDir": "./dist",
         "baseUrl": "./src",
-        "rootDirs": ["./src", "./test"],
+        "rootDirs": ["./src", "./test", "./scripts"],
         "incremental": true,
         "skipLibCheck": true,
         "moduleResolution": "node",
@@ -27,5 +27,5 @@
             "/node_modules/(?!@pendle/core-v2/typechain-types)"
         ]
     },
-    "include": ["src/**/*", "test/**/*"]
+    "include": ["src/**/*", "test/**/*", "scripts/**/*"]
 }

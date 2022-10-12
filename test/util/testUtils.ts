@@ -6,15 +6,16 @@ import { CHAIN_ID, Multicall } from '../../src';
 
 import assert from 'assert';
 
-import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import FUJI_QIUSDC_SEP22_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-9fbD64.json';
-import FUJI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-10D931.json';
-import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-A12361.json';
+import FUJI_CORE_ADDRESSES from '@pendle/core-v2/contracts/deployments/43113-core.json';
+import FUJI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/contracts/deployments/43113-markets/benqi-market-QI-USDC-FEB-2ND.json';
+import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/contracts/deployments/43113-markets/benqi-market-QI-WETH-DEC-1ST.json';
 
-import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
+import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/contracts/deployments/80001-core.json';
+import MUMBAI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/contracts/deployments/80001-markets/benqi-market-QI-USDC-FEB-2ND.json';
+import MUMBAI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/contracts/deployments/80001-markets/benqi-market-QI-WETH-DEC-1ST.json';
 
-import FUJI_TEST_ENV from '@pendle/core-v2/deployments/43113-testenv.json';
-import MUMBAI_TEST_ENV from '@pendle/core-v2/deployments/80001-testenv.json';
+import FUJI_TEST_ENV from '@pendle/core-v2/contracts/deployments/43113-testenv.json';
+import MUMBAI_TEST_ENV from '@pendle/core-v2/contracts/deployments/80001-testenv.json';
 
 config();
 
@@ -71,10 +72,6 @@ export const CONTRACT_ADDRESSES = {
             FAUCET: FUJI_TEST_ENV.tokens.faucet,
             MARKETS: [
                 {
-                    ...FUJI_QIUSDC_SEP22_MARKET_ADDRESSES,
-                    token: FUJI_TEST_ENV.tokens.qiUSDC,
-                },
-                {
                     ...FUJI_QIUSDC_FEB03_MARKET_ADDRESSES,
                     token: FUJI_TEST_ENV.tokens.qiUSDC,
                 },
@@ -102,7 +99,14 @@ export const CONTRACT_ADDRESSES = {
             FUND_KEEPER: MUMBAI_TEST_ENV.tokens.fundKeeper,
             FAUCET: MUMBAI_TEST_ENV.tokens.faucet,
             MARKETS: [
-                // Ignore for now since markets on Mumbai are out-synced
+                {
+                    ...MUMBAI_QIUSDC_FEB03_MARKET_ADDRESSES,
+                    token: MUMBAI_TEST_ENV.tokens.qiUSDC,
+                },
+                {
+                    ...MUMBAI_QIWETH_DEC01_ADDRESSES,
+                    token: MUMBAI_TEST_ENV.tokens.qiWETH,
+                },
             ],
         },
         TOKENS: MUMBAI_TEST_ENV.tokens,
@@ -117,8 +121,8 @@ export const WALLET = () => ({
 });
 
 // choose the markets you want to test here
-// 0n fuji: 0 for qiUSDC, 1 for qiAVAX, 2 for qiWETH
-const MARKET_TO_TEST = 1;
+// 0n fuji: 0 for (qiUSDC Feb 03), 1 for (qiWETH Dec 01)
+const MARKET_TO_TEST = 0;
 
 export const testConfig = (chainId: TestChainId) => ({
     chainId,

@@ -1,4 +1,11 @@
 import { EthersJsErrorCode } from './types';
+import { Interface } from '@ethersproject/abi';
+import { BytesLike, utils as ethersUtils } from 'ethers';
+import { abi as PendleContractErrorsAbi } from '@pendle/core-v2/build/artifacts/contracts/core/libraries/Errors.sol/Errors.json';
+import {
+    defaultPendleContractErrorMessageHandler,
+    PendleContractErrorMessageHandler,
+} from './PendleContractErrorMessages';
 
 /**
  * Pendle SDK Error base class to be extended by all errors.
@@ -11,14 +18,12 @@ import { EthersJsErrorCode } from './types';
 export class PendleSdkError extends Error {
     constructor(message: string) {
         super(message);
-        this.name = this.constructor.name;
 
         // Set the prototype explicitly.
         // See: https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
         Object.setPrototypeOf(this, this.constructor.prototype);
     }
 }
-
 export class InvalidSlippageError extends PendleSdkError {
     constructor(invalidSlippage: number) {
         super(`Slippage must be a decimal value in the range [0, 1], but found ${invalidSlippage}`);
@@ -49,7 +54,7 @@ export class EthersJsError extends PendleSdkError {
     /**
      *  If you want to check more types of errors, add a callback to this array.
      */
-    static readonly MAKE_ERROR_CALLBACKS: ((e: Error) => EthersJsError | undefined)[] = [];
+    static readonly MAKE_ERROR_CALLBACKS: ((e: Error) => Error | undefined)[] = [];
 
     // @ts-ignore
     readonly code: EthersJsErrorCode;
@@ -74,8 +79,6 @@ export class EthersJsError extends PendleSdkError {
             this.message = this.simpleMessage();
         }
 
-        // Override again because the Object.assign above
-        this.name = this.constructor.name;
         Object.setPrototypeOf(this, this.constructor.prototype);
     }
 
@@ -93,7 +96,7 @@ export class EthersJsError extends PendleSdkError {
         return 'reason' in err && 'code' in err;
     }
 
-    static makeEthersJsError(err: Error): EthersJsError | Error {
+    static handleEthersJsError(err: Error): Error {
         if (!EthersJsError.isEthersJsError(err)) {
             return err;
         }
@@ -106,6 +109,80 @@ export class EthersJsError extends PendleSdkError {
         }
 
         return new EthersJsError(err);
+    }
+}
+
+export class PendleContractError extends PendleSdkError {
+    static readonly errorsInterface = new Interface(PendleContractErrorsAbi);
+    static errorMessageHandler: PendleContractErrorMessageHandler = defaultPendleContractErrorMessageHandler;
+
+    constructor(
+        readonly errorName: keyof PendleContractErrorMessageHandler,
+        readonly args: any[],
+        readonly ethersJsError: Error
+    ) {
+        const message: string = (PendleContractError.errorMessageHandler[errorName] as any).apply(null, args);
+        super(message);
+    }
+
+    static decodeEthersError(data: BytesLike, ethersJsError: Error) {
+        try {
+            const errorDescription = this.errorsInterface.parseError(data);
+            if (!errorDescription) {
+                return undefined;
+            }
+            const name = errorDescription.name as keyof typeof defaultPendleContractErrorMessageHandler;
+            const args = errorDescription.args as any[];
+            return new PendleContractError(name, args, ethersJsError);
+        } catch (_e) {
+            return undefined;
+        }
+    }
+
+    /**
+     * For the case of JsonRpcProvider, the error is highly nested.
+     * Even in their source code they need to dig the data up.
+     * This function only mimic that behavior.
+     * https://github.com/ethers-io/ethers.js/blob/44cbc7fa4e199c1d6113ceec3c5162f53def5bb8/packages/providers/src.ts/json-rpc-provider.ts#L25
+     */
+    static makeError(value: any, originalError: any = value): PendleContractError | undefined {
+        if (value == undefined) {
+            return undefined;
+        }
+
+        // These *are* the droids we're looking for.
+
+        // call revert exception is used because it is striped down in checkError (in ethers.js)
+        if (typeof value.message === 'string' && value.message.match(/reverted|call revert exception/)) {
+            const data = value.data;
+            if (ethersUtils.isHexString(data)) {
+                return this.decodeEthersError(data, originalError);
+            }
+        }
+
+        // Spelunk further...
+        if (typeof value === 'object') {
+            for (const field of Object.values(value)) {
+                const result = this.makeError(field, originalError);
+                if (result) {
+                    return result;
+                }
+            }
+            return undefined;
+        }
+
+        // Might be a JSON string we can further descend...
+        if (typeof value === 'string') {
+            try {
+                return this.makeError(JSON.parse(value), originalError);
+            } catch (error) {}
+        }
+    }
+}
+
+export class GasEstimationError extends PendleSdkError {
+    constructor(readonly cause: Error) {
+        super(`Gas estimation error: ${cause.message}`);
     }
 }
 
@@ -157,6 +234,7 @@ export class ExchangeRateBelowOneError extends EthersJsError {
 }
 
 EthersJsError.MAKE_ERROR_CALLBACKS.push(
+    PendleContractError.makeError.bind(PendleContractError),
     ApproximateError.makeError,
     InsufficientFundError.makeError,
     MaxProportionExceededError.makeError,

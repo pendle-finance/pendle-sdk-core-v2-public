@@ -1,13 +1,14 @@
 import type { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, ChainId } from '../types';
-import { abi as PendleERC20ABI } from '@pendle/core-v2/build/artifacts/contracts/core/PendleERC20.sol/PendleERC20.json';
+import { abi as PendleERC20ABI } from '@pendle/core-v2/build/artifacts/contracts/core/erc20/PendleERC20.sol/PendleERC20.json';
 import type { BigNumberish, ContractTransaction, Overrides, ContractInterface } from 'ethers';
-import { BigNumber as BN, Contract } from 'ethers';
+import { BigNumber as BN } from 'ethers';
 import { Multicall } from '../multicall';
-import { createContractObject, requiresSigner } from './helper';
+import { requiresSigner } from './helper';
+import { createContractObject, ContractLike } from '../contractHelper';
 
 export class ERC20 {
-    readonly contract: Contract;
+    readonly contract: ContractLike;
 
     constructor(
         readonly address: Address,
@@ -19,7 +20,7 @@ export class ERC20 {
     }
 
     get ERC20Contract() {
-        return this.contract as PendleERC20;
+        return this.contract as ContractLike<PendleERC20>;
     }
 
     allowance(owner: Address, spender: Address, multicall?: Multicall): Promise<BN> {

@@ -30,7 +30,7 @@ import {
 import { BigNumber as BN } from 'ethers';
 import './util/bigNumberMatcher';
 import { getRouterStatic } from '../src/entities/helper';
-import { ApproximateError, EthersJsError, NoRouteFoundError } from '../src/errors';
+import { ApproximateError, NoRouteFoundError } from '../src/errors';
 
 type BalanceSnapshot = {
     ptBalance: BN;
@@ -154,7 +154,7 @@ describe(Router, () => {
                 .addLiquiditySinglePt(signer.address, currentConfig.marketAddress, ptAdd, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof ApproximateError) {
                         flag = true;
                         console.warn(e.message);
@@ -185,7 +185,7 @@ describe(Router, () => {
                 .addLiquiditySingleScy(signer.address, currentConfig.marketAddress, scyAdd, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof ApproximateError) {
                         flag = true;
                         console.warn(e.message);
@@ -226,7 +226,7 @@ describe(Router, () => {
                     )
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                     .catch((e) => {
-                        e = EthersJsError.makeEthersJsError(e);
+                        // e = EthersJsError.handleEthersJsError(e);
                         if (e instanceof NoRouteFoundError || e instanceof ApproximateError) {
                             flag = true;
                             console.warn(e.message);
@@ -317,7 +317,7 @@ describe(Router, () => {
                 .removeLiquiditySinglePt(signer.address, currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof ApproximateError) {
                         flag = true;
                         console.warn(e.message);
@@ -377,7 +377,7 @@ describe(Router, () => {
                     )
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                     .catch((e) => {
-                        e = EthersJsError.makeEthersJsError(e);
+                        // e = EthersJsError.handleEthersJsError(e);
                         if (e instanceof NoRouteFoundError) {
                             flag = true;
                             console.warn(e.message);
@@ -428,7 +428,7 @@ describe(Router, () => {
                 .swapPtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof ApproximateError) {
                         flag = true;
                         console.warn(e.message);
@@ -478,7 +478,7 @@ describe(Router, () => {
                 .swapExactScyForPt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof ApproximateError) {
                         flag = true;
                         console.warn(e.message);
@@ -511,7 +511,7 @@ describe(Router, () => {
                 .swapExactScyForYt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof ApproximateError) {
                         flag = true;
                         console.warn(e.message);
@@ -544,7 +544,7 @@ describe(Router, () => {
                 .swapYtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof ApproximateError) {
                         flag = true;
                         console.warn(e.message);
@@ -619,7 +619,7 @@ describe(Router, () => {
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof NoRouteFoundError || e instanceof ApproximateError) {
                         flag = true;
                         console.warn(e.message);
@@ -656,7 +656,7 @@ describe(Router, () => {
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof NoRouteFoundError) {
                         flag = true;
                         console.warn(e.message);
@@ -692,7 +692,7 @@ describe(Router, () => {
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof NoRouteFoundError || e instanceof ApproximateError) {
                         flag = true;
                         console.warn(e.message);
@@ -728,7 +728,7 @@ describe(Router, () => {
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof NoRouteFoundError) {
                         flag = true;
                         console.warn(e.message);
@@ -769,7 +769,7 @@ describe(Router, () => {
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof NoRouteFoundError) {
                         flag = true;
                         console.warn(e.message);
@@ -809,7 +809,7 @@ describe(Router, () => {
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof NoRouteFoundError) {
                         flag = true;
                         console.warn(e.message);
@@ -849,7 +849,7 @@ describe(Router, () => {
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof NoRouteFoundError) {
                         flag = true;
                         console.warn(e.message);
@@ -885,7 +885,7 @@ describe(Router, () => {
                 )
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
-                    e = EthersJsError.makeEthersJsError(e);
+                    // e = EthersJsError.handleEthersJsError(e);
                     if (e instanceof NoRouteFoundError) {
                         flag = true;
                         console.warn(e.message);

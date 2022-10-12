@@ -4,9 +4,10 @@ import type { UserPyInfo } from './YtEntity';
 import type { UserMarketInfo } from './MarketEntity';
 import { getRouterStatic } from './helper';
 import { Multicall } from '../multicall';
+import { ContractLike } from '../contractHelper';
 
 export class SDK {
-    protected readonly routerStatic: RouterStatic;
+    protected readonly routerStatic: ContractLike<RouterStatic>;
 
     constructor(protected readonly networkConnection: NetworkConnection, readonly chainId: ChainId) {
         this.routerStatic = getRouterStatic(networkConnection, chainId);

@@ -3,12 +3,13 @@ import type { Address, NetworkConnection, ChainId } from '../types';
 import { BigNumber } from 'bignumber.js';
 import type { ContractTransaction, Overrides } from 'ethers';
 import { BigNumber as BN, constants } from 'ethers';
-import { abi as PendleVotingControllerUpgABI } from '@pendle/core-v2/build/artifacts/contracts/core/LiquidityMining/VotingController/PendleVotingControllerUpg.sol/PendleVotingControllerUpg.json';
-import { isMainchain, createContractObject, requiresSigner } from './helper';
+import { abi as PendleVotingControllerUpgABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VotingController/PendleVotingControllerUpg.sol/PendleVotingControllerUpg.json';
+import { isMainchain, requiresSigner } from './helper';
 import { MarketEntity } from './MarketEntity';
+import { ContractLike, createContractObject } from '../contractHelper';
 
 export class VotingController {
-    readonly contract: PendleVotingControllerUpg;
+    readonly contract: ContractLike<PendleVotingControllerUpg>;
 
     constructor(
         readonly address: Address,

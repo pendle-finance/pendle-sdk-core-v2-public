@@ -2,11 +2,12 @@ import type { RouterStatic, SCYBase } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, RawTokenAmount, ChainId } from '../types';
 import type { BigNumberish, ContractTransaction, Overrides } from 'ethers';
 import { BigNumber as BN, ContractInterface } from 'ethers';
-import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/SuperComposableYield/base-implementations/SCYBase.sol/SCYBase.json';
+import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/core/SuperComposableYield/SCYBase.sol/SCYBase.json';
 import { getRouterStatic, isNativeToken } from './helper';
 import { calcSlippedDownAmount } from './math';
 import { ERC20 } from './ERC20';
 import { Multicall } from '../multicall';
+import { ContractLike } from '../contractHelper';
 
 export type UserScyInfo = {
     balance: BN;
@@ -14,7 +15,7 @@ export type UserScyInfo = {
 };
 
 export class ScyEntity extends ERC20 {
-    protected readonly routerStatic: RouterStatic;
+    protected readonly routerStatic: ContractLike<RouterStatic>;
 
     constructor(
         readonly address: Address,
@@ -27,7 +28,7 @@ export class ScyEntity extends ERC20 {
     }
 
     get SCYBaseContract() {
-        return this.contract as SCYBase;
+        return this.contract as ContractLike<SCYBase>;
     }
 
     get scyContract() {
@@ -71,14 +72,22 @@ export class ScyEntity extends ERC20 {
         baseAssetOut: Address,
         amountScyToPull: BigNumberish,
         slippage: number,
+        burnFromInternalBalance: boolean,
         overrides: Overrides = {}
     ): Promise<ContractTransaction> {
-        const amountBaseOut = await this.scyContract.callStatic.redeem(receiver, amountScyToPull, baseAssetOut, 0);
+        const amountBaseOut = await this.scyContract.callStatic.redeem(
+            receiver,
+            amountScyToPull,
+            baseAssetOut,
+            0,
+            burnFromInternalBalance
+        );
         return this.scyContract.redeem(
             receiver,
             amountScyToPull,
             baseAssetOut,
             calcSlippedDownAmount(amountBaseOut, slippage),
+            burnFromInternalBalance,
             overrides
         );
     }

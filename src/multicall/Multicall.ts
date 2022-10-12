@@ -6,6 +6,8 @@ import { FunctionFragment, Interface } from 'ethers/lib/utils';
 import { MULTICALL_ADDRESSES } from '../constants';
 import { abi as MulticallABI } from './Multicall2.json';
 import { ChainId } from '../types';
+import { BaseContractLike } from '../contractHelper';
+import { EthersJsError } from '../errors';
 
 /**
  * Multicall implementation, allowing to call function of contract.callStatic functions
@@ -50,7 +52,7 @@ class ContractCall {
 }
 
 type RemoveLastOptionalParam<T extends any[]> = T extends [...infer Head, any?] ? Head : T;
-export type MulticallStatic<T extends Contract> = {
+export type MulticallStatic<T extends BaseContractLike> = {
     callStatic: {
         [P in keyof T['callStatic']]: (
             ...params: RemoveLastOptionalParam<Parameters<T['callStatic'][P]>>
@@ -76,7 +78,7 @@ export class Multicall {
      * This function is useful in case where the user when to choose whether to use multicall
      * by themselves.
      */
-    static wrap<T extends Contract>(contract: T, multicall: Multicall | undefined): MulticallStatic<T> {
+    static wrap<T extends BaseContractLike>(contract: T, multicall: Multicall | undefined): MulticallStatic<T> {
         return multicall ? multicall.wrap(contract) : (contract as unknown as MulticallStatic<T>);
     }
 
@@ -125,19 +127,19 @@ export class Multicall {
                 if (e.reason == null) {
                     e.reason = 'Call failed for unknown reason';
                 }
-                return e;
+                return EthersJsError.handleEthersJsError(e);
             }
         });
 
         return result;
     }
 
-    wrap<T extends Contract>(contract_: T): MulticallStatic<T> {
+    wrap<T extends BaseContractLike>(contract_: T): MulticallStatic<T> {
         const contract = contract_ as T & { [key in symbol]: MulticallStatic<T> };
         if (contract[this.multicallStaticSymbol]) {
             return contract[this.multicallStaticSymbol];
         }
-        const functions = contract.interface.functions;
+        const functions = contract_.interface.functions;
         const funcs: Record<string, (...args: any[]) => Promise<any>> = {};
 
         for (const [_, fn] of Object.entries(functions)) {

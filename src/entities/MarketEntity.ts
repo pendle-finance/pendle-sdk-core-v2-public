@@ -10,6 +10,7 @@ import { Multicall } from '../multicall';
 import { ChainId } from '../types';
 import { ScyEntity } from './ScyEntity';
 import { PtEntity } from './PtEntity';
+import { ContractLike } from '../contractHelper';
 
 export type MarketInfo = {
     pt: Address;
@@ -28,7 +29,7 @@ export type UserMarketInfo = {
 };
 
 export class MarketEntity extends ERC20 {
-    protected readonly routerStatic: RouterStatic;
+    protected readonly routerStatic: ContractLike<RouterStatic>;
     protected _ptAddress: Address | undefined;
     protected _scyAddress: Address | undefined;
 
@@ -43,7 +44,7 @@ export class MarketEntity extends ERC20 {
     }
 
     get pendleMarketContract() {
-        return this.contract as PendleMarket;
+        return this.contract as ContractLike<PendleMarket>;
     }
 
     get marketContract() {

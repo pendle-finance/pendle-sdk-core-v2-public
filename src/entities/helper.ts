@@ -1,26 +1,10 @@
 import type { RouterStatic } from '@pendle/core-v2/typechain-types';
 import { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/RouterStatic.sol/RouterStatic.json';
-import { Contract, ContractInterface } from 'ethers';
 import type { ContractAddresses } from '../constants';
 import { CHAIN_ID, NATIVE_ADDRESS_0x00, NATIVE_ADDRESS_0xEE, CONTRACT_ADDRESSES, KYBER_API } from '../constants';
 import { Address, ChainId, MainchainId, NetworkConnection } from '../types';
 import { PendleSdkError } from '../errors';
-
-export function createContractObject<T extends Contract = Contract>(
-    address: Address,
-    abi: ContractInterface,
-    networkConnection: NetworkConnection
-): T {
-    if (networkConnection.signer == undefined) {
-        return new Contract(address, abi, networkConnection.provider) as T;
-    }
-    if (networkConnection.provider != undefined && networkConnection.provider !== networkConnection.signer.provider) {
-        throw new PendleSdkError(
-            'For contract creation, networkConnection.provider should be the same as networkConnection.signer.provider'
-        );
-    }
-    return new Contract(address, abi, networkConnection.signer) as T;
-}
+import { createContractObject, ContractLike } from '../contractHelper';
 
 /**
  * This is a decorator that check if this.networkConnection.signer existed
@@ -45,7 +29,7 @@ export function requiresSigner(
     };
 }
 
-export function getRouterStatic(networkConnection: NetworkConnection, chainId: ChainId): RouterStatic {
+export function getRouterStatic(networkConnection: NetworkConnection, chainId: ChainId): ContractLike<RouterStatic> {
     return createContractObject<RouterStatic>(
         getContractAddresses(chainId).ROUTER_STATIC,
         RouterStaticABI,

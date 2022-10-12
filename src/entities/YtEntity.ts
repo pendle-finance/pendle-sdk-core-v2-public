@@ -7,6 +7,7 @@ import { ERC20 } from './ERC20';
 import { Multicall } from '../multicall';
 import { PtEntity } from './PtEntity';
 import { ScyEntity } from './ScyEntity';
+import { ContractLike } from '../contractHelper';
 
 export type UserPyInfo = {
     yt: Address;
@@ -29,7 +30,7 @@ export type RewardIndex = {
 };
 
 export class YtEntity extends ERC20 {
-    protected readonly routerStatic: RouterStatic;
+    protected readonly routerStatic: ContractLike<RouterStatic>;
 
     constructor(
         readonly address: Address,
@@ -42,7 +43,7 @@ export class YtEntity extends ERC20 {
     }
 
     get pendleYieldTokenContract() {
-        return this.contract as PendleYieldToken;
+        return this.contract as ContractLike<PendleYieldToken>;
     }
 
     get ytContract() {

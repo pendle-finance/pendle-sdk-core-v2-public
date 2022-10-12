@@ -1,10 +1,11 @@
 import type { VotingEscrowTokenBase, VotingEscrowPendleMainchain } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, ChainId, MainchainId } from '../types';
 import { ContractInterface } from 'ethers';
-import { abi as VotingEscrowTokenBaseABI } from '@pendle/core-v2/build/artifacts/contracts/core/LiquidityMining/VotingEscrow/VotingEscrowTokenBase.sol/VotingEscrowTokenBase.json';
-import { abi as VotingEscrowPendleMainchainABI } from '@pendle/core-v2/build/artifacts/contracts/core/LiquidityMining/VotingEscrow/VotingEscrowPendleMainchain.sol/VotingEscrowPendleMainchain.json';
+import { abi as VotingEscrowTokenBaseABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VotingEscrow/VotingEscrowTokenBase.sol/VotingEscrowTokenBase.json';
+import { abi as VotingEscrowPendleMainchainABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VotingEscrow/VotingEscrowPendleMainchain.sol/VotingEscrowPendleMainchain.json';
 import { ERC20 } from './ERC20';
 import { Multicall } from '../multicall';
+import { ContractLike } from '../contractHelper';
 
 export class VePendle extends ERC20 {
     constructor(
@@ -17,7 +18,7 @@ export class VePendle extends ERC20 {
     }
 
     get votingEscrowTokenBaseContract() {
-        return this.contract as VotingEscrowTokenBase;
+        return this.contract as ContractLike<VotingEscrowTokenBase>;
     }
 
     async positionData(userAddress: Address, multicall?: Multicall) {
@@ -35,8 +36,8 @@ export class VePendleMainchain extends VePendle {
         super(address, networkConnection, chainId, abi);
     }
 
-    get votingEscrowPendleMainchainContract(): VotingEscrowPendleMainchain {
-        return this.contract as VotingEscrowPendleMainchain;
+    get votingEscrowPendleMainchainContract(): ContractLike<VotingEscrowPendleMainchain> {
+        return this.contract as ContractLike<VotingEscrowPendleMainchain>;
     }
 
     get vePendleMainchainContract() {
