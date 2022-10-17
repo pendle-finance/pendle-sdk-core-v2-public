@@ -1,11 +1,11 @@
 import type { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, ChainId } from '../types';
 import { abi as PendleERC20ABI } from '@pendle/core-v2/build/artifacts/contracts/core/erc20/PendleERC20.sol/PendleERC20.json';
-import type { BigNumberish, ContractTransaction, Overrides, ContractInterface } from 'ethers';
+import type { BigNumberish, ContractInterface } from 'ethers';
 import { BigNumber as BN } from 'ethers';
 import { Multicall } from '../multicall';
 import { requiresSigner } from './helper';
-import { createContractObject, ContractLike } from '../contractHelper';
+import { createContractObject, ContractLike, MetaMethodType } from '../contractHelper';
 
 export class ERC20 {
     readonly contract: ContractLike;
@@ -20,40 +20,40 @@ export class ERC20 {
     }
 
     get ERC20Contract() {
-        return this.contract as ContractLike<PendleERC20>;
+        return this.contract as unknown as ContractLike<PendleERC20>;
     }
 
     allowance(owner: Address, spender: Address, multicall?: Multicall): Promise<BN> {
-        return Multicall.wrap(this.ERC20Contract, multicall).callStatic.allowance(owner, spender);
+        return this.ERC20Contract.multicallStatic.allowance(owner, spender, multicall);
     }
 
     balanceOf(account: Address, multicall?: Multicall): Promise<BN> {
-        return Multicall.wrap(this.ERC20Contract, multicall).callStatic.balanceOf(account);
+        return this.ERC20Contract.multicallStatic.balanceOf(account, multicall);
     }
 
     decimals(multicall?: Multicall): Promise<number> {
-        return Multicall.wrap(this.ERC20Contract, multicall).callStatic.decimals();
+        return this.ERC20Contract.multicallStatic.decimals(multicall);
     }
 
     name(multicall?: Multicall): Promise<string> {
-        return Multicall.wrap(this.ERC20Contract, multicall).callStatic.name();
+        return this.ERC20Contract.multicallStatic.name(multicall);
     }
 
     symbol(multicall?: Multicall): Promise<string> {
-        return Multicall.wrap(this.ERC20Contract, multicall).callStatic.symbol();
+        return this.ERC20Contract.multicallStatic.symbol(multicall);
     }
 
     totalSupply(multicall?: Multicall): Promise<BN> {
-        return Multicall.wrap(this.ERC20Contract, multicall).callStatic.totalSupply();
+        return this.ERC20Contract.multicallStatic.totalSupply(multicall);
     }
 
     @requiresSigner
-    approve(spender: Address, amount: BigNumberish, overrides: Overrides = {}): Promise<ContractTransaction> {
-        return this.ERC20Contract.approve(spender, amount, overrides);
+    approve<T extends MetaMethodType = 'send'>(spender: Address, amount: BigNumberish, metaMethodType?: T) {
+        return this.ERC20Contract.metaCall.approve(spender, amount, metaMethodType);
     }
 
     @requiresSigner
-    transfer(to: Address, amount: BigNumberish, overrides: Overrides = {}): Promise<ContractTransaction> {
-        return this.ERC20Contract.transfer(to, amount, overrides);
+    transfer<T extends MetaMethodType = 'send'>(to: Address, amount: BigNumberish, metaMethodType?: T) {
+        return this.ERC20Contract.metaCall.transfer(to, amount, metaMethodType);
     }
 }

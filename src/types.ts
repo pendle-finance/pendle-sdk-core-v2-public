@@ -22,3 +22,8 @@ export type EthersJsErrorCode = ErrorCode[keyof ErrorCode];
 
 export { ChainId } from './constants';
 export type MainchainId = typeof CHAIN_ID.ETHEREUM | typeof CHAIN_ID.FUJI;
+
+export type RemoveLastOptional<T extends any[]> = T extends [...infer Head, any?] ? Head : T;
+export type RemoveLastOptionalParam<Fn extends (...params: any[]) => any> = (
+    ...params: RemoveLastOptional<Parameters<Fn>>
+) => ReturnType<Fn>;
