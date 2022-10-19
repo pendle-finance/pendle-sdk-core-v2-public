@@ -10,10 +10,10 @@ const toTest = [
     'SDK',
     'Market',
     'MarketFactory',
-    'Router',
     'VePendle',
     'VotingController',
     'Misc',
+    'Router', // this is last because it runs so slowly
 ];
 
 toTest.forEach((file) => {

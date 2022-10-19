@@ -1,10 +1,10 @@
 import type { PendleMarketFactory } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, ChainId } from '../types';
 import { abi as PendleMarketFactoryABI } from '@pendle/core-v2/build/artifacts/contracts/core/Market/PendleMarketFactory.sol/PendleMarketFactory.json';
-import { createContractObject, ContractLike } from '../contractHelper';
+import { createContractObject, WrappedContract } from '../contractHelper';
 
 export class MarketFactory {
-    readonly contract: ContractLike<PendleMarketFactory>;
+    readonly contract: WrappedContract<PendleMarketFactory>;
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,

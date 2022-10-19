@@ -1,29 +1,35 @@
 import type { PendleVotingControllerUpg } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, ChainId } from '../types';
 import { BigNumber } from 'bignumber.js';
-import type { ContractTransaction, Overrides } from 'ethers';
-import { BigNumber as BN, constants } from 'ethers';
+import { BigNumber as BN, constants, ContractInterface } from 'ethers';
 import { abi as PendleVotingControllerUpgABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VotingController/PendleVotingControllerUpg.sol/PendleVotingControllerUpg.json';
-import { isMainchain, requiresSigner } from './helper';
+import { isMainchain } from './helper';
 import { MarketEntity } from './MarketEntity';
-import { ContractLike, createContractObject } from '../contractHelper';
+import { WrappedContract, createContractObject, MetaMethodType } from '../contractHelper';
+import { Multicall } from '../multicall';
+
+export type VotingControllerConfig = {
+    abi?: ContractInterface;
+    multicall?: Multicall;
+};
 
 export class VotingController {
-    readonly contract: ContractLike<PendleVotingControllerUpg>;
+    readonly contract: WrappedContract<PendleVotingControllerUpg>;
+    readonly multicall?: Multicall;
 
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId
+        readonly chainId: ChainId,
+        config: VotingControllerConfig = {}
     ) {
         if (!isMainchain(chainId)) {
             throw Error('Voting only available on main chain (Ethereum)');
         }
-        this.contract = createContractObject<PendleVotingControllerUpg>(
-            address,
-            PendleVotingControllerUpgABI,
-            networkConnection
-        );
+        const abi = config.abi ?? PendleVotingControllerUpgABI;
+        this.contract = createContractObject<PendleVotingControllerUpg>(address, abi, networkConnection, {
+            multicall: config.multicall,
+        });
     }
 
     static scaleWeight(weight: number): BN {
@@ -37,15 +43,14 @@ export class VotingController {
     //     return new BigNumber(totalVotedWeight.toString()).div(constants.WeiPerEther.toString()).toNumber();
     // }
 
-    @requiresSigner
-    async vote(
+    async vote<T extends MetaMethodType = 'send'>(
         votes: { market: MarketEntity; weight: number }[],
-        overrides: Overrides = {}
-    ): Promise<ContractTransaction> {
-        return this.contract.vote(
+        metaMethodType?: T
+    ) {
+        return this.contract.metaCall.vote(
             votes.map(({ market }) => market.address),
             votes.map(({ weight }) => VotingController.scaleWeight(weight)),
-            overrides
+            metaMethodType
         );
     }
 }

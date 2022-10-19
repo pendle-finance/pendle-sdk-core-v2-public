@@ -1,11 +1,11 @@
 import { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import { BigNumber as BN, BigNumberish, constants } from 'ethers';
-import { ERC20, Address, MarketEntity, ContractLike } from '../../src';
+import { ERC20, Address, MarketEntity, WrappedContract } from '../../src';
 import { isNativeToken } from '../../src/entities/helper';
 import { ACTIVE_CHAIN_ID, networkConnection, BLOCK_CONFIRMATION } from './testUtils';
 
 type EntitiesMapType = {
-    [entity: Address]: ContractLike<PendleERC20>;
+    [entity: Address]: WrappedContract<PendleERC20>;
 };
 
 const ERC20_CREATE_HANDLER = {

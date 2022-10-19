@@ -4,7 +4,7 @@ import type { ContractAddresses } from '../constants';
 import { CHAIN_ID, NATIVE_ADDRESS_0x00, NATIVE_ADDRESS_0xEE, CONTRACT_ADDRESSES, KYBER_API } from '../constants';
 import { Address, ChainId, MainchainId, NetworkConnection } from '../types';
 import { PendleSdkError } from '../errors';
-import { createContractObject, ContractLike } from '../contractHelper';
+import { createContractObject, WrappedContract, WrappedContractConfig } from '../contractHelper';
 
 /**
  * This is a decorator that check if this.networkConnection.signer existed
@@ -29,11 +29,16 @@ export function requiresSigner(
     };
 }
 
-export function getRouterStatic(networkConnection: NetworkConnection, chainId: ChainId): ContractLike<RouterStatic> {
+export function getRouterStatic(
+    networkConnection: NetworkConnection,
+    chainId: ChainId,
+    config?: WrappedContractConfig
+): WrappedContract<RouterStatic> {
     return createContractObject<RouterStatic>(
         getContractAddresses(chainId).ROUTER_STATIC,
         RouterStaticABI,
-        networkConnection
+        networkConnection,
+        config
     );
 }
 
@@ -55,4 +60,37 @@ export function isSameAddress(address1: Address, address2: Address): boolean {
 
 export function isNativeToken(address: Address): boolean {
     return isSameAddress(address, NATIVE_ADDRESS_0x00) || isSameAddress(address, NATIVE_ADDRESS_0xEE);
+}
+
+export function filterUniqueByField<Elm, F>(arr: Iterable<Elm>, fieldGetter: (elm: Elm) => F): Elm[] {
+    const s = new Set<F>();
+    const res: Elm[] = [];
+    for (const elm of arr) {
+        const field = fieldGetter(elm);
+        if (s.has(field)) {
+            continue;
+        }
+        s.add(field);
+        res.push(elm);
+    }
+    return res;
+}
+
+export type Iterableify<T> = { [K in keyof T]: Iterable<T[K]> };
+/**
+ * Stolen from https://dev.to/chrismilson/zip-iterator-in-typescript-ldm
+ *
+ * Some common usages:
+ * - Convert generator to array:  [...zip(a, b)] or Array.from(zip(a, b));
+ * - Map element: Array.from(zip(a, b), mapFn);
+ */
+export function* zip<T extends Array<any>>(...toZip: Iterableify<T>): Generator<T> {
+    const iterators = toZip.map((i) => i[Symbol.iterator]());
+    while (true) {
+        const results = iterators.map((i) => i.next());
+        if (results.some(({ done }) => done)) {
+            break;
+        }
+        yield results.map(({ value }) => value) as T;
+    }
 }
