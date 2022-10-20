@@ -1,4 +1,4 @@
-import { Router, ScyEntity } from '../src';
+import { Router, SyEntity } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -20,12 +20,12 @@ import {
     USER_BALANCE_FACTOR,
     getERC20Name,
     REMOVE_LIQUIDITY_FACTOR,
-    MAX_SCY_SWAP_AMOUNT,
+    MAX_SY_SWAP_AMOUNT,
     MAX_PT_SWAP_AMOUNT,
     MAX_YT_SWAP_AMOUNT,
     MAX_PT_ADD_AMOUNT,
     MAX_TOKEN_ADD_AMOUNT,
-    MAX_SCY_ADD_AMOUNT,
+    MAX_SY_ADD_AMOUNT,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/bigNumberMatcher';
@@ -34,11 +34,11 @@ import { ApproximateError, NoRouteFoundError } from '../src/errors';
 
 type BalanceSnapshot = {
     ptBalance: BN;
-    scyBalance: BN;
+    syBalance: BN;
     ytBalance: BN;
     tokenBalance: BN;
     marketPtBalance: BN;
-    marketScyBalance: BN;
+    marketSyBalance: BN;
 };
 
 type LpBalanceSnapshot = {
@@ -51,10 +51,10 @@ describe(Router, () => {
     const routerStatic = getRouterStatic(networkConnection, ACTIVE_CHAIN_ID);
     const signer = WALLET().wallet;
     const marketAddress = currentConfig.market.market;
-    const scyAddress = currentConfig.market.SCY;
+    const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
     const ytAddress = currentConfig.market.YT;
-    const scySdk = new ScyEntity(scyAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const sySdk = new SyEntity(syAddress, networkConnection, ACTIVE_CHAIN_ID);
 
     it('#constructor', async () => {
         expect(router).toBeInstanceOf(Router);
@@ -62,18 +62,18 @@ describe(Router, () => {
     });
 
     describeWrite('Overall write functions', () => {
-        it('#addLiquidityDualScyAndPt', async () => {
-            const scyAdd = minBigNumber(
-                MAX_SCY_ADD_AMOUNT,
-                (await getBalance(scyAddress, signer.address)).div(USER_BALANCE_FACTOR)
+        it('#addLiquidityDualSyAndPt', async () => {
+            const syAdd = minBigNumber(
+                MAX_SY_ADD_AMOUNT,
+                (await getBalance(syAddress, signer.address)).div(USER_BALANCE_FACTOR)
             );
             const ptAdd = minBigNumber(
                 MAX_PT_ADD_AMOUNT,
                 (await getBalance(ptAddress, signer.address)).div(USER_BALANCE_FACTOR)
             );
 
-            if (scyAdd.eq(0) || ptAdd.eq(0)) {
-                console.warn('skip test because scyAdd or ptAdd is 0');
+            if (syAdd.eq(0) || ptAdd.eq(0)) {
+                console.warn('skip test because syAdd or ptAdd is 0');
                 return;
             }
 
@@ -81,7 +81,7 @@ describe(Router, () => {
             const marketSupplyBefore = await getTotalSupply(marketAddress);
 
             await router
-                .addLiquidityDualScyAndPt(signer.address, currentConfig.marketAddress, scyAdd, ptAdd, SLIPPAGE_TYPE2)
+                .addLiquidityDualSyAndPt(signer.address, currentConfig.marketAddress, syAdd, ptAdd, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const lpBalanceAfter = await getBalance(marketAddress, signer.address);
@@ -95,7 +95,7 @@ describe(Router, () => {
 
         it('#addLiquidityDualTokenAndPt', async () => {
             // TODO: add liquidity from other raw tokens
-            let tokensIn = await scySdk.contract.getTokensIn();
+            let tokensIn = await sySdk.contract.getTokensIn();
             for (let token of tokensIn) {
                 const tokenAddAmount = minBigNumber(
                     MAX_TOKEN_ADD_AMOUNT,
@@ -169,20 +169,20 @@ describe(Router, () => {
             verifyLpBalanceChanges(balanceBefore, balanceAfter);
         });
 
-        it('#addLiquiditySingleScy', async () => {
-            const scyAdd = minBigNumber(
-                MAX_SCY_ADD_AMOUNT,
-                (await getBalance(scyAddress, signer.address)).div(USER_BALANCE_FACTOR)
+        it('#addLiquiditySingleSy', async () => {
+            const syAdd = minBigNumber(
+                MAX_SY_ADD_AMOUNT,
+                (await getBalance(syAddress, signer.address)).div(USER_BALANCE_FACTOR)
             );
-            if (scyAdd.eq(0)) {
-                console.warn('skip test because scyAdd is 0');
+            if (syAdd.eq(0)) {
+                console.warn('skip test because syAdd is 0');
                 return;
             }
             const balanceBefore = await getLpBalanceSnapshot();
 
             let flag = false;
             await router
-                .addLiquiditySingleScy(signer.address, currentConfig.marketAddress, scyAdd, SLIPPAGE_TYPE2)
+                .addLiquiditySingleSy(signer.address, currentConfig.marketAddress, syAdd, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -202,7 +202,7 @@ describe(Router, () => {
 
         it('#addLiquiditySingleToken', async () => {
             // TODO: zap from other raw tokens
-            let tokensIn = await scySdk.contract.getTokensIn();
+            let tokensIn = await sySdk.contract.getTokensIn();
             for (let token of tokensIn) {
                 const tokenAddAmount = minBigNumber(
                     MAX_TOKEN_ADD_AMOUNT,
@@ -242,7 +242,7 @@ describe(Router, () => {
             }
         });
 
-        it('#removeLiquidityDualScyAndPt', async () => {
+        it('#removeLiquidityDualSyAndPt', async () => {
             const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
 
             if (liquidityRemove.eq(0)) {
@@ -253,7 +253,7 @@ describe(Router, () => {
             const marketSupplyBefore = await getTotalSupply(marketAddress);
 
             await router
-                .removeLiquidityDualScyAndPt(
+                .removeLiquidityDualSyAndPt(
                     signer.address,
                     currentConfig.marketAddress,
                     liquidityRemove,
@@ -271,7 +271,7 @@ describe(Router, () => {
 
         it('#removeLiquidityDualTokenAndPt', async () => {
             // TODO: remove liquidity to other raw tokens
-            let tokensIn = await scySdk.contract.getTokensIn();
+            let tokensIn = await sySdk.contract.getTokensIn();
             for (let token of tokensIn) {
                 const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(
                     REMOVE_LIQUIDITY_FACTOR_ZAP
@@ -335,7 +335,7 @@ describe(Router, () => {
             expect(balanceBefore.lpBalance.sub(balanceAfter.lpBalance)).toEqBN(liquidityRemove);
         });
 
-        it('#removeLiquiditySingleScy', async () => {
+        it('#removeLiquiditySingleSy', async () => {
             const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR_ZAP);
             if (liquidityRemove.eq(0)) {
                 console.warn('skip test because liquidityRemove is 0');
@@ -343,7 +343,7 @@ describe(Router, () => {
             const balanceBefore = await getLpBalanceSnapshot();
 
             await router
-                .removeLiquiditySingleScy(signer.address, currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2)
+                .removeLiquiditySingleSy(signer.address, currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getLpBalanceSnapshot();
@@ -355,7 +355,7 @@ describe(Router, () => {
 
         it('#removeLiquiditySingleToken', async () => {
             // TODO: remove liquidity to other raw tokens
-            let tokensIn = await scySdk.contract.getTokensIn();
+            let tokensIn = await sySdk.contract.getTokensIn();
             for (let token of tokensIn) {
                 const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(
                     REMOVE_LIQUIDITY_FACTOR_ZAP
@@ -397,8 +397,8 @@ describe(Router, () => {
         });
     });
 
-    describeWrite('Type 1: swap between Scy and PT', () => {
-        it('#swapExactPtForScy', async () => {
+    describeWrite('Type 1: swap between Sy and PT', () => {
+        it('#swapExactPtForSy', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const ptInAmount = getPtSwapAmount(balanceBefore, true);
             if (ptInAmount.eq(0)) {
@@ -407,7 +407,7 @@ describe(Router, () => {
             }
 
             await router
-                .swapExactPtForScy(signer.address, currentConfig.marketAddress, ptInAmount, SLIPPAGE_TYPE2)
+                .swapExactPtForSy(signer.address, currentConfig.marketAddress, ptInAmount, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
@@ -415,17 +415,17 @@ describe(Router, () => {
             expect(balanceAfter.marketPtBalance.sub(balanceBefore.marketPtBalance)).toEqBN(ptInAmount);
         });
 
-        it('#swapPtForExactScy', async () => {
+        it('#swapPtForExactSy', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectScyOut = getScySwapAmount(balanceBefore, false).div(100);
-            if (expectScyOut.eq(0)) {
-                console.warn('skip test because expectScyOut is 0');
+            const expectSyOut = getSySwapAmount(balanceBefore, false).div(100);
+            if (expectSyOut.eq(0)) {
+                console.warn('skip test because expectSyOut is 0');
                 return;
             }
 
             let flag = false;
             await router
-                .swapPtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
+                .swapPtForExactSy(signer.address, currentConfig.marketAddress, expectSyOut, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -442,11 +442,11 @@ describe(Router, () => {
             const balanceAfter = await getBalanceSnapshot();
             verifyBalanceChanges(balanceBefore, balanceAfter);
 
-            const netScyOut = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
-            verifyScyOut(expectScyOut, netScyOut);
+            const netSyOut = balanceAfter.syBalance.sub(balanceBefore.syBalance);
+            verifySyOut(expectSyOut, netSyOut);
         });
 
-        it('#swapScyForExactPt', async () => {
+        it('#swapSyForExactPt', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectPtOut = getPtSwapAmount(balanceBefore, false);
             if (expectPtOut.eq(0)) {
@@ -455,7 +455,7 @@ describe(Router, () => {
             }
 
             await router
-                .swapScyForExactPt(signer.address, currentConfig.marketAddress, expectPtOut, SLIPPAGE_TYPE2)
+                .swapSyForExactPt(signer.address, currentConfig.marketAddress, expectPtOut, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
@@ -465,17 +465,17 @@ describe(Router, () => {
             expect(netPtOut).toEqBN(expectPtOut);
         });
 
-        it('#swapExactScyForPt', async () => {
+        it('#swapExactSyForPt', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectScyIn = getScySwapAmount(balanceBefore, true);
-            if (expectScyIn.eq(0)) {
-                console.warn('skip test because expectScyIn is 0');
+            const expectSyIn = getSySwapAmount(balanceBefore, true);
+            if (expectSyIn.eq(0)) {
+                console.warn('skip test because expectSyIn is 0');
                 return;
             }
 
             let flag = false;
             await router
-                .swapExactScyForPt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
+                .swapExactSyForPt(signer.address, currentConfig.marketAddress, expectSyIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -492,23 +492,23 @@ describe(Router, () => {
             const balanceAfter = await getBalanceSnapshot();
             verifyBalanceChanges(balanceBefore, balanceAfter);
 
-            const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
-            expect(netScyIn).toEqBN(expectScyIn);
+            const netSyIn = balanceAfter.syBalance.sub(balanceBefore.syBalance).mul(-1);
+            expect(netSyIn).toEqBN(expectSyIn);
         });
     });
 
-    describeWrite('Type 2: swap between Scy and YT', () => {
-        it('#swapExactScyForYt', async () => {
+    describeWrite('Type 2: swap between Sy and YT', () => {
+        it('#swapExactSyForYt', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectScyIn = getScySwapAmount(balanceBefore, true);
-            if (expectScyIn.eq(0)) {
-                console.warn('skip test because expectScyIn is 0');
+            const expectSyIn = getSySwapAmount(balanceBefore, true);
+            if (expectSyIn.eq(0)) {
+                console.warn('skip test because expectSyIn is 0');
                 return;
             }
 
             let flag = false;
             await router
-                .swapExactScyForYt(signer.address, currentConfig.marketAddress, expectScyIn, SLIPPAGE_TYPE2)
+                .swapExactSyForYt(signer.address, currentConfig.marketAddress, expectSyIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -523,25 +523,25 @@ describe(Router, () => {
             if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
-            // Cannot use `verifyBalanceChanges` because the underlying logic of swapping YT/SCY
-            const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
-            expect(netScyIn).toEqBN(expectScyIn);
+            // Cannot use `verifyBalanceChanges` because the underlying logic of swapping YT/SY
+            const netSyIn = balanceAfter.syBalance.sub(balanceBefore.syBalance).mul(-1);
+            expect(netSyIn).toEqBN(expectSyIn);
             expect(balanceAfter.ytBalance).toBeGtBN(balanceBefore.ytBalance);
         });
 
-        it('#swapYtForExactScy', async () => {
+        it('#swapYtForExactSy', async () => {
             const balanceBefore = await getBalanceSnapshot();
             // Swap with YT involves approximation, so we divide the amount by 10
             // to avoid approx fail
-            const expectScyOut = getScySwapAmount(balanceBefore, false).div(10);
-            if (expectScyOut.eq(0)) {
-                console.warn('skip test because expectScyOut is 0');
+            const expectSyOut = getSySwapAmount(balanceBefore, false).div(10);
+            if (expectSyOut.eq(0)) {
+                console.warn('skip test because expectSyOut is 0');
                 return;
             }
 
             let flag = false;
             await router
-                .swapYtForExactScy(signer.address, currentConfig.marketAddress, expectScyOut, SLIPPAGE_TYPE2)
+                .swapYtForExactSy(signer.address, currentConfig.marketAddress, expectSyOut, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -556,12 +556,12 @@ describe(Router, () => {
             if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
-            const netScyOut = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
-            verifyScyOut(expectScyOut, netScyOut);
+            const netSyOut = balanceAfter.syBalance.sub(balanceBefore.syBalance);
+            verifySyOut(expectSyOut, netSyOut);
             expect(balanceAfter.ytBalance).toBeLtBN(balanceBefore.ytBalance);
         });
 
-        it('#swapScyForExactYt', async () => {
+        it('#swapSyForExactYt', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtOut = getYtSwapAmount(balanceBefore, false);
             if (expectYtOut.eq(0)) {
@@ -570,16 +570,16 @@ describe(Router, () => {
             }
 
             await router
-                .swapScyForExactYt(signer.address, currentConfig.marketAddress, expectYtOut, SLIPPAGE_TYPE2)
+                .swapSyForExactYt(signer.address, currentConfig.marketAddress, expectYtOut, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netYtOut = balanceAfter.ytBalance.sub(balanceBefore.ytBalance);
             expect(netYtOut).toBeGteBN(expectYtOut);
-            expect(balanceAfter.scyBalance).toBeLtBN(balanceBefore.scyBalance);
+            expect(balanceAfter.syBalance).toBeLtBN(balanceBefore.syBalance);
         });
 
-        it('#swapExactYtForScy', async () => {
+        it('#swapExactYtForSy', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectYtIn = getYtSwapAmount(balanceBefore, true);
             if (expectYtIn.eq(0)) {
@@ -588,13 +588,13 @@ describe(Router, () => {
             }
 
             await router
-                .swapExactYtForScy(signer.address, currentConfig.marketAddress, expectYtIn, SLIPPAGE_TYPE2)
+                .swapExactYtForSy(signer.address, currentConfig.marketAddress, expectYtIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
             const netYtIn = balanceAfter.ytBalance.sub(balanceBefore.ytBalance).mul(-1);
             expect(netYtIn).toEqBN(expectYtIn);
-            expect(balanceAfter.scyBalance).toBeGtBN(balanceBefore.scyBalance);
+            expect(balanceAfter.syBalance).toBeGtBN(balanceBefore.syBalance);
         });
     });
 
@@ -747,9 +747,9 @@ describe(Router, () => {
     });
 
     /*
-     * Type 4: Mint, redeem PY & SCY -> Token
+     * Type 4: Mint, redeem PY & SY -> Token
      */
-    describeWrite('Type 4: mint, redeem PY & SCY -> Token', () => {
+    describeWrite('Type 4: mint, redeem PY & SY -> Token', () => {
         it('#mintPyFromToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectRawTokenIn = DEFAULT_MINT_AMOUNT;
@@ -830,7 +830,7 @@ describe(Router, () => {
             expect(balanceAfter.tokenBalance).toBeGtBN(balanceBefore.tokenBalance);
         });
 
-        it('#mintScyFromToken', async () => {
+        it('#mintSyFromToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
             const expectRawTokenIn = DEFAULT_MINT_AMOUNT;
             if (expectRawTokenIn.eq(0)) {
@@ -840,9 +840,9 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .mintScyFromToken(
+                .mintSyFromToken(
                     signer.address,
-                    currentConfig.market.SCY,
+                    currentConfig.market.SY,
                     currentConfig.tokenToSwap,
                     expectRawTokenIn,
                     SLIPPAGE_TYPE2
@@ -863,23 +863,23 @@ describe(Router, () => {
             const balanceAfter = await getBalanceSnapshot();
             const netRawTokenIn = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance).mul(-1);
             expect(netRawTokenIn).toEqBN(expectRawTokenIn);
-            expect(balanceAfter.scyBalance).toBeGtBN(balanceBefore.scyBalance);
+            expect(balanceAfter.syBalance).toBeGtBN(balanceBefore.syBalance);
         });
 
-        it('#redeemScyToToken', async () => {
+        it('#redeemSyToToken', async () => {
             const balanceBefore = await getBalanceSnapshot();
-            const expectScyIn = getScyRedeemAmount(balanceBefore);
-            if (expectScyIn.eq(0)) {
-                console.warn('skip test because expectScyIn is 0');
+            const expectSyIn = getSyRedeemAmount(balanceBefore);
+            if (expectSyIn.eq(0)) {
+                console.warn('skip test because expectSyIn is 0');
                 return;
             }
 
             let flag = false;
             await router
-                .redeemScyToToken(
+                .redeemSyToToken(
                     signer.address,
-                    currentConfig.market.SCY,
-                    expectScyIn,
+                    currentConfig.market.SY,
+                    expectSyIn,
                     currentConfig.tokenToSwap,
                     SLIPPAGE_TYPE2
                 )
@@ -897,8 +897,8 @@ describe(Router, () => {
             if (flag) return;
 
             const balanceAfter = await getBalanceSnapshot();
-            const netScyIn = balanceAfter.scyBalance.sub(balanceBefore.scyBalance).mul(-1);
-            expect(netScyIn).toEqBN(expectScyIn);
+            const netSyIn = balanceAfter.syBalance.sub(balanceBefore.syBalance).mul(-1);
+            expect(netSyIn).toEqBN(expectSyIn);
             expect(balanceAfter.tokenBalance).toBeGtBN(balanceBefore.tokenBalance);
         });
     });
@@ -946,21 +946,21 @@ describe(Router, () => {
      * Helper function to get balance snapshot of the market
      */
     async function getBalanceSnapshot(): Promise<BalanceSnapshot> {
-        const [ptBalance, scyBalance, ytBalance, tokenBalance, marketPtBalance, marketScyBalance] = await Promise.all([
+        const [ptBalance, syBalance, ytBalance, tokenBalance, marketPtBalance, marketSyBalance] = await Promise.all([
             getBalance(ptAddress, signer.address),
-            getBalance(scyAddress, signer.address),
+            getBalance(syAddress, signer.address),
             getBalance(ytAddress, signer.address),
             getBalance(currentConfig.tokenToSwap, signer.address),
             getBalance(ptAddress, currentConfig.marketAddress),
-            getBalance(scyAddress, currentConfig.marketAddress),
+            getBalance(syAddress, currentConfig.marketAddress),
         ]);
         return {
             ptBalance,
-            scyBalance,
+            syBalance,
             ytBalance,
             tokenBalance,
             marketPtBalance,
-            marketScyBalance,
+            marketSyBalance,
         };
     }
 
@@ -975,13 +975,13 @@ describe(Router, () => {
         };
     }
 
-    function getScySwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean): BN {
-        let marketAmount = balanceSnapshot.marketScyBalance.div(MARKET_SWAP_FACTOR);
-        let userAmount = balanceSnapshot.scyBalance.div(USER_BALANCE_FACTOR);
+    function getSySwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean): BN {
+        let marketAmount = balanceSnapshot.marketSyBalance.div(MARKET_SWAP_FACTOR);
+        let userAmount = balanceSnapshot.syBalance.div(USER_BALANCE_FACTOR);
 
         let amount = getIn ? minBigNumber(marketAmount, userAmount) : marketAmount;
 
-        return minBigNumber(amount, MAX_SCY_SWAP_AMOUNT);
+        return minBigNumber(amount, MAX_SY_SWAP_AMOUNT);
     }
 
     function getPtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
@@ -1019,8 +1019,8 @@ describe(Router, () => {
         return minBigNumber(balanceSnapshot.ptBalance, balanceSnapshot.ytBalance).div(REDEEM_FACTOR);
     }
 
-    function getScyRedeemAmount(balanceSnapshot: BalanceSnapshot) {
-        return balanceSnapshot.scyBalance.div(REDEEM_FACTOR);
+    function getSyRedeemAmount(balanceSnapshot: BalanceSnapshot) {
+        return balanceSnapshot.syBalance.div(REDEEM_FACTOR);
     }
 
     function verifyBalanceChanges(balanceBefore: BalanceSnapshot, balanceAfter: BalanceSnapshot) {
@@ -1028,9 +1028,9 @@ describe(Router, () => {
         const marketPtBalanceDiff = balanceAfter.marketPtBalance.sub(balanceBefore.marketPtBalance);
         expect(ptBalanceDiff).toEqBN(marketPtBalanceDiff.mul(-1));
 
-        const scyBalanceDiff = balanceAfter.scyBalance.sub(balanceBefore.scyBalance);
-        const marketScyBalanceDiff = balanceAfter.marketScyBalance.sub(balanceBefore.marketScyBalance);
-        expect(scyBalanceDiff).toBeLteBN(marketScyBalanceDiff.mul(-1));
+        const syBalanceDiff = balanceAfter.syBalance.sub(balanceBefore.syBalance);
+        const marketSyBalanceDiff = balanceAfter.marketSyBalance.sub(balanceBefore.marketSyBalance);
+        expect(syBalanceDiff).toBeLteBN(marketSyBalanceDiff.mul(-1));
     }
 
     function verifyLpBalanceChanges(balanceBefore: LpBalanceSnapshot, balanceAfter: LpBalanceSnapshot) {
@@ -1039,12 +1039,12 @@ describe(Router, () => {
         expect(lpBalanceDiff).toEqBN(lpTotalSupplyDiff);
     }
 
-    function verifyScyOut(expectScyOut: BN, netScyOut: BN) {
-        // netScyOut will differ from expectScyOut by 0.1%
-        expect(netScyOut).toBeGteBN(expectScyOut);
-        // netScyOut <= expectScyOut * 100.1%
+    function verifySyOut(expectSyOut: BN, netSyOut: BN) {
+        // netSyOut will differ from expectSyOut by 0.1%
+        expect(netSyOut).toBeGteBN(expectSyOut);
+        // netSyOut <= expectSyOut * 100.1%
 
-        // Add 10_000 in case the expect ScyOut is too small
-        expect(netScyOut).toBeLteBN(expectScyOut.add(expectScyOut.div(1000)).add(10_000));
+        // Add 10_000 in case the expect SyOut is too small
+        expect(netSyOut).toBeLteBN(expectSyOut.add(expectSyOut.div(1000)).add(10_000));
     }
 });

@@ -13,7 +13,7 @@ describe('PY', () => {
                 pt.userInfo(currentConfig.deployer, multicall),
                 pt.balanceOf(currentConfig.deployer, multicall),
                 yt.balanceOf(currentConfig.deployer, multicall),
-                Multicall.wrap(yt.contract, multicall).callStatic.SCY(),
+                Multicall.wrap(yt.contract, multicall).callStatic.SY(),
                 Multicall.wrap(yt.contract, multicall).callStatic.userInterest(currentConfig.deployer),
             ]);
 

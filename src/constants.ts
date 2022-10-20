@@ -1,6 +1,6 @@
 import type { Address } from './entities';
-import FUJI_CORE_ADDRESSES from '@pendle/core-v2/contracts/deployments/43113-core.json';
-import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/contracts/deployments/80001-core.json';
+import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
+import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
 import { constants as ethersConstants } from 'ethers';
 
 export type ContractAddresses = {

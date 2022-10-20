@@ -6,16 +6,16 @@ import { CHAIN_ID, Multicall } from '../../src';
 
 import assert from 'assert';
 
-import FUJI_CORE_ADDRESSES from '@pendle/core-v2/contracts/deployments/43113-core.json';
-import FUJI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/contracts/deployments/43113-markets/benqi-market-QI-USDC-FEB-2ND.json';
-import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/contracts/deployments/43113-markets/benqi-market-QI-WETH-DEC-1ST.json';
+import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
+import FUJI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-USDC-FEB-2ND.json';
+import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-WETH-DEC-1ST.json';
 
-import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/contracts/deployments/80001-core.json';
-import MUMBAI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/contracts/deployments/80001-markets/benqi-market-QI-USDC-FEB-2ND.json';
-import MUMBAI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/contracts/deployments/80001-markets/benqi-market-QI-WETH-DEC-1ST.json';
+import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
+// import MUMBAI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-QI-USDC-FEB-2ND.json';
+// import MUMBAI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-QI-WETH-DEC-1ST.json';
 
-import FUJI_TEST_ENV from '@pendle/core-v2/contracts/deployments/43113-testenv.json';
-import MUMBAI_TEST_ENV from '@pendle/core-v2/contracts/deployments/80001-testenv.json';
+import FUJI_TEST_ENV from '@pendle/core-v2/deployments/43113-testenv.json';
+import MUMBAI_TEST_ENV from '@pendle/core-v2/deployments/80001-testenv.json';
 
 config();
 
@@ -99,14 +99,14 @@ export const CONTRACT_ADDRESSES = {
             FUND_KEEPER: MUMBAI_TEST_ENV.tokens.fundKeeper,
             FAUCET: MUMBAI_TEST_ENV.tokens.faucet,
             MARKETS: [
-                {
-                    ...MUMBAI_QIUSDC_FEB03_MARKET_ADDRESSES,
-                    token: MUMBAI_TEST_ENV.tokens.qiUSDC,
-                },
-                {
-                    ...MUMBAI_QIWETH_DEC01_ADDRESSES,
-                    token: MUMBAI_TEST_ENV.tokens.qiWETH,
-                },
+                // {
+                // ...MUMBAI_QIUSDC_FEB03_MARKET_ADDRESSES,
+                // token: MUMBAI_TEST_ENV.tokens.qiUSDC,
+                // },
+                // {
+                // ...MUMBAI_QIWETH_DEC01_ADDRESSES,
+                // token: MUMBAI_TEST_ENV.tokens.qiWETH,
+                // },
             ],
         },
         TOKENS: MUMBAI_TEST_ENV.tokens,

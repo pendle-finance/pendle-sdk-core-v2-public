@@ -9,7 +9,7 @@ const INF = ethers.constants.MaxUint256;
 const FUND_FACTOR = 100;
 
 const MINT_PY_PERCENTAGE = 40;
-const MINT_SCY_PERCENTAGE = 50;
+const MINT_SY_PERCENTAGE = 50;
 
 // typechain for fundKeeper is not available
 const FUND_KEEPER = new Contract(currentConfig.fundKeeper, FUND_KEEPER_ABI, networkConnection.signer);
@@ -35,14 +35,14 @@ async function main() {
     const tokenIn = currentConfig.market.token;
     const routerAddress = currentConfig.router;
     const ytAddress = currentConfig.market.YT;
-    const scyAddress = currentConfig.market.SCY;
+    const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
 
     const router = new Router(routerAddress, networkConnection, ACTIVE_CHAIN_ID);
 
     // Inner working of this script:
     // 1. Fund accounts with a tokenIn
-    // 2. Mint PY and SCY with the tokenIn
+    // 2. Mint PY and SY with the tokenIn
     // 3. Add liquidity for the market
 
     console.log('funding TokenIn');
@@ -51,13 +51,13 @@ async function main() {
     console.log('approve TokenIn');
     await approveHelper(tokenIn, routerAddress, INF);
 
-    console.log('minting SCY');
+    console.log('minting SY');
     await router
-        .mintScyFromToken(
+        .mintSyFromToken(
             signerAddress,
-            scyAddress,
+            syAddress,
             tokenIn,
-            (await getBalance(tokenIn, signerAddress)).mul(MINT_SCY_PERCENTAGE).div(100),
+            (await getBalance(tokenIn, signerAddress)).mul(MINT_SY_PERCENTAGE).div(100),
             SLIPPAGE_TYPE3
         )
         .then(async (tx: any) => await tx.wait());
@@ -73,18 +73,18 @@ async function main() {
         )
         .then((tx: any) => tx.wait());
 
-    console.log('approving SCY');
-    await approveHelper(scyAddress, routerAddress, INF);
+    console.log('approving SY');
+    await approveHelper(syAddress, routerAddress, INF);
 
     console.log('approving PT');
     await approveHelper(ptAddress, routerAddress, INF);
 
     console.log('add liquidity');
     await router
-        .addLiquidityDualScyAndPt(
+        .addLiquidityDualSyAndPt(
             signerAddress,
             currentConfig.marketAddress,
-            (await getBalance(scyAddress, signerAddress)).div(10).mul(9),
+            (await getBalance(syAddress, signerAddress)).div(10).mul(9),
             (await getBalance(ptAddress, signerAddress)).div(10).mul(9),
             SLIPPAGE_TYPE3
         )

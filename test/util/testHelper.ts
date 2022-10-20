@@ -85,7 +85,7 @@ export async function stalkAccount(user: Address, markets: any[]) {
         console.log('market active balance  :', (await marketContract.activeBalance(user)).toString());
         console.log('yt                     :', (await getBalance(market.YT, user)).toString());
         console.log('pt                     :', (await getBalance(market.PT, user)).toString());
-        console.log('scy                    :', (await getBalance(market.SCY, user)).toString());
+        console.log('sy                     :', (await getBalance(market.SY, user)).toString());
     }
 }
 
@@ -94,7 +94,7 @@ export const DEFAULT_SWAP_AMOUNT = BN.from(10).pow(15);
 export const MAX_PT_SWAP_AMOUNT = BN.from(10).pow(6);
 export const MAX_YT_SWAP_AMOUNT = BN.from(10).pow(6);
 
-export const MAX_SCY_SWAP_AMOUNT = BN.from(10).pow(8);
+export const MAX_SY_SWAP_AMOUNT = BN.from(10).pow(8);
 
 export const MARKET_SWAP_FACTOR = 50; // swap amount at most (market balance / 50)
 
@@ -108,7 +108,7 @@ export const SLIPPAGE_TYPE2 = 0.5;
 
 export const SLIPPAGE_TYPE3 = 1;
 
-export const REDEEM_FACTOR = 10; // Redeem 1/10 of SCY balance
+export const REDEEM_FACTOR = 10; // Redeem 1/10 of SY balance
 
 export const MAX_TOKEN_ADD_AMOUNT = BN.from(10).pow(6);
 
@@ -116,7 +116,7 @@ export const MAX_PT_ADD_AMOUNT = BN.from(10).pow(6);
 
 export const MAX_YT_ADD_AMOUNT = BN.from(10).pow(6);
 
-export const MAX_SCY_ADD_AMOUNT = BN.from(10).pow(8);
+export const MAX_SY_ADD_AMOUNT = BN.from(10).pow(8);
 
 export const REMOVE_LIQUIDITY_FACTOR = 40; // Remove 1/40 of LP balance from liquidity pool
 

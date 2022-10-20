@@ -5,7 +5,7 @@ import { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/cont
 import { getRouterStatic } from './helper';
 import { ERC20, ERC20Config } from './ERC20';
 import { PtEntity } from './PtEntity';
-import { ScyEntity } from './ScyEntity';
+import { SyEntity } from './SyEntity';
 import { WrappedContract } from '../contractHelper';
 
 export type UserPyInfo = {
@@ -59,16 +59,16 @@ export class YtEntity extends ERC20 {
         return this.routerStatic.multicallStatic.getPYInfo(this.address, multicall);
     }
 
-    async SCY(multicall = this.multicall): Promise<Address> {
-        return this.ytContract.multicallStatic.SCY(multicall);
+    async SY(multicall = this.multicall): Promise<Address> {
+        return this.ytContract.multicallStatic.SY(multicall);
     }
 
     /**
-     * Alias for YT#SCY
-     * @see YtEntity#SCY
+     * Alias for YT#SY
+     * @see YtEntity#SY
      */
-    async scy(multicall = this.multicall) {
-        return this.SCY(multicall);
+    async sy(multicall = this.multicall) {
+        return this.SY(multicall);
     }
 
     async PT(multicall = this.multicall): Promise<Address> {
@@ -83,9 +83,9 @@ export class YtEntity extends ERC20 {
         return this.PT(multicall);
     }
 
-    async scyEntity(multicall = this.multicall) {
-        const scyAddr = await this.SCY(multicall);
-        return new ScyEntity(scyAddr, this.networkConnection, this.chainId);
+    async syEntity(multicall = this.multicall) {
+        const syAddr = await this.SY(multicall);
+        return new SyEntity(syAddr, this.networkConnection, this.chainId);
     }
 
     async ptEntity(multicall = this.multicall) {

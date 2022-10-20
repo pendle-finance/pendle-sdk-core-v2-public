@@ -5,10 +5,10 @@ import { currentConfig, networkConnection } from './testUtils';
 
 const INF = ethers.constants.MaxUint256;
 async function main() {
-    // Approve all tokens & all scy, pt, yt, lp to the router
+    // Approve all tokens & all sy, pt, yt, lp to the router
     let tokens = [
         Object.values(currentConfig.tokens),
-        currentConfig.markets.map((m) => m.SCY),
+        currentConfig.markets.map((m) => m.SY),
         currentConfig.markets.map((m) => m.PT),
         currentConfig.markets.map((m) => m.YT),
         currentConfig.markets.map((m) => m.market),

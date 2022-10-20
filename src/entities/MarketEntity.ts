@@ -7,13 +7,13 @@ import { BigNumber as BN } from 'ethers';
 import { getRouterStatic, zip } from './helper';
 import { ERC20, ERC20Config } from './ERC20';
 import { ChainId } from '../types';
-import { ScyEntity } from './ScyEntity';
+import { SyEntity } from './SyEntity';
 import { PtEntity } from './PtEntity';
 import { WrappedContract, MetaMethodType } from '../contractHelper';
 
 export type MarketInfo = {
     pt: Address;
-    scy: Address;
+    sy: Address;
     state: MarketStateStructOutput;
     impliedYield: BN;
     exchangeRate: BN;
@@ -23,7 +23,7 @@ export type UserMarketInfo = {
     market: Address;
     lpBalance: BN;
     ptBalance: RawTokenAmount;
-    scyBalance: RawTokenAmount;
+    syBalance: RawTokenAmount;
     assetBalance: IPRouterStatic.AssetAmountStructOutput;
 };
 
@@ -32,7 +32,7 @@ export type MarketEntityConfig = ERC20Config;
 export class MarketEntity extends ERC20 {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     protected _ptAddress: Address | undefined;
-    protected _scyAddress: Address | undefined;
+    protected _syAddress: Address | undefined;
 
     constructor(
         readonly address: Address,
@@ -55,7 +55,7 @@ export class MarketEntity extends ERC20 {
     async getMarketInfo(multicall = this.multicall): Promise<MarketInfo> {
         const res = await this.routerStatic.multicallStatic.getMarketInfo(this.address, multicall);
         this._ptAddress = res.pt;
-        this._scyAddress = res.scy;
+        this._syAddress = res.sy;
         return res;
     }
 
@@ -63,16 +63,16 @@ export class MarketEntity extends ERC20 {
         return this.routerStatic.multicallStatic.getUserMarketInfo(this.address, user, multicall);
     }
 
-    async SCY(multicall = this.multicall): Promise<Address> {
-        return this._scyAddress ?? this.getMarketInfo(multicall).then(({ scy }) => scy);
+    async SY(multicall = this.multicall): Promise<Address> {
+        return this._syAddress ?? this.getMarketInfo(multicall).then(({ sy }) => sy);
     }
 
     /**
-     * Alias for Market#SCY
-     * @see MarketEntity#SCY
+     * Alias for Market#SY
+     * @see MarketEntity#SY
      */
-    async scy(multicall = this.multicall) {
-        return this.SCY(multicall);
+    async sy(multicall = this.multicall) {
+        return this.SY(multicall);
     }
 
     async PT(multicall = this.multicall): Promise<Address> {
@@ -88,9 +88,9 @@ export class MarketEntity extends ERC20 {
     }
 
     // Consideration: more efficient result caching?
-    async scyEntity(multicall = this.multicall) {
-        const scyAddr = await this.SCY(multicall);
-        return new ScyEntity(scyAddr, this.networkConnection, this.chainId);
+    async syEntity(multicall = this.multicall) {
+        const syAddr = await this.SY(multicall);
+        return new SyEntity(syAddr, this.networkConnection, this.chainId);
     }
 
     // Consideration: more efficient result caching?

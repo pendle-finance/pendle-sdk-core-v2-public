@@ -216,7 +216,7 @@ export class MaxProportionExceededError extends EthersJsError {
     }
 
     simpleMessage(): string {
-        return 'Insufficient SCY in the liquidity pool to execute the action';
+        return 'Insufficient SY in the liquidity pool to execute the action';
     }
 }
 

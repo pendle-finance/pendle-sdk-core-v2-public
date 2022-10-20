@@ -3,7 +3,7 @@ export * from './MarketEntity';
 export * from './MarketFactory';
 export * from './PtEntity';
 export * from './YtEntity';
-export * from './ScyEntity';
+export * from './SyEntity';
 export * from '../types';
 export * from './YieldContractFactory';
 export * from './Router';

@@ -1,5 +1,5 @@
 import { SDK } from '../src/entities/SDK';
-import { MarketEntity, PtEntity, ScyEntity, YtEntity, Multicall } from '../src';
+import { MarketEntity, PtEntity, SyEntity, YtEntity, Multicall } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, describeWithMulticall } from './util/testUtils';
 import { decimalFactor } from '../src/entities/math';
 import './util/bigNumberMatcher';
@@ -8,14 +8,14 @@ describe(SDK, () => {
     const sdk = new SDK(networkConnection, ACTIVE_CHAIN_ID);
 
     const marketAddress = currentConfig.market.market;
-    const scyAddress = currentConfig.market.SCY;
+    const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
     const ytAddress = currentConfig.market.YT;
 
     const pt = new PtEntity(ptAddress, networkConnection, ACTIVE_CHAIN_ID);
     const yt = new YtEntity(ytAddress, networkConnection, ACTIVE_CHAIN_ID);
     const market = new MarketEntity(marketAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const scy = new ScyEntity(scyAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const sy = new SyEntity(syAddress, networkConnection, ACTIVE_CHAIN_ID);
 
     it('#constructor', async () => {
         expect(sdk).toBeInstanceOf(SDK);
@@ -28,7 +28,7 @@ describe(SDK, () => {
                 sdk.getUserPYPositionsByPYs(currentConfig.deployer, [ytAddress, ptAddress], multicall),
                 pt.balanceOf(currentConfig.deployer, multicall),
                 yt.balanceOf(currentConfig.deployer, multicall),
-                Multicall.wrap(yt.contract, multicall).callStatic.SCY(),
+                Multicall.wrap(yt.contract, multicall).callStatic.SY(),
                 Multicall.wrap(yt.contract, multicall).callStatic.userInterest(currentConfig.deployer),
             ]);
 
@@ -63,12 +63,12 @@ describe(SDK, () => {
         });
 
         it('#userPositionMarket', async () => {
-            const [userPositionMarket, marketInfo, userBalance, scyInfo, scyExchangeRate] = await Promise.all([
+            const [userPositionMarket, marketInfo, userBalance, syInfo, syExchangeRate] = await Promise.all([
                 sdk.getUserMarketPositions(currentConfig.deployer, [currentConfig.marketAddress], multicall),
                 market.getMarketInfo(multicall),
                 Multicall.wrap(market.contract, multicall).callStatic.balanceOf(currentConfig.deployer),
-                scy.contract.assetInfo(),
-                scy.contract.exchangeRate(),
+                sy.contract.assetInfo(),
+                sy.contract.exchangeRate(),
             ]);
 
             expect(userPositionMarket).toBeDefined();
@@ -84,15 +84,15 @@ describe(SDK, () => {
                 userBalance.mul(marketInfo.state.totalPt).div(marketInfo.state.totalLp)
             );
 
-            expect(userMarketInfo.scyBalance.token).toBe(scyAddress);
-            expect(userMarketInfo.scyBalance.amount).toEqBN(
-                userBalance.mul(marketInfo.state.totalScy).div(marketInfo.state.totalLp)
+            expect(userMarketInfo.syBalance.token).toBe(syAddress);
+            expect(userMarketInfo.syBalance.amount).toEqBN(
+                userBalance.mul(marketInfo.state.totalSy).div(marketInfo.state.totalLp)
             );
 
-            expect(userMarketInfo.assetBalance.assetType).toBe(scyInfo.assetType);
-            expect(userMarketInfo.assetBalance.assetAddress).toBe(scyInfo.assetAddress);
+            expect(userMarketInfo.assetBalance.assetType).toBe(syInfo.assetType);
+            expect(userMarketInfo.assetBalance.assetAddress).toBe(syInfo.assetAddress);
             expect(userMarketInfo.assetBalance.amount).toEqBN(
-                userMarketInfo.scyBalance.amount.mul(scyExchangeRate).div(decimalFactor(18))
+                userMarketInfo.syBalance.amount.mul(syExchangeRate).div(decimalFactor(18))
             );
         });
     });

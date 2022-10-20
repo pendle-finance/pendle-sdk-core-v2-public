@@ -51,8 +51,8 @@ export function bnSafeClamp(num: BigNumberish) {
 
 /**
  * Based on the following two contracts
- * https://github.com/pendle-finance/pendle-core-internal-v2/blob/main/contracts/libraries/SCY/SCYUtils.sol
- * https://github.com/pendle-finance/pendle-core-internal-v2/blob/main/contracts/libraries/helpers/PYIndex.sol
+ * https://github.com/pendle-finance/pendle-core-internal-v2/blob/main/contracts/core/StandardizedYield/SYUtils.sol
+ * https://github.com/pendle-finance/pendle-core-internal-v2/blob/main/contracts/core/StandardizedYield/PYIndex.sol
  */
 export class PyIndex {
     readonly index: BN;
@@ -65,59 +65,59 @@ export class PyIndex {
     }
 
     /**
-     * Precondition: scyAmount >= 0
-     * If not sure, use PyIndex#scyToAsset
+     * Precondition: syAmount >= 0
+     * If not sure, use PyIndex#syToAsset
      */
-    scyToAssetUnsigned(scyAmount: BigNumberish): BN {
-        return this.index.mul(scyAmount).div(ONE);
+    syToAssetUnsigned(syAmount: BigNumberish): BN {
+        return this.index.mul(syAmount).div(ONE);
     }
 
-    scyToAsset(scyAmount: BigNumberish): BN {
-        scyAmount = BN.from(scyAmount);
-        const sign = scyAmount.isNegative() ? -1 : 1;
-        return this.scyToAssetUnsigned(scyAmount.abs()).mul(sign);
+    syToAsset(syAmount: BigNumberish): BN {
+        syAmount = BN.from(syAmount);
+        const sign = syAmount.isNegative() ? -1 : 1;
+        return this.syToAssetUnsigned(syAmount.abs()).mul(sign);
     }
 
     /**
-     * Precondition: scyAmount >= 0
-     * If not sure, use PyIndex#scyToAssetUp
+     * Precondition: syAmount >= 0
+     * If not sure, use PyIndex#syToAssetUp
      */
-    scyToAssetUpUnsigned(scyAmount: BigNumberish): BN {
-        return this.index.mul(scyAmount).add(ONE).sub(1).div(ONE);
+    syToAssetUpUnsigned(syAmount: BigNumberish): BN {
+        return this.index.mul(syAmount).add(ONE).sub(1).div(ONE);
     }
 
-    scyToAssetUp(scyAmount: BigNumberish): BN {
-        scyAmount = BN.from(scyAmount);
-        const sign = scyAmount.isNegative() ? -1 : 1;
-        return this.scyToAssetUpUnsigned(scyAmount.abs()).mul(sign);
+    syToAssetUp(syAmount: BigNumberish): BN {
+        syAmount = BN.from(syAmount);
+        const sign = syAmount.isNegative() ? -1 : 1;
+        return this.syToAssetUpUnsigned(syAmount.abs()).mul(sign);
     }
 
     /**
-     * Precondition: scyAmount >= 0
-     * If not sure, use PyIndex#assetToScy
+     * Precondition: syAmount >= 0
+     * If not sure, use PyIndex#assetToSy
      */
-    assetToScyUnsigned(assetAmount: BigNumberish): BN {
+    assetToSyUnsigned(assetAmount: BigNumberish): BN {
         return ONE.mul(assetAmount).div(this.index);
     }
 
-    assetToScy(assetAmount: BigNumberish): BN {
+    assetToSy(assetAmount: BigNumberish): BN {
         assetAmount = BN.from(assetAmount);
         const sign = assetAmount.isNegative() ? -1 : 1;
-        return this.assetToScyUnsigned(assetAmount).mul(sign);
+        return this.assetToSyUnsigned(assetAmount).mul(sign);
     }
 
     /**
-     * Precondition: scyAmount >= 0
-     * If not sure, use PyIndex#assetToScyUp
+     * Precondition: syAmount >= 0
+     * If not sure, use PyIndex#assetToSyUp
      */
-    assetToScyUpUnsigned(assetAmount: BigNumberish): BN {
+    assetToSyUpUnsigned(assetAmount: BigNumberish): BN {
         return ONE.mul(assetAmount).add(this.index).sub(1).div(this.index);
     }
 
-    assetToScyUp(assetAmount: BigNumberish): BN {
+    assetToSyUp(assetAmount: BigNumberish): BN {
         assetAmount = BN.from(assetAmount);
         const sign = assetAmount.isNegative() ? -1 : 1;
-        return this.assetToScyUpUnsigned(assetAmount).mul(sign);
+        return this.assetToSyUpUnsigned(assetAmount).mul(sign);
     }
 }
 

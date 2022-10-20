@@ -11,7 +11,7 @@ describe('Multicall', () => {
     let market: MarketEntity;
     let pt: WrappedContract<PendleERC20>,
         yt: WrappedContract<PendleERC20>,
-        scy: WrappedContract<PendleERC20>,
+        sy: WrappedContract<PendleERC20>,
         dummy: WrappedContract<PendleERC20>;
 
     beforeAll(async () => {
@@ -20,7 +20,7 @@ describe('Multicall', () => {
         pt = new ERC20(marketInfo.pt, networkConnection, chainId).ERC20Contract;
         yt = new ERC20(await new PtEntity(marketInfo.pt, networkConnection, chainId).YT(), networkConnection, chainId)
             .ERC20Contract;
-        scy = new ERC20(marketInfo.scy, networkConnection, chainId).ERC20Contract;
+        sy = new ERC20(marketInfo.sy, networkConnection, chainId).ERC20Contract;
         dummy = new ERC20(ethers.constants.AddressZero, networkConnection, chainId).ERC20Contract;
     });
 
@@ -34,13 +34,13 @@ describe('Multicall', () => {
         let promiseCalls = await Promise.all([
             pt.balanceOf(currentConfig.userAddress),
             yt.balanceOf(currentConfig.userAddress),
-            scy.balanceOf(currentConfig.userAddress),
+            sy.balanceOf(currentConfig.userAddress),
         ]);
 
         let multicalls = await Promise.all([
             multicall.wrap(pt).callStatic.balanceOf(currentConfig.userAddress),
             multicall.wrap(yt).callStatic.balanceOf(currentConfig.userAddress),
-            multicall.wrap(scy).callStatic.balanceOf(currentConfig.userAddress),
+            multicall.wrap(sy).callStatic.balanceOf(currentConfig.userAddress),
         ]);
 
         for (let i = 0; i < promiseCalls.length; i++) {
@@ -64,14 +64,14 @@ describe('Multicall', () => {
         let promiseCalls = await Promise.all([
             pt.balanceOf(currentConfig.userAddress),
             yt.balanceOf(currentConfig.userAddress),
-            scy.balanceOf(currentConfig.userAddress),
+            sy.balanceOf(currentConfig.userAddress),
             Promise.resolve().then(() => BN.from(-1)),
         ]);
 
         let multicalls = await Promise.all([
             multicall.wrap(pt).callStatic.balanceOf(currentConfig.userAddress),
             multicall.wrap(yt).callStatic.balanceOf(currentConfig.userAddress),
-            multicall.wrap(scy).callStatic.balanceOf(currentConfig.userAddress),
+            multicall.wrap(sy).callStatic.balanceOf(currentConfig.userAddress),
             multicall
                 .wrap(dummy)
                 .callStatic.balanceOf(currentConfig.userAddress)

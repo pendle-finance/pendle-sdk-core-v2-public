@@ -1,39 +1,39 @@
-import type { RouterStatic, SCYBase } from '@pendle/core-v2/typechain-types';
+import type { RouterStatic, SYBase } from '@pendle/core-v2/typechain-types';
 import type { Address, NetworkConnection, RawTokenAmount, ChainId } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { abi as SCYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/core/SuperComposableYield/SCYBase.sol/SCYBase.json';
+import { abi as SYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/core/StandardizedYield/SYBase.sol/SYBase.json';
 import { getRouterStatic, isNativeToken } from './helper';
 import { calcSlippedDownAmount } from './math';
 import { ERC20, ERC20Config } from './ERC20';
 import { WrappedContract, MetaMethodType } from '../contractHelper';
 
-export type UserScyInfo = {
+export type UserSyInfo = {
     balance: BN;
     rewards: RawTokenAmount[];
 };
 
-export type ScyEntityConfig = ERC20Config;
+export type SyEntityConfig = ERC20Config;
 
-export class ScyEntity extends ERC20 {
+export class SyEntity extends ERC20 {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
 
     constructor(
         readonly address: Address,
         protected readonly networkConnection: NetworkConnection,
         readonly chainId: ChainId,
-        config?: ScyEntityConfig
+        config?: SyEntityConfig
     ) {
-        super(address, networkConnection, chainId, { abi: SCYBaseABI, ...config });
+        super(address, networkConnection, chainId, { abi: SYBaseABI, ...config });
         this.routerStatic = getRouterStatic(networkConnection, chainId, config);
     }
 
-    get SCYBaseContract() {
-        return this.contract as WrappedContract<SCYBase>;
+    get SYBaseContract() {
+        return this.contract as WrappedContract<SYBase>;
     }
 
-    get scyContract() {
-        return this.SCYBaseContract;
+    get syContract() {
+        return this.SYBaseContract;
     }
 
     /**
@@ -41,7 +41,7 @@ export class ScyEntity extends ERC20 {
      *
      * How it works?
      *
-     * We will simulate how much SCY user can get out of his base assets, and
+     * We will simulate how much SY user can get out of his base assets, and
      * apply (1 - slippage) to the simulated amount as minAmount
      * */
     async deposit<T extends MetaMethodType = 'send'>(
@@ -51,14 +51,14 @@ export class ScyEntity extends ERC20 {
         slippage: number,
         metaMethodType?: T
     ) {
-        const amountScyOut = await this.scyContract.callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0, {
+        const amountSyOut = await this.syContract.callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0, {
             value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined,
         });
-        return this.scyContract.metaCall.deposit(
+        return this.syContract.metaCall.deposit(
             receiver,
             baseAssetIn,
             amountBaseToPull,
-            calcSlippedDownAmount(amountScyOut, slippage),
+            calcSlippedDownAmount(amountSyOut, slippage),
             metaMethodType,
             { overrides: { value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined } }
         );
@@ -70,21 +70,21 @@ export class ScyEntity extends ERC20 {
     async redeem<T extends MetaMethodType = 'send'>(
         receiver: Address,
         baseAssetOut: Address,
-        amountScyToPull: BigNumberish,
+        amountSyToPull: BigNumberish,
         slippage: number,
         burnFromInternalBalance: boolean,
         metaMethodType?: T
     ) {
-        const amountBaseOut = await this.scyContract.callStatic.redeem(
+        const amountBaseOut = await this.syContract.callStatic.redeem(
             receiver,
-            amountScyToPull,
+            amountSyToPull,
             baseAssetOut,
             0,
             burnFromInternalBalance
         );
-        return this.scyContract.metaCall.redeem(
+        return this.syContract.metaCall.redeem(
             receiver,
-            amountScyToPull,
+            amountSyToPull,
             baseAssetOut,
             calcSlippedDownAmount(amountBaseOut, slippage),
             burnFromInternalBalance,
@@ -92,20 +92,20 @@ export class ScyEntity extends ERC20 {
         );
     }
 
-    async userInfo(user: Address, multicall = this.multicall): Promise<UserScyInfo> {
-        return this.routerStatic.multicallStatic.getUserSCYInfo(this.address, user, multicall);
+    async userInfo(user: Address, multicall = this.multicall): Promise<UserSyInfo> {
+        return this.routerStatic.multicallStatic.getUserSYInfo(this.address, user, multicall);
     }
 
     async getTokensIn(multicall = this.multicall) {
-        return this.scyContract.multicallStatic.getTokensIn(multicall);
+        return this.syContract.multicallStatic.getTokensIn(multicall);
     }
 
     async getTokensOut(multicall = this.multicall) {
-        return this.scyContract.multicallStatic.getTokensOut(multicall);
+        return this.syContract.multicallStatic.getTokensOut(multicall);
     }
 
     async getRewardTokens(multicall = this.multicall) {
-        return this.scyContract.multicallStatic.getRewardTokens(multicall);
+        return this.syContract.multicallStatic.getRewardTokens(multicall);
     }
 
     async previewRedeem(
@@ -113,7 +113,7 @@ export class ScyEntity extends ERC20 {
         amountSharesToRedeem: BigNumberish,
         multicall = this.multicall
     ): Promise<BN> {
-        return this.scyContract.multicallStatic.previewRedeem(tokenOut, amountSharesToRedeem, multicall);
+        return this.syContract.multicallStatic.previewRedeem(tokenOut, amountSharesToRedeem, multicall);
     }
 
     async previewDeposit(
@@ -121,6 +121,6 @@ export class ScyEntity extends ERC20 {
         amountTokenToDeposit: BigNumberish,
         multicall = this.multicall
     ): Promise<BN> {
-        return this.scyContract.multicallStatic.previewRedeem(tokenIn, amountTokenToDeposit, multicall);
+        return this.syContract.multicallStatic.previewRedeem(tokenIn, amountTokenToDeposit, multicall);
     }
 }
