@@ -7,7 +7,7 @@ import { MULTICALL_ADDRESSES } from '../constants';
 import { abi as MulticallABI } from './Multicall2.json';
 import { ChainId, RemoveLastOptionalParam } from '../types';
 import { EthersJsError } from '../errors';
-import { BaseWrappedContract, getInnerContract } from '../contractHelper';
+import { BaseContractLike, getInnerContract } from '../contractHelper';
 
 /**
  * Multicall implementation, allowing to call function of contract.callStatic functions
@@ -76,7 +76,7 @@ export class Multicall {
      * by themselves.
      */
     static wrap<T extends BaseContract>(
-        contract: T | BaseWrappedContract<T>,
+        contract: BaseContractLike<T>,
         multicall: Multicall | undefined
     ): MulticallStatic<T> {
         return multicall ? multicall.wrap(contract) : (contract as unknown as MulticallStatic<T>);
@@ -134,7 +134,7 @@ export class Multicall {
         return result;
     }
 
-    wrap<T extends BaseContract>(contract_: T | BaseWrappedContract<T>): MulticallStatic<T> {
+    wrap<T extends BaseContract>(contract_: BaseContractLike<T>): MulticallStatic<T> {
         contract_ = getInnerContract(contract_);
         const contract = contract_ as T & { [key in symbol]: MulticallStatic<T> };
         if (contract[this.multicallStaticSymbol]) {

@@ -17,15 +17,16 @@ export type Provider = providers.Provider;
 const ORIGINAL_CONTRACT: unique symbol = Symbol('original-contract');
 
 type AddOptionalParam<Fn extends (...params: any[]) => any, P> = (...params: [...Parameters<Fn>, P?]) => ReturnType<Fn>;
+export type ContractMethodNames<C extends BaseContractLike> = keyof C['callStatic'];
 
-type BuildMetaMethod<C extends BaseContract, MethodName extends keyof C['functions'], Params extends any[]> = <
+type BuildMetaMethod<C extends BaseContract, MethodName extends ContractMethodNames<C>, Params extends any[]> = <
     T extends MetaMethodType = 'send',
     D extends {} = {}
 >(
     ...params: [...Params, T?, D?]
 ) => MetaMethodReturnType<T, C, MethodName, D>;
 
-type MetaMethod<C extends BaseContract, MethodName extends keyof C['functions']> = BuildMetaMethod<
+type MetaMethod<C extends BaseContract, MethodName extends ContractMethodNames<C>> = BuildMetaMethod<
     C,
     MethodName,
     RemoveLastOptional<Parameters<C['callStatic'][MethodName]>>
@@ -52,7 +53,7 @@ export interface BaseWrappedContract<T extends BaseContract = Contract> extends 
         [P in keyof MulticallStatic<T>['callStatic']]: AddOptionalParam<MulticallStatic<T>['callStatic'][P], Multicall>;
     };
     readonly metaCall: {
-        [P in keyof T['functions']]: MetaMethod<T, P>;
+        [P in ContractMethodNames<T>]: MetaMethod<T, P>;
     };
 }
 
@@ -60,6 +61,9 @@ export type ContractMethods<T extends Contract> = {
     [key in keyof T as Exclude<key, keyof BaseWrappedContract>]: T[key] extends ContractFunction ? T[key] : undefined;
 };
 export type WrappedContract<T extends BaseContract = Contract> = ContractMethods<T> & BaseWrappedContract<T>;
+
+export type BaseContractLike<T extends BaseContract = BaseContract> = T | BaseWrappedContract<T>;
+export type ContractLike<T extends Contract = Contract> = T | WrappedContract<T>;
 
 export function wrapFunction<T>(fn: ContractFunction<T>): ContractFunction<T> {
     return async function (this: any) {
@@ -98,21 +102,25 @@ export function wrapContractObject<T extends Contract>(
     const multicallStatic: any = {};
     const metaCall: any = {};
     const methods: any = {};
+
+    // Typing here just to make sure all the fields exist
+    let result: Record<keyof BaseWrappedContract, any>;
+
     for (const fragment of contract.interface.fragments) {
         if (fragment.type !== 'function') {
             continue;
         }
         const name = fragment.name;
-        multicallStatic[name] = async function (this: WrappedContract<T>, ...args: any[]) {
+        multicallStatic[name] = async function (...args: any[]) {
             const argCount = fragment.inputs.length;
             if (args.length !== argCount && args.length !== argCount + 1) {
                 throw new PendleSdkError(`Argument count mismatch for multicall static of ${name}.`);
             }
             const multicall: Multicall | undefined = args.length === argCount ? this.multicall : args.pop();
-            return Multicall.wrap(contract, multicall).callStatic[name](...(args as any));
+            return Multicall.wrap(result, multicall).callStatic[name](...(args as any));
         };
 
-        metaCall[name] = async function (this: WrappedContract<T>, ...args: any[]) {
+        metaCall[name] = async function (...args: any[]) {
             const argCount = fragment.inputs.length;
             if (args.length !== argCount && args.length !== argCount + 1 && args.length !== argCount + 2) {
                 throw new PendleSdkError(`Argument count mismatch for meta call of ${name}.`);
@@ -121,20 +129,16 @@ export function wrapContractObject<T extends Contract>(
             const methodType: MetaMethodType | undefined = args.length === argCount + 1 ? args.pop() : undefined;
             return callMetaMethod(
                 methodType,
-                contract,
+                result,
                 name,
-                (method, methodName, data) => {
-                    if (methodName === 'multicallStatic') return method(...args);
-                    return method(...args, data.overrides);
-                },
+                (method, _methodName, data) => method(...args, data.overrides),
                 data
             );
         };
         methods[name] = wrapFunction(contract[name]);
     }
 
-    // Typing here just to make sure all the fields exist
-    const result: Record<keyof BaseWrappedContract, any> = {
+    result = {
         ...methods,
         ...config,
         [ORIGINAL_CONTRACT]: contract,
@@ -186,9 +190,9 @@ export function createContractObject<T extends Contract = Contract>(
     abi: ContractInterface,
     networkConnection: NetworkConnection,
     config: ContractObjectConfig = {}
-): WrappedContract<T> | T {
+): ContractLike<T> {
     const doWrap = config.doWrap ?? true;
-    let result: WrappedContract<T> | T;
+    let result: ContractLike<T>;
     if (networkConnection.signer == undefined) {
         result = new Contract(address, abi, networkConnection.provider) as T;
     } else if (
@@ -207,13 +211,11 @@ export function createContractObject<T extends Contract = Contract>(
     return result;
 }
 
-export function isWrapped<T extends Contract>(
-    contract: T | BaseWrappedContract<T>
-): contract is BaseWrappedContract<T> {
+export function isWrapped<T extends Contract>(contract: BaseContractLike<T>): contract is BaseWrappedContract<T> {
     return ORIGINAL_CONTRACT in contract;
 }
 
-export function getInnerContract<T extends Contract>(wrappedContract: T | BaseWrappedContract<T>): T {
+export function getInnerContract<T extends Contract>(wrappedContract: BaseContractLike<T>): T {
     if (isWrapped(wrappedContract)) {
         return wrappedContract[ORIGINAL_CONTRACT];
     }
@@ -221,7 +223,7 @@ export function getInnerContract<T extends Contract>(wrappedContract: T | BaseWr
 }
 
 // This interface is only for type calculation
-interface MetaMethodTypeHelper<C extends BaseWrappedContract | BaseContract, MethodName extends keyof C['functions']> {
+interface MetaMethodTypeHelper<C extends BaseContractLike, MethodName extends ContractMethodNames<C>> {
     functionMethod: C['functions'][MethodName];
     callStaticMethod: C['callStatic'][MethodName];
     estimateGasMethod: C['estimateGas'][MethodName];
@@ -245,12 +247,12 @@ export type ContractMetaMethodData = {
 };
 
 export class ContractMetaMethod<
-    C extends BaseWrappedContract | BaseContract,
-    M extends keyof C['functions'],
+    C extends BaseContract,
+    M extends ContractMethodNames<C>,
     Data extends ContractMetaMethodData
 > {
     constructor(
-        readonly contract: C,
+        readonly contract: BaseContractLike<C>,
         readonly methodName: M,
         readonly callback: MetaMethodTypeHelper<C, M>['callback'],
         readonly data: Data
@@ -283,17 +285,20 @@ export class ContractMetaMethod<
     }
 
     /**
-     * Note: make sure that when this function is called, no overrides should be passed.
+     * Note: this method removes overrides from the arguments.
      */
     multicallStatic(multicall?: Multicall): Promise<MetaMethodTypeHelper<C, M>['callStaticReturnType']> {
-        return this.callback(
-            Multicall.wrap(this.contract, multicall).callStatic[this.methodName as string] as MetaMethodTypeHelper<
-                C,
-                M
-            >['callStaticMethod'],
-            'multicallStatic',
-            this.data
-        ) as Promise<MetaMethodTypeHelper<C, M>['callStaticReturnType']>;
+        const callback = ((...args: any[]) => {
+            const argCount = getInnerContract(this.contract).interface.functions[this.methodName as string].inputs
+                .length;
+            if (args.length === argCount + 1) {
+                args.pop();
+            }
+            Multicall.wrap(this.contract, multicall).callStatic[this.methodName](...(args as any));
+        }) as MetaMethodTypeHelper<C, M>['callStaticMethod'];
+        return this.callback(callback, 'multicallStatic', this.data) as Promise<
+            MetaMethodTypeHelper<C, M>['callStaticReturnType']
+        >;
     }
 
     estimateGas(overrides?: CallOverrides): Promise<MetaMethodTypeHelper<C, M>['estimateGasReturnType']> {
@@ -309,7 +314,7 @@ export type MetaMethodType = 'send' | 'callStatic' | 'estimateGas' | 'meta-metho
 export type MetaMethodReturnType<
     T extends MetaMethodType,
     C extends BaseContract,
-    M extends keyof C['functions'],
+    M extends keyof C['callStatic'],
     Data extends {} = {}
 > = Promise<
     'send' extends T
@@ -328,11 +333,11 @@ export type MetaMethodReturnType<
 export function callMetaMethod<
     T extends MetaMethodType | undefined,
     C extends BaseContract,
-    M extends keyof C['functions'],
+    M extends ContractMethodNames<C>,
     Data extends {} = {}
 >(
     methodType: T,
-    contract: C,
+    contract: BaseContractLike<C>,
     methodName: M,
     callback: MetaMethodTypeHelper<C, M>['callback'],
     data?: Data
