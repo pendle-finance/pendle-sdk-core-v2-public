@@ -3,6 +3,7 @@ import { type BigNumber as BN, BytesLike } from 'ethers';
 import { Address } from '../types';
 
 export type PendleContractErrorMessageHandler = {
+    ApproxDstExecutionGasNotSet: () => string;
     ApproxFail: () => string;
     ApproxParamsInvalid: (guessMin: BN, guessMax: BN, eps: BN) => string;
     ArrayEmpty: () => string;
@@ -15,6 +16,7 @@ export type PendleContractErrorMessageHandler = {
     GCNotPendleMarket: (caller: Address) => string;
     GCNotVotingController: (caller: Address) => string;
     InsufficientFeeToSendMsg: (currentFee: BN, requiredFee: BN) => string;
+    InvalidRetryData: () => string;
     InvalidWTime: (wTime: BN) => string;
     MFactoryLnFeeRateRootTooHigh: (lnFeeRateRoot: BN, maxLnFeeRateRoot: BN) => string;
     MFactoryReserveFeePercentTooHigh: (reserveFeePercent: BN, maxReserveFeePercent: BN) => string;
@@ -35,8 +37,8 @@ export type PendleContractErrorMessageHandler = {
     MarketZeroLnImpliedRate: () => string;
     MarketZeroTotalPtOrTotalAsset: (totalPt: BN, totalAsset: BN) => string;
     MsgNotFromReceiveEndpoint: (sender: Address) => string;
-    MsgNotFromSendEndpoint: (sender: Address) => string;
-    OnlyCelerBus: () => string;
+    MsgNotFromSendEndpoint: (srcChainId: BN, path: undefined) => string;
+    OnlyLayerZeroEndpoint: () => string;
     OnlyWhitelisted: () => string;
     OnlyYCFactory: () => string;
     OnlyYT: () => string;

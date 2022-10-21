@@ -1804,17 +1804,17 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@openzeppelin/contracts@^4.5.0":
+"@openzeppelin/contracts@^4.7.3":
   version "4.7.3"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.7.3.tgz#939534757a81f8d69cc854c7692805684ff3111e"
   integrity sha512-dGRS0agJzu8ybo44pCIf3xBaPQN/65AIXNgK8+4gzKd5kbvlqyxryUYVLJv7fK98Seyd2hDZzVEHSWAh0Bt1Yw==
 
-"@pendle/core-v2@0.14.0-testnet":
-  version "0.14.0-testnet"
-  resolved "https://registry.yarnpkg.com/@pendle/core-v2/-/core-v2-0.14.0-testnet.tgz#73f29fc17abe6aa6d8c63fb0102bf47a573f4277"
-  integrity sha512-DC+o/Zt8bhriww2NkdMnsona/UlI/NaBVCsYfrlJ4fnqvPoZ+IvGr+32Bo+tIJuZjkygLbgvCz2xGXRuXxQyZQ==
+"@pendle/core-v2@ 0.16.1-testnet":
+  version "0.16.1-testnet"
+  resolved "https://registry.yarnpkg.com/@pendle/core-v2/-/core-v2-0.16.1-testnet.tgz#db92960ce9d45caaea9e6df0eaea029cf4139fe1"
+  integrity sha512-9JYA5lfY5CyxianRTKcMPJQtT6xlwPuI/ZqoSLW/VTDjOYuSl9SsMZ0TyBcyhYm24UdzsGRAa/zvL2TJnNTSNg==
   dependencies:
-    "@openzeppelin/contracts" "^4.5.0"
+    "@openzeppelin/contracts" "^4.7.3"
 
 "@rollup/plugin-babel@^5.1.0":
   version "5.3.1"

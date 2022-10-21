@@ -6,6 +6,7 @@ function joinArgs(args: any[]) {
 
 // TODO write more descriptive error messages.
 export const defaultPendleContractErrorMessageHandler: PendleContractErrorMessageHandler = {
+    ApproxDstExecutionGasNotSet: (...args) => `Got ApproxDstExecutionGasNotSet error (${joinArgs(args)})`,
     ApproxFail: (...args) => `Got ApproxFail error (${joinArgs(args)})`,
     ApproxParamsInvalid: (...args) => `Got ApproxParamsInvalid error (${joinArgs(args)})`,
     ArrayEmpty: (...args) => `Got ArrayEmpty error (${joinArgs(args)})`,
@@ -18,6 +19,7 @@ export const defaultPendleContractErrorMessageHandler: PendleContractErrorMessag
     GCNotPendleMarket: (...args) => `Got GCNotPendleMarket error (${joinArgs(args)})`,
     GCNotVotingController: (...args) => `Got GCNotVotingController error (${joinArgs(args)})`,
     InsufficientFeeToSendMsg: (...args) => `Got InsufficientFeeToSendMsg error (${joinArgs(args)})`,
+    InvalidRetryData: (...args) => `Got InvalidRetryData (${joinArgs(args)})`,
     InvalidWTime: (...args) => `Got InvalidWTime error (${joinArgs(args)})`,
     MFactoryLnFeeRateRootTooHigh: (...args) => `Got MFactoryLnFeeRateRootTooHigh error (${joinArgs(args)})`,
     MFactoryReserveFeePercentTooHigh: (...args) => `Got MFactoryReserveFeePercentTooHigh error (${joinArgs(args)})`,
@@ -39,7 +41,7 @@ export const defaultPendleContractErrorMessageHandler: PendleContractErrorMessag
     MarketZeroTotalPtOrTotalAsset: (...args) => `Got MarketZeroTotalPtOrTotalAsset error (${joinArgs(args)})`,
     MsgNotFromReceiveEndpoint: (...args) => `Got MsgNotFromReceiveEndpoint error (${joinArgs(args)})`,
     MsgNotFromSendEndpoint: (...args) => `Got MsgNotFromSendEndpoint error (${joinArgs(args)})`,
-    OnlyCelerBus: (...args) => `Got OnlyCelerBus error (${joinArgs(args)})`,
+    OnlyLayerZeroEndpoint: (...args) => `Got OnlyLayerZeroEndpoint error (${joinArgs(args)})`,
     OnlyWhitelisted: (...args) => `Got OnlyWhitelisted error (${joinArgs(args)})`,
     OnlyYCFactory: (...args) => `Got OnlyYCFactory error (${joinArgs(args)})`,
     OnlyYT: (...args) => `Got OnlyYT error (${joinArgs(args)})`,
