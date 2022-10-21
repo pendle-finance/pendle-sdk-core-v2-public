@@ -4,8 +4,8 @@ import './util/bigNumberMatcher';
 
 describe('PY', () => {
     const currentMarket = currentConfig.market;
-    const pt = new PtEntity(currentMarket.PT, networkConnection, ACTIVE_CHAIN_ID);
-    const yt = new YtEntity(currentMarket.YT, networkConnection, ACTIVE_CHAIN_ID);
+    const pt = new PtEntity(currentMarket.PT, ACTIVE_CHAIN_ID, networkConnection);
+    const yt = new YtEntity(currentMarket.YT, ACTIVE_CHAIN_ID, networkConnection);
 
     describeWithMulticall((multicall) => {
         it('#userInfo & #contract', async () => {

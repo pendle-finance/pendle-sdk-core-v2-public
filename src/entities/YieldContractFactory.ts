@@ -1,20 +1,13 @@
-import type { PendleYieldContractFactory } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection, ChainId } from '../types';
-import { abi as PendleYieldContractFactoryABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldContractFactory.sol/PendleYieldContractFactory.json';
-import { createContractObject, WrappedContract } from '../contractHelper';
+import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
+import { PendleYieldContractFactory, PendleYieldContractFactoryABI, WrappedContract } from '../contracts';
+import type { Address, ChainId } from '../types';
 
-export class YieldContractFactory {
-    readonly contract: WrappedContract<PendleYieldContractFactory>;
+export type YieldContractFactoryConfig = PendleEntityConfigOptionalAbi;
 
-    constructor(
-        readonly address: Address,
-        protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId
-    ) {
-        this.contract = createContractObject<PendleYieldContractFactory>(
-            address,
-            PendleYieldContractFactoryABI,
-            networkConnection
-        );
+export class YieldContractFactory<
+    C extends WrappedContract<PendleYieldContractFactory> = WrappedContract<PendleYieldContractFactory>
+> extends PendleEntity<C> {
+    constructor(readonly address: Address, readonly chainId: ChainId, config: YieldContractFactoryConfig) {
+        super(address, chainId, { abi: PendleYieldContractFactoryABI, ...config });
     }
 }

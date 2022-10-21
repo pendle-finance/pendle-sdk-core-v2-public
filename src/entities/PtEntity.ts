@@ -1,34 +1,21 @@
-import type { PendlePrincipalToken, RouterStatic } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection, ChainId } from '../types';
+import { PendlePrincipalToken, RouterStatic, PendlePrincipalTokenABI, WrappedContract } from '../contracts';
+import type { Address, ChainId } from '../types';
 import type { UserPyInfo, PyInfo } from './YtEntity';
-import { abi as PendlePrincipalTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendlePrincipalToken.sol/PendlePrincipalToken.json';
 import { getRouterStatic } from './helper';
 import { ERC20, ERC20Config } from './ERC20';
 import { YtEntity } from './YtEntity';
 import { SyEntity } from './SyEntity';
-import { WrappedContract } from '../contractHelper';
 
 export type PtEntityConfig = ERC20Config;
 
-export class PtEntity extends ERC20 {
+export class PtEntity<
+    C extends WrappedContract<PendlePrincipalToken> = WrappedContract<PendlePrincipalToken>
+> extends ERC20<C> {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
 
-    constructor(
-        readonly address: Address,
-        protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId,
-        config?: PtEntityConfig
-    ) {
-        super(address, networkConnection, chainId, { abi: PendlePrincipalTokenABI, ...config });
-        this.routerStatic = getRouterStatic(networkConnection, chainId, config);
-    }
-
-    get pendlePrincipalTokenContract() {
-        return this.contract as WrappedContract<PendlePrincipalToken>;
-    }
-
-    get ptContract() {
-        return this.pendlePrincipalTokenContract;
+    constructor(readonly address: Address, readonly chainId: ChainId, config: PtEntityConfig) {
+        super(address, chainId, { abi: PendlePrincipalTokenABI, ...config });
+        this.routerStatic = getRouterStatic(chainId, config);
     }
 
     async userInfo(user: Address, multicall = this.multicall): Promise<UserPyInfo> {
@@ -40,7 +27,7 @@ export class PtEntity extends ERC20 {
     }
 
     async SY(multicall = this.multicall): Promise<Address> {
-        return this.ptContract.multicallStatic.SY(multicall);
+        return this.contract.multicallStatic.SY(multicall);
     }
 
     /**
@@ -52,7 +39,7 @@ export class PtEntity extends ERC20 {
     }
 
     async YT(multicall = this.multicall): Promise<Address> {
-        return this.ptContract.multicallStatic.YT(multicall);
+        return this.contract.multicallStatic.YT(multicall);
     }
 
     /**
@@ -65,11 +52,11 @@ export class PtEntity extends ERC20 {
 
     async syEntity(multicall = this.multicall) {
         const syAddr = await this.SY(multicall);
-        return new SyEntity(syAddr, this.networkConnection, this.chainId);
+        return new SyEntity(syAddr, this.chainId, this.networkConnection);
     }
 
     async ytEntity(multicall = this.multicall) {
         const ytAddr = await this.YT(multicall);
-        return new YtEntity(ytAddr, this.networkConnection, this.chainId);
+        return new YtEntity(ytAddr, this.chainId, this.networkConnection);
     }
 }

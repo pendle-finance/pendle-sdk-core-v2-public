@@ -2,7 +2,7 @@ import { KyberHelper } from '../src/entities/KyberHelper';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 
 describe(KyberHelper, () => {
-    const kyberHelper = new KyberHelper(currentConfig.router, networkConnection, ACTIVE_CHAIN_ID);
+    const kyberHelper = new KyberHelper(currentConfig.router, ACTIVE_CHAIN_ID, networkConnection);
 
     it('checkSwappablePair', async () => {
         let tokens = Object.entries(currentConfig.tokens)

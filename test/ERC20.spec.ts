@@ -12,7 +12,7 @@ import {
 import './util/bigNumberMatcher';
 
 describe(ERC20, () => {
-    const usd = new ERC20(currentConfig.tokens.USDC, networkConnection, ACTIVE_CHAIN_ID);
+    const usd = new ERC20(currentConfig.tokens.USDC, ACTIVE_CHAIN_ID, networkConnection);
     const signer = WALLET().wallet;
 
     it('#constructor', () => {

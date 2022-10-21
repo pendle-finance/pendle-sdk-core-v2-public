@@ -1,0 +1,10 @@
+export { abi as PendleERC20ABI } from '@pendle/core-v2/build/artifacts/contracts/core/erc20/PendleERC20.sol/PendleERC20.json';
+export { abi as PendleMarketABI } from '@pendle/core-v2/build/artifacts/contracts/core/Market/PendleMarket.sol/PendleMarket.json';
+export { abi as PendleMarketFactoryABI } from '@pendle/core-v2/build/artifacts/contracts/core/Market/PendleMarketFactory.sol/PendleMarketFactory.json';
+export { abi as PendlePrincipalTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendlePrincipalToken.sol/PendlePrincipalToken.json';
+export { abi as SYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/core/StandardizedYield/SYBase.sol/SYBase.json';
+export { abi as VotingEscrowTokenBaseABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VotingEscrow/VotingEscrowTokenBase.sol/VotingEscrowTokenBase.json';
+export { abi as VotingEscrowPendleMainchainABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VotingEscrow/VotingEscrowPendleMainchain.sol/VotingEscrowPendleMainchain.json';
+export { abi as PendleVotingControllerUpgABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VotingController/PendleVotingControllerUpg.sol/PendleVotingControllerUpg.json';
+export { abi as PendleYieldContractFactoryABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldContractFactory.sol/PendleYieldContractFactory.json';
+export { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldToken.sol/PendleYieldToken.json';

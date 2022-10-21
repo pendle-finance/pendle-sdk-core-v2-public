@@ -1,35 +1,22 @@
-import type { PendleVotingControllerUpg } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection, ChainId } from '../types';
+import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
+
+import { PendleVotingControllerUpg, PendleVotingControllerUpgABI, WrappedContract, MetaMethodType } from '../contracts';
+import type { Address, ChainId } from '../types';
 import { BigNumber } from 'bignumber.js';
-import { BigNumber as BN, constants, ContractInterface } from 'ethers';
-import { abi as PendleVotingControllerUpgABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VotingController/PendleVotingControllerUpg.sol/PendleVotingControllerUpg.json';
+import { BigNumber as BN, constants } from 'ethers';
 import { isMainchain } from './helper';
 import { MarketEntity } from './MarketEntity';
-import { WrappedContract, createContractObject, MetaMethodType } from '../contractHelper';
-import { Multicall } from '../multicall';
 
-export type VotingControllerConfig = {
-    abi?: ContractInterface;
-    multicall?: Multicall;
-};
+export type VotingControllerConfig = PendleEntityConfigOptionalAbi;
 
-export class VotingController {
-    readonly contract: WrappedContract<PendleVotingControllerUpg>;
-    readonly multicall?: Multicall;
-
-    constructor(
-        readonly address: Address,
-        protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId,
-        config: VotingControllerConfig = {}
-    ) {
+export class VotingController<
+    C extends WrappedContract<PendleVotingControllerUpg> = WrappedContract<PendleVotingControllerUpg>
+> extends PendleEntity<C> {
+    constructor(readonly address: Address, readonly chainId: ChainId, config: VotingControllerConfig) {
         if (!isMainchain(chainId)) {
             throw Error('Voting only available on main chain (Ethereum)');
         }
-        const abi = config.abi ?? PendleVotingControllerUpgABI;
-        this.contract = createContractObject<PendleVotingControllerUpg>(address, abi, networkConnection, {
-            multicall: config.multicall,
-        });
+        super(address, chainId, { abi: PendleVotingControllerUpgABI, ...config });
     }
 
     static scaleWeight(weight: number): BN {

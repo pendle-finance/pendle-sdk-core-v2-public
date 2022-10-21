@@ -1,15 +1,19 @@
-import type { PendleMarket, RouterStatic } from '@pendle/core-v2/typechain-types';
-import type { MarketStateStructOutput } from '@pendle/core-v2/typechain-types/PendleMarket';
-import type { IPRouterStatic } from '@pendle/core-v2/typechain-types/IPRouterStatic';
-import type { Address, NetworkConnection, RawTokenAmount } from '../types';
-import { abi as PendleMarketABI } from '@pendle/core-v2/build/artifacts/contracts/core/Market/PendleMarket.sol/PendleMarket.json';
+import {
+    PendleMarket,
+    MarketStateStructOutput,
+    IPRouterStatic,
+    RouterStatic,
+    PendleMarketABI,
+    WrappedContract,
+    MetaMethodType,
+} from '../contracts';
+import type { Address, RawTokenAmount } from '../types';
 import { BigNumber as BN } from 'ethers';
 import { getRouterStatic, zip } from './helper';
 import { ERC20, ERC20Config } from './ERC20';
 import { ChainId } from '../types';
 import { SyEntity } from './SyEntity';
 import { PtEntity } from './PtEntity';
-import { WrappedContract, MetaMethodType } from '../contractHelper';
 
 export type MarketInfo = {
     pt: Address;
@@ -29,27 +33,14 @@ export type UserMarketInfo = {
 
 export type MarketEntityConfig = ERC20Config;
 
-export class MarketEntity extends ERC20 {
+export class MarketEntity<C extends WrappedContract<PendleMarket> = WrappedContract<PendleMarket>> extends ERC20<C> {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     protected _ptAddress: Address | undefined;
     protected _syAddress: Address | undefined;
 
-    constructor(
-        readonly address: Address,
-        protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId,
-        config?: MarketEntityConfig
-    ) {
-        super(address, networkConnection, chainId, { abi: PendleMarketABI, ...config });
-        this.routerStatic = getRouterStatic(networkConnection, chainId, config);
-    }
-
-    get pendleMarketContract() {
-        return this.contract as WrappedContract<PendleMarket>;
-    }
-
-    get marketContract() {
-        return this.pendleMarketContract;
+    constructor(readonly address: Address, readonly chainId: ChainId, config: MarketEntityConfig) {
+        super(address, chainId, { abi: PendleMarketABI, ...config });
+        this.routerStatic = getRouterStatic(chainId, config);
     }
 
     async getMarketInfo(multicall = this.multicall): Promise<MarketInfo> {
@@ -90,25 +81,25 @@ export class MarketEntity extends ERC20 {
     // Consideration: more efficient result caching?
     async syEntity(multicall = this.multicall) {
         const syAddr = await this.SY(multicall);
-        return new SyEntity(syAddr, this.networkConnection, this.chainId);
+        return new SyEntity(syAddr, this.chainId, this.networkConnection);
     }
 
     // Consideration: more efficient result caching?
     async ptEntity(multicall = this.multicall) {
         const ptAddr = await this.PT(multicall);
-        return new PtEntity(ptAddr, this.networkConnection, this.chainId);
+        return new PtEntity(ptAddr, this.chainId, this.networkConnection);
     }
 
     async getRewardTokens(multicall = this.multicall) {
-        return this.marketContract.multicallStatic.getRewardTokens(multicall);
+        return this.contract.multicallStatic.getRewardTokens(multicall);
     }
 
     async redeemRewards<T extends MetaMethodType = 'send'>(userAddress: Address, metaMethodType?: T) {
-        return this.marketContract.metaCall.redeemRewards(userAddress, metaMethodType);
+        return this.contract.metaCall.redeemRewards(userAddress, metaMethodType);
     }
 
     async simulateRedeemRewards(userAddress: Address, multicall = this.multicall) {
-        return this.marketContract.multicallStatic.redeemRewards(userAddress, multicall);
+        return this.contract.multicallStatic.redeemRewards(userAddress, multicall);
     }
 
     async simulateRedeemRewardsWithTokens(userAddress: Address, multicall = this.multicall): Promise<RawTokenAmount[]> {
@@ -123,10 +114,10 @@ export class MarketEntity extends ERC20 {
     }
 
     async activeBalance(userAddress: Address, multicall = this.multicall): Promise<BN> {
-        return this.marketContract.multicallStatic.activeBalance(userAddress, multicall);
+        return this.contract.multicallStatic.activeBalance(userAddress, multicall);
     }
 
     async readState(multicall = this.multicall) {
-        return this.marketContract.multicallStatic.readState(multicall);
+        return this.contract.multicallStatic.readState(multicall);
     }
 }

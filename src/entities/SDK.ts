@@ -1,12 +1,11 @@
-import type { RouterStatic } from '@pendle/core-v2/typechain-types';
+import { RouterStatic, WrappedContract } from '../contracts';
 import type { Address, NetworkConnection, ChainId } from '../types';
 import type { UserPyInfo } from './YtEntity';
 import type { UserMarketInfo } from './MarketEntity';
 import { getRouterStatic } from './helper';
 import { Multicall } from '../multicall';
-import { WrappedContract } from '../contractHelper';
 
-export type SDKConfig = {
+export type SDKConfig = NetworkConnection & {
     multicall?: Multicall;
 };
 
@@ -14,13 +13,9 @@ export class SDK {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     readonly multicall?: Multicall;
 
-    constructor(
-        protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId,
-        config?: SDKConfig
-    ) {
+    constructor(readonly chainId: ChainId, config: SDKConfig) {
         this.multicall = config?.multicall;
-        this.routerStatic = getRouterStatic(networkConnection, chainId, config);
+        this.routerStatic = getRouterStatic(chainId, config);
     }
 
     /**

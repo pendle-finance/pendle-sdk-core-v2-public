@@ -12,7 +12,7 @@ import './util/bigNumberMatcher';
 import { BigNumber as BN } from 'ethers';
 
 describe(VePendle, () => {
-    const vePendle = new VePendleMainchain(currentConfig.veAddress, networkConnection, ACTIVE_CHAIN_ID as MainchainId);
+    const vePendle = new VePendleMainchain(currentConfig.veAddress, ACTIVE_CHAIN_ID as MainchainId, networkConnection);
 
     it('#constructor', () => {
         expect(vePendle).toBeInstanceOf(VePendle);
@@ -25,10 +25,10 @@ describe(VePendle, () => {
     });
 
     describeWrite(() => {
-        const pendle = new ERC20(currentConfig.pendle, networkConnection, ACTIVE_CHAIN_ID);
+        const pendle = new ERC20(currentConfig.pendle, ACTIVE_CHAIN_ID, networkConnection);
         const signer = WALLET().wallet;
         const signerAddress = signer.address;
-        const contract = vePendle.votingEscrowPendleMainchainContract;
+        const contract = vePendle.contract;
 
         // only test if ACTIVE_CHAIN_ID is mainchain
         if (!isMainchain(ACTIVE_CHAIN_ID)) {
@@ -48,7 +48,7 @@ describe(VePendle, () => {
             }
 
             const pendleBalanceBefore = await pendle.balanceOf(signer.address);
-            const week = await vePendle.votingEscrowTokenBaseContract.WEEK();
+            const week = await vePendle.contract.WEEK();
 
             let currentExpiry = (await contract.positionData(signerAddress)).expiry;
             if (currentExpiry.isZero()) {

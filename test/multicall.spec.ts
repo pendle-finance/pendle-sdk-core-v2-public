@@ -15,13 +15,12 @@ describe('Multicall', () => {
         dummy: WrappedContract<PendleERC20>;
 
     beforeAll(async () => {
-        market = new MarketEntity(currentConfig.marketAddress, networkConnection, chainId);
+        market = new MarketEntity(currentConfig.marketAddress, chainId, networkConnection);
         const marketInfo = await market.getMarketInfo();
-        pt = new ERC20(marketInfo.pt, networkConnection, chainId).ERC20Contract;
-        yt = new ERC20(await new PtEntity(marketInfo.pt, networkConnection, chainId).YT(), networkConnection, chainId)
-            .ERC20Contract;
-        sy = new ERC20(marketInfo.sy, networkConnection, chainId).ERC20Contract;
-        dummy = new ERC20(ethers.constants.AddressZero, networkConnection, chainId).ERC20Contract;
+        pt = new ERC20(marketInfo.pt, chainId, networkConnection).contract;
+        yt = (await new PtEntity(marketInfo.pt, chainId, networkConnection).ytEntity()).contract;
+        sy = new ERC20(marketInfo.sy, chainId, networkConnection).contract;
+        dummy = new ERC20(ethers.constants.AddressZero, chainId, networkConnection).contract;
     });
 
     it('Single call', async () => {

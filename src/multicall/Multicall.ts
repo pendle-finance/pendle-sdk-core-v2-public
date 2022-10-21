@@ -1,13 +1,13 @@
 import type { BlockTag } from '@ethersproject/abstract-provider';
 import type { Provider } from '@ethersproject/providers';
 import type { Multicall2 } from './Multicall2';
-import { Contract, BaseContract } from 'ethers';
+import { Contract } from 'ethers';
 import { FunctionFragment, Interface } from 'ethers/lib/utils';
 import { MULTICALL_ADDRESSES } from '../constants';
 import { abi as MulticallABI } from './Multicall2.json';
 import { ChainId, RemoveLastOptionalParam } from '../types';
 import { EthersJsError } from '../errors';
-import { BaseContractLike, getInnerContract } from '../contractHelper';
+import { ContractLike, getInnerContract } from '../contracts';
 
 /**
  * Multicall implementation, allowing to call function of contract.callStatic functions
@@ -51,7 +51,7 @@ class ContractCall {
     }
 }
 
-export type MulticallStatic<T extends BaseContract> = {
+export type MulticallStatic<T extends Contract> = {
     callStatic: {
         [P in keyof T['callStatic']]: RemoveLastOptionalParam<T['callStatic'][P]>;
     };
@@ -75,10 +75,7 @@ export class Multicall {
      * This function is useful in case where the user when to choose whether to use multicall
      * by themselves.
      */
-    static wrap<T extends BaseContract>(
-        contract: BaseContractLike<T>,
-        multicall: Multicall | undefined
-    ): MulticallStatic<T> {
+    static wrap<T extends Contract>(contract: ContractLike<T>, multicall: Multicall | undefined): MulticallStatic<T> {
         return multicall ? multicall.wrap(contract) : (contract as unknown as MulticallStatic<T>);
     }
 
@@ -134,7 +131,7 @@ export class Multicall {
         return result;
     }
 
-    wrap<T extends BaseContract>(contract_: BaseContractLike<T>): MulticallStatic<T> {
+    wrap<T extends Contract>(contract_: ContractLike<T>): MulticallStatic<T> {
         contract_ = getInnerContract(contract_);
         const contract = contract_ as T & { [key in symbol]: MulticallStatic<T> };
         if (contract[this.multicallStaticSymbol]) {

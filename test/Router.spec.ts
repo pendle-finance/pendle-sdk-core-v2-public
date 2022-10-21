@@ -29,7 +29,6 @@ import {
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import './util/bigNumberMatcher';
-import { getRouterStatic } from '../src/entities/helper';
 import { ApproximateError, NoRouteFoundError } from '../src/errors';
 
 type BalanceSnapshot = {
@@ -47,14 +46,13 @@ type LpBalanceSnapshot = {
 };
 
 describe(Router, () => {
-    const router = Router.getRouter(networkConnection, ACTIVE_CHAIN_ID);
-    const routerStatic = getRouterStatic(networkConnection, ACTIVE_CHAIN_ID);
+    const router = Router.getRouter(ACTIVE_CHAIN_ID, networkConnection);
     const signer = WALLET().wallet;
     const marketAddress = currentConfig.market.market;
     const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
     const ytAddress = currentConfig.market.YT;
-    const sySdk = new SyEntity(syAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const sySdk = new SyEntity(syAddress, ACTIVE_CHAIN_ID, networkConnection);
 
     it('#constructor', async () => {
         expect(router).toBeInstanceOf(Router);

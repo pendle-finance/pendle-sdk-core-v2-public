@@ -4,7 +4,7 @@ import type { ContractAddresses } from '../constants';
 import { CHAIN_ID, NATIVE_ADDRESS_0x00, NATIVE_ADDRESS_0xEE, CONTRACT_ADDRESSES, KYBER_API } from '../constants';
 import { Address, ChainId, MainchainId, NetworkConnection } from '../types';
 import { PendleSdkError } from '../errors';
-import { createContractObject, WrappedContract, WrappedContractConfig } from '../contractHelper';
+import { createContractObject, WrappedContract, ContractObjectConfig } from '../contracts';
 
 /**
  * This is a decorator that check if this.networkConnection.signer existed
@@ -29,17 +29,21 @@ export function requiresSigner(
     };
 }
 
-export function getRouterStatic(
-    networkConnection: NetworkConnection,
-    chainId: ChainId,
-    config?: WrappedContractConfig
-): WrappedContract<RouterStatic> {
-    return createContractObject<RouterStatic>(
-        getContractAddresses(chainId).ROUTER_STATIC,
-        RouterStaticABI,
-        networkConnection,
-        config
-    );
+/**
+ * This function only copy provider and signer field of a NetworkConnection.
+ * So { ...networkConnection } is not valid in this case.
+ * NetworkConnection is an union type, so to copying it is not simply as doing
+ *      { provider: networkConnection.provider, signer: networkConnection.signer }
+ */
+export function copyNetworkConnection(networkConnection: NetworkConnection): NetworkConnection {
+    if (networkConnection.provider === undefined) {
+        return { signer: networkConnection.signer };
+    }
+    return { provider: networkConnection.provider, signer: networkConnection.signer };
+}
+
+export function getRouterStatic(chainId: ChainId, config: ContractObjectConfig): WrappedContract<RouterStatic> {
+    return createContractObject<RouterStatic>(getContractAddresses(chainId).ROUTER_STATIC, RouterStaticABI, config);
 }
 
 export function getContractAddresses(chainId: ChainId): ContractAddresses {

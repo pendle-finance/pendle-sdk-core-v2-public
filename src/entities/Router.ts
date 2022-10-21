@@ -1,11 +1,13 @@
+import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
+import { RouterStatic, WrappedContract, MetaMethodType, MetaMethodReturnType, ContractMethodNames } from '../contracts';
 import type {
     ApproxParamsStruct,
     IPAllAction,
     TokenInputStruct,
     TokenOutputStruct,
 } from '@pendle/core-v2/typechain-types/IPAllAction';
-import type { Address, NetworkConnection, ChainId } from '../types';
 import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
+import type { Address, NetworkConnection, ChainId } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN, constants as etherConstants } from 'ethers';
 import { getContractAddresses, getRouterStatic, isNativeToken } from './helper';
@@ -13,22 +15,24 @@ import { calcSlippedDownAmount, calcSlippedUpAmount, PyIndex } from './math';
 import { MarketEntity } from './MarketEntity';
 import { SyEntity } from './SyEntity';
 import { YtEntity } from './YtEntity';
-import { RouterStatic } from '@pendle/core-v2/typechain-types';
 import { NoRouteFoundError } from '../errors';
-import { KyberHelper, KybercallData, KyberState, KyberHelperConfig } from './KyberHelper';
-import { WrappedContract, createContractObject, MetaMethodType } from '../contractHelper';
-import { Multicall } from '../multicall';
+import { KyberHelper, KybercallData, KyberState, KyberHelperCoreConfig } from './KyberHelper';
 
 export type RouterState = {
     kyberHelper: KyberState;
 };
 
-export type RouterConfig = {
-    kyberHelper: KyberHelperConfig;
-    multicall?: Multicall;
+export type RouterConfig = PendleEntityConfigOptionalAbi & {
+    kyberHelper?: KyberHelperCoreConfig;
 };
 
-export class Router {
+export type RouterMetaMethodReturnType<
+    T extends MetaMethodType,
+    M extends ContractMethodNames<IPAllAction>,
+    Data extends {}
+> = MetaMethodReturnType<T, IPAllAction, M, Data>;
+
+export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPAllAction>> extends PendleEntity<C> {
     static readonly MIN_AMOUNT = 0;
     static readonly MAX_AMOUNT = etherConstants.MaxUint256;
     static readonly STATIC_APPROX_PARAMS = {
@@ -38,25 +42,18 @@ export class Router {
         maxIteration: 256,
         eps: BN.from(10).pow(15),
     };
-    readonly contract: WrappedContract<IPAllAction>;
     readonly routerStatic: WrappedContract<RouterStatic>;
     readonly kyberHelper: KyberHelper;
-    readonly multicall?: Multicall;
 
-    constructor(
-        readonly address: Address,
-        protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId,
-        config?: RouterConfig
-    ) {
-        const { kyberHelper: kyberHelperConfig } = { ...config };
-        this.contract = createContractObject<IPAllAction>(address, IPAllActionABI, networkConnection, {
-            multicall: config?.multicall,
+    constructor(readonly address: Address, readonly chainId: ChainId, config: RouterConfig) {
+        super(address, chainId, { abi: IPAllActionABI, ...config });
+        const { kyberHelper: kyberHelperCoreConfig } = { ...config };
+        this.routerStatic = getRouterStatic(chainId, config);
+
+        this.kyberHelper = new KyberHelper(address, chainId, {
+            ...this.networkConnection,
+            ...kyberHelperCoreConfig,
         });
-        this.routerStatic = getRouterStatic(networkConnection, chainId, { multicall: config?.multicall });
-
-        this.kyberHelper = new KyberHelper(address, networkConnection, chainId, kyberHelperConfig);
-        this.multicall = this.multicall;
     }
 
     get state(): RouterState {
@@ -69,8 +66,8 @@ export class Router {
         this.kyberHelper.state = value.kyberHelper;
     }
 
-    static getRouter(networkConnection: NetworkConnection, chainId: ChainId): Router {
-        return new Router(getContractAddresses(chainId).ROUTER, networkConnection, chainId);
+    static getRouter(chainId: ChainId, networkConnection: NetworkConnection): Router {
+        return new Router(getContractAddresses(chainId).ROUTER, chainId, networkConnection);
     }
 
     static guessOutApproxParams(guessAmountOut: BN, slippage: number): ApproxParamsStruct {
@@ -133,7 +130,6 @@ export class Router {
         netPtFromSwap: BN;
         zapInInput: TokenInputStruct;
         kybercallData: KybercallData;
-        tokenMintSy: Address;
     }> {
         const possibleOutAmounts = tokenMintSyList.map(async (tokenMintSy) => {
             const kybercallData = await this.kyberHelper.makeCall({ token: tokenIn, amount: netTokenIn }, tokenMintSy);
@@ -151,12 +147,11 @@ export class Router {
                     netPtFromSwap: etherConstants.NegativeOne,
                     zapInInput,
                     kybercallData,
-                    tokenMintSy,
                 };
             }
 
             const { netLpOut, netPtFromSwap } = await fn(zapInInput);
-            return { netLpOut, netPtFromSwap, zapInInput, kybercallData, tokenMintSy };
+            return { netLpOut, netPtFromSwap, zapInInput, kybercallData };
         });
         return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) =>
             cur.netLpOut.gt(prev.netLpOut) ? cur : prev
@@ -177,7 +172,7 @@ export class Router {
         netSyFee: BN;
     }> {
         const possibleOutAmounts = tokenRedeemSyList.map(async (tokenRedeemSy) => {
-            const amountIn = await new SyEntity(sy, this.networkConnection, this.chainId).previewRedeem(
+            const amountIn = await new SyEntity(sy, this.chainId, this.networkConnection).previewRedeem(
                 tokenRedeemSy,
                 netSyIn
             );
@@ -212,7 +207,7 @@ export class Router {
         ptDesired: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<T, 'addLiquidityDualSyAndPt', { netLpOut: BN; netSyUsed: BN; netPtUsed: BN }> {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.contract.callStatic.addLiquidityDualSyAndPt(
             receiver,
@@ -241,7 +236,7 @@ export class Router {
         ptDesired: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<T, 'addLiquidityDualTokenAndPt', { netLpOut: BN; netTokenUsed: BN; netPtUsed: BN }> {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const overrides = {
             value: isNativeToken(tokenIn) ? tokenDesired : undefined,
@@ -274,7 +269,11 @@ export class Router {
         netPtIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'addLiquiditySinglePt',
+        { netLpOut: BN; netPtToSwap: BN; netSyFee: BN; priceImpact: BN; approxParam: ApproxParamsStruct }
+    > {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStatic.callStatic.addLiquiditySinglePtStatic(marketAddr, netPtIn);
         const { netLpOut, netPtToSwap } = res;
@@ -296,7 +295,11 @@ export class Router {
         netSyIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'addLiquiditySingleSy',
+        { netLpOut: BN; netPtFromSwap: BN; netSyFee: BN; priceImpact: BN; approxParam: ApproxParamsStruct }
+    > {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStatic.callStatic.addLiquiditySingleSyStatic(marketAddr, netSyIn);
         const { netPtFromSwap, netLpOut } = res;
@@ -320,9 +323,13 @@ export class Router {
         netTokenIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'addLiquiditySingleToken',
+        { netLpOut: BN; netPtFromSwap: BN; zapInInput: TokenInputStruct; kybercallData: KybercallData }
+    > {
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.networkConnection, this.chainId);
+            market = new MarketEntity(market, this.chainId, this.networkConnection);
         }
         const marketAddr = market.address;
         const tokenMintSyList = await market.syEntity().then((sy) => sy.getTokensIn());
@@ -361,7 +368,7 @@ export class Router {
         lpToRemove: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<T, 'removeLiquidityDualSyAndPt', { netSyOut: BN; netPtOut: BN }> {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.contract.callStatic.removeLiquidityDualSyAndPt(
             receiver,
@@ -389,7 +396,7 @@ export class Router {
         tokenOut: Address,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<T, 'removeLiquidityDualTokenAndPt', { netTokenOut: BN; netPtOut: BN }> {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.contract.callStatic.removeLiquidityDualTokenAndPt(
             receiver,
@@ -418,7 +425,11 @@ export class Router {
         lpToRemove: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'removeLiquiditySinglePt',
+        { netPtOut: BN; netPtFromSwap: BN; netSyFee: BN; priceImpact: BN }
+    > {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStatic.callStatic.removeLiquiditySinglePtStatic(marketAddr, lpToRemove);
         const { netPtOut, netPtFromSwap } = res;
@@ -439,7 +450,7 @@ export class Router {
         lpToRemove: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<T, 'removeLiquiditySingleSy', { netSyOut: BN; netSyFee: BN; priceImpact: BN }> {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStatic.callStatic.removeLiquiditySingleSyStatic(marketAddr, lpToRemove);
         const { netSyOut } = res;
@@ -460,9 +471,20 @@ export class Router {
         tokenOut: Address,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'removeLiquiditySingleToken',
+        {
+            netTokenOut: BN;
+            output: TokenOutputStruct;
+            kybercallData: KybercallData;
+            netSyFee: BN;
+            intermediateSy: BN;
+            intermediateSyFee: BN;
+        }
+    > {
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.networkConnection, this.chainId);
+            market = new MarketEntity(market, this.chainId, this.networkConnection);
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity();
@@ -472,11 +494,7 @@ export class Router {
             this.contract.callStatic.removeLiquiditySingleSy(receiver, marketAddr, lpToRemove, Router.MIN_AMOUNT),
         ]);
 
-        const {
-            output,
-            netOut: netTokenOut,
-            netSyFee: netSyFee,
-        } = await this.outputParams(
+        const res = await this.outputParams(
             sy.address,
             intermediateSy,
             tokenOut,
@@ -488,6 +506,8 @@ export class Router {
             slippage
         );
 
+        const { netOut: netTokenOut, output } = res;
+
         if (netTokenOut.eq(etherConstants.NegativeOne)) {
             throw NoRouteFoundError.action('zap out', marketAddr, tokenOut);
         }
@@ -498,7 +518,7 @@ export class Router {
             lpToRemove,
             output,
             metaMethodType,
-            { netTokenOut, intermediateSy, intermediateSyFee, netSyFee, output }
+            { ...res, intermediateSy, intermediateSyFee, netTokenOut }
         );
     }
 
@@ -508,7 +528,7 @@ export class Router {
         exactPtIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<T, 'swapExactPtForSy', { netSyOut: BN; netSyFee: BN }> {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.contract.callStatic.swapExactPtForSy(receiver, marketAddr, exactPtIn, Router.MIN_AMOUNT);
         const { netSyOut } = res;
@@ -528,7 +548,11 @@ export class Router {
         exactSyOut: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapPtForExactSy',
+        { netPtIn: BN; netSyFee: BN; approxParam: ApproxParamsStruct }
+    > {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.contract.callStatic.swapPtForExactSy(
             receiver,
@@ -556,7 +580,7 @@ export class Router {
         exactPtOut: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<T, 'swapSyForExactPt', { netSyIn: BN; netSyFee: BN }> {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.contract.callStatic.swapSyForExactPt(
             receiver,
@@ -582,9 +606,18 @@ export class Router {
         netTokenIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapExactTokenForPt',
+        {
+            netPtOut: BN;
+            input: TokenInputStruct;
+            kybercallData: KybercallData;
+            netSyFee: BN;
+        }
+    > {
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.networkConnection, this.chainId);
+            market = new MarketEntity(market, this.chainId, this.networkConnection);
         }
         const marketAddr = market.address;
         const tokenMintSyList = await market.syEntity().then((sy) => sy.getTokensIn());
@@ -604,20 +637,20 @@ export class Router {
                 .then(({ netPtOut, netSyFee }) => ({ netOut: netPtOut, netSyFee }))
         );
 
-        const { netOut, input } = res;
+        const { netOut: netPtOut, input } = res;
 
-        if (netOut.eq(etherConstants.NegativeOne)) {
+        if (netPtOut.eq(etherConstants.NegativeOne)) {
             throw NoRouteFoundError.action('swap', tokenIn, marketAddr);
         }
 
         return this.contract.metaCall.swapExactTokenForPt(
             receiver,
             marketAddr,
-            calcSlippedDownAmount(netOut, slippage),
-            Router.guessOutApproxParams(netOut, slippage),
+            calcSlippedDownAmount(netPtOut, slippage),
+            Router.guessOutApproxParams(netPtOut, slippage),
             input,
             metaMethodType,
-            { ...res, overrides }
+            { ...res, netPtOut, overrides }
         );
     }
 
@@ -627,7 +660,7 @@ export class Router {
         exactSyIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<T, 'swapExactSyForPt', { netPtOut: BN; netSyFee: BN }> {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.contract.callStatic.swapExactSyForPt(
             receiver,
@@ -655,9 +688,13 @@ export class Router {
         netTokenIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'mintSyFromToken',
+        { netSyOut: BN; input: TokenInputStruct; kybercallData: KybercallData }
+    > {
         if (typeof sy === 'string') {
-            sy = new SyEntity(sy, this.networkConnection, this.chainId);
+            sy = new SyEntity(sy, this.chainId, this.networkConnection);
         }
         const syAddr = sy.address;
         const tokenMintSyList = await sy.getTokensIn();
@@ -666,19 +703,19 @@ export class Router {
                 .mintSyFromToken(receiver, syAddr, Router.MIN_AMOUNT, input)
                 .then((netOut) => ({ netOut, netSyFee: etherConstants.Zero }))
         );
-        const { netOut, input } = res;
+        const { netOut: netSyOut, input } = res;
 
-        if (netOut.eq(etherConstants.NegativeOne)) {
+        if (netSyOut.eq(etherConstants.NegativeOne)) {
             throw NoRouteFoundError.action('mint', tokenIn, syAddr);
         }
 
         return this.contract.metaCall.mintSyFromToken(
             receiver,
             syAddr,
-            calcSlippedDownAmount(netOut, slippage),
+            calcSlippedDownAmount(netSyOut, slippage),
             input,
             metaMethodType,
-            res
+            { ...res, netSyOut }
         );
     }
 
@@ -689,9 +726,13 @@ export class Router {
         tokenOut: Address,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'redeemSyToToken',
+        { netTokenOut: BN; output: TokenOutputStruct; kybercallData: KybercallData }
+    > {
         if (typeof sy === 'string') {
-            sy = new SyEntity(sy, this.networkConnection, this.chainId);
+            sy = new SyEntity(sy, this.chainId, this.networkConnection);
         }
         const syAddr = sy.address;
         const tokenRedeemSyList = await sy.getTokensOut();
@@ -707,13 +748,16 @@ export class Router {
             slippage
         );
 
-        const { output, netOut } = res;
+        const { output, netOut: netTokenOut } = res;
 
-        if (netOut.eq(etherConstants.NegativeOne)) {
+        if (netTokenOut.eq(etherConstants.NegativeOne)) {
             throw NoRouteFoundError.action('redeem', sy.address, tokenOut);
         }
 
-        return this.contract.metaCall.redeemSyToToken(receiver, sy.address, netSyIn, output, metaMethodType, res);
+        return this.contract.metaCall.redeemSyToToken(receiver, sy.address, netSyIn, output, metaMethodType, {
+            ...res,
+            netTokenOut,
+        });
     }
 
     async mintPyFromToken<T extends MetaMethodType>(
@@ -723,9 +767,13 @@ export class Router {
         netTokenIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'mintPyFromToken',
+        { netPyOut: BN; input: TokenInputStruct; kybercallData: KybercallData }
+    > {
         if (typeof yt === 'string') {
-            yt = new YtEntity(yt, this.networkConnection, this.chainId);
+            yt = new YtEntity(yt, this.chainId, this.networkConnection);
         }
         const ytAddr = yt.address;
         const sy = await yt.syEntity();
@@ -736,9 +784,9 @@ export class Router {
                 .mintPyFromToken(receiver, ytAddr, Router.MIN_AMOUNT, input, overrides)
                 .then((netOut) => ({ netOut, netSyFee: etherConstants.Zero }))
         );
-        const { netOut, input } = res;
+        const { netOut: netPyOut, input } = res;
 
-        if (netOut.eq(etherConstants.NegativeOne)) {
+        if (netPyOut.eq(etherConstants.NegativeOne)) {
             // TODO: should we use `mintPY` as the action name instead of `mint`?
             throw NoRouteFoundError.action('mint', tokenIn, ytAddr);
         }
@@ -746,10 +794,10 @@ export class Router {
         return this.contract.metaCall.mintPyFromToken(
             receiver,
             ytAddr,
-            calcSlippedDownAmount(netOut, slippage),
+            calcSlippedDownAmount(netPyOut, slippage),
             input,
             metaMethodType,
-            { ...res, overrides }
+            { ...res, netPyOut, overrides }
         );
     }
 
@@ -760,15 +808,19 @@ export class Router {
         tokenOut: Address,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'redeemPyToToken',
+        { netTokenOut: BN; kybercallData: KybercallData; output: TokenOutputStruct }
+    > {
         if (typeof yt === 'string') {
-            yt = new YtEntity(yt, this.networkConnection, this.chainId);
+            yt = new YtEntity(yt, this.chainId, this.networkConnection);
         }
         const ytAddr = yt.address;
-        const getsyPromise = yt.syEntity();
+        const getSyPromise = yt.syEntity();
         const [sy, tokenRedeemSyList, pyIndex] = await Promise.all([
-            getsyPromise,
-            getsyPromise.then((sy) => sy.getTokensOut()),
+            getSyPromise,
+            getSyPromise.then((sy) => sy.getTokensOut()),
             yt.pyIndexCurrent(),
         ]);
         const res = await this.outputParams(
@@ -783,13 +835,16 @@ export class Router {
 
             slippage
         );
-        const { netOut, output } = res;
+        const { netOut: netTokenOut, output } = res;
 
-        if (netOut.eq(etherConstants.NegativeOne)) {
+        if (netTokenOut.eq(etherConstants.NegativeOne)) {
             throw NoRouteFoundError.action('redeem', ytAddr, tokenOut);
         }
 
-        return this.contract.metaCall.redeemPyToToken(receiver, ytAddr, netPyIn, output, metaMethodType, res);
+        return this.contract.metaCall.redeemPyToToken(receiver, ytAddr, netPyIn, output, metaMethodType, {
+            ...res,
+            netTokenOut,
+        });
     }
 
     async swapExactSyForYt<T extends MetaMethodType>(
@@ -798,7 +853,11 @@ export class Router {
         exactSyIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapExactSyForYt',
+        { netYtOut: BN; netSyFee: BN; approxParam: ApproxParamsStruct }
+    > {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.contract.callStatic.swapExactSyForYt(
             receiver,
@@ -826,7 +885,11 @@ export class Router {
         exactSyOut: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapYtForExactSy',
+        { netYtIn: BN; netSyFee: BN; approxParam: ApproxParamsStruct }
+    > {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.contract.callStatic.swapYtForExactSy(
             receiver,
@@ -855,9 +918,20 @@ export class Router {
         tokenOut: Address,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapExactPtForToken',
+        {
+            netTokenOut: BN;
+            output: TokenOutputStruct;
+            kybercallData: KybercallData;
+            netSyFee: BN;
+            intermediateSy: BN;
+            intermediateSyFee: BN;
+        }
+    > {
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.networkConnection, this.chainId);
+            market = new MarketEntity(market, this.chainId, this.networkConnection);
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity();
@@ -878,14 +952,15 @@ export class Router {
             slippage
         );
 
-        const { output, netOut } = res;
+        const { output, netOut: netTokenOut } = res;
 
-        if (netOut.eq(etherConstants.NegativeOne)) {
+        if (netTokenOut.eq(etherConstants.NegativeOne)) {
             throw NoRouteFoundError.action('swap', await market.pt(), tokenOut);
         }
 
         return this.contract.metaCall.swapExactPtForToken(receiver, marketAddr, exactPtIn, output, metaMethodType, {
             ...res,
+            netTokenOut,
             intermediateSy,
             intermediateSyFee,
         });
@@ -897,7 +972,7 @@ export class Router {
         exactYtIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<T, 'swapExactYtForSy', { netSyOut: BN; netSyFee: BN }> {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.contract.callStatic.swapExactYtForSy(receiver, marketAddr, exactYtIn, 0);
         const { netSyOut } = res;
@@ -917,7 +992,7 @@ export class Router {
         exactYtOut: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<T, 'swapSyForExactYt', { netSyIn: BN; netSyFee: BN }> {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.contract.callStatic.swapSyForExactYt(
             receiver,
@@ -943,9 +1018,18 @@ export class Router {
         netTokenIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapExactTokenForYt',
+        {
+            netYtOut: BN;
+            input: TokenInputStruct;
+            kybercallData: KybercallData;
+            netSyFee: BN;
+        }
+    > {
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.networkConnection, this.chainId);
+            market = new MarketEntity(market, this.chainId, this.networkConnection);
         }
         const marketAddr = market.address;
         const sy = await market.syEntity();
@@ -964,9 +1048,9 @@ export class Router {
                 .then(({ netYtOut, netSyFee }) => ({ netOut: netYtOut, netSyFee }))
         );
 
-        const { netOut, input } = res;
+        const { netOut: netYtOut, input } = res;
 
-        if (netOut.eq(etherConstants.NegativeOne)) {
+        if (netYtOut.eq(etherConstants.NegativeOne)) {
             // TODO: One additional call to get the yt address, does it worth it?
             let yt = await market.ptEntity().then((pt) => pt.yt());
             throw NoRouteFoundError.action('swap', tokenIn, yt);
@@ -975,11 +1059,11 @@ export class Router {
         return this.contract.metaCall.swapExactTokenForYt(
             receiver,
             marketAddr,
-            calcSlippedDownAmount(netOut, slippage),
-            Router.guessOutApproxParams(netOut, slippage),
+            calcSlippedDownAmount(netYtOut, slippage),
+            Router.guessOutApproxParams(netYtOut, slippage),
             input,
             metaMethodType,
-            { ...res, overrides }
+            { ...res, netYtOut, overrides }
         );
     }
 
@@ -990,9 +1074,20 @@ export class Router {
         tokenOut: Address,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapExactYtForToken',
+        {
+            netTokenOut: BN;
+            output: TokenOutputStruct;
+            kybercallData: KybercallData;
+            netSyFee: BN;
+            intermediateSy: BN;
+            intermediateSyFee: BN;
+        }
+    > {
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.networkConnection, this.chainId);
+            market = new MarketEntity(market, this.chainId, this.networkConnection);
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity();
@@ -1013,8 +1108,8 @@ export class Router {
             slippage
         );
 
-        const { netOut, output } = res;
-        if (netOut.eq(etherConstants.NegativeOne)) {
+        const { netOut: netTokenOut, output } = res;
+        if (netTokenOut.eq(etherConstants.NegativeOne)) {
             // TODO: One additional call to get the yt address, does it worth it?
             let yt = await market.ptEntity().then((pt) => pt.yt());
             throw NoRouteFoundError.action('swap', yt, tokenOut);
@@ -1022,6 +1117,7 @@ export class Router {
 
         return this.contract.metaCall.swapExactYtForToken(receiver, marketAddr, exactYtIn, output, metaMethodType, {
             ...res,
+            netTokenOut,
             intermediateSy,
             intermediateSyFee,
         });
@@ -1033,7 +1129,17 @@ export class Router {
         exactYtIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapExactYtForPt',
+        {
+            netPtOut: BN;
+            totalPtSwapped: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            approxParam: ApproxParamsStruct;
+        }
+    > {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStatic.callStatic.swapExactYtForPtStatic(marketAddr, exactYtIn);
         const { netPtOut, totalPtSwapped } = res;
@@ -1055,7 +1161,17 @@ export class Router {
         exactPtIn: BigNumberish,
         slippage: number,
         metaMethodType?: T
-    ) {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapExactPtForYt',
+        {
+            netYtOut: BN;
+            totalPtToSwap: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            approxParam: ApproxParamsStruct;
+        }
+    > {
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStatic.callStatic.swapExactPtForYtStatic(marketAddr, exactPtIn);
         const { netYtOut, totalPtToSwap } = res;

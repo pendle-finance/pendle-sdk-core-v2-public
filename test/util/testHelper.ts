@@ -11,9 +11,7 @@ type EntitiesMapType = {
 const ERC20_CREATE_HANDLER = {
     get: function (target: EntitiesMapType, address: Address) {
         if (target[address] === undefined) {
-            target[address] = new ERC20(address, networkConnection, ACTIVE_CHAIN_ID).ERC20Contract.connect(
-                networkConnection.signer
-            );
+            target[address] = new ERC20(address, ACTIVE_CHAIN_ID, networkConnection).contract;
         }
         return target[address];
     },
@@ -78,11 +76,11 @@ export async function stalkAccount(user: Address, markets: any[]) {
         console.log('Market: ', market.symbol);
         console.log('Portfolio');
 
-        const marketContract = new MarketEntity(market.market, networkConnection, ACTIVE_CHAIN_ID).contract;
+        const marketEntity = new MarketEntity(market.market, ACTIVE_CHAIN_ID, networkConnection);
 
         console.log('balanceOf');
-        console.log('market                 :', (await marketContract.balanceOf(user)).toString());
-        console.log('market active balance  :', (await marketContract.activeBalance(user)).toString());
+        console.log('market                 :', (await marketEntity.balanceOf(user)).toString());
+        console.log('market active balance  :', (await marketEntity.activeBalance(user)).toString());
         console.log('yt                     :', (await getBalance(market.YT, user)).toString());
         console.log('pt                     :', (await getBalance(market.PT, user)).toString());
         console.log('sy                     :', (await getBalance(market.SY, user)).toString());

@@ -38,7 +38,7 @@ async function main() {
     const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
 
-    const router = new Router(routerAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const router = new Router(routerAddress, ACTIVE_CHAIN_ID, networkConnection);
 
     // Inner working of this script:
     // 1. Fund accounts with a tokenIn

@@ -5,17 +5,17 @@ import { decimalFactor } from '../src/entities/math';
 import './util/bigNumberMatcher';
 
 describe(SDK, () => {
-    const sdk = new SDK(networkConnection, ACTIVE_CHAIN_ID);
+    const sdk = new SDK(ACTIVE_CHAIN_ID, networkConnection);
 
     const marketAddress = currentConfig.market.market;
     const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
     const ytAddress = currentConfig.market.YT;
 
-    const pt = new PtEntity(ptAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const yt = new YtEntity(ytAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const market = new MarketEntity(marketAddress, networkConnection, ACTIVE_CHAIN_ID);
-    const sy = new SyEntity(syAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const pt = new PtEntity(ptAddress, ACTIVE_CHAIN_ID, networkConnection);
+    const yt = new YtEntity(ytAddress, ACTIVE_CHAIN_ID, networkConnection);
+    const market = new MarketEntity(marketAddress, ACTIVE_CHAIN_ID, networkConnection);
+    const sy = new SyEntity(syAddress, ACTIVE_CHAIN_ID, networkConnection);
 
     it('#constructor', async () => {
         expect(sdk).toBeInstanceOf(SDK);

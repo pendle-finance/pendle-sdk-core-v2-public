@@ -4,7 +4,7 @@ import './util/bigNumberMatcher';
 
 describe('Custom error', () => {
     const syAddress = currentConfig.market.SY;
-    const sy = new SyEntity(syAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const sy = new SyEntity(syAddress, ACTIVE_CHAIN_ID, networkConnection);
     const signer = WALLET().wallet;
     const errorMessage = PendleContractError.errorMessageHandler['SYZeroDeposit']();
     const slippage = 0.1;
@@ -14,19 +14,19 @@ describe('Custom error', () => {
     });
 
     it('catch contract call static', async () => {
-        await expect(
-            sy.syContract.callStatic.deposit(signer.address, currentConfig.market.token, 0, 0)
-        ).rejects.toThrow(errorMessage);
+        await expect(sy.contract.callStatic.deposit(signer.address, currentConfig.market.token, 0, 0)).rejects.toThrow(
+            errorMessage
+        );
     });
 
     it('catch estimate gas', async () => {
-        await expect(
-            sy.syContract.estimateGas.deposit(signer.address, currentConfig.market.token, 0, 0)
-        ).rejects.toThrow(`Gas estimation error: ${errorMessage}`);
+        await expect(sy.contract.estimateGas.deposit(signer.address, currentConfig.market.token, 0, 0)).rejects.toThrow(
+            `Gas estimation error: ${errorMessage}`
+        );
     });
 
     it('catch contract call', async () => {
-        await expect(sy.syContract.functions.deposit(signer.address, currentConfig.market.token, 0, 0)).rejects.toThrow(
+        await expect(sy.contract.functions.deposit(signer.address, currentConfig.market.token, 0, 0)).rejects.toThrow(
             errorMessage
         );
     });
@@ -34,7 +34,7 @@ describe('Custom error', () => {
     it('catch multicall error', async () => {
         await expect(
             currentConfig.multicall
-                .wrap(sy.syContract)
+                .wrap(sy.contract)
                 .callStatic.deposit(signer.address, currentConfig.market.token, 0, 0)
         ).rejects.toThrow(errorMessage);
     });

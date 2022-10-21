@@ -13,7 +13,7 @@ import './util/bigNumberMatcher';
 
 describe(SyEntity, () => {
     const syAddress = currentConfig.market.SY;
-    const sy = new SyEntity(syAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const sy = new SyEntity(syAddress, ACTIVE_CHAIN_ID, networkConnection);
     const signer = WALLET().wallet;
 
     it('#constructor', () => {

@@ -47,11 +47,9 @@ describe('Misc', () => {
     });
 
     it('test requiresSigner', async () => {
-        const usdWithoutSigner = new ERC20(
-            currentConfig.tokens.USDC,
-            { provider: networkConnection.provider },
-            ACTIVE_CHAIN_ID
-        );
+        const usdWithoutSigner = new ERC20(currentConfig.tokens.USDC, ACTIVE_CHAIN_ID, {
+            provider: networkConnection.provider,
+        });
 
         expect(async () => usdWithoutSigner.transfer(currentConfig.marketAddress, 1)).rejects.toThrowError();
     });

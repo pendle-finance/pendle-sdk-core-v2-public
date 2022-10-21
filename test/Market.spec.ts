@@ -6,11 +6,11 @@ import './util/bigNumberMatcher';
 
 describe(MarketEntity, () => {
     const currentMarket = currentConfig.market;
-    const market = new MarketEntity(currentMarket.market, networkConnection, ACTIVE_CHAIN_ID);
+    const market = new MarketEntity(currentMarket.market, ACTIVE_CHAIN_ID, networkConnection);
     const contract = market.contract;
     const sender = WALLET().wallet;
-    const sy = new SyEntity(currentMarket.SY, networkConnection, ACTIVE_CHAIN_ID);
-    const routerStatic = getRouterStatic(networkConnection, ACTIVE_CHAIN_ID);
+    const sy = new SyEntity(currentMarket.SY, ACTIVE_CHAIN_ID, networkConnection);
+    const routerStatic = getRouterStatic(ACTIVE_CHAIN_ID, networkConnection);
 
     it('#constructor', () => {
         expect(market).toBeInstanceOf(MarketEntity);

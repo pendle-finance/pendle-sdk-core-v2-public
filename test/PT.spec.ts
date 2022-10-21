@@ -2,7 +2,7 @@ import { PtEntity } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
 
 describe(PtEntity, () => {
-    const pt = new PtEntity(currentConfig.market.PT, networkConnection, ACTIVE_CHAIN_ID);
+    const pt = new PtEntity(currentConfig.market.PT, ACTIVE_CHAIN_ID, networkConnection);
 
     it('#constructor', async () => {
         expect(pt).toBeInstanceOf(PtEntity);

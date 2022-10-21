@@ -1,60 +1,54 @@
-import type { RouterStatic } from '@pendle/core-v2/typechain-types';
-import type { VotingEscrowTokenBase, VotingEscrowPendleMainchain } from '@pendle/core-v2/typechain-types';
+import {
+    RouterStatic,
+    VotingEscrowTokenBase,
+    VotingEscrowPendleMainchain,
+    VotingEscrowTokenBaseABI,
+    VotingEscrowPendleMainchainABI,
+    WrappedContract,
+    MetaMethodType,
+} from '../contracts';
+
+import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
 import type { Address, NetworkConnection, ChainId, MainchainId } from '../types';
-import { abi as VotingEscrowTokenBaseABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VotingEscrow/VotingEscrowTokenBase.sol/VotingEscrowTokenBase.json';
-import { abi as VotingEscrowPendleMainchainABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VotingEscrow/VotingEscrowPendleMainchain.sol/VotingEscrowPendleMainchain.json';
-import { ERC20, ERC20Config } from './ERC20';
-import { Multicall } from '../multicall';
-import { WrappedContract, MetaMethodType } from '../contractHelper';
 import { getContractAddresses, getRouterStatic } from './helper';
 import { BigNumberish } from 'ethers';
 
-export type VePendleConfig = ERC20Config;
+export type VePendleConfig = PendleEntityConfigOptionalAbi;
 
-export class VePendle extends ERC20 {
-    constructor(
-        readonly address: Address,
-        protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId,
-        config?: VePendleConfig
-    ) {
-        super(address, networkConnection, chainId, { abi: VotingEscrowTokenBaseABI, ...config });
+export class VePendle<
+    C extends WrappedContract<VotingEscrowTokenBase> = WrappedContract<VotingEscrowTokenBase>
+> extends PendleEntity<C> {
+    constructor(readonly address: Address, readonly chainId: ChainId, config: VePendleConfig) {
+        super(address, chainId, { abi: VotingEscrowTokenBaseABI, ...config });
     }
 
-    get votingEscrowTokenBaseContract() {
-        return this.contract as WrappedContract<VotingEscrowTokenBase>;
+    async balanceOf(userAddress: Address, multicall = this.multicall) {
+        return this.contract.multicallStatic.balanceOf(userAddress, multicall);
     }
 
     async positionData(userAddress: Address, multicall = this.multicall) {
-        return Multicall.wrap(this.votingEscrowTokenBaseContract, multicall).callStatic.positionData(userAddress);
+        return this.contract.multicallStatic.positionData(userAddress, multicall);
+    }
+
+    async totalSupplyCurrent(multicall = this.multicall) {
+        return this.contract.multicallStatic.totalSupplyStored(multicall);
     }
 }
 
 export type VePendleMainchainConfig = VePendleConfig;
 
-export class VePendleMainchain extends VePendle {
+export class VePendleMainchain<
+    C extends WrappedContract<VotingEscrowPendleMainchain> = WrappedContract<VotingEscrowPendleMainchain>
+> extends VePendle<C> {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
 
-    constructor(
-        readonly address: Address,
-        protected readonly networkConnection: NetworkConnection,
-        readonly chainId: MainchainId,
-        config?: VePendleMainchainConfig
-    ) {
-        super(address, networkConnection, chainId, { abi: VotingEscrowPendleMainchainABI, ...config });
-        this.routerStatic = getRouterStatic(networkConnection, chainId, config);
+    constructor(readonly address: Address, readonly chainId: MainchainId, config: VePendleMainchainConfig) {
+        super(address, chainId, { abi: VotingEscrowPendleMainchainABI, ...config });
+        this.routerStatic = getRouterStatic(chainId, config);
     }
 
-    get votingEscrowPendleMainchainContract(): WrappedContract<VotingEscrowPendleMainchain> {
-        return this.contract as WrappedContract<VotingEscrowPendleMainchain>;
-    }
-
-    get vePendleMainchainContract() {
-        return this.votingEscrowPendleMainchainContract;
-    }
-
-    static createObject(networkConnection: NetworkConnection, chainId: MainchainId) {
-        return new VePendleMainchain(getContractAddresses(chainId).VEPENDLE, networkConnection, chainId);
+    static createObject(chainId: MainchainId, networkConnection: NetworkConnection) {
+        return new VePendleMainchain(getContractAddresses(chainId).VEPENDLE, chainId, networkConnection);
     }
 
     async simulateIncreaseLockPosition(
@@ -76,14 +70,10 @@ export class VePendleMainchain extends VePendle {
         newExpiry_s: BigNumberish,
         metaMethodType?: T
     ) {
-        return this.vePendleMainchainContract.metaCall.increaseLockPosition(
-            additionalRawAmountToLock,
-            newExpiry_s,
-            metaMethodType
-        );
+        return this.contract.metaCall.increaseLockPosition(additionalRawAmountToLock, newExpiry_s, metaMethodType);
     }
 
     async withdraw<T extends MetaMethodType = 'send'>(metaMethodType?: T) {
-        return this.vePendleMainchainContract.metaCall.withdraw(metaMethodType);
+        return this.contract.metaCall.withdraw(metaMethodType);
     }
 }

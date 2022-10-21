@@ -1,7 +1,7 @@
 import { Address, RawTokenAmount, ChainId, NetworkConnection } from '../types';
 import type { BigNumberish, BytesLike } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { isKyberSupportedChain, isSameAddress, isNativeToken } from './helper';
+import { isKyberSupportedChain, isSameAddress, isNativeToken, copyNetworkConnection } from './helper';
 import { NATIVE_ADDRESS_0xEE, KYBER_API } from '../constants';
 import axios from 'axios';
 import { ERC20 } from './ERC20';
@@ -19,10 +19,12 @@ export type KyberState = {
     })[];
 };
 
-export type KyberHelperConfig = {
+export type KyberHelperCoreConfig = {
     state?: KyberState;
-    cacheTimeout_ms: number;
+    cacheTimeout_ms?: number;
 };
+
+export type KyberHelperConfig = NetworkConnection & KyberHelperCoreConfig;
 
 export type KybercallData = {
     amountInUsd?: number;
@@ -32,7 +34,7 @@ export type KybercallData = {
 };
 
 export class KyberHelper {
-    static readonly DEFAULT_CONFIG: KyberHelperConfig = {
+    static readonly DEFAULT_CONFIG_PARAM = {
         // 1 day
         cacheTimeout_ms: 24 * 60 * 60 * 1000,
     };
@@ -46,19 +48,14 @@ export class KyberHelper {
         SwappablePairResult | { pendingResult: Promise<boolean> }
     >();
 
-    constructor(
-        routerAddress: Address,
-        networkConnection: NetworkConnection,
-        chainId: ChainId,
-        params?: KyberHelperConfig
-    ) {
+    constructor(routerAddress: Address, chainId: ChainId, config: KyberHelperConfig) {
         const { cacheTimeout_ms: swappablePairsExpirationTimeout_ms, state } = {
-            ...KyberHelper.DEFAULT_CONFIG,
-            ...params,
+            ...KyberHelper.DEFAULT_CONFIG_PARAM,
+            ...config,
         };
 
         this.routerAddress = routerAddress;
-        this.networkConnection = networkConnection;
+        this.networkConnection = copyNetworkConnection(config);
         this.chainId = chainId;
         this.cacheTimeout_ms = swappablePairsExpirationTimeout_ms;
         if (state != undefined) {
@@ -159,7 +156,7 @@ export class KyberHelper {
         }
 
         const res = (async () => {
-            const decimals = await new ERC20(srcTokenAddress, this.networkConnection, this.chainId).decimals(multicall);
+            const decimals = await new ERC20(srcTokenAddress, this.chainId, this.networkConnection).decimals(multicall);
             const testAmount = BN.from(10).pow(decimals).mul(100);
             const kybercallData = await this.makeCall({ token: srcTokenAddress, amount: testAmount }, dstTokenAddress);
             const kybercall = kybercallData.encodedSwapData;

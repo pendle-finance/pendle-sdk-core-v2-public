@@ -6,8 +6,8 @@ describe(YieldContractFactory, () => {
     const ytAddress = currentConfig.market.YT;
     const yieldFactory = new YieldContractFactory(
         currentConfig.yieldContractFactory,
-        networkConnection,
-        ACTIVE_CHAIN_ID
+        ACTIVE_CHAIN_ID,
+        networkConnection
     );
 
     it('#constructor', async () => {

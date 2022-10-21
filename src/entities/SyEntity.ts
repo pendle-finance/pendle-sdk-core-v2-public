@@ -1,12 +1,10 @@
-import type { RouterStatic, SYBase } from '@pendle/core-v2/typechain-types';
-import type { Address, NetworkConnection, RawTokenAmount, ChainId } from '../types';
+import { RouterStatic, SYBase, SYBaseABI, WrappedContract, MetaMethodType } from '../contracts';
+import type { Address, RawTokenAmount, ChainId } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { abi as SYBaseABI } from '@pendle/core-v2/build/artifacts/contracts/core/StandardizedYield/SYBase.sol/SYBase.json';
 import { getRouterStatic, isNativeToken } from './helper';
 import { calcSlippedDownAmount } from './math';
 import { ERC20, ERC20Config } from './ERC20';
-import { WrappedContract, MetaMethodType } from '../contractHelper';
 
 export type UserSyInfo = {
     balance: BN;
@@ -15,25 +13,12 @@ export type UserSyInfo = {
 
 export type SyEntityConfig = ERC20Config;
 
-export class SyEntity extends ERC20 {
+export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase>> extends ERC20<C> {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
 
-    constructor(
-        readonly address: Address,
-        protected readonly networkConnection: NetworkConnection,
-        readonly chainId: ChainId,
-        config?: SyEntityConfig
-    ) {
-        super(address, networkConnection, chainId, { abi: SYBaseABI, ...config });
-        this.routerStatic = getRouterStatic(networkConnection, chainId, config);
-    }
-
-    get SYBaseContract() {
-        return this.contract as WrappedContract<SYBase>;
-    }
-
-    get syContract() {
-        return this.SYBaseContract;
+    constructor(readonly address: Address, readonly chainId: ChainId, config: SyEntityConfig) {
+        super(address, chainId, { abi: SYBaseABI, ...config });
+        this.routerStatic = getRouterStatic(chainId, config);
     }
 
     /**
@@ -51,10 +36,10 @@ export class SyEntity extends ERC20 {
         slippage: number,
         metaMethodType?: T
     ) {
-        const amountSyOut = await this.syContract.callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0, {
+        const amountSyOut = await this.contract.callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0, {
             value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined,
         });
-        return this.syContract.metaCall.deposit(
+        return this.contract.metaCall.deposit(
             receiver,
             baseAssetIn,
             amountBaseToPull,
@@ -75,14 +60,14 @@ export class SyEntity extends ERC20 {
         burnFromInternalBalance: boolean,
         metaMethodType?: T
     ) {
-        const amountBaseOut = await this.syContract.callStatic.redeem(
+        const amountBaseOut = await this.contract.callStatic.redeem(
             receiver,
             amountSyToPull,
             baseAssetOut,
             0,
             burnFromInternalBalance
         );
-        return this.syContract.metaCall.redeem(
+        return this.contract.metaCall.redeem(
             receiver,
             amountSyToPull,
             baseAssetOut,
@@ -97,15 +82,15 @@ export class SyEntity extends ERC20 {
     }
 
     async getTokensIn(multicall = this.multicall) {
-        return this.syContract.multicallStatic.getTokensIn(multicall);
+        return this.contract.multicallStatic.getTokensIn(multicall);
     }
 
     async getTokensOut(multicall = this.multicall) {
-        return this.syContract.multicallStatic.getTokensOut(multicall);
+        return this.contract.multicallStatic.getTokensOut(multicall);
     }
 
     async getRewardTokens(multicall = this.multicall) {
-        return this.syContract.multicallStatic.getRewardTokens(multicall);
+        return this.contract.multicallStatic.getRewardTokens(multicall);
     }
 
     async previewRedeem(
@@ -113,7 +98,7 @@ export class SyEntity extends ERC20 {
         amountSharesToRedeem: BigNumberish,
         multicall = this.multicall
     ): Promise<BN> {
-        return this.syContract.multicallStatic.previewRedeem(tokenOut, amountSharesToRedeem, multicall);
+        return this.contract.multicallStatic.previewRedeem(tokenOut, amountSharesToRedeem, multicall);
     }
 
     async previewDeposit(
@@ -121,6 +106,6 @@ export class SyEntity extends ERC20 {
         amountTokenToDeposit: BigNumberish,
         multicall = this.multicall
     ): Promise<BN> {
-        return this.syContract.multicallStatic.previewRedeem(tokenIn, amountTokenToDeposit, multicall);
+        return this.contract.multicallStatic.previewRedeem(tokenIn, amountTokenToDeposit, multicall);
     }
 }

@@ -2,8 +2,8 @@ import { MarketEntity, VotingController } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, describeWrite, networkConnection } from './util/testUtils';
 
 describe(VotingController, () => {
-    const votingController = new VotingController(currentConfig.votingController!, networkConnection, ACTIVE_CHAIN_ID);
-    const market = new MarketEntity(currentConfig.marketAddress, networkConnection, ACTIVE_CHAIN_ID);
+    const votingController = new VotingController(currentConfig.votingController!, ACTIVE_CHAIN_ID, networkConnection);
+    const market = new MarketEntity(currentConfig.marketAddress, ACTIVE_CHAIN_ID, networkConnection);
 
     it('#constructor', async () => {
         expect(votingController).toBeInstanceOf(VotingController);
