@@ -106,6 +106,6 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
         amountTokenToDeposit: BigNumberish,
         multicall = this.multicall
     ): Promise<BN> {
-        return this.contract.multicallStatic.previewRedeem(tokenIn, amountTokenToDeposit, multicall);
+        return this.contract.multicallStatic.previewDeposit(tokenIn, amountTokenToDeposit, multicall);
     }
 }

@@ -25,6 +25,12 @@ describe('Custom error', () => {
         );
     });
 
+    it('catch estimate gas without custom error', async () => {
+        await expect(
+            sy.contract.estimateGas.transferFrom(currentConfig.market.market, signer.address, 1)
+        ).rejects.toThrow('Gas estimation error: ERC20: insufficient allowance');
+    });
+
     it('catch contract call', async () => {
         await expect(sy.contract.functions.deposit(signer.address, currentConfig.market.token, 0, 0)).rejects.toThrow(
             errorMessage

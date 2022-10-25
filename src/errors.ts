@@ -1,6 +1,6 @@
 import { EthersJsErrorCode } from './types';
 import { Interface } from '@ethersproject/abi';
-import { BytesLike, utils as ethersUtils } from 'ethers';
+import { utils as ethersUtils, BigNumber as BN } from 'ethers';
 import { abi as PendleContractErrorsAbi } from '@pendle/core-v2/build/artifacts/contracts/core/libraries/Errors.sol/Errors.json';
 import {
     defaultPendleContractErrorMessageHandler,
@@ -54,7 +54,9 @@ export class EthersJsError extends PendleSdkError {
     /**
      *  If you want to check more types of errors, add a callback to this array.
      */
-    static readonly MAKE_ERROR_CALLBACKS: ((e: Error) => Error | undefined)[] = [];
+    static readonly MAKE_ERROR_CALLBACKS: Array<
+        { (e: Error): Error | undefined } | { makeError(e: Error): Error | undefined }
+    > = [];
 
     // @ts-ignore
     readonly code: EthersJsErrorCode;
@@ -102,7 +104,7 @@ export class EthersJsError extends PendleSdkError {
         }
 
         for (const callback of EthersJsError.MAKE_ERROR_CALLBACKS) {
-            const result = callback(err);
+            const result = 'makeError' in callback ? callback.makeError(err) : callback(err);
             if (result !== undefined) {
                 return result;
             }
@@ -112,32 +114,11 @@ export class EthersJsError extends PendleSdkError {
     }
 }
 
-export class PendleContractError extends PendleSdkError {
-    static readonly errorsInterface = new Interface(PendleContractErrorsAbi);
-    static errorMessageHandler: PendleContractErrorMessageHandler = defaultPendleContractErrorMessageHandler;
-
-    constructor(
-        readonly errorName: keyof PendleContractErrorMessageHandler,
-        readonly args: any[],
-        readonly ethersJsError: Error
-    ) {
-        const message: string = (PendleContractError.errorMessageHandler[errorName] as any).apply(null, args);
-        super(message);
-    }
-
-    static decodeEthersError(data: BytesLike, ethersJsError: Error) {
-        try {
-            const errorDescription = this.errorsInterface.parseError(data);
-            if (!errorDescription) {
-                return undefined;
-            }
-            const name = errorDescription.name as keyof typeof defaultPendleContractErrorMessageHandler;
-            const args = errorDescription.args as any[];
-            return new PendleContractError(name, args, ethersJsError);
-        } catch (_e) {
-            return undefined;
-        }
-    }
+export class ContractErrorFactory<
+    ErrorType extends PendleSdkError,
+    Fn extends (hexStringData: string, ethersJsError: Error) => ErrorType | undefined
+> {
+    constructor(readonly createErrorObject: Fn) {}
 
     /**
      * For the case of JsonRpcProvider, the error is highly nested.
@@ -145,7 +126,7 @@ export class PendleContractError extends PendleSdkError {
      * This function only mimic that behavior.
      * https://github.com/ethers-io/ethers.js/blob/44cbc7fa4e199c1d6113ceec3c5162f53def5bb8/packages/providers/src.ts/json-rpc-provider.ts#L25
      */
-    static makeError(value: any, originalError: any = value): PendleContractError | undefined {
+    makeError(value: any, originalError: any = value): ErrorType | undefined {
         if (value == undefined) {
             return undefined;
         }
@@ -156,7 +137,7 @@ export class PendleContractError extends PendleSdkError {
         if (typeof value.message === 'string' && value.message.match(/reverted|call revert exception/)) {
             const data = value.data;
             if (ethersUtils.isHexString(data)) {
-                return this.decodeEthersError(data, originalError);
+                return this.createErrorObject(data, originalError);
             }
         }
 
@@ -177,6 +158,81 @@ export class PendleContractError extends PendleSdkError {
                 return this.makeError(JSON.parse(value), originalError);
             } catch (error) {}
         }
+    }
+}
+
+export class PendleContractError extends PendleSdkError {
+    static readonly errorsInterface = new Interface(PendleContractErrorsAbi);
+    static errorMessageHandler: PendleContractErrorMessageHandler = defaultPendleContractErrorMessageHandler;
+
+    static factory = new ContractErrorFactory(PendleContractError.decodeEthersError.bind(PendleContractError));
+
+    static decodeEthersError(data: string, ethersJsError: Error) {
+        try {
+            const errorDescription = this.errorsInterface.parseError(data);
+            if (!errorDescription) {
+                return undefined;
+            }
+            const name = errorDescription.name as keyof PendleContractErrorMessageHandler;
+            const args = errorDescription.args as any[];
+            return new PendleContractError(name, args, ethersJsError);
+        } catch (_e) {
+            return undefined;
+        }
+    }
+
+    constructor(
+        readonly errorName: keyof PendleContractErrorMessageHandler,
+        readonly args: any[],
+        readonly ethersJsError: Error
+    ) {
+        const message: string = (PendleContractError.errorMessageHandler[errorName] as any).apply(null, args);
+        super(message);
+    }
+}
+
+export class BuiltinContractError extends PendleSdkError {
+    // According to https://docs.soliditylang.org/en/v0.8.16/control-structures.html#error-handling-assert-require-revert-and-exceptions ,
+    // the following two are the builtin errors.
+    //
+    // error Error(string)
+    // error Panic(uint)
+
+    static factory = new ContractErrorFactory(BuiltinContractError.decodeEthersError.bind(BuiltinContractError));
+
+    static decodeEthersError(errorData: string, ethersJsError: Error) {
+        errorData = errorData.toLowerCase();
+
+        // https://ethereum.stackexchange.com/a/128807
+        if (errorData.startsWith('0x08c379a0')) {
+            // decode Error(string)
+
+            const content = `0x${errorData.substring(10)}`;
+            const [reason] = ethersUtils.defaultAbiCoder.decode(['string'], content);
+
+            return new ErrorBuiltinContractError(reason, ethersJsError);
+        }
+
+        if (errorData.startsWith('0x4e487b71')) {
+            // decode Panic(uint)
+            const content = `0x${errorData.substring(10)}`;
+            const [code] = ethersUtils.defaultAbiCoder.decode(['uint'], content);
+
+            return new PanicBuiltinContractError(code, ethersJsError);
+        }
+        return undefined;
+    }
+}
+
+export class PanicBuiltinContractError extends BuiltinContractError {
+    constructor(readonly code: BN, readonly cause: Error) {
+        super(`Panic error with code ${String(code)}`);
+    }
+}
+
+export class ErrorBuiltinContractError extends BuiltinContractError {
+    constructor(readonly reason: string, readonly cause: Error) {
+        super(reason);
     }
 }
 
@@ -234,11 +290,12 @@ export class ExchangeRateBelowOneError extends EthersJsError {
 }
 
 EthersJsError.MAKE_ERROR_CALLBACKS.push(
-    PendleContractError.makeError.bind(PendleContractError),
-    ApproximateError.makeError,
-    InsufficientFundError.makeError,
-    MaxProportionExceededError.makeError,
-    ExchangeRateBelowOneError.makeError
+    PendleContractError.factory,
+    BuiltinContractError.factory,
+    ApproximateError,
+    InsufficientFundError,
+    MaxProportionExceededError,
+    ExchangeRateBelowOneError
 );
 
 /**
