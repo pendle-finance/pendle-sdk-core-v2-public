@@ -144,7 +144,7 @@ export const testConfig = (chainId: TestChainId) => ({
     market: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST]!,
     marketAddress: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST]!.market,
     // choose the token to test for swap from raw token -> py
-    tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.WETH,
+    tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.USDT,
 
     userAddress: WALLET().wallet.address,
     multicall: new Multicall({

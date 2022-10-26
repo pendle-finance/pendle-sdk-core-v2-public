@@ -108,11 +108,11 @@ export const SLIPPAGE_TYPE3 = 1;
 
 export const REDEEM_FACTOR = 10; // Redeem 1/10 of SY balance
 
-export const MAX_TOKEN_ADD_AMOUNT = BN.from(10).pow(6);
+export const MAX_TOKEN_ADD_AMOUNT = BN.from(10).pow(8);
 
-export const MAX_PT_ADD_AMOUNT = BN.from(10).pow(6);
+export const MAX_PT_ADD_AMOUNT = BN.from(10).pow(8);
 
-export const MAX_YT_ADD_AMOUNT = BN.from(10).pow(6);
+export const MAX_YT_ADD_AMOUNT = BN.from(10).pow(8);
 
 export const MAX_SY_ADD_AMOUNT = BN.from(10).pow(8);
 

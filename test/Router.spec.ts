@@ -92,7 +92,6 @@ describe(Router, () => {
         });
 
         it('#addLiquidityDualTokenAndPt', async () => {
-            // TODO: add liquidity from other raw tokens
             let tokensIn = await sySdk.contract.getTokensIn();
             for (let token of tokensIn) {
                 const tokenAddAmount = minBigNumber(
@@ -199,9 +198,8 @@ describe(Router, () => {
         });
 
         it('#addLiquiditySingleToken', async () => {
-            // TODO: zap from other raw tokens
-            let tokensIn = await sySdk.contract.getTokensIn();
-            for (let token of tokensIn) {
+            const tokensToAdd = [currentConfig.tokens.USDT, ...(await sySdk.contract.getTokensIn())];
+            for (let token of tokensToAdd) {
                 const tokenAddAmount = minBigNumber(
                     MAX_TOKEN_ADD_AMOUNT,
                     (await getBalance(token, signer.address)).div(USER_BALANCE_FACTOR)
@@ -211,6 +209,7 @@ describe(Router, () => {
                     console.warn(`[${await getERC20Name(token)}] Skip test because tokenAddAmount is 0`);
                     continue;
                 }
+
                 const balanceBefore = await getLpBalanceSnapshot();
 
                 let flag = false;
@@ -268,9 +267,8 @@ describe(Router, () => {
         });
 
         it('#removeLiquidityDualTokenAndPt', async () => {
-            // TODO: remove liquidity to other raw tokens
-            let tokensIn = await sySdk.contract.getTokensIn();
-            for (let token of tokensIn) {
+            let tokensOut = await sySdk.contract.getTokensOut();
+            for (let token of tokensOut) {
                 const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(
                     REMOVE_LIQUIDITY_FACTOR_ZAP
                 );
@@ -352,9 +350,8 @@ describe(Router, () => {
         });
 
         it('#removeLiquiditySingleToken', async () => {
-            // TODO: remove liquidity to other raw tokens
-            let tokensIn = await sySdk.contract.getTokensIn();
-            for (let token of tokensIn) {
+            const tokensToRemove = [currentConfig.tokens.USDT, ...(await sySdk.contract.getTokensOut())];
+            for (let token of tokensToRemove) {
                 const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(
                     REMOVE_LIQUIDITY_FACTOR_ZAP
                 );

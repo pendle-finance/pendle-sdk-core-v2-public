@@ -113,7 +113,11 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
                 return { netOut: etherConstants.NegativeOne, input, kybercallData, netSyFee: etherConstants.Zero };
             }
 
-            const { netOut, netSyFee } = await fn(input);
+            const { netOut, netSyFee } = await fn(input).catch((_) => ({
+                netOut: etherConstants.NegativeOne,
+                netSyFee: etherConstants.Zero,
+            }));
+
             return { netOut, netSyFee, input, kybercallData };
         });
         return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
@@ -124,7 +128,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         tokenIn: Address,
         netTokenIn: BigNumberish,
         tokenMintSyList: Address[],
-        fn: (input: TokenInputStruct) => Promise<T>
+        fn: (input: TokenInputStruct, tokenAmount: BN) => Promise<T>
     ): Promise<{
         netLpOut: BN;
         netPtFromSwap: BN;
@@ -150,7 +154,12 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
                 };
             }
 
-            const { netLpOut, netPtFromSwap } = await fn(zapInInput);
+            const { netLpOut, netPtFromSwap } = await fn(zapInInput, BN.from(kybercallData.outputAmount)).catch(
+                (_) => ({
+                    netLpOut: etherConstants.NegativeOne,
+                    netPtFromSwap: etherConstants.Zero,
+                })
+            );
             return { netLpOut, netPtFromSwap, zapInInput, kybercallData };
         });
         return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) =>
@@ -189,7 +198,10 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
                 return { netOut: etherConstants.NegativeOne, output, kybercallData, netSyFee: etherConstants.Zero };
             }
 
-            const { netOut, netSyFee } = await fn(output);
+            const { netOut, netSyFee } = await fn(output).catch((_) => ({
+                netOut: etherConstants.NegativeOne,
+                netSyFee: etherConstants.Zero,
+            }));
             return {
                 netOut,
                 output: { ...output, minTokenOut: calcSlippedDownAmount(netOut, slippage) },
@@ -334,8 +346,8 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const marketAddr = market.address;
         const tokenMintSyList = await market.syEntity().then((sy) => sy.getTokensIn());
 
-        const res = await this.zapInputParams(tokenIn, netTokenIn, tokenMintSyList, (input) =>
-            this.routerStatic.callStatic.addLiquiditySingleBaseTokenStatic(marketAddr, input.tokenIn, input.netTokenIn)
+        const res = await this.zapInputParams(tokenIn, netTokenIn, tokenMintSyList, (input, tokenAmount) =>
+            this.routerStatic.callStatic.addLiquiditySingleBaseTokenStatic(marketAddr, input.tokenMintSy, tokenAmount)
         );
 
         const { netLpOut, netPtFromSwap, zapInInput } = res;
