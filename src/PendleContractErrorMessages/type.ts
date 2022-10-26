@@ -58,6 +58,7 @@ export type PendleContractErrorMessageHandler = {
     RouterInsufficientTokenOut: (actualTokenOut: BN, requiredTokenOut: BN) => string;
     RouterInsufficientYtOut: (actualYtOut: BN, requiredYtOut: BN) => string;
     RouterInvalidAction: (selector: BytesLike) => string;
+    RouterNotAllSyUsed: (netSyDesired: BN, netSyUsed: BN) => string;
     RouterTimeRangeZero: () => string;
     SYCurve3crvPoolNotFound: () => string;
     SYCurveInvalidPid: () => string;
