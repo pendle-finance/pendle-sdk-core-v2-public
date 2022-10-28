@@ -5,6 +5,8 @@ import { abi as PendleContractErrorsAbi } from '@pendle/core-v2/build/artifacts/
 import {
     defaultPendleContractErrorMessageHandler,
     PendleContractErrorMessageHandler,
+    PendleContractErrorType,
+    PendleContractErrorParams,
 } from './PendleContractErrorMessages';
 
 /**
@@ -161,7 +163,9 @@ export class ContractErrorFactory<
     }
 }
 
-export class PendleContractError extends PendleSdkError {
+export class PendleContractError<
+    ErrorType extends PendleContractErrorType = PendleContractErrorType
+> extends PendleSdkError {
     static readonly errorsInterface = new Interface(PendleContractErrorsAbi);
     static errorMessageHandler: PendleContractErrorMessageHandler = defaultPendleContractErrorMessageHandler;
 
@@ -173,8 +177,8 @@ export class PendleContractError extends PendleSdkError {
             if (!errorDescription) {
                 return undefined;
             }
-            const name = errorDescription.name as keyof PendleContractErrorMessageHandler;
-            const args = errorDescription.args as any[];
+            const name = errorDescription.name as PendleContractErrorType;
+            const args = errorDescription.args as PendleContractErrorParams;
             return new PendleContractError(name, args, ethersJsError);
         } catch (_e) {
             return undefined;
@@ -182,12 +186,21 @@ export class PendleContractError extends PendleSdkError {
     }
 
     constructor(
-        readonly errorName: keyof PendleContractErrorMessageHandler,
-        readonly args: any[],
+        readonly errorName: ErrorType,
+        readonly args: PendleContractErrorParams<ErrorType>,
         readonly ethersJsError: Error
     ) {
         const message: string = (PendleContractError.errorMessageHandler[errorName] as any).apply(null, args);
         super(message);
+    }
+
+    isType<OtherErrorType extends PendleContractErrorType>(
+        otherType: OtherErrorType
+    ): this is PendleContractError<OtherErrorType> {
+        // cast to string because tsc considered ErrorType and OtherErrorType 2 different type,
+        // so the result _should_ be always false according to tsc.
+        const currentErrorName: string = this.errorName;
+        return currentErrorName === otherType;
     }
 }
 

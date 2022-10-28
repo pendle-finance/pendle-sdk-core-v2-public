@@ -1,19 +1,16 @@
 import { PendleContractErrorMessageHandler } from './type';
+import { PendleContractErrorType, PendleContractErrorParams } from './helperTypes';
 
 export function createPendlecontractErrorMessageHandler(
     defaultHandler: Partial<PendleContractErrorMessageHandler>,
-    fallback: <Key extends keyof PendleContractErrorMessageHandler>(
-        errorName: Key,
-        ...args: Parameters<PendleContractErrorMessageHandler[Key]>
-    ) => string
+    fallback: <Key extends PendleContractErrorType>(errorName: Key, ...args: PendleContractErrorParams<Key>) => string
 ) {
     return new Proxy(defaultHandler, {
-        get(target, key: keyof PendleContractErrorMessageHandler) {
+        get(target, key: PendleContractErrorType) {
             if (key in target) {
                 return target[key];
             }
-            return (...args: any[]) =>
-                fallback(key, ...(args as Parameters<PendleContractErrorMessageHandler[typeof key]>));
+            return (...args: any[]) => fallback(key, ...(args as PendleContractErrorParams));
         },
     }) as PendleContractErrorMessageHandler;
 }
