@@ -66,3 +66,11 @@ export type RemoveLastOptionalParam<Fn extends (...params: any[]) => any> = Fn e
 export type AddOptionalParam<Fn extends (...params: any[]) => any, P> = Fn extends (...params: infer Params) => infer R
     ? (...params: [...Params, P?]) => R
     : Fn;
+
+export type SyncReturnType<Fn extends (...params: any[]) => Promise<any>> = Awaited<ReturnType<Fn>>;
+
+export type UnionOf<Types> = Types extends [infer Elm]
+    ? Elm
+    : Types extends [...infer Body, infer Last]
+    ? UnionOf<Body> & Last
+    : Types;

@@ -6,6 +6,7 @@ import {
     VotingEscrowPendleMainchainABI,
     WrappedContract,
     MetaMethodType,
+    MetaMethodExtraParams,
 } from '../contracts';
 
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
@@ -65,15 +66,19 @@ export class VePendleMainchain<
         );
     }
 
-    async increaseLockPosition<T extends MetaMethodType = 'send'>(
+    async increaseLockPosition<T extends MetaMethodType>(
         additionalRawAmountToLock: BigNumberish,
         newExpiry_s: BigNumberish,
-        metaMethodType?: T
+        params: MetaMethodExtraParams<T> = {}
     ) {
-        return this.contract.metaCall.increaseLockPosition(additionalRawAmountToLock, newExpiry_s, metaMethodType);
+        return this.contract.metaCall.increaseLockPosition(
+            additionalRawAmountToLock,
+            newExpiry_s,
+            this.addExtraParams(params)
+        );
     }
 
-    async withdraw<T extends MetaMethodType = 'send'>(metaMethodType?: T) {
-        return this.contract.metaCall.withdraw(metaMethodType);
+    async withdraw<T extends MetaMethodType = 'send'>(params: MetaMethodExtraParams<T> = {}) {
+        return this.contract.metaCall.withdraw(this.addExtraParams(params));
     }
 }

@@ -1,4 +1,10 @@
-import { WrappedContract, createContractObject } from '../contracts';
+import {
+    WrappedContract,
+    createContractObject,
+    MetaMethodExtraParams,
+    MetaMethodType,
+    mergeMetaMethodExtraParams as mergeParams,
+} from '../contracts';
 
 import { ContractInterface } from 'ethers';
 import { NetworkConnection, Address, ChainId } from '../types';
@@ -23,5 +29,13 @@ export class PendleEntity<C extends WrappedContract> {
         this.multicall = config.multicall;
         this.networkConnection = copyNetworkConnection(config);
         this.contract = createContractObject(address, config.abi, config) as C;
+    }
+
+    getDefaultMetaMethodExtraParams<T extends MetaMethodType>(): MetaMethodExtraParams<T> {
+        return { multicall: this.multicall };
+    }
+
+    addExtraParams<T extends MetaMethodType>(params: MetaMethodExtraParams<T>): MetaMethodExtraParams<T> {
+        return mergeParams(this.getDefaultMetaMethodExtraParams(), params);
     }
 }

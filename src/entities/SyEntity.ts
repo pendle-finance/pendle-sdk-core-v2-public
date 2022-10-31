@@ -1,4 +1,12 @@
-import { RouterStatic, SYBase, SYBaseABI, WrappedContract, MetaMethodType } from '../contracts';
+import {
+    RouterStatic,
+    SYBase,
+    SYBaseABI,
+    WrappedContract,
+    MetaMethodType,
+    mergeMetaMethodExtraParams as mergeParams,
+    MetaMethodExtraParams,
+} from '../contracts';
 import type { Address, RawTokenAmount, ChainId } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
@@ -34,7 +42,7 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
         baseAssetIn: Address,
         amountBaseToPull: BigNumberish,
         slippage: number,
-        metaMethodType?: T
+        params?: MetaMethodExtraParams<T>
     ) {
         const amountSyOut = await this.contract.callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0, {
             value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined,
@@ -44,8 +52,9 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
             baseAssetIn,
             amountBaseToPull,
             calcSlippedDownAmount(amountSyOut, slippage),
-            metaMethodType,
-            { overrides: { value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined } }
+            mergeParams(params ?? {}, {
+                overrides: { value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined },
+            })
         );
     }
 
@@ -58,7 +67,7 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
         amountSyToPull: BigNumberish,
         slippage: number,
         burnFromInternalBalance: boolean,
-        metaMethodType?: T
+        params?: MetaMethodExtraParams<T>
     ) {
         const amountBaseOut = await this.contract.callStatic.redeem(
             receiver,
@@ -73,7 +82,7 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
             baseAssetOut,
             calcSlippedDownAmount(amountBaseOut, slippage),
             burnFromInternalBalance,
-            metaMethodType
+            params
         );
     }
 

@@ -1,6 +1,12 @@
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
 
-import { PendleVotingControllerUpg, PendleVotingControllerUpgABI, WrappedContract, MetaMethodType } from '../contracts';
+import {
+    PendleVotingControllerUpg,
+    PendleVotingControllerUpgABI,
+    WrappedContract,
+    MetaMethodType,
+    MetaMethodExtraParams,
+} from '../contracts';
 import type { Address, ChainId } from '../types';
 import { BigNumber } from 'bignumber.js';
 import { BigNumber as BN, constants } from 'ethers';
@@ -30,14 +36,14 @@ export class VotingController<
     //     return new BigNumber(totalVotedWeight.toString()).div(constants.WeiPerEther.toString()).toNumber();
     // }
 
-    async vote<T extends MetaMethodType = 'send'>(
+    async vote<T extends MetaMethodType>(
         votes: { market: MarketEntity; weight: number }[],
-        metaMethodType?: T
+        params: MetaMethodExtraParams<T> = {}
     ) {
         return this.contract.metaCall.vote(
             votes.map(({ market }) => market.address),
             votes.map(({ weight }) => VotingController.scaleWeight(weight)),
-            metaMethodType
+            this.addExtraParams(params)
         );
     }
 }

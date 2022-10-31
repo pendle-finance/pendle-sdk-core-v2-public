@@ -6,6 +6,7 @@ import {
     PendleMarketABI,
     WrappedContract,
     MetaMethodType,
+    MetaMethodExtraParams,
 } from '../contracts';
 import type { Address, RawTokenAmount } from '../types';
 import { BigNumber as BN } from 'ethers';
@@ -94,8 +95,8 @@ export class MarketEntity<C extends WrappedContract<PendleMarket> = WrappedContr
         return this.contract.multicallStatic.getRewardTokens(multicall);
     }
 
-    async redeemRewards<T extends MetaMethodType = 'send'>(userAddress: Address, metaMethodType?: T) {
-        return this.contract.metaCall.redeemRewards(userAddress, metaMethodType);
+    async redeemRewards<T extends MetaMethodType>(userAddress: Address, params: MetaMethodExtraParams<T> = {}) {
+        return this.contract.metaCall.redeemRewards(userAddress, this.addExtraParams(params));
     }
 
     async simulateRedeemRewards(userAddress: Address, multicall = this.multicall) {

@@ -1,5 +1,5 @@
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
-import { PendleERC20, PendleERC20ABI, MetaMethodType, WrappedContract } from '../contracts';
+import { PendleERC20, PendleERC20ABI, MetaMethodType, WrappedContract, MetaMethodExtraParams } from '../contracts';
 import type { Address, ChainId } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
@@ -35,11 +35,19 @@ export class ERC20<C extends WrappedContract<PendleERC20> = WrappedContract<Pend
         return this.contract.multicallStatic.totalSupply(multicall);
     }
 
-    async approve<T extends MetaMethodType = 'send'>(spender: Address, amount: BigNumberish, metaMethodType?: T) {
-        return this.contract.metaCall.approve(spender, amount, metaMethodType);
+    async approve<T extends MetaMethodType>(
+        spender: Address,
+        amount: BigNumberish,
+        params: MetaMethodExtraParams<T> = {}
+    ) {
+        return this.contract.metaCall.approve(spender, amount, this.addExtraParams(params));
     }
 
-    async transfer<T extends MetaMethodType = 'send'>(to: Address, amount: BigNumberish, metaMethodType?: T) {
-        return this.contract.metaCall.transfer(to, amount, metaMethodType);
+    async transfer<T extends MetaMethodType = 'send'>(
+        to: Address,
+        amount: BigNumberish,
+        params: MetaMethodExtraParams<T> = {}
+    ) {
+        return this.contract.metaCall.transfer(to, amount, this.addExtraParams(params));
     }
 }
