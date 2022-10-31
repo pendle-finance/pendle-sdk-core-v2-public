@@ -54,7 +54,6 @@ async function main() {
     console.log('minting SY');
     await router
         .mintSyFromToken(
-            signerAddress,
             syAddress,
             tokenIn,
             (await getBalance(tokenIn, signerAddress)).mul(MINT_SY_PERCENTAGE).div(100),
@@ -65,7 +64,6 @@ async function main() {
     console.log('minting PY');
     await router
         .mintPyFromToken(
-            signerAddress,
             ytAddress,
             tokenIn,
             (await getBalance(tokenIn, signerAddress)).mul(MINT_PY_PERCENTAGE).div(100),
@@ -82,7 +80,6 @@ async function main() {
     console.log('add liquidity');
     await router
         .addLiquidityDualSyAndPt(
-            signerAddress,
             currentConfig.marketAddress,
             (await getBalance(syAddress, signerAddress)).div(10).mul(9),
             (await getBalance(ptAddress, signerAddress)).div(10).mul(9),

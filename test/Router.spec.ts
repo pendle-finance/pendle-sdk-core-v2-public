@@ -79,7 +79,7 @@ describe(Router, () => {
             const marketSupplyBefore = await getTotalSupply(marketAddress);
 
             await router
-                .addLiquidityDualSyAndPt(signer.address, currentConfig.marketAddress, syAdd, ptAdd, SLIPPAGE_TYPE2)
+                .addLiquidityDualSyAndPt(currentConfig.marketAddress, syAdd, ptAdd, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const lpBalanceAfter = await getBalance(marketAddress, signer.address);
@@ -114,7 +114,6 @@ describe(Router, () => {
                 let flag = false;
                 await router
                     .addLiquidityDualTokenAndPt(
-                        signer.address,
                         currentConfig.marketAddress,
                         token,
                         tokenAddAmount,
@@ -148,7 +147,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .addLiquiditySinglePt(signer.address, currentConfig.marketAddress, ptAdd, SLIPPAGE_TYPE2)
+                .addLiquiditySinglePt(currentConfig.marketAddress, ptAdd, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -179,7 +178,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .addLiquiditySingleSy(signer.address, currentConfig.marketAddress, syAdd, SLIPPAGE_TYPE2)
+                .addLiquiditySingleSy(currentConfig.marketAddress, syAdd, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -214,13 +213,7 @@ describe(Router, () => {
 
                 let flag = false;
                 await router
-                    .addLiquiditySingleToken(
-                        signer.address,
-                        currentConfig.marketAddress,
-                        token,
-                        tokenAddAmount,
-                        SLIPPAGE_TYPE2
-                    )
+                    .addLiquiditySingleToken(currentConfig.marketAddress, token, tokenAddAmount, SLIPPAGE_TYPE2)
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                     .catch((e) => {
                         // e = EthersJsError.handleEthersJsError(e);
@@ -250,12 +243,7 @@ describe(Router, () => {
             const marketSupplyBefore = await getTotalSupply(marketAddress);
 
             await router
-                .removeLiquidityDualSyAndPt(
-                    signer.address,
-                    currentConfig.marketAddress,
-                    liquidityRemove,
-                    SLIPPAGE_TYPE2
-                )
+                .removeLiquidityDualSyAndPt(currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const lpBalanceAfter = await getBalance(marketAddress, signer.address);
@@ -281,13 +269,7 @@ describe(Router, () => {
 
                 let flag = false;
                 await router
-                    .removeLiquidityDualTokenAndPt(
-                        signer.address,
-                        currentConfig.marketAddress,
-                        liquidityRemove,
-                        token,
-                        SLIPPAGE_TYPE2
-                    )
+                    .removeLiquidityDualTokenAndPt(currentConfig.marketAddress, liquidityRemove, token, SLIPPAGE_TYPE2)
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
                 if (flag) continue;
@@ -310,7 +292,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .removeLiquiditySinglePt(signer.address, currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2)
+                .removeLiquiditySinglePt(currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -339,7 +321,7 @@ describe(Router, () => {
             const balanceBefore = await getLpBalanceSnapshot();
 
             await router
-                .removeLiquiditySingleSy(signer.address, currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2)
+                .removeLiquiditySingleSy(currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getLpBalanceSnapshot();
@@ -363,13 +345,7 @@ describe(Router, () => {
 
                 let flag = false;
                 await router
-                    .removeLiquiditySingleToken(
-                        signer.address,
-                        currentConfig.marketAddress,
-                        liquidityRemove,
-                        token,
-                        SLIPPAGE_TYPE2
-                    )
+                    .removeLiquiditySingleToken(currentConfig.marketAddress, liquidityRemove, token, SLIPPAGE_TYPE2)
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                     .catch((e) => {
                         // e = EthersJsError.handleEthersJsError(e);
@@ -402,7 +378,7 @@ describe(Router, () => {
             }
 
             await router
-                .swapExactPtForSy(signer.address, currentConfig.marketAddress, ptInAmount, SLIPPAGE_TYPE2)
+                .swapExactPtForSy(currentConfig.marketAddress, ptInAmount, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
@@ -420,7 +396,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .swapPtForExactSy(signer.address, currentConfig.marketAddress, expectSyOut, SLIPPAGE_TYPE2)
+                .swapPtForExactSy(currentConfig.marketAddress, expectSyOut, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -450,7 +426,7 @@ describe(Router, () => {
             }
 
             await router
-                .swapSyForExactPt(signer.address, currentConfig.marketAddress, expectPtOut, SLIPPAGE_TYPE2)
+                .swapSyForExactPt(currentConfig.marketAddress, expectPtOut, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
@@ -470,7 +446,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .swapExactSyForPt(signer.address, currentConfig.marketAddress, expectSyIn, SLIPPAGE_TYPE2)
+                .swapExactSyForPt(currentConfig.marketAddress, expectSyIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -503,7 +479,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .swapExactSyForYt(signer.address, currentConfig.marketAddress, expectSyIn, SLIPPAGE_TYPE2)
+                .swapExactSyForYt(currentConfig.marketAddress, expectSyIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -536,7 +512,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .swapYtForExactSy(signer.address, currentConfig.marketAddress, expectSyOut, SLIPPAGE_TYPE2)
+                .swapYtForExactSy(currentConfig.marketAddress, expectSyOut, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -565,7 +541,7 @@ describe(Router, () => {
             }
 
             await router
-                .swapSyForExactYt(signer.address, currentConfig.marketAddress, expectYtOut, SLIPPAGE_TYPE2)
+                .swapSyForExactYt(currentConfig.marketAddress, expectYtOut, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
@@ -583,7 +559,7 @@ describe(Router, () => {
             }
 
             await router
-                .swapExactYtForSy(signer.address, currentConfig.marketAddress, expectYtIn, SLIPPAGE_TYPE2)
+                .swapExactYtForSy(currentConfig.marketAddress, expectYtIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
@@ -606,7 +582,6 @@ describe(Router, () => {
             let flag = false;
             await router
                 .swapExactTokenForPt(
-                    signer.address,
                     currentConfig.marketAddress,
                     currentConfig.tokenToSwap,
                     expectRawTokenIn,
@@ -642,13 +617,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .swapExactPtForToken(
-                    signer.address,
-                    currentConfig.marketAddress,
-                    expectPtIn,
-                    currentConfig.tokenToSwap,
-                    SLIPPAGE_TYPE2
-                )
+                .swapExactPtForToken(currentConfig.marketAddress, expectPtIn, currentConfig.tokenToSwap, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -679,7 +648,6 @@ describe(Router, () => {
             let flag = false;
             await router
                 .swapExactTokenForYt(
-                    signer.address,
                     currentConfig.marketAddress,
                     currentConfig.tokenToSwap,
                     expectRawTokenIn,
@@ -714,13 +682,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .swapExactYtForToken(
-                    signer.address,
-                    currentConfig.marketAddress,
-                    expectYtIn,
-                    currentConfig.tokenToSwap,
-                    SLIPPAGE_TYPE2
-                )
+                .swapExactYtForToken(currentConfig.marketAddress, expectYtIn, currentConfig.tokenToSwap, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -755,13 +717,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .mintPyFromToken(
-                    signer.address,
-                    currentConfig.market.YT,
-                    currentConfig.tokenToSwap,
-                    expectRawTokenIn,
-                    SLIPPAGE_TYPE2
-                )
+                .mintPyFromToken(currentConfig.market.YT, currentConfig.tokenToSwap, expectRawTokenIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -795,13 +751,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .redeemPyToToken(
-                    signer.address,
-                    currentConfig.market.YT,
-                    expectPyIn,
-                    currentConfig.tokenToSwap,
-                    SLIPPAGE_TYPE2
-                )
+                .redeemPyToToken(currentConfig.market.YT, expectPyIn, currentConfig.tokenToSwap, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -835,13 +785,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .mintSyFromToken(
-                    signer.address,
-                    currentConfig.market.SY,
-                    currentConfig.tokenToSwap,
-                    expectRawTokenIn,
-                    SLIPPAGE_TYPE2
-                )
+                .mintSyFromToken(currentConfig.market.SY, currentConfig.tokenToSwap, expectRawTokenIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -871,13 +815,7 @@ describe(Router, () => {
 
             let flag = false;
             await router
-                .redeemSyToToken(
-                    signer.address,
-                    currentConfig.market.SY,
-                    expectSyIn,
-                    currentConfig.tokenToSwap,
-                    SLIPPAGE_TYPE2
-                )
+                .redeemSyToToken(currentConfig.market.SY, expectSyIn, currentConfig.tokenToSwap, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION))
                 .catch((e) => {
                     // e = EthersJsError.handleEthersJsError(e);
@@ -908,7 +846,7 @@ describe(Router, () => {
             }
 
             await router
-                .swapExactYtForPt(signer.address, currentConfig.marketAddress, expectYtIn, SLIPPAGE_TYPE2)
+                .swapExactYtForPt(currentConfig.marketAddress, expectYtIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();
@@ -926,7 +864,7 @@ describe(Router, () => {
             }
 
             await router
-                .swapExactPtForYt(signer.address, currentConfig.marketAddress, expectPtIn, SLIPPAGE_TYPE2)
+                .swapExactPtForYt(currentConfig.marketAddress, expectPtIn, SLIPPAGE_TYPE2)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const balanceAfter = await getBalanceSnapshot();

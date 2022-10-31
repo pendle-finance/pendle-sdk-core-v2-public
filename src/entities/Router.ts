@@ -1,5 +1,12 @@
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
-import { RouterStatic, WrappedContract, MetaMethodType, MetaMethodReturnType, ContractMethodNames } from '../contracts';
+import {
+    RouterStatic,
+    WrappedContract,
+    MetaMethodType,
+    MetaMethodReturnType,
+    ContractMethodNames,
+    ContractMetaMethod,
+} from '../contracts';
 import type {
     ApproxParamsStruct,
     IPAllAction,
@@ -222,7 +229,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async addLiquidityDualSyAndPt<T extends MetaMethodType = 'send'>(
-        receiver: Address,
         market: Address | MarketEntity,
         syDesired: BigNumberish,
         ptDesired: BigNumberish,
@@ -233,7 +239,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const res = await this.routerStaticCall.addLiquidityDualSyAndPtStatic(marketAddr, syDesired, ptDesired);
         const { netLpOut } = res;
         return this.contract.metaCall.addLiquidityDualSyAndPt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             syDesired,
             ptDesired,
@@ -244,7 +250,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async addLiquidityDualTokenAndPt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         tokenIn: Address,
         tokenDesired: BigNumberish,
@@ -264,7 +269,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         );
         const { netLpOut } = res;
         return this.contract.metaCall.addLiquidityDualTokenAndPt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             tokenIn,
             tokenDesired,
@@ -276,7 +281,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async addLiquiditySinglePt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         netPtIn: BigNumberish,
         slippage: number,
@@ -291,7 +295,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const { netLpOut, netPtToSwap } = res;
         const approxParam = Router.guessInApproxParams(netPtToSwap, slippage);
         return this.contract.metaCall.addLiquiditySinglePt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             netPtIn,
             calcSlippedDownAmount(netLpOut, slippage),
@@ -302,7 +306,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async addLiquiditySingleSy<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         netSyIn: BigNumberish,
         slippage: number,
@@ -318,7 +321,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const approxParam = Router.guessOutApproxParams(netPtFromSwap, slippage);
 
         return this.contract.metaCall.addLiquiditySingleSy(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             netSyIn,
             calcSlippedDownAmount(netLpOut, slippage),
@@ -329,7 +332,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async addLiquiditySingleToken<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         tokenIn: Address,
         netTokenIn: BigNumberish,
@@ -359,7 +361,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const approxParam = Router.guessOutApproxParams(netPtFromSwap, slippage);
 
         return this.contract.metaCall.addLiquiditySingleToken(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             calcSlippedDownAmount(netLpOut, slippage),
             approxParam,
@@ -375,7 +377,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async removeLiquidityDualSyAndPt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         lpToRemove: BigNumberish,
         slippage: number,
@@ -385,7 +386,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const res = await this.routerStaticCall.removeLiquidityDualSyAndPtStatic(marketAddr, lpToRemove);
         const { netSyOut, netPtOut } = res;
         return this.contract.metaCall.removeLiquidityDualSyAndPt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             lpToRemove,
             calcSlippedDownAmount(netSyOut, slippage),
@@ -396,7 +397,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async removeLiquidityDualTokenAndPt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         lpToRemove: BigNumberish,
         tokenOut: Address,
@@ -407,7 +407,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const res = await this.routerStaticCall.removeLiquidityDualTokenAndPtStatic(marketAddr, lpToRemove, tokenOut);
         const { netTokenOut, netPtOut } = res;
         return this.contract.metaCall.removeLiquidityDualTokenAndPt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             lpToRemove,
             tokenOut,
@@ -419,7 +419,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async removeLiquiditySinglePt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         lpToRemove: BigNumberish,
         slippage: number,
@@ -433,7 +432,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const res = await this.routerStaticCall.removeLiquiditySinglePtStatic(marketAddr, lpToRemove);
         const { netPtOut, netPtFromSwap } = res;
         return this.contract.metaCall.removeLiquiditySinglePt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             lpToRemove,
             calcSlippedDownAmount(netPtOut, slippage),
@@ -444,7 +443,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async removeLiquiditySingleSy<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         lpToRemove: BigNumberish,
         slippage: number,
@@ -454,7 +452,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const res = await this.routerStaticCall.removeLiquiditySingleSyStatic(marketAddr, lpToRemove);
         const { netSyOut } = res;
         return this.contract.metaCall.removeLiquiditySingleSy(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             lpToRemove,
             calcSlippedDownAmount(netSyOut, slippage),
@@ -464,7 +462,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async removeLiquiditySingleToken<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         lpToRemove: BigNumberish,
         tokenOut: Address,
@@ -501,7 +498,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         }
 
         return this.contract.metaCall.removeLiquiditySingleToken(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             lpToRemove,
             output,
@@ -511,7 +508,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async swapExactPtForSy<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactPtIn: BigNumberish,
         slippage: number,
@@ -521,7 +517,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const res = await this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn);
         const { netSyOut } = res;
         return this.contract.metaCall.swapExactPtForSy(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             exactPtIn,
             calcSlippedDownAmount(netSyOut, slippage),
@@ -531,7 +527,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async swapPtForExactSy<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactSyOut: BigNumberish,
         slippage: number,
@@ -546,7 +541,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const { netPtIn } = res;
         const approxParam = Router.guessInApproxParams(netPtIn, slippage);
         return this.contract.metaCall.swapPtForExactSy(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             exactSyOut,
             calcSlippedUpAmount(netPtIn, slippage),
@@ -557,7 +552,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async swapSyForExactPt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactPtOut: BigNumberish,
         slippage: number,
@@ -567,7 +561,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const res = await this.routerStaticCall.swapSyForExactPtStatic(marketAddr, exactPtOut);
         const { netSyIn } = res;
         return this.contract.metaCall.swapSyForExactPt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             exactPtOut,
             calcSlippedUpAmount(netSyIn, slippage),
@@ -577,7 +571,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async swapExactTokenForPt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         tokenIn: Address,
         netTokenIn: BigNumberish,
@@ -614,7 +607,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         }
 
         return this.contract.metaCall.swapExactTokenForPt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             calcSlippedDownAmount(netPtOut, slippage),
             Router.guessOutApproxParams(netPtOut, slippage),
@@ -625,7 +618,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async swapExactSyForPt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactSyIn: BigNumberish,
         slippage: number,
@@ -635,7 +627,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const res = await this.routerStaticCall.swapExactSyForPtStatic(marketAddr, exactSyIn);
         const { netPtOut } = res;
         return this.contract.metaCall.swapExactSyForPt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             exactSyIn,
             calcSlippedDownAmount(netPtOut, slippage),
@@ -646,7 +638,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async mintSyFromToken<T extends MetaMethodType>(
-        receiver: Address,
         sy: Address | SyEntity,
         tokenIn: Address,
         netTokenIn: BigNumberish,
@@ -673,7 +664,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         }
 
         return this.contract.metaCall.mintSyFromToken(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             syAddr,
             calcSlippedDownAmount(netSyOut, slippage),
             input,
@@ -683,7 +674,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async redeemSyToToken<T extends MetaMethodType>(
-        receiver: Address,
         sy: Address | SyEntity,
         netSyIn: BigNumberish,
         tokenOut: Address,
@@ -706,14 +696,20 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             throw NoRouteFoundError.action('redeem', sy.address, tokenOut);
         }
 
-        return this.contract.metaCall.redeemSyToToken(receiver, sy.address, netSyIn, output, metaMethodType, {
-            ...res,
-            netTokenOut,
-        });
+        return this.contract.metaCall.redeemSyToToken(
+            ContractMetaMethod.utils.getContractSignerAddress,
+            sy.address,
+            netSyIn,
+            output,
+            metaMethodType,
+            {
+                ...res,
+                netTokenOut,
+            }
+        );
     }
 
     async mintPyFromToken<T extends MetaMethodType>(
-        receiver: Address,
         yt: Address | YtEntity,
         tokenIn: Address,
         netTokenIn: BigNumberish,
@@ -744,7 +740,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         }
 
         return this.contract.metaCall.mintPyFromToken(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             ytAddr,
             calcSlippedDownAmount(netPyOut, slippage),
             input,
@@ -754,7 +750,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async redeemPyToToken<T extends MetaMethodType>(
-        receiver: Address,
         yt: Address | YtEntity,
         netPyIn: BigNumberish,
         tokenOut: Address,
@@ -788,14 +783,20 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             throw NoRouteFoundError.action('redeem', ytAddr, tokenOut);
         }
 
-        return this.contract.metaCall.redeemPyToToken(receiver, ytAddr, netPyIn, output, metaMethodType, {
-            ...res,
-            netTokenOut,
-        });
+        return this.contract.metaCall.redeemPyToToken(
+            ContractMetaMethod.utils.getContractSignerAddress,
+            ytAddr,
+            netPyIn,
+            output,
+            metaMethodType,
+            {
+                ...res,
+                netTokenOut,
+            }
+        );
     }
 
     async swapExactSyForYt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactSyIn: BigNumberish,
         slippage: number,
@@ -810,7 +811,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const { netYtOut } = res;
         const approxParam = Router.guessOutApproxParams(netYtOut, slippage);
         return this.contract.metaCall.swapExactSyForYt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             exactSyIn,
             calcSlippedDownAmount(netYtOut, slippage),
@@ -821,7 +822,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async swapYtForExactSy<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactSyOut: BigNumberish,
         slippage: number,
@@ -836,7 +836,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const { netYtIn } = res;
         const approxParam = Router.guessInApproxParams(netYtIn, slippage);
         return this.contract.metaCall.swapYtForExactSy(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             exactSyOut,
             calcSlippedUpAmount(netYtIn, slippage),
@@ -847,7 +847,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async swapExactPtForToken<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactPtIn: BigNumberish,
         tokenOut: Address,
@@ -882,16 +881,22 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             throw NoRouteFoundError.action('swap', await market.pt(), tokenOut);
         }
 
-        return this.contract.metaCall.swapExactPtForToken(receiver, marketAddr, exactPtIn, output, metaMethodType, {
-            ...res,
-            netTokenOut,
-            intermediateSy,
-            netSyFee,
-        });
+        return this.contract.metaCall.swapExactPtForToken(
+            ContractMetaMethod.utils.getContractSignerAddress,
+            marketAddr,
+            exactPtIn,
+            output,
+            metaMethodType,
+            {
+                ...res,
+                netTokenOut,
+                intermediateSy,
+                netSyFee,
+            }
+        );
     }
 
     async swapExactYtForSy<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactYtIn: BigNumberish,
         slippage: number,
@@ -901,7 +906,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const res = await this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn);
         const { netSyOut } = res;
         return this.contract.metaCall.swapExactYtForSy(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             exactYtIn,
             calcSlippedDownAmount(netSyOut, slippage),
@@ -911,7 +916,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async swapSyForExactYt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactYtOut: BigNumberish,
         slippage: number,
@@ -921,7 +925,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const res = await this.routerStaticCall.swapSyForExactYtStatic(marketAddr, exactYtOut);
         const { netSyIn } = res;
         return this.contract.metaCall.swapSyForExactYt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             exactYtOut,
             calcSlippedUpAmount(netSyIn, slippage),
@@ -931,7 +935,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async swapExactTokenForYt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         tokenIn: Address,
         netTokenIn: BigNumberish,
@@ -969,7 +972,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         }
 
         return this.contract.metaCall.swapExactTokenForYt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             calcSlippedDownAmount(netYtOut, slippage),
             Router.guessOutApproxParams(netYtOut, slippage),
@@ -980,7 +983,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async swapExactYtForToken<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactYtIn: BigNumberish,
         tokenOut: Address,
@@ -1016,16 +1018,22 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             throw NoRouteFoundError.action('swap', yt, tokenOut);
         }
 
-        return this.contract.metaCall.swapExactYtForToken(receiver, marketAddr, exactYtIn, output, metaMethodType, {
-            ...res,
-            netTokenOut,
-            intermediateSy,
-            netSyFee,
-        });
+        return this.contract.metaCall.swapExactYtForToken(
+            ContractMetaMethod.utils.getContractSignerAddress,
+            marketAddr,
+            exactYtIn,
+            output,
+            metaMethodType,
+            {
+                ...res,
+                netTokenOut,
+                intermediateSy,
+                netSyFee,
+            }
+        );
     }
 
     async swapExactYtForPt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactYtIn: BigNumberish,
         slippage: number,
@@ -1046,7 +1054,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const { netPtOut, totalPtSwapped } = res;
         const approxParam = Router.guessInApproxParams(totalPtSwapped, slippage);
         return this.contract.metaCall.swapExactYtForPt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             exactYtIn,
             calcSlippedDownAmount(netPtOut, slippage),
@@ -1057,7 +1065,6 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     }
 
     async swapExactPtForYt<T extends MetaMethodType>(
-        receiver: Address,
         market: Address | MarketEntity,
         exactPtIn: BigNumberish,
         slippage: number,
@@ -1078,7 +1085,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const { netYtOut, totalPtToSwap } = res;
         const approxParam = Router.guessInApproxParams(totalPtToSwap, slippage);
         return this.contract.metaCall.swapExactPtForYt(
-            receiver,
+            ContractMetaMethod.utils.getContractSignerAddress,
             marketAddr,
             exactPtIn,
             calcSlippedDownAmount(netYtOut, slippage),
