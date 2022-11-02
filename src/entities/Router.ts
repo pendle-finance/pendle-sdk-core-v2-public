@@ -19,13 +19,20 @@ import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts
 import type { Address, NetworkConnection, ChainId, RawTokenAmount } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN, constants as etherConstants } from 'ethers';
-import { getContractAddresses, getRouterStatic, isNativeToken } from './helper';
+import {
+    getContractAddresses,
+    getRouterStatic,
+    isNativeToken,
+    getGlobalBulkSellerUsageStrategy,
+    devLog,
+} from './helper';
 import { calcSlippedDownAmount, calcSlippedUpAmount, PyIndex } from './math';
 import { MarketEntity } from './MarketEntity';
 import { SyEntity } from './SyEntity';
 import { YtEntity } from './YtEntity';
 import { NoRouteFoundError } from '../errors';
 import { KyberHelper, KybercallData, KyberState, KyberHelperCoreConfig } from './KyberHelper';
+import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
 
 export type RouterState = {
     kyberHelper: KyberState;
@@ -33,14 +40,17 @@ export type RouterState = {
 
 export type RouterConfig = PendleEntityConfigOptionalAbi & {
     kyberHelper?: KyberHelperCoreConfig;
+    bulkSellerUsageStrategy?: BulkSellerUsageStrategy;
 };
 
 export type RouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtraParams<T> & {
     receiver?: Address | typeof ContractMetaMethod.utils.getContractSignerAddress;
+    useBulk?: UseBulkMode;
 };
 
 type FixedRouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtraParams<T> & {
     receiver: Address | typeof ContractMetaMethod.utils.getContractSignerAddress;
+    useBulk: UseBulkMode;
 };
 
 export type RouterMetaMethodReturnType<
@@ -61,6 +71,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     };
     readonly routerStatic: WrappedContract<RouterStatic>;
     readonly kyberHelper: KyberHelper;
+    readonly bulkSellerUsage: BulkSellerUsageStrategy;
 
     constructor(readonly address: Address, readonly chainId: ChainId, config: RouterConfig) {
         super(address, chainId, { abi: IPAllActionABI, ...config });
@@ -71,6 +82,8 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             ...this.networkConnection,
             ...kyberHelperCoreConfig,
         });
+
+        this.bulkSellerUsage = config.bulkSellerUsageStrategy ?? getGlobalBulkSellerUsageStrategy();
     }
 
     protected get routerStaticCall() {
@@ -91,6 +104,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         return {
             ...super.getDefaultMetaMethodExtraParams(),
             receiver: ContractMetaMethod.utils.getContractSignerAddress,
+            useBulk: 'auto',
         };
     }
 
@@ -125,133 +139,95 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         };
     }
 
-    async inputParams(
-        tokenIn: Address,
-        netTokenIn: BigNumberish,
+    async inputParams<Data extends { netOut: BN }>(
+        tokenInAmount: RawTokenAmount<BigNumberish>,
+        sy: Address,
         tokenMintSyList: Address[],
-        fn: (tokenAmount: RawTokenAmount<BigNumberish>) => Promise<{ netOut: BN; netSyFee: BN }>
-    ): Promise<{
-        netOut: BN;
-        input: TokenInputStruct;
-        kybercallData: KybercallData;
-        netSyFee: BN;
-    }> {
+        useBulkMode: UseBulkMode,
+        fn: (
+            tokenMintSyAmount: RawTokenAmount<BigNumberish>,
+            input: TokenInputStruct,
+            useBulk: boolean
+        ) => Promise<Data>
+    ): Promise<undefined | (Data & { input: TokenInputStruct; kybercallData: KybercallData })> {
         const processTokenMinSy = async (tokenMintSy: Address) => {
-            const kybercallData = await this.kyberHelper.makeCall({ token: tokenIn, amount: netTokenIn }, tokenMintSy);
-            const input: TokenInputStruct = {
-                tokenIn,
-                netTokenIn,
-                tokenMintSy,
-                kybercall: kybercallData.encodedSwapData ?? '0x',
-            };
-
-            // return -1 to avoid swapping through this token
-            if (kybercallData.encodedSwapData === undefined) {
-                return { netOut: etherConstants.NegativeOne, input, kybercallData, netSyFee: etherConstants.Zero };
-            }
-
-            const { netOut, netSyFee } = await fn({ token: tokenMintSy, amount: kybercallData.outputAmount }).catch(
-                (_) => ({ netOut: etherConstants.NegativeOne, netSyFee: etherConstants.Zero })
-            );
-
-            return { netOut, netSyFee, input, kybercallData };
-        };
-        if (tokenMintSyList.includes(tokenIn)) {
-            return processTokenMinSy(tokenIn);
-        }
-        const possibleOutAmounts = tokenMintSyList.map(processTokenMinSy);
-        return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
-    }
-
-    // TODO: find a way to avoid this duplication
-    async zapInputParams<T extends { netLpOut: BN; netPtFromSwap: BN }>(
-        tokenIn: Address,
-        netTokenIn: BigNumberish,
-        tokenMintSyList: Address[],
-        fn: (input: TokenInputStruct, tokenAmount: BN) => Promise<T>
-    ): Promise<{
-        netLpOut: BN;
-        netPtFromSwap: BN;
-        zapInInput: TokenInputStruct;
-        kybercallData: KybercallData;
-    }> {
-        const processTokenMinSy = async (tokenMintSy: Address) => {
-            const kybercallData = await this.kyberHelper.makeCall({ token: tokenIn, amount: netTokenIn }, tokenMintSy);
-            const zapInInput: TokenInputStruct = {
-                tokenIn,
-                netTokenIn,
-                tokenMintSy,
-                kybercall: kybercallData.encodedSwapData ?? '0x',
-            };
-
-            // return -1 to avoid swapping through this token
-            if (kybercallData.encodedSwapData === undefined) {
-                return {
-                    netLpOut: etherConstants.NegativeOne,
-                    netPtFromSwap: etherConstants.NegativeOne,
-                    zapInInput,
-                    kybercallData,
+            try {
+                const kybercallData = await this.kyberHelper.makeCall(tokenInAmount, tokenMintSy);
+                if (kybercallData.encodedSwapData === undefined) {
+                    return [];
+                }
+                const useBulk = await this.bulkSellerUsage.determineByToken(
+                    useBulkMode,
+                    {
+                        token: tokenMintSy,
+                        amount: kybercallData.outputAmount,
+                    },
+                    sy
+                );
+                const input: TokenInputStruct = {
+                    tokenIn: tokenInAmount.token,
+                    netTokenIn: tokenInAmount.amount,
+                    tokenMintSy,
+                    kybercall: kybercallData.encodedSwapData,
+                    useBulk,
+                    kyberRouter: kybercallData.routerAddress,
                 };
-            }
 
-            const { netLpOut, netPtFromSwap } = await fn(zapInInput, BN.from(kybercallData.outputAmount)).catch(
-                (_) => ({
-                    netLpOut: etherConstants.NegativeOne,
-                    netPtFromSwap: etherConstants.Zero,
-                })
-            );
-            return { netLpOut, netPtFromSwap, zapInInput, kybercallData };
+                const data = await fn({ token: tokenMintSy, amount: kybercallData.outputAmount }, input, useBulk);
+                return [{ ...data, input, kybercallData }];
+            } catch (e: any) {
+                devLog('Router input params error: ', e);
+                return [];
+            }
         };
-        if (tokenMintSyList.includes(tokenIn)) {
-            return processTokenMinSy(tokenIn);
+        if (tokenMintSyList.includes(tokenInAmount.token)) {
+            const [result] = await processTokenMinSy(tokenInAmount.token);
+            return result;
         }
-        const possibleOutAmounts = tokenMintSyList.map(processTokenMinSy);
-        return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) =>
-            cur.netLpOut.gt(prev.netLpOut) ? cur : prev
-        );
+        const results = (await Promise.all(tokenMintSyList.map(processTokenMinSy))).flat();
+        if (results.length === 0) return undefined;
+        return results.reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
     }
 
     async outputParams(
-        sy: Address,
-        netSyIn: BigNumberish,
+        syAmount: RawTokenAmount<BigNumberish>,
         tokenOut: Address,
         tokenRedeemSyList: Address[],
+        useBulkMode: UseBulkMode,
         slippage: number = 0
-    ): Promise<{
-        netOut: BN;
-        output: TokenOutputStruct;
-        kybercallData: KybercallData;
-    }> {
+    ): Promise<undefined | { netOut: BN; output: TokenOutputStruct; kybercallData: KybercallData }> {
+        const useBulkPromise = this.bulkSellerUsage.determineBySy(useBulkMode, syAmount, tokenOut);
         const processTokenRedeemSy = async (tokenRedeemSy: Address) => {
-            const amountIn = await new SyEntity(sy, this.chainId, this.networkConnection).previewRedeem(
+            const amountIn = await new SyEntity(syAmount.token, this.chainId, this.networkConnection).previewRedeem(
                 tokenRedeemSy,
-                netSyIn
+                syAmount.amount,
+                await useBulkPromise
             );
             const kybercallData = await this.kyberHelper.makeCall({ token: tokenRedeemSy, amount: amountIn }, tokenOut);
-            const output: TokenOutputStruct = {
-                tokenOut,
-                tokenRedeemSy,
-                kybercall: kybercallData.encodedSwapData ?? '0x',
-                minTokenOut: Router.MIN_AMOUNT,
-            };
-
-            // return -1 to avoid swapping through this token
             if (kybercallData.encodedSwapData === undefined) {
-                return { netOut: etherConstants.NegativeOne, output, kybercallData, netSyFee: etherConstants.Zero };
+                return [];
             }
 
             const netOut = BN.from(kybercallData.outputAmount);
-            return {
-                netOut,
-                output: { ...output, minTokenOut: calcSlippedDownAmount(netOut, slippage) },
-                kybercallData,
+
+            const output: TokenOutputStruct = {
+                tokenOut,
+                tokenRedeemSy,
+                kybercall: kybercallData.encodedSwapData,
+                minTokenOut: calcSlippedDownAmount(netOut, slippage),
+                useBulk: await useBulkPromise,
+                kyberRouter: kybercallData.routerAddress,
             };
+
+            return [{ netOut, output, kybercallData }];
         };
         if (tokenRedeemSyList.includes(tokenOut)) {
-            return processTokenRedeemSy(tokenOut);
+            const [result] = await processTokenRedeemSy(tokenOut);
+            return result;
         }
-        const possibleOutAmounts = tokenRedeemSyList.map(processTokenRedeemSy);
-        return (await Promise.all(possibleOutAmounts)).reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
+        const results = (await Promise.all(tokenRedeemSyList.map(processTokenRedeemSy))).flat();
+        if (results.length === 0) return undefined;
+        return results.reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
     }
 
     async addLiquidityDualSyAndPt<T extends MetaMethodType = 'send'>(
@@ -289,23 +265,32 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         _params: RouterMetaMethodExtraParams<T> = {}
     ): RouterMetaMethodReturnType<T, 'addLiquidityDualTokenAndPt', { netLpOut: BN; netTokenUsed: BN; netPtUsed: BN }> {
         const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const overrides = {
-            value: isNativeToken(tokenIn) ? tokenDesired : undefined,
-        };
-        const res = await this.routerStaticCall.addLiquidityDualTokenAndPtStatic(
-            marketAddr,
-            tokenIn,
-            tokenDesired,
-            ptDesired,
-            params.multicall
+        if (typeof market === 'string') {
+            market = new MarketEntity(market, this.chainId, this.networkConnection);
+        }
+        const marketAddr = market.address;
+        const sy = await market.syEntity(params.multicall);
+        const tokenMintSyList = await sy.getTokensIn(params.multicall);
+        const overrides = { value: isNativeToken(tokenIn) ? tokenDesired : undefined };
+
+        const res = await this.inputParams(
+            { token: tokenIn, amount: tokenDesired },
+            sy.address,
+            tokenMintSyList,
+            params.useBulk,
+            ({ token, amount }, _input, useBulk) =>
+                this.routerStaticCall
+                    .addLiquidityDualTokenAndPtStatic(marketAddr, token, amount, useBulk, ptDesired, params.multicall)
+                    .then((data) => ({ netOut: data.netLpOut, ...data }))
         );
-        const { netLpOut } = res;
+        if (res === undefined) {
+            throw NoRouteFoundError.action('add liquidity', tokenIn, marketAddr);
+        }
+        const { netLpOut, input } = res;
         return this.contract.metaCall.addLiquidityDualTokenAndPt(
             params.receiver,
             marketAddr,
-            tokenIn,
-            tokenDesired,
+            input,
             ptDesired,
             calcSlippedDownAmount(netLpOut, slippage),
             { ...res, ...mergeParams({ overrides }, params) }
@@ -372,42 +357,40 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     ): RouterMetaMethodReturnType<
         T,
         'addLiquiditySingleToken',
-        { netLpOut: BN; netPtFromSwap: BN; zapInInput: TokenInputStruct; kybercallData: KybercallData }
+        { netLpOut: BN; netPtFromSwap: BN; input: TokenInputStruct; priceImpact: BN; kybercallData: KybercallData }
     > {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
             market = new MarketEntity(market, this.chainId, this.networkConnection);
         }
         const marketAddr = market.address;
-        const tokenMintSyList = await market.syEntity().then((sy) => sy.getTokensIn());
+        const sy = await market.syEntity();
+        const tokenMintSyList = await sy.getTokensIn();
 
-        const res = await this.zapInputParams(tokenIn, netTokenIn, tokenMintSyList, (input, tokenAmount) =>
-            this.routerStaticCall.addLiquiditySingleBaseTokenStatic(
-                marketAddr,
-                input.tokenMintSy,
-                tokenAmount,
-                params.multicall
-            )
+        const res = await this.inputParams(
+            { token: tokenIn, amount: netTokenIn },
+            sy.address,
+            tokenMintSyList,
+            params.useBulk,
+            ({ amount }, input, useBulk) =>
+                this.routerStaticCall
+                    .addLiquiditySingleBaseTokenStatic(marketAddr, input.tokenMintSy, amount, useBulk, params.multicall)
+                    .then((data) => ({ netOut: data.netLpOut, ...data }))
         );
-
-        const { netLpOut, netPtFromSwap, zapInInput } = res;
-
-        if (netLpOut.eq(etherConstants.NegativeOne)) {
-            throw NoRouteFoundError.action('zap in', tokenIn, marketAddr);
+        if (res === undefined) {
+            throw NoRouteFoundError.action('add liquidity', tokenIn, marketAddr);
         }
+        const { netLpOut, netPtFromSwap, input } = res;
 
         const approxParam = Router.guessOutApproxParams(netPtFromSwap, slippage);
-
-        const overrides = {
-            value: isNativeToken(zapInInput.tokenIn) ? zapInInput.netTokenIn : undefined,
-        };
+        const overrides = { value: isNativeToken(input.tokenIn) ? input.netTokenIn : undefined };
 
         return this.contract.metaCall.addLiquiditySingleToken(
             params.receiver,
             marketAddr,
             calcSlippedDownAmount(netLpOut, slippage),
             approxParam,
-            zapInInput,
+            input,
             { ...res, ...mergeParams({ overrides }, params) }
         );
     }
@@ -442,24 +425,46 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         tokenOut: Address,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'removeLiquidityDualTokenAndPt', { netTokenOut: BN; netPtOut: BN }> {
+    ): RouterMetaMethodReturnType<
+        T,
+        'removeLiquidityDualTokenAndPt',
+        { netTokenOut: BN; netPtOut: BN; intermediateSy: BN; output: TokenOutputStruct; kybercallData: KybercallData }
+    > {
         const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.removeLiquidityDualTokenAndPtStatic(
-            marketAddr,
-            lpToRemove,
+        if (typeof market === 'string') {
+            market = new MarketEntity(market, this.chainId, this.networkConnection);
+        }
+
+        const marketAddr = market.address;
+        const getSyPromise = market.syEntity();
+
+        // TODO reduce RPC call
+        const [sy, tokenRedeemSy, { netSyOut: intermediateSy, netPtOut }] = await Promise.all([
+            getSyPromise,
+            getSyPromise.then((sy) => sy.getTokensOut()),
+            this.routerStaticCall.removeLiquidityDualSyAndPtStatic(marketAddr, lpToRemove, params.multicall),
+        ]);
+
+        const res = await this.outputParams(
+            { token: sy.address, amount: intermediateSy },
             tokenOut,
-            params.multicall
+            tokenRedeemSy,
+            params.useBulk,
+            slippage
         );
-        const { netTokenOut, netPtOut } = res;
+        if (res === undefined) {
+            throw NoRouteFoundError.action('remove liquidity', marketAddr, tokenOut);
+        }
+
+        const { netOut: netTokenOut, output } = res;
+        this.contract.removeLiquidityDualTokenAndPt;
         return this.contract.metaCall.removeLiquidityDualTokenAndPt(
             params.receiver,
             marketAddr,
             lpToRemove,
-            tokenOut,
-            calcSlippedDownAmount(netTokenOut, slippage),
+            output,
             calcSlippedDownAmount(netPtOut, slippage),
-            { ...res, ...params }
+            { ...res, ...params, intermediateSy, netTokenOut, netPtOut }
         );
     }
 
@@ -521,6 +526,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             kybercallData: KybercallData;
             netSyFee: BN;
             intermediateSy: BN;
+            priceImpact: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -529,25 +535,31 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity();
-        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee }] = await Promise.all([
+        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact }] = await Promise.all([
             getSyPromise,
             getSyPromise.then((sy) => sy.getTokensOut(params.multicall)),
             this.routerStaticCall.removeLiquiditySingleSyStatic(marketAddr, lpToRemove, params.multicall),
         ]);
 
-        const res = await this.outputParams(sy.address, intermediateSy, tokenOut, tokenRedeemSyList, slippage);
-
-        const { netOut: netTokenOut, output } = res;
-
-        if (netTokenOut.eq(etherConstants.NegativeOne)) {
+        const res = await this.outputParams(
+            { token: sy.address, amount: intermediateSy },
+            tokenOut,
+            tokenRedeemSyList,
+            params.useBulk,
+            slippage
+        );
+        if (res === undefined) {
             throw NoRouteFoundError.action('zap out', marketAddr, tokenOut);
         }
+
+        const { netOut: netTokenOut, output } = res;
 
         return this.contract.metaCall.removeLiquiditySingleToken(params.receiver, marketAddr, lpToRemove, output, {
             ...res,
             intermediateSy,
             netSyFee,
             netTokenOut,
+            priceImpact,
             ...params,
         });
     }
@@ -557,7 +569,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         exactPtIn: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'swapExactPtForSy', { netSyOut: BN; netSyFee: BN }> {
+    ): RouterMetaMethodReturnType<T, 'swapExactPtForSy', { netSyOut: BN; netSyFee: BN; priceImpact: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params.multicall);
@@ -579,7 +591,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     ): RouterMetaMethodReturnType<
         T,
         'swapPtForExactSy',
-        { netPtIn: BN; netSyFee: BN; approxParam: ApproxParamsStruct }
+        { netPtIn: BN; netSyFee: BN; approxParam: ApproxParamsStruct; priceImpact: BN }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -601,7 +613,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         exactPtOut: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'swapSyForExactPt', { netSyIn: BN; netSyFee: BN }> {
+    ): RouterMetaMethodReturnType<T, 'swapSyForExactPt', { netSyIn: BN; netSyFee: BN; priceImpact: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapSyForExactPtStatic(marketAddr, exactPtOut, params.multicall);
@@ -629,6 +641,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             input: TokenInputStruct;
             kybercallData: KybercallData;
             netSyFee: BN;
+            priceImpact: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -636,21 +649,28 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             market = new MarketEntity(market, this.chainId, this.networkConnection);
         }
         const marketAddr = market.address;
-        const tokenMintSyList = await market.syEntity().then((sy) => sy.getTokensIn(params.multicall));
+        const sy = await market.syEntity(params.multicall);
+        const tokenMintSyList = await sy.getTokensIn(params.multicall);
         const overrides = {
             value: isNativeToken(tokenIn) ? netTokenIn : undefined,
         };
-        const res = await this.inputParams(tokenIn, netTokenIn, tokenMintSyList, ({ token, amount }) =>
-            this.routerStaticCall
-                .swapExactBaseTokenForPtStatic(marketAddr, token, amount, params.multicall)
-                .then(({ netPtOut, netSyFee }) => ({ netOut: netPtOut, netSyFee }))
+        const res = await this.inputParams(
+            { token: tokenIn, amount: netTokenIn },
+            sy.address,
+            tokenMintSyList,
+            params.useBulk,
+            ({ token, amount }, _input, useBulk) =>
+                this.routerStaticCall
+                    .swapExactBaseTokenForPtStatic(marketAddr, token, amount, useBulk, params.multicall)
+                    .then((data) => ({ netOut: data.netPtOut, ...data }))
         );
 
-        const { netOut: netPtOut, input } = res;
-
-        if (netPtOut.eq(etherConstants.NegativeOne)) {
-            throw NoRouteFoundError.action('swap', tokenIn, marketAddr);
+        if (res === undefined) {
+            const pt = await market.pt();
+            throw NoRouteFoundError.action('swap', tokenIn, pt);
         }
+
+        const { netOut: netPtOut, input } = res;
 
         return this.contract.metaCall.swapExactTokenForPt(
             params.receiver,
@@ -667,7 +687,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         exactSyIn: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'swapExactSyForPt', { netPtOut: BN; netSyFee: BN }> {
+    ): RouterMetaMethodReturnType<T, 'swapExactSyForPt', { netPtOut: BN; netSyFee: BN; priceImpact: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapExactSyForPtStatic(marketAddr, exactSyIn, params.multicall);
@@ -700,16 +720,18 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const syAddr = sy.address;
         const syEntity = sy; // force type here
         const tokenMintSyList = await sy.getTokensIn(params.multicall);
-        const res = await this.inputParams(tokenIn, netTokenIn, tokenMintSyList, ({ token, amount }) =>
-            syEntity
-                .previewDeposit(token, amount, params.multicall)
-                .then((netOut) => ({ netOut, netSyFee: etherConstants.Zero }))
+        const res = await this.inputParams(
+            { token: tokenIn, amount: netTokenIn },
+            syAddr,
+            tokenMintSyList,
+            params.useBulk,
+            ({ token, amount }, _input, useBulk) =>
+                syEntity.previewDeposit(token, amount, useBulk, params.multicall).then((netOut) => ({ netOut }))
         );
-        const { netOut: netSyOut, input } = res;
-
-        if (netSyOut.eq(etherConstants.NegativeOne)) {
+        if (res === undefined) {
             throw NoRouteFoundError.action('mint', tokenIn, syAddr);
         }
+        const { netOut: netSyOut, input } = res;
 
         return this.contract.metaCall.mintSyFromToken(
             params.receiver,
@@ -736,13 +758,18 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             sy = new SyEntity(sy, this.chainId, this.networkConnection);
         }
         const tokenRedeemSyList = await sy.getTokensOut(params.multicall);
-        const res = await this.outputParams(sy.address, netSyIn, tokenOut, tokenRedeemSyList, slippage);
-
-        const { output, netOut: netTokenOut } = res;
-
-        if (netTokenOut.eq(etherConstants.NegativeOne)) {
+        const res = await this.outputParams(
+            { token: sy.address, amount: netSyIn },
+            tokenOut,
+            tokenRedeemSyList,
+            params.useBulk,
+            slippage
+        );
+        if (res === undefined) {
             throw NoRouteFoundError.action('redeem', sy.address, tokenOut);
         }
+
+        const { output, netOut: netTokenOut } = res;
 
         return this.contract.metaCall.redeemSyToToken(params.receiver, sy.address, netSyIn, output, {
             ...res,
@@ -770,17 +797,20 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const sy = await yt.syEntity();
         const tokenMintSyList = await sy.getTokensIn(params.multicall);
         const overrides = { value: isNativeToken(tokenIn) ? netTokenIn : undefined };
-        const res = await this.inputParams(tokenIn, netTokenIn, tokenMintSyList, ({ token, amount }) =>
-            this.routerStaticCall
-                .mintPYFromBaseStatic(ytAddr, token, amount, params.multicall)
-                .then((netOut) => ({ netOut, netSyFee: etherConstants.Zero }))
+        const res = await this.inputParams(
+            { token: tokenIn, amount: netTokenIn },
+            sy.address,
+            tokenMintSyList,
+            params.useBulk,
+            ({ token, amount }, _input, useBulk) =>
+                this.routerStaticCall
+                    .mintPYFromBaseStatic(ytAddr, token, amount, useBulk, params.multicall)
+                    .then((netOut) => ({ netOut }))
         );
-        const { netOut: netPyOut, input } = res;
-
-        if (netPyOut.eq(etherConstants.NegativeOne)) {
-            // TODO: should we use `mintPY` as the action name instead of `mint`?
+        if (res === undefined) {
             throw NoRouteFoundError.action('mint', tokenIn, ytAddr);
         }
+        const { netOut: netPyOut, input } = res;
 
         return this.contract.metaCall.mintPyFromToken(
             params.receiver,
@@ -814,17 +844,16 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             yt.pyIndexCurrent(),
         ]);
         const res = await this.outputParams(
-            sy.address,
-            new PyIndex(pyIndex).assetToSy(netPyIn),
+            { token: sy.address, amount: new PyIndex(pyIndex).assetToSy(netPyIn) },
             tokenOut,
             tokenRedeemSyList,
+            params.useBulk,
             slippage
         );
-        const { netOut: netTokenOut, output } = res;
-
-        if (netTokenOut.eq(etherConstants.NegativeOne)) {
+        if (res === undefined) {
             throw NoRouteFoundError.action('redeem', ytAddr, tokenOut);
         }
+        const { netOut: netTokenOut, output } = res;
 
         return this.contract.metaCall.redeemPyToToken(params.receiver, ytAddr, netPyIn, output, {
             ...res,
@@ -841,7 +870,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     ): RouterMetaMethodReturnType<
         T,
         'swapExactSyForYt',
-        { netYtOut: BN; netSyFee: BN; approxParam: ApproxParamsStruct }
+        { netYtOut: BN; netSyFee: BN; approxParam: ApproxParamsStruct; priceImpact: BN }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -866,7 +895,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     ): RouterMetaMethodReturnType<
         T,
         'swapYtForExactSy',
-        { netYtIn: BN; netSyFee: BN; approxParam: ApproxParamsStruct }
+        { netYtIn: BN; netSyFee: BN; priceImpact: BN; approxParam: ApproxParamsStruct }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -898,6 +927,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             kybercallData: KybercallData;
             netSyFee: BN;
             intermediateSy: BN;
+            priceImpact: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -906,24 +936,30 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity(params.multicall);
-        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee }] = await Promise.all([
+        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact }] = await Promise.all([
             getSyPromise,
             getSyPromise.then((sy) => sy.getTokensOut(params.multicall)),
             this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params.multicall),
         ]);
-        const res = await this.outputParams(sy.address, intermediateSy, tokenOut, tokenRedeemSyList, slippage);
-
-        const { output, netOut: netTokenOut } = res;
-
-        if (netTokenOut.eq(etherConstants.NegativeOne)) {
+        const res = await this.outputParams(
+            { token: sy.address, amount: intermediateSy },
+            tokenOut,
+            tokenRedeemSyList,
+            params.useBulk,
+            slippage
+        );
+        if (res === undefined) {
             throw NoRouteFoundError.action('swap', await market.pt(), tokenOut);
         }
+
+        const { output, netOut: netTokenOut } = res;
 
         return this.contract.metaCall.swapExactPtForToken(params.receiver, marketAddr, exactPtIn, output, {
             ...res,
             netTokenOut,
             intermediateSy,
             netSyFee,
+            priceImpact,
             ...params,
         });
     }
@@ -933,7 +969,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         exactYtIn: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'swapExactYtForSy', { netSyOut: BN; netSyFee: BN }> {
+    ): RouterMetaMethodReturnType<T, 'swapExactYtForSy', { netSyOut: BN; netSyFee: BN; priceImpact: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params.multicall);
@@ -952,7 +988,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         exactYtOut: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'swapSyForExactYt', { netSyIn: BN; netSyFee: BN }> {
+    ): RouterMetaMethodReturnType<T, 'swapSyForExactYt', { netSyIn: BN; netSyFee: BN; priceImpact: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapSyForExactYtStatic(marketAddr, exactYtOut, params.multicall);
@@ -980,6 +1016,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             input: TokenInputStruct;
             kybercallData: KybercallData;
             netSyFee: BN;
+            priceImpact: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -990,19 +1027,23 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         const sy = await market.syEntity(params.multicall);
         const tokenMintSyList = await sy.getTokensIn(params.multicall);
         const overrides = { value: isNativeToken(tokenIn) ? netTokenIn : undefined };
-        const res = await this.inputParams(tokenIn, netTokenIn, tokenMintSyList, ({ token, amount }) =>
-            this.routerStaticCall
-                .swapExactBaseTokenForYtStatic(marketAddr, token, amount, params.multicall)
-                .then(({ netYtOut, netSyFee }) => ({ netOut: netYtOut, netSyFee }))
+        const res = await this.inputParams(
+            { token: tokenIn, amount: netTokenIn },
+            sy.address,
+            tokenMintSyList,
+            params.useBulk,
+            ({ token, amount }, _input, useBulk) =>
+                this.routerStaticCall
+                    .swapExactBaseTokenForYtStatic(marketAddr, token, amount, useBulk, params.multicall)
+                    .then((data) => ({ netOut: data.netYtOut, ...data }))
         );
-
-        const { netOut: netYtOut, input } = res;
-
-        if (netYtOut.eq(etherConstants.NegativeOne)) {
+        if (res === undefined) {
             // TODO: One additional call to get the yt address, does it worth it?
             let yt = await market.ptEntity().then((pt) => pt.yt());
             throw NoRouteFoundError.action('swap', tokenIn, yt);
         }
+
+        const { netOut: netYtOut, input } = res;
 
         return this.contract.metaCall.swapExactTokenForYt(
             params.receiver,
@@ -1029,6 +1070,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             kybercallData: KybercallData;
             netSyFee: BN;
             intermediateSy: BN;
+            priceImpact: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1037,25 +1079,31 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity(params.multicall);
-        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee }] = await Promise.all([
+        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact }] = await Promise.all([
             getSyPromise,
             getSyPromise.then((sy) => sy.getTokensOut(params.multicall)),
             this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params.multicall),
         ]);
-        const res = await this.outputParams(sy.address, intermediateSy, tokenOut, tokenRedeemSyList, slippage);
-
-        const { netOut: netTokenOut, output } = res;
-        if (netTokenOut.eq(etherConstants.NegativeOne)) {
+        const res = await this.outputParams(
+            { token: sy.address, amount: intermediateSy },
+            tokenOut,
+            tokenRedeemSyList,
+            params.useBulk,
+            slippage
+        );
+        if (res === undefined) {
             // TODO: One additional call to get the yt address, does it worth it?
             let yt = await market.ptEntity().then((pt) => pt.yt());
             throw NoRouteFoundError.action('swap', yt, tokenOut);
         }
 
+        const { netOut: netTokenOut, output } = res;
         return this.contract.metaCall.swapExactYtForToken(params.receiver, marketAddr, exactYtIn, output, {
             ...res,
             netTokenOut,
             intermediateSy,
             netSyFee,
+            priceImpact,
             ...params,
         });
     }

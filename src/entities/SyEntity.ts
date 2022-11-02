@@ -10,23 +10,28 @@ import {
 import type { Address, RawTokenAmount, ChainId } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { getRouterStatic, isNativeToken } from './helper';
+import { getRouterStatic, isNativeToken, getGlobalBulkSellerUsageStrategy } from './helper';
 import { calcSlippedDownAmount } from './math';
 import { ERC20, ERC20Config } from './ERC20';
+import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
 
 export type UserSyInfo = {
     balance: BN;
     rewards: RawTokenAmount[];
 };
 
-export type SyEntityConfig = ERC20Config;
+export type SyEntityConfig = ERC20Config & {
+    bulkSellerUsage?: BulkSellerUsageStrategy;
+};
 
 export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase>> extends ERC20<C> {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
+    readonly bulkSellerUsage: BulkSellerUsageStrategy;
 
     constructor(readonly address: Address, readonly chainId: ChainId, config: SyEntityConfig) {
         super(address, chainId, { abi: SYBaseABI, ...config });
         this.routerStatic = getRouterStatic(chainId, config);
+        this.bulkSellerUsage = config.bulkSellerUsage ?? getGlobalBulkSellerUsageStrategy();
     }
 
     /**
@@ -105,16 +110,38 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
     async previewRedeem(
         tokenOut: Address,
         amountSharesToRedeem: BigNumberish,
+        useBulk: UseBulkMode = 'auto',
         multicall = this.multicall
     ): Promise<BN> {
-        return this.contract.multicallStatic.previewRedeem(tokenOut, amountSharesToRedeem, multicall);
+        return this.routerStatic.multicallStatic.previewRedeemStatic(
+            this.address,
+            tokenOut,
+            amountSharesToRedeem,
+            await this.bulkSellerUsage.determineBySy(
+                useBulk,
+                { token: this.address, amount: amountSharesToRedeem },
+                tokenOut
+            ),
+            multicall
+        );
     }
 
     async previewDeposit(
         tokenIn: Address,
         amountTokenToDeposit: BigNumberish,
+        useBulk: UseBulkMode = 'auto',
         multicall = this.multicall
     ): Promise<BN> {
-        return this.contract.multicallStatic.previewDeposit(tokenIn, amountTokenToDeposit, multicall);
+        return this.routerStatic.multicallStatic.previewDepositStatic(
+            this.address,
+            tokenIn,
+            amountTokenToDeposit,
+            await this.bulkSellerUsage.determineByToken(
+                useBulk,
+                { token: tokenIn, amount: amountTokenToDeposit },
+                this.address
+            ),
+            multicall
+        );
     }
 }

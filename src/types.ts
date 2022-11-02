@@ -2,6 +2,8 @@ import type { BigNumber as BN, BigNumberish, providers, Signer } from 'ethers';
 import { ErrorCode } from '@ethersproject/logger';
 import { CHAIN_ID } from './constants';
 
+export { BigNumberish, BigNumber as BN } from 'ethers';
+
 // Disallow missing both of the properties
 export type NetworkConnection =
     | { provider: providers.Provider; signer?: undefined }

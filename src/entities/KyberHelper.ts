@@ -2,7 +2,7 @@ import { Address, RawTokenAmount, ChainId, NetworkConnection } from '../types';
 import type { BigNumberish, BytesLike } from 'ethers';
 import { BigNumber as BN } from 'ethers';
 import { isKyberSupportedChain, isSameAddress, isNativeToken, copyNetworkConnection } from './helper';
-import { NATIVE_ADDRESS_0xEE, KYBER_API } from '../constants';
+import { NATIVE_ADDRESS_0xEE, NATIVE_ADDRESS_0x00, KYBER_API } from '../constants';
 import axios from 'axios';
 import { ERC20 } from './ERC20';
 import { Multicall } from '../multicall';
@@ -31,6 +31,7 @@ export type KybercallData = {
     amountOutUsd?: number;
     outputAmount: BigNumberish;
     encodedSwapData?: BytesLike;
+    routerAddress: Address;
 };
 
 export class KyberHelper {
@@ -102,7 +103,8 @@ export class KyberHelper {
         if (!isKyberSupportedChain(this.chainId)) {
             throw new Error(`Chain ${this.chainId} is not supported for kybercall.`);
         }
-        if (isSameAddress(input.token, output)) return { outputAmount: input.amount, encodedSwapData: [] };
+        if (isSameAddress(input.token, output))
+            return { outputAmount: input.amount, encodedSwapData: [], routerAddress: NATIVE_ADDRESS_0x00 };
         // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
         if (isNativeToken(input.token)) input.token = NATIVE_ADDRESS_0xEE;
         if (isNativeToken(output)) output = NATIVE_ADDRESS_0xEE;

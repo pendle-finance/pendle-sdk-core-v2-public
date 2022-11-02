@@ -5,6 +5,7 @@ import { CHAIN_ID, NATIVE_ADDRESS_0x00, NATIVE_ADDRESS_0xEE, CONTRACT_ADDRESSES,
 import { Address, ChainId, MainchainId, NetworkConnection } from '../types';
 import { PendleSdkError } from '../errors';
 import { createContractObject, WrappedContract, ContractObjectConfig } from '../contracts';
+import { BulkSellerUsageStrategy, NeverUseBulkSellerUsageStrategy } from './../bulkSeller';
 
 /**
  * This is a decorator that check if this.networkConnection.signer existed
@@ -98,3 +99,15 @@ export function* zip<T extends Array<any>>(...toZip: Iterableify<T>): Generator<
         yield results.map(({ value }) => value) as T;
     }
 }
+
+export function devLog(message?: any, ...optionalParams: any[]): void {
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(message, ...optionalParams);
+    }
+}
+
+let GLOBAL_BULK_SELLER_USAGE_STRATEGY: BulkSellerUsageStrategy = new NeverUseBulkSellerUsageStrategy();
+
+export const getGlobalBulkSellerUsageStrategy = () => GLOBAL_BULK_SELLER_USAGE_STRATEGY;
+export const setGlobalBulkSellerUsageStrategy = (newStrategy: BulkSellerUsageStrategy) =>
+    (GLOBAL_BULK_SELLER_USAGE_STRATEGY = newStrategy);
