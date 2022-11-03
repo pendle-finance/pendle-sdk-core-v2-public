@@ -1,2 +1,2 @@
 export * from './BulkSellerUsageBaseStrategy';
-export * from './StupidBulkSellerUsageStrategy';
+export * from './DummyBulkSellerUsageStrategy';

@@ -106,8 +106,12 @@ export function devLog(message?: any, ...optionalParams: any[]): void {
     }
 }
 
-let GLOBAL_BULK_SELLER_USAGE_STRATEGY: BulkSellerUsageStrategy = new NeverUseBulkSellerUsageStrategy();
+let GLOBAL_BULK_SELLER_USAGE_STRATEGY_GETTER: (
+    routerStatic: WrappedContract<RouterStatic>
+) => BulkSellerUsageStrategy = (routerStatic) => new NeverUseBulkSellerUsageStrategy(routerStatic);
 
-export const getGlobalBulkSellerUsageStrategy = () => GLOBAL_BULK_SELLER_USAGE_STRATEGY;
-export const setGlobalBulkSellerUsageStrategy = (newStrategy: BulkSellerUsageStrategy) =>
-    (GLOBAL_BULK_SELLER_USAGE_STRATEGY = newStrategy);
+export const getGlobalBulkSellerUsageStrategyGetter = (routerStatic: WrappedContract<RouterStatic>) =>
+    GLOBAL_BULK_SELLER_USAGE_STRATEGY_GETTER(routerStatic);
+export const setGlobalBulkSellerUsageStrategyGetter = (
+    newStrategyGetter: (routerStatic: WrappedContract<RouterStatic>) => BulkSellerUsageStrategy
+) => (GLOBAL_BULK_SELLER_USAGE_STRATEGY_GETTER = newStrategyGetter);

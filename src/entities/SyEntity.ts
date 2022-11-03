@@ -10,7 +10,7 @@ import {
 import type { Address, RawTokenAmount, ChainId } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { getRouterStatic, isNativeToken, getGlobalBulkSellerUsageStrategy } from './helper';
+import { getRouterStatic, isNativeToken, getGlobalBulkSellerUsageStrategyGetter } from './helper';
 import { calcSlippedDownAmount } from './math';
 import { ERC20, ERC20Config } from './ERC20';
 import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
@@ -31,7 +31,7 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
     constructor(readonly address: Address, readonly chainId: ChainId, config: SyEntityConfig) {
         super(address, chainId, { abi: SYBaseABI, ...config });
         this.routerStatic = getRouterStatic(chainId, config);
-        this.bulkSellerUsage = config.bulkSellerUsage ?? getGlobalBulkSellerUsageStrategy();
+        this.bulkSellerUsage = config.bulkSellerUsage ?? getGlobalBulkSellerUsageStrategyGetter(this.routerStatic);
     }
 
     /**
@@ -113,16 +113,18 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
         useBulk: UseBulkMode = 'auto',
         multicall = this.multicall
     ): Promise<BN> {
-        return this.routerStatic.multicallStatic.previewRedeemStatic(
-            this.address,
+        return this.bulkSellerUsage.tryInvokeWithSy(
+            useBulk,
+            { token: this.address, amount: amountSharesToRedeem },
             tokenOut,
-            amountSharesToRedeem,
-            await this.bulkSellerUsage.determineBySy(
-                useBulk,
-                { token: this.address, amount: amountSharesToRedeem },
-                tokenOut
-            ),
-            multicall
+            (bulkSellerAddress) =>
+                this.routerStatic.multicallStatic.previewRedeemStatic(
+                    this.address,
+                    tokenOut,
+                    amountSharesToRedeem,
+                    bulkSellerAddress,
+                    multicall
+                )
         );
     }
 
@@ -132,16 +134,18 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
         useBulk: UseBulkMode = 'auto',
         multicall = this.multicall
     ): Promise<BN> {
-        return this.routerStatic.multicallStatic.previewDepositStatic(
+        return this.bulkSellerUsage.tryInvokeWithToken(
+            useBulk,
+            { token: tokenIn, amount: amountTokenToDeposit },
             this.address,
-            tokenIn,
-            amountTokenToDeposit,
-            await this.bulkSellerUsage.determineByToken(
-                useBulk,
-                { token: tokenIn, amount: amountTokenToDeposit },
-                this.address
-            ),
-            multicall
+            (bulkSellerAddress) =>
+                this.routerStatic.multicallStatic.previewDepositStatic(
+                    this.address,
+                    tokenIn,
+                    amountTokenToDeposit,
+                    bulkSellerAddress,
+                    multicall
+                )
         );
     }
 }

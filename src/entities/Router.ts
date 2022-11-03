@@ -23,7 +23,7 @@ import {
     getContractAddresses,
     getRouterStatic,
     isNativeToken,
-    getGlobalBulkSellerUsageStrategy,
+    getGlobalBulkSellerUsageStrategyGetter,
     devLog,
 } from './helper';
 import { calcSlippedDownAmount, calcSlippedUpAmount, PyIndex } from './math';
@@ -40,7 +40,7 @@ export type RouterState = {
 
 export type RouterConfig = PendleEntityConfigOptionalAbi & {
     kyberHelper?: KyberHelperCoreConfig;
-    bulkSellerUsageStrategy?: BulkSellerUsageStrategy;
+    bulkSellerUsage?: BulkSellerUsageStrategy;
 };
 
 export type RouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtraParams<T> & {
@@ -83,7 +83,15 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             ...kyberHelperCoreConfig,
         });
 
-        this.bulkSellerUsage = config.bulkSellerUsageStrategy ?? getGlobalBulkSellerUsageStrategy();
+        this.bulkSellerUsage = config.bulkSellerUsage ?? getGlobalBulkSellerUsageStrategyGetter(this.routerStatic);
+    }
+
+    get entityConfig() {
+        return {
+            ...this.networkConnection,
+            multicall: this.multicall,
+            bulkSellerUsage: this.bulkSellerUsage,
+        };
     }
 
     protected get routerStaticCall() {
@@ -144,11 +152,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         sy: Address,
         tokenMintSyList: Address[],
         useBulkMode: UseBulkMode,
-        fn: (
-            tokenMintSyAmount: RawTokenAmount<BigNumberish>,
-            input: TokenInputStruct,
-            useBulk: boolean
-        ) => Promise<Data>
+        fn: (tokenMintSyAmount: RawTokenAmount<BigNumberish>, input: TokenInputStruct) => Promise<Data>
     ): Promise<undefined | (Data & { input: TokenInputStruct; kybercallData: KybercallData })> {
         const processTokenMinSy = async (tokenMintSy: Address) => {
             try {
@@ -156,25 +160,26 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
                 if (kybercallData.encodedSwapData === undefined) {
                     return [];
                 }
-                const useBulk = await this.bulkSellerUsage.determineByToken(
+                // force typing to be non-undefined
+                const kybercall = kybercallData.encodedSwapData;
+                return this.bulkSellerUsage.tryInvokeWithToken(
                     useBulkMode,
-                    {
-                        token: tokenMintSy,
-                        amount: kybercallData.outputAmount,
-                    },
-                    sy
-                );
-                const input: TokenInputStruct = {
-                    tokenIn: tokenInAmount.token,
-                    netTokenIn: tokenInAmount.amount,
-                    tokenMintSy,
-                    kybercall: kybercallData.encodedSwapData,
-                    useBulk,
-                    kyberRouter: kybercallData.routerAddress,
-                };
+                    { token: tokenMintSy, amount: kybercallData.outputAmount },
+                    sy,
+                    async (bulkSellerAddress) => {
+                        const input: TokenInputStruct = {
+                            tokenIn: tokenInAmount.token,
+                            netTokenIn: tokenInAmount.amount,
+                            tokenMintSy,
+                            kybercall,
+                            bulk: bulkSellerAddress,
+                            kyberRouter: kybercallData.routerAddress,
+                        };
 
-                const data = await fn({ token: tokenMintSy, amount: kybercallData.outputAmount }, input, useBulk);
-                return [{ ...data, input, kybercallData }];
+                        const data = await fn({ token: tokenMintSy, amount: kybercallData.outputAmount }, input);
+                        return [{ ...data, input, kybercallData }];
+                    }
+                );
             } catch (e: any) {
                 devLog('Router input params error: ', e);
                 return [];
@@ -194,33 +199,39 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         tokenOut: Address,
         tokenRedeemSyList: Address[],
         useBulkMode: UseBulkMode,
-        slippage: number = 0
-    ): Promise<undefined | { netOut: BN; output: TokenOutputStruct; kybercallData: KybercallData }> {
-        const useBulkPromise = this.bulkSellerUsage.determineBySy(useBulkMode, syAmount, tokenOut);
-        const processTokenRedeemSy = async (tokenRedeemSy: Address) => {
-            const amountIn = await new SyEntity(syAmount.token, this.chainId, this.networkConnection).previewRedeem(
-                tokenRedeemSy,
-                syAmount.amount,
-                await useBulkPromise
-            );
-            const kybercallData = await this.kyberHelper.makeCall({ token: tokenRedeemSy, amount: amountIn }, tokenOut);
-            if (kybercallData.encodedSwapData === undefined) {
-                return [];
-            }
+        slippage: number,
+        params: { syEntity?: SyEntity } = {}
+    ): Promise<
+        undefined | { netOut: BN; output: TokenOutputStruct; kybercallData: KybercallData; redeemedFromSyAmount: BN }
+    > {
+        const syEntity = params.syEntity ?? new SyEntity(syAmount.token, this.chainId, this.entityConfig);
 
-            const netOut = BN.from(kybercallData.outputAmount);
+        const processTokenRedeemSy = (tokenRedeemSy: Address) =>
+            this.bulkSellerUsage.tryInvokeWithSy(useBulkMode, syAmount, tokenRedeemSy, async (bulkSellerAddress) => {
+                const redeemedFromSyAmount = await syEntity.previewRedeem(tokenRedeemSy, syAmount.amount, {
+                    withAddress: bulkSellerAddress,
+                });
+                const kybercallData = await this.kyberHelper.makeCall(
+                    { token: tokenRedeemSy, amount: redeemedFromSyAmount },
+                    tokenOut
+                );
+                if (kybercallData.encodedSwapData === undefined) {
+                    return [];
+                }
 
-            const output: TokenOutputStruct = {
-                tokenOut,
-                tokenRedeemSy,
-                kybercall: kybercallData.encodedSwapData,
-                minTokenOut: calcSlippedDownAmount(netOut, slippage),
-                useBulk: await useBulkPromise,
-                kyberRouter: kybercallData.routerAddress,
-            };
+                const netOut = BN.from(kybercallData.outputAmount);
 
-            return [{ netOut, output, kybercallData }];
-        };
+                const output: TokenOutputStruct = {
+                    tokenOut,
+                    tokenRedeemSy,
+                    kybercall: kybercallData.encodedSwapData,
+                    minTokenOut: calcSlippedDownAmount(netOut, slippage),
+                    bulk: bulkSellerAddress,
+                    kyberRouter: kybercallData.routerAddress,
+                };
+
+                return [{ netOut, output, kybercallData, redeemedFromSyAmount }];
+            });
         if (tokenRedeemSyList.includes(tokenOut)) {
             const [result] = await processTokenRedeemSy(tokenOut);
             return result;
@@ -278,9 +289,16 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             sy.address,
             tokenMintSyList,
             params.useBulk,
-            ({ token, amount }, _input, useBulk) =>
+            ({ token, amount }, input) =>
                 this.routerStaticCall
-                    .addLiquidityDualTokenAndPtStatic(marketAddr, token, amount, useBulk, ptDesired, params.multicall)
+                    .addLiquidityDualTokenAndPtStatic(
+                        marketAddr,
+                        token,
+                        amount,
+                        input.bulk,
+                        ptDesired,
+                        params.multicall
+                    )
                     .then((data) => ({ netOut: data.netLpOut, ...data }))
         );
         if (res === undefined) {
@@ -372,9 +390,15 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             sy.address,
             tokenMintSyList,
             params.useBulk,
-            ({ amount }, input, useBulk) =>
+            ({ amount }, input) =>
                 this.routerStaticCall
-                    .addLiquiditySingleBaseTokenStatic(marketAddr, input.tokenMintSy, amount, useBulk, params.multicall)
+                    .addLiquiditySingleBaseTokenStatic(
+                        marketAddr,
+                        input.tokenMintSy,
+                        amount,
+                        input.bulk,
+                        params.multicall
+                    )
                     .then((data) => ({ netOut: data.netLpOut, ...data }))
         );
         if (res === undefined) {
@@ -428,7 +452,14 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     ): RouterMetaMethodReturnType<
         T,
         'removeLiquidityDualTokenAndPt',
-        { netTokenOut: BN; netPtOut: BN; intermediateSy: BN; output: TokenOutputStruct; kybercallData: KybercallData }
+        {
+            netTokenOut: BN;
+            netPtOut: BN;
+            intermediateSy: BN;
+            output: TokenOutputStruct;
+            kybercallData: KybercallData;
+            redeemedFromSyAmount: BN;
+        }
     > {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
@@ -450,7 +481,8 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             tokenOut,
             tokenRedeemSy,
             params.useBulk,
-            slippage
+            slippage,
+            { syEntity: sy }
         );
         if (res === undefined) {
             throw NoRouteFoundError.action('remove liquidity', marketAddr, tokenOut);
@@ -527,6 +559,7 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             netSyFee: BN;
             intermediateSy: BN;
             priceImpact: BN;
+            redeemedFromSyAmount: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -546,7 +579,8 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             tokenOut,
             tokenRedeemSyList,
             params.useBulk,
-            slippage
+            slippage,
+            { syEntity: sy }
         );
         if (res === undefined) {
             throw NoRouteFoundError.action('zap out', marketAddr, tokenOut);
@@ -659,9 +693,9 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             sy.address,
             tokenMintSyList,
             params.useBulk,
-            ({ token, amount }, _input, useBulk) =>
+            ({ token, amount }, input) =>
                 this.routerStaticCall
-                    .swapExactBaseTokenForPtStatic(marketAddr, token, amount, useBulk, params.multicall)
+                    .swapExactBaseTokenForPtStatic(marketAddr, token, amount, input.bulk, params.multicall)
                     .then((data) => ({ netOut: data.netPtOut, ...data }))
         );
 
@@ -725,8 +759,10 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             syAddr,
             tokenMintSyList,
             params.useBulk,
-            ({ token, amount }, _input, useBulk) =>
-                syEntity.previewDeposit(token, amount, useBulk, params.multicall).then((netOut) => ({ netOut }))
+            ({ token, amount }, input) =>
+                syEntity
+                    .previewDeposit(token, amount, { withAddress: input.bulk }, params.multicall)
+                    .then((netOut) => ({ netOut }))
         );
         if (res === undefined) {
             throw NoRouteFoundError.action('mint', tokenIn, syAddr);
@@ -763,7 +799,8 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             tokenOut,
             tokenRedeemSyList,
             params.useBulk,
-            slippage
+            slippage,
+            { syEntity: sy }
         );
         if (res === undefined) {
             throw NoRouteFoundError.action('redeem', sy.address, tokenOut);
@@ -802,9 +839,9 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             sy.address,
             tokenMintSyList,
             params.useBulk,
-            ({ token, amount }, _input, useBulk) =>
+            ({ token, amount }, input) =>
                 this.routerStaticCall
-                    .mintPYFromBaseStatic(ytAddr, token, amount, useBulk, params.multicall)
+                    .mintPYFromBaseStatic(ytAddr, token, amount, input.bulk, params.multicall)
                     .then((netOut) => ({ netOut }))
         );
         if (res === undefined) {
@@ -848,7 +885,8 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             tokenOut,
             tokenRedeemSyList,
             params.useBulk,
-            slippage
+            slippage,
+            { syEntity: sy }
         );
         if (res === undefined) {
             throw NoRouteFoundError.action('redeem', ytAddr, tokenOut);
@@ -946,7 +984,8 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             tokenOut,
             tokenRedeemSyList,
             params.useBulk,
-            slippage
+            slippage,
+            { syEntity: sy }
         );
         if (res === undefined) {
             throw NoRouteFoundError.action('swap', await market.pt(), tokenOut);
@@ -1032,9 +1071,9 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             sy.address,
             tokenMintSyList,
             params.useBulk,
-            ({ token, amount }, _input, useBulk) =>
+            ({ token, amount }, input) =>
                 this.routerStaticCall
-                    .swapExactBaseTokenForYtStatic(marketAddr, token, amount, useBulk, params.multicall)
+                    .swapExactBaseTokenForYtStatic(marketAddr, token, amount, input.bulk, params.multicall)
                     .then((data) => ({ netOut: data.netYtOut, ...data }))
         );
         if (res === undefined) {
@@ -1089,7 +1128,8 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             tokenOut,
             tokenRedeemSyList,
             params.useBulk,
-            slippage
+            slippage,
+            { syEntity: sy }
         );
         if (res === undefined) {
             // TODO: One additional call to get the yt address, does it worth it?
