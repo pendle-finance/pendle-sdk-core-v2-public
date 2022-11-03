@@ -1,22 +1,26 @@
 import { KyberHelper } from '../src/entities/KyberHelper';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
+import { DUMMY_ADDRESS } from './util/constants';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
 
 describe(KyberHelper, () => {
     const kyberHelper = new KyberHelper(currentConfig.router, ACTIVE_CHAIN_ID, networkConnection);
 
-    it('checkSwappablePair', async () => {
-        let tokens = Object.entries(currentConfig.tokens)
-            .filter(([name, address]) => name != 'fundKeeper' && name != 'faucet' && !name.startsWith('qi'))
-            .map(([_, address]) => address);
+    const tokens = Object.entries(currentConfig.tokens).filter(
+        ([name, address]) => name != 'fundKeeper' && name != 'faucet' && !name.startsWith('qi')
+    );
 
-        for (const tokenIn of tokens) {
-            for (const tokenOut of tokens) {
-                expect(await kyberHelper.checkSwappablePair(tokenIn, tokenOut)).toBe(true);
-            }
+    describe('checkSwappablePair', () => {
+        const [tokenInName, tokenInAddr] = tokens[0];
+
+        for (const [tokenOutName, tokenOutAddr] of tokens) {
+            it(`${tokenInName}-${tokenOutName}`, async () => {
+                expect(await kyberHelper.checkSwappablePair(tokenInAddr, tokenOutAddr)).toBe(true);
+            });
+            break;
         }
 
-        expect(await kyberHelper.checkSwappablePair(currentConfig.tokens.WETH, currentConfig.tokens.qiAVAX)).toBe(
-            false
-        );
+        it(`${tokenInName}-dummy`, async () => {
+            expect(await kyberHelper.checkSwappablePair(tokenInAddr, DUMMY_ADDRESS)).toBe(false);
+        });
     });
 });

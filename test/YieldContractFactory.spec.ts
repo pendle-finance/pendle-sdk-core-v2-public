@@ -1,5 +1,5 @@
 import { YieldContractFactory } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
 
 describe(YieldContractFactory, () => {
     const ptAddress = currentConfig.market.PT;

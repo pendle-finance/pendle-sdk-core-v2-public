@@ -1,8 +1,8 @@
 import { SDK } from '../src/entities/SDK';
 import { MarketEntity, PtEntity, SyEntity, YtEntity, Multicall } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, describeWithMulticall } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
 import { decimalFactor } from '../src/entities/math';
-import './util/bigNumberMatcher';
+import { describeWithMulticall } from './util/testHelper';
 
 describe(SDK, () => {
     const sdk = new SDK(ACTIVE_CHAIN_ID, networkConnection);

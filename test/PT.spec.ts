@@ -1,5 +1,5 @@
 import { PtEntity } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
 
 describe(PtEntity, () => {
     const pt = new PtEntity(currentConfig.market.PT, ACTIVE_CHAIN_ID, networkConnection);

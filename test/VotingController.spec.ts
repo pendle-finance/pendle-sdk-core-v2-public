@@ -1,9 +1,12 @@
+import BigNumber from 'bignumber.js';
 import { MarketEntity, VotingController } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, describeWrite, networkConnection } from './util/testUtils';
+import { ONE_E18_BN } from './util/constants';
+import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, describeWrite, networkConnection } from './util/testEnv';
 
 describe(VotingController, () => {
     const votingController = new VotingController(currentConfig.votingController!, ACTIVE_CHAIN_ID, networkConnection);
     const market = new MarketEntity(currentConfig.marketAddress, ACTIVE_CHAIN_ID, networkConnection);
+    const signerAddress = networkConnection.signer.address;
 
     it('#constructor', async () => {
         expect(votingController).toBeInstanceOf(VotingController);
@@ -11,9 +14,30 @@ describe(VotingController, () => {
     });
 
     describeWrite(() => {
-        it.skip('#vote', async () => {
-            // TODO: Check if pool is active before voting
-            await votingController.vote([{ market, weight: 1 }]);
+        it('#vote', async () => {
+            const address = market.address;
+            const isActive = await votingController.contract.callStatic
+                .getPoolData(address, [])
+                .then((res) => !res.chainId.isZero());
+            if (!isActive) {
+                console.warn(`Market ${address} is not active`);
+                return;
+            }
+            const totalVotedBefore = await votingController.contract.callStatic
+                .getUserData(signerAddress, [])
+                .then((res) => res.totalVotedWeight);
+            const amountToVote = ONE_E18_BN.sub(totalVotedBefore);
+
+            await votingController
+                .vote([
+                    { market, weight: new BigNumber(amountToVote.toString()).div(ONE_E18_BN.toString()).toNumber() },
+                ])
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+
+            const totalVotedAfter = await votingController.contract.callStatic
+                .getUserData(signerAddress, [])
+                .then((res) => res.totalVotedWeight);
+            expect(totalVotedAfter).toEqBN(ONE_E18_BN);
         });
     });
 });

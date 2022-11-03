@@ -1,8 +1,7 @@
 import { SyEntity, PendleContractError } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testUtils';
-import './util/bigNumberMatcher';
+import { ACTIVE_CHAIN_ID, currentConfig, describeWrite, networkConnection, WALLET } from './util/testEnv';
 
-describe('Custom error', () => {
+describeWrite('Custom error', () => {
     const syAddress = currentConfig.market.SY;
     const sy = new SyEntity(syAddress, ACTIVE_CHAIN_ID, networkConnection);
     const signer = WALLET().wallet;

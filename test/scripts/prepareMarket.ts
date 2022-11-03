@@ -1,10 +1,9 @@
-import { BigNumber as BN, Contract, ethers } from 'ethers';
+import { BigNumber as BN, Contract } from 'ethers';
 import { Router } from '../../src';
 import FUND_KEEPER_ABI from './fundKeeperAbi.json';
-import { approveHelper, getBalance, getERC20Decimals, minBigNumber, SLIPPAGE_TYPE3, stalkAccount } from './testHelper';
-import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, networkConnection } from './testUtils';
-
-const INF = ethers.constants.MaxUint256;
+import { getBalance, getERC20Decimals, bnMinAsBn, stalkAccount, approveInfHelper } from '../util/testHelper';
+import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, networkConnection } from '../util/testEnv';
+import { SLIPPAGE_TYPE3 } from '../util/constants';
 
 const FUND_FACTOR = 100;
 
@@ -19,7 +18,7 @@ async function fundToken(token: string, user: string) {
 
     // 1/50 of the fundKeeper balance, or 100 tokens.
 
-    const fund_amount = minBigNumber(
+    const fund_amount = bnMinAsBn(
         (await getBalance(token, currentConfig.fundKeeper)).div(FUND_FACTOR),
         BN.from(10).pow(decimal).mul(100)
     );
@@ -49,7 +48,7 @@ async function main() {
     await fundToken(tokenIn, signerAddress);
 
     console.log('approve TokenIn');
-    await approveHelper(tokenIn, routerAddress, INF);
+    await approveInfHelper(tokenIn, routerAddress);
 
     console.log('minting SY');
     await router
@@ -72,10 +71,10 @@ async function main() {
         .then((tx: any) => tx.wait());
 
     console.log('approving SY');
-    await approveHelper(syAddress, routerAddress, INF);
+    await approveInfHelper(syAddress, routerAddress);
 
     console.log('approving PT');
-    await approveHelper(ptAddress, routerAddress, INF);
+    await approveInfHelper(ptAddress, routerAddress);
 
     console.log('add liquidity');
     await router

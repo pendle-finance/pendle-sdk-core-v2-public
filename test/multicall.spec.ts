@@ -3,7 +3,7 @@ import { ERC20 } from '../src';
 import { BigNumber as BN, ethers } from 'ethers';
 import { MarketEntity, PtEntity, WrappedContract } from '../src';
 import './util/bigNumberMatcher.ts';
-import { currentConfig, networkConnection } from './util/testUtils';
+import { currentConfig, networkConnection } from './util/testEnv';
 
 describe('Multicall', () => {
     const chainId = currentConfig.chainId;

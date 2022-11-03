@@ -1,8 +1,8 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
 import { Wallet } from 'ethers';
-import { inspect } from 'util';
 import { CHAIN_ID, Multicall } from '../../src';
+import './bigNumberMatcher';
 
 import assert from 'assert';
 
@@ -10,21 +10,17 @@ import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
 import FUJI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-USDC-FEB-2ND.json';
 import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-WETH-DEC-1ST.json';
 
-import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
-// import MUMBAI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-QI-USDC-FEB-2ND.json';
-// import MUMBAI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/80001-markets/benqi-market-QI-WETH-DEC-1ST.json';
-
 import FUJI_TEST_ENV from '@pendle/core-v2/deployments/43113-testenv.json';
-import MUMBAI_TEST_ENV from '@pendle/core-v2/deployments/80001-testenv.json';
+import { evm_revert, evm_snapshot } from './testHelper';
 
 config();
 
-type TestChainId = typeof CHAIN_ID.FUJI | typeof CHAIN_ID.MUMBAI;
+type TestChainId = typeof CHAIN_ID.FUJI;
 
 // Change this to the current active network
 export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID!) as TestChainId;
 const LOCAL_CHAIN_ID = 31337;
-const USE_LOCAL = process.env.USE_LOCAL === '1';
+export const USE_HARDHAT_RPC = process.env.USE_LOCAL === '1';
 
 export function describeWrite(name: string, fn: () => void): void;
 export function describeWrite(fn: () => void): void;
@@ -34,10 +30,25 @@ export function describeWrite(name: string | (() => void), fn?: () => void) {
         name = 'Write function';
     }
     assert(fn !== undefined);
-    (process.env.INCLUDE_WRITE === '1' ? describe : describe.skip)(name, fn);
+
+    const fnWithSnapshot = () => {
+        let globalSnapshotId = '';
+
+        beforeAll(async () => {
+            globalSnapshotId = await evm_snapshot();
+        });
+
+        afterAll(async () => {
+            await evm_revert(globalSnapshotId);
+        });
+
+        fn!();
+    };
+
+    (process.env.INCLUDE_WRITE === '1' && USE_HARDHAT_RPC ? describe : describe.skip)(name, fnWithSnapshot);
 }
 
-export const BLOCK_CONFIRMATION = USE_LOCAL ? 1 : parseInt(process.env.BLOCK_CONFIRMATION ?? '1');
+export const BLOCK_CONFIRMATION = USE_HARDHAT_RPC ? 1 : parseInt(process.env.BLOCK_CONFIRMATION ?? '1');
 
 const providerUrls = {
     [CHAIN_ID.ETHEREUM]: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
@@ -48,7 +59,7 @@ const providerUrls = {
 };
 
 export const networkConnection = {
-    provider: new JsonRpcProvider(USE_LOCAL ? providerUrls[LOCAL_CHAIN_ID] : providerUrls[ACTIVE_CHAIN_ID]),
+    provider: new JsonRpcProvider(USE_HARDHAT_RPC ? providerUrls[LOCAL_CHAIN_ID] : providerUrls[ACTIVE_CHAIN_ID]),
     get signer() {
         return WALLET().wallet; // this.provider.getSigner();
     },
@@ -82,34 +93,6 @@ export const CONTRACT_ADDRESSES = {
             ],
         },
         TOKENS: FUJI_TEST_ENV.tokens,
-    },
-    [CHAIN_ID.MUMBAI]: {
-        CORE: {
-            DEPLOYER: MUMBAI_CORE_ADDRESSES.deployer,
-            MARKET_FACTORY: MUMBAI_CORE_ADDRESSES.marketFactory,
-            YT_FACTORY: MUMBAI_CORE_ADDRESSES.yieldContractFactory,
-            ROUTER: MUMBAI_CORE_ADDRESSES.router,
-            ROUTER_STATIC: MUMBAI_CORE_ADDRESSES.routerStatic,
-            VE: MUMBAI_CORE_ADDRESSES.vePendle,
-            VOTING_CONTROLLER: 'NOT EXISTED',
-            PENDLE: MUMBAI_CORE_ADDRESSES.PENDLE,
-            PENDLE_TREASURY: MUMBAI_CORE_ADDRESSES.treasury,
-        },
-        BENQI: {
-            FUND_KEEPER: MUMBAI_TEST_ENV.tokens.fundKeeper,
-            FAUCET: MUMBAI_TEST_ENV.tokens.faucet,
-            MARKETS: [
-                // {
-                // ...MUMBAI_QIUSDC_FEB03_MARKET_ADDRESSES,
-                // token: MUMBAI_TEST_ENV.tokens.qiUSDC,
-                // },
-                // {
-                // ...MUMBAI_QIWETH_DEC01_ADDRESSES,
-                // token: MUMBAI_TEST_ENV.tokens.qiWETH,
-                // },
-            ],
-        },
-        TOKENS: MUMBAI_TEST_ENV.tokens,
     },
 } as const;
 
@@ -154,16 +137,3 @@ export const testConfig = (chainId: TestChainId) => ({
 });
 
 export const currentConfig = testConfig(ACTIVE_CHAIN_ID);
-
-export function print(message: any): void {
-    console.log(inspect(message, { showHidden: false, depth: null, colors: true }));
-}
-
-export function describeWithMulticall(fn: (multicall: Multicall | undefined) => any) {
-    if (process.env.DISABLE_TEST_WITH_MULTICALL !== '1') {
-        describe('with multicall', () => fn(currentConfig.multicall));
-    }
-    if (process.env.DISABLE_TEST_WITHOUT_MULTICALL !== '1') {
-        describe('without multicall', () => fn(undefined));
-    }
-}

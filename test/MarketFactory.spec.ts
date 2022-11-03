@@ -1,5 +1,5 @@
 import { MarketFactory } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testUtils';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
 
 describe('MarketFactory', () => {
     const marketFactory = new MarketFactory(currentConfig.marketFactory, ACTIVE_CHAIN_ID, networkConnection);

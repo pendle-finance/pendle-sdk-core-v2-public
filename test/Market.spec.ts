@@ -1,8 +1,8 @@
 import { MarketEntity, SyEntity, Multicall } from '../src';
 import { getRouterStatic } from '../src/entities/helper';
 import { decimalFactor } from '../src/entities/math';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET, describeWithMulticall } from './util/testUtils';
-import './util/bigNumberMatcher';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testEnv';
+import { describeWithMulticall } from './util/testHelper';
 
 describe(MarketEntity, () => {
     const currentMarket = currentConfig.market;

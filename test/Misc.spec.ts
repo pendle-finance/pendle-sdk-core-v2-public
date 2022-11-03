@@ -3,8 +3,7 @@ import { CHAIN_ID, ERC20 } from '../src';
 import { getContractAddresses, isMainchain } from '../src/entities/helper';
 import { calcSlippedDownAmount, calcSlippedUpAmount } from '../src/entities/math';
 import { InvalidSlippageError } from '../src/errors';
-import './util/bigNumberMatcher';
-import { currentConfig, ACTIVE_CHAIN_ID, networkConnection } from './util/testUtils';
+import { currentConfig, ACTIVE_CHAIN_ID, networkConnection } from './util/testEnv';
 
 describe('Misc', () => {
     it('#InvalidSlippageError', () => {

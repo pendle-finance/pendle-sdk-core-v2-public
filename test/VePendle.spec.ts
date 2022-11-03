@@ -1,5 +1,4 @@
 import { ERC20, VePendle, VePendleMainchain, isMainchain, MainchainId } from '../src';
-import { decimalFactor } from '../src/entities/math';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -7,9 +6,9 @@ import {
     networkConnection,
     BLOCK_CONFIRMATION,
     WALLET,
-} from './util/testUtils';
-import './util/bigNumberMatcher';
+} from './util/testEnv';
 import { BigNumber as BN } from 'ethers';
+import { DEFAULT_EPSILON, INF } from './util/constants';
 
 describe(VePendle, () => {
     const vePendle = new VePendleMainchain(currentConfig.veAddress, ACTIVE_CHAIN_ID as MainchainId, networkConnection);
@@ -37,20 +36,18 @@ describe(VePendle, () => {
         }
 
         it('#increaseLockPosition', async () => {
-            const [pendleBalance, pendleDecimal] = await Promise.all([
-                pendle.balanceOf(signerAddress, currentConfig.multicall),
-                pendle.decimals(currentConfig.multicall),
-            ]);
-
-            if (pendleBalance.isZero()) {
-                console.warn(`Skip #increaseLockPosition test, as signer (${signerAddress}) has zero pendle`);
+            const pendleBalanceBefore = await pendle.balanceOf(signer.address);
+            if (pendleBalanceBefore.isZero()) {
+                console.warn(`No PENDLE balance in ${signerAddress}.`);
                 return;
             }
+            // lock all PENDLE
+            const lockAmount = pendleBalanceBefore;
 
-            const pendleBalanceBefore = await pendle.balanceOf(signer.address);
             const week = await vePendle.contract.WEEK();
+            const positionDataBefore = await vePendle.positionData(signerAddress);
 
-            let currentExpiry = (await contract.positionData(signerAddress)).expiry;
+            let currentExpiry = positionDataBefore.expiry;
             if (currentExpiry.isZero()) {
                 currentExpiry = BN.from(Math.floor(Date.now() / 1000))
                     .add(week)
@@ -60,19 +57,26 @@ describe(VePendle, () => {
             }
             const newExpiry = currentExpiry.add(week);
 
-            let lockAmount = decimalFactor(pendleDecimal - 2); // 0.01 pendle
-            if (lockAmount.gt(pendleBalance)) {
-                lockAmount = pendleBalance;
-            }
-            await pendle.approve(contract.address, lockAmount);
+            const simulatedVePendleAmount = await vePendle.simulateIncreaseLockPosition(
+                signerAddress,
+                lockAmount,
+                newExpiry
+            );
 
-            await contract
-                .connect(signer)
-                .increaseLockPosition(lockAmount, newExpiry)
+            await pendle.approve(contract.address, INF).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+
+            await vePendle
+                .increaseLockPosition(pendleBalanceBefore, newExpiry)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const pendleBalanceAfter = await pendle.balanceOf(signer.address);
             expect(pendleBalanceBefore.sub(pendleBalanceAfter)).toEqBN(lockAmount);
+
+            const positionDataAfter = await vePendle.positionData(signerAddress);
+            expect(positionDataAfter.amount).toEqBN(positionDataBefore.amount.add(lockAmount));
+            expect(positionDataAfter.expiry).toEqBN(newExpiry);
+
+            expect(simulatedVePendleAmount).toEqBN(await vePendle.balanceOf(signerAddress), DEFAULT_EPSILON);
         });
 
         // Can only test withdraw by advancing the time on a local fork

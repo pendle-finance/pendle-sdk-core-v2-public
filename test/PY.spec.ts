@@ -1,6 +1,6 @@
 import { PtEntity, YtEntity, Multicall } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, describeWithMulticall } from './util/testUtils';
-import './util/bigNumberMatcher';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
+import { describeWithMulticall } from './util/testHelper';
 
 describe('PY', () => {
     const currentMarket = currentConfig.market;

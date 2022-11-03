@@ -1,8 +1,10 @@
 import { PendleERC20 } from '@pendle/core-v2/typechain-types';
-import { BigNumber as BN, BigNumberish, constants } from 'ethers';
-import { ERC20, Address, MarketEntity, WrappedContract } from '../../src';
+import { BigNumber as BN, BigNumberish } from 'ethers';
+import { ERC20, Address, MarketEntity, WrappedContract, bnMin, Multicall } from '../../src';
 import { isNativeToken } from '../../src/entities/helper';
-import { ACTIVE_CHAIN_ID, networkConnection, BLOCK_CONFIRMATION } from './testUtils';
+import { INF } from './constants';
+import { ACTIVE_CHAIN_ID, networkConnection, BLOCK_CONFIRMATION, USE_HARDHAT_RPC, currentConfig } from './testEnv';
+import { inspect } from 'util';
 
 type EntitiesMapType = {
     [entity: Address]: WrappedContract<PendleERC20>;
@@ -11,7 +13,10 @@ type EntitiesMapType = {
 const ERC20_CREATE_HANDLER = {
     get: function (target: EntitiesMapType, address: Address) {
         if (target[address] === undefined) {
-            target[address] = new ERC20(address, ACTIVE_CHAIN_ID, networkConnection).contract;
+            target[address] = new ERC20(address, ACTIVE_CHAIN_ID, {
+                ...networkConnection,
+                multicall: currentConfig.multicall,
+            }).contract;
         }
         return target[address];
     },
@@ -37,7 +42,7 @@ export async function getTotalSupply(token: Address): Promise<BN> {
 
 export async function getAllowance(token: Address, user: Address, spender: Address): Promise<BN> {
     if (isNativeToken(token)) {
-        return constants.MaxUint256;
+        return INF;
     }
     return ERC20_ENTITIES[token].allowance(user, spender);
 }
@@ -49,12 +54,16 @@ export async function approveHelper(token: Address, user: Address, amount: BigNu
     await ERC20_ENTITIES[token].approve(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 }
 
+export async function approveInfHelper(token: Address, user: Address) {
+    await approveHelper(token, user, INF);
+}
+
 export async function transferHelper(token: Address, user: Address, amount: BN) {
     await ERC20_ENTITIES[token].transfer(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 }
 
-export function minBigNumber(a: BN, b: BN): BN {
-    return a.lt(b) ? a : b;
+export function bnMinAsBn(a: BN, b: BN): BN {
+    return BN.from(bnMin(a, b));
 }
 
 export async function getERC20Name(token: Address): Promise<string> {
@@ -87,35 +96,25 @@ export async function stalkAccount(user: Address, markets: any[]) {
     }
 }
 
-export const DEFAULT_SWAP_AMOUNT = BN.from(10).pow(15);
+export async function evm_snapshot(): Promise<string> {
+    if (!USE_HARDHAT_RPC) throw new Error('evm_snapshot is only available when using hardhat rpc');
+    return networkConnection.provider.send('evm_snapshot', []);
+}
 
-export const MAX_PT_SWAP_AMOUNT = BN.from(10).pow(6);
-export const MAX_YT_SWAP_AMOUNT = BN.from(10).pow(6);
+export async function evm_revert(snapshotId: string): Promise<void> {
+    if (!USE_HARDHAT_RPC) throw new Error('evm_revert is only available when using hardhat rpc');
+    return networkConnection.provider.send('evm_revert', [snapshotId]);
+}
 
-export const MAX_SY_SWAP_AMOUNT = BN.from(10).pow(8);
+export function print(message: any): void {
+    console.log(inspect(message, { showHidden: false, depth: null, colors: true }));
+}
 
-export const MARKET_SWAP_FACTOR = 50; // swap amount at most (market balance / 50)
-
-export const USER_BALANCE_FACTOR = 5;
-
-export const DEFAULT_MINT_AMOUNT = BN.from(10).pow(6);
-
-export const SLIPPAGE_TYPE1 = 0.1;
-
-export const SLIPPAGE_TYPE2 = 0.5;
-
-export const SLIPPAGE_TYPE3 = 1;
-
-export const REDEEM_FACTOR = 10; // Redeem 1/10 of SY balance
-
-export const MAX_TOKEN_ADD_AMOUNT = BN.from(10).pow(8);
-
-export const MAX_PT_ADD_AMOUNT = BN.from(10).pow(8);
-
-export const MAX_YT_ADD_AMOUNT = BN.from(10).pow(8);
-
-export const MAX_SY_ADD_AMOUNT = BN.from(10).pow(8);
-
-export const REMOVE_LIQUIDITY_FACTOR = 40; // Remove 1/40 of LP balance from liquidity pool
-
-export const REMOVE_LIQUIDITY_FACTOR_ZAP = 40_000; // Bigger than REMOVE_LIQUIDITY_FACTOR because zap involves swapping
+export function describeWithMulticall(fn: (multicall: Multicall | undefined) => any) {
+    if (process.env.DISABLE_TEST_WITH_MULTICALL !== '1') {
+        describe('with multicall', () => fn(currentConfig.multicall));
+    }
+    if (process.env.DISABLE_TEST_WITHOUT_MULTICALL !== '1') {
+        describe('without multicall', () => fn(undefined));
+    }
+}

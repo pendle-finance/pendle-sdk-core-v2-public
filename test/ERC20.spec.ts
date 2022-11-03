@@ -7,30 +7,27 @@ import {
     networkConnection,
     BLOCK_CONFIRMATION,
     WALLET,
-    describeWithMulticall,
-} from './util/testUtils';
-import './util/bigNumberMatcher';
+} from './util/testEnv';
+import { describeWithMulticall } from './util/testHelper';
 
 describe(ERC20, () => {
-    const usd = new ERC20(currentConfig.tokens.USDC, ACTIVE_CHAIN_ID, networkConnection);
+    const usdc = new ERC20(currentConfig.tokens.USDC, ACTIVE_CHAIN_ID, networkConnection);
     const signer = WALLET().wallet;
 
     it('#constructor', () => {
-        expect(usd).toBeInstanceOf(ERC20);
-        expect(usd.address).toBe(currentConfig.tokens.USDC);
-        expect(usd.chainId).toBe(ACTIVE_CHAIN_ID);
-        // expect(usd.contract).toBeInstanceOf(Contract);
-        // expect(usd.ERC20Contract).toBeInstanceOf(Contract);
-        expect(usd.contract.address).toBe(currentConfig.tokens.USDC);
+        expect(usdc).toBeInstanceOf(ERC20);
+        expect(usdc.address).toBe(currentConfig.tokens.USDC);
+        expect(usdc.chainId).toBe(ACTIVE_CHAIN_ID);
+        expect(usdc.contract.address).toBe(currentConfig.tokens.USDC);
     });
 
     describeWithMulticall((multicall) => {
         it('#contract', async () => {
             const [decimal, name, symbol, totalSupply] = await Promise.all([
-                usd.decimals(multicall),
-                usd.name(multicall),
-                usd.symbol(multicall),
-                usd.totalSupply(multicall),
+                usdc.decimals(multicall),
+                usdc.name(multicall),
+                usdc.symbol(multicall),
+                usdc.totalSupply(multicall),
             ]);
             expect(decimal).toBeGreaterThanOrEqual(6);
             expect(name).toBeDefined();
@@ -42,25 +39,23 @@ describe(ERC20, () => {
     describeWrite(() => {
         it('#allowance & #approve', async () => {
             const approveAmount = decimalFactor(17);
-            await usd.approve(currentConfig.marketAddress, approveAmount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+            await usdc.approve(currentConfig.marketAddress, approveAmount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-            const currentAllowance = await usd.allowance(signer.address, currentConfig.marketAddress);
+            const currentAllowance = await usdc.allowance(signer.address, currentConfig.marketAddress);
             expect(currentAllowance).toEqBN(approveAmount);
-
-            await usd.approve(currentConfig.marketAddress, 0).then((tx) => tx.wait(BLOCK_CONFIRMATION));
         });
 
         it('#balanceOf & #transfer', async () => {
             const transferAmount = 1;
-            const beforeBalance = await usd.balanceOf(signer.address);
+            const beforeBalance = await usdc.balanceOf(signer.address);
             if (beforeBalance.lt(transferAmount)) {
                 console.log('Not enough balance to test transfer');
                 return;
             }
 
-            await usd.transfer(currentConfig.marketAddress, transferAmount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+            await usdc.transfer(currentConfig.marketAddress, transferAmount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-            const afterBalance = await usd.balanceOf(signer.address);
+            const afterBalance = await usdc.balanceOf(signer.address);
             expect(beforeBalance.sub(afterBalance)).toEqBN(transferAmount);
         });
     });
