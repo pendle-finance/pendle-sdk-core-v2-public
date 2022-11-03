@@ -375,7 +375,14 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
     ): RouterMetaMethodReturnType<
         T,
         'addLiquiditySingleToken',
-        { netLpOut: BN; netPtFromSwap: BN; input: TokenInputStruct; priceImpact: BN; kybercallData: KybercallData }
+        {
+            netLpOut: BN;
+            netPtFromSwap: BN;
+            input: TokenInputStruct;
+            priceImpact: BN;
+            kybercallData: KybercallData;
+            netSyFee: BN;
+        }
     > {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
@@ -858,6 +865,24 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
         );
     }
 
+    async mintPyFromSy<T extends MetaMethodType>(
+        yt: Address | YtEntity,
+        amountSyToMint: BigNumberish,
+        slippage: number,
+        _params: RouterMetaMethodExtraParams<T> = {}
+    ) {
+        const params = this.addExtraParams(_params);
+        const ytAddr = typeof yt === 'string' ? yt : yt.address;
+        const netPyOut = await this.routerStaticCall.mintPYFromSyStatic(ytAddr, amountSyToMint);
+        return this.contract.metaCall.mintPyFromSy(
+            params.receiver,
+            ytAddr,
+            amountSyToMint,
+            calcSlippedDownAmount(netPyOut, slippage),
+            { ...params, netPyOut }
+        );
+    }
+
     async redeemPyToToken<T extends MetaMethodType>(
         yt: Address | YtEntity,
         netPyIn: BigNumberish,
@@ -898,6 +923,24 @@ export class Router<C extends WrappedContract<IPAllAction> = WrappedContract<IPA
             netTokenOut,
             ...params,
         });
+    }
+
+    async redeemPyToSy<T extends MetaMethodType>(
+        yt: Address | YtEntity,
+        amountPyToRedeem: BigNumberish,
+        slippage: number,
+        _params: RouterMetaMethodExtraParams<T>
+    ) {
+        const params = this.addExtraParams(_params);
+        const ytAddr = typeof yt === 'string' ? yt : yt.address;
+        const netSyOut = await this.routerStaticCall.redeemPYToSyStatic(ytAddr, amountPyToRedeem);
+        return this.contract.metaCall.redeemPyToSy(
+            params.receiver,
+            ytAddr,
+            amountPyToRedeem,
+            calcSlippedDownAmount(netSyOut, slippage),
+            { ...params, netSyOut }
+        );
     }
 
     async swapExactSyForYt<T extends MetaMethodType>(
