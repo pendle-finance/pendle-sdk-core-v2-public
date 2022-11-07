@@ -116,14 +116,14 @@ export abstract class BulkSellerUsageBaseStrategy implements BulkSellerUsageStra
             if ('withStrategy' in useBulk) {
                 return useBulk.withStrategy.determineByToken('auto', tokenTradeAmount, syAddress);
             }
-            return this.determineBySyLogic(useBulk.withAddress, tokenTradeAmount, syAddress);
+            return this.determineByTokenLogic(useBulk.withAddress, tokenTradeAmount, syAddress);
         }
         if (useBulk === false) {
             return NATIVE_ADDRESS_0x00;
         }
         const { bulk, totalToken, totalSy } = await this.routerStatic.getBulkSellerInfo(
-            syAddress,
-            tokenTradeAmount.token
+            tokenTradeAmount.token,
+            syAddress
         );
         if (useBulk === true) {
             return bulk;
@@ -149,8 +149,8 @@ export abstract class BulkSellerUsageBaseStrategy implements BulkSellerUsageStra
             return NATIVE_ADDRESS_0x00;
         }
         const { bulk, totalToken, totalSy } = await this.routerStatic.getBulkSellerInfo(
-            syTradeAmount.token,
             tokenAddress,
+            syTradeAmount.token
         );
         if (useBulk === true) {
             return bulk;
