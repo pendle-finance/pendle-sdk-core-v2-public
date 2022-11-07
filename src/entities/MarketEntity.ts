@@ -99,14 +99,18 @@ export class MarketEntity<C extends WrappedContract<PendleMarket> = WrappedContr
         return this.contract.metaCall.redeemRewards(userAddress, this.addExtraParams(params));
     }
 
-    async simulateRedeemRewards(userAddress: Address, multicall = this.multicall) {
-        return this.contract.multicallStatic.redeemRewards(userAddress, multicall);
+    /**
+     * This function cannot be called with multicall because it is not a `views` function.
+     * Calling with multicall will mutate the contract's state.
+     */
+    async simulateRedeemRewards(userAddress: Address) {
+        return this.contract.callStatic.redeemRewards(userAddress);
     }
 
     async simulateRedeemRewardsWithTokens(userAddress: Address, multicall = this.multicall): Promise<RawTokenAmount[]> {
         const [rewardTokens, rewards] = await Promise.all([
             this.getRewardTokens(multicall),
-            this.simulateRedeemRewards(userAddress, multicall),
+            this.simulateRedeemRewards(userAddress),
         ]);
         return Array.from(zip(rewardTokens, rewards), ([rewardToken, reward]) => ({
             token: rewardToken,
