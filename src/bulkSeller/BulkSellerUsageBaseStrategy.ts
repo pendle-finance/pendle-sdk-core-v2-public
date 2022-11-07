@@ -149,8 +149,8 @@ export abstract class BulkSellerUsageBaseStrategy implements BulkSellerUsageStra
             return NATIVE_ADDRESS_0x00;
         }
         const { bulk, totalToken, totalSy } = await this.routerStatic.getBulkSellerInfo(
+            syTradeAmount.token,
             tokenAddress,
-            syTradeAmount.token
         );
         if (useBulk === true) {
             return bulk;
