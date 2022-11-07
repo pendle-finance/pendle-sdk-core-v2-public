@@ -24,10 +24,10 @@ describe(ERC20, () => {
     describeWithMulticall((multicall) => {
         it('#contract', async () => {
             const [decimal, name, symbol, totalSupply] = await Promise.all([
-                usdc.decimals(multicall),
-                usdc.name(multicall),
-                usdc.symbol(multicall),
-                usdc.totalSupply(multicall),
+                usdc.decimals({ multicall }),
+                usdc.name({ multicall }),
+                usdc.symbol({ multicall }),
+                usdc.totalSupply({ multicall }),
             ]);
             expect(decimal).toBeGreaterThanOrEqual(6);
             expect(name).toBeDefined();

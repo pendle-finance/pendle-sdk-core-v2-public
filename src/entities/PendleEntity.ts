@@ -20,15 +20,19 @@ export type PendleEntityConfig = PendleEntityConfigOptionalAbi & {
     abi: ContractInterface;
 };
 
-export class PendleEntity<C extends WrappedContract> {
-    readonly contract: C;
+export class PendleEntity {
+    protected readonly _contract: WrappedContract;
     readonly multicall?: Multicall;
     readonly networkConnection: NetworkConnection;
 
     constructor(readonly address: Address, readonly chainId: ChainId, config: PendleEntityConfig) {
         this.multicall = config.multicall;
         this.networkConnection = copyNetworkConnection(config);
-        this.contract = createContractObject(address, config.abi, config) as C;
+        this._contract = createContractObject(address, config.abi, config);
+    }
+
+    get contract(): WrappedContract {
+        return this._contract;
     }
 
     getDefaultMetaMethodExtraParams<T extends MetaMethodType>(): MetaMethodExtraParams<T> {
@@ -37,5 +41,9 @@ export class PendleEntity<C extends WrappedContract> {
 
     addExtraParams<T extends MetaMethodType>(params: MetaMethodExtraParams<T>): MetaMethodExtraParams<T> {
         return mergeParams(this.getDefaultMetaMethodExtraParams(), params);
+    }
+
+    get entityConfig(): PendleEntityConfigOptionalAbi {
+        return { ...this.networkConnection, multicall: this.multicall };
     }
 }

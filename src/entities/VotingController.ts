@@ -15,14 +15,16 @@ import { MarketEntity } from './MarketEntity';
 
 export type VotingControllerConfig = PendleEntityConfigOptionalAbi;
 
-export class VotingController<
-    C extends WrappedContract<PendleVotingControllerUpg> = WrappedContract<PendleVotingControllerUpg>
-> extends PendleEntity<C> {
+export class VotingController extends PendleEntity {
     constructor(readonly address: Address, readonly chainId: ChainId, config: VotingControllerConfig) {
         if (!isMainchain(chainId)) {
             throw Error('Voting only available on main chain (Ethereum)');
         }
         super(address, chainId, { abi: PendleVotingControllerUpgABI, ...config });
+    }
+
+    get contract() {
+        return this._contract as WrappedContract<PendleVotingControllerUpg>;
     }
 
     static scaleWeight(weight: number): BN {

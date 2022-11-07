@@ -13,39 +13,44 @@ import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
 import type { Address, NetworkConnection, ChainId, MainchainId } from '../types';
 import { getContractAddresses, getRouterStatic } from './helper';
 import { BigNumberish } from 'ethers';
+import { Multicall } from '../multicall';
 
 export type VePendleConfig = PendleEntityConfigOptionalAbi;
 
-export class VePendle<
-    C extends WrappedContract<VotingEscrowTokenBase> = WrappedContract<VotingEscrowTokenBase>
-> extends PendleEntity<C> {
+export class VePendle extends PendleEntity {
     constructor(readonly address: Address, readonly chainId: ChainId, config: VePendleConfig) {
         super(address, chainId, { abi: VotingEscrowTokenBaseABI, ...config });
     }
 
-    async balanceOf(userAddress: Address, multicall = this.multicall) {
-        return this.contract.multicallStatic.balanceOf(userAddress, multicall);
+    get contract() {
+        return this._contract as WrappedContract<VotingEscrowTokenBase>;
     }
 
-    async positionData(userAddress: Address, multicall = this.multicall) {
-        return this.contract.multicallStatic.positionData(userAddress, multicall);
+    async balanceOf(userAddress: Address, params?: { multicall?: Multicall }) {
+        return this.contract.multicallStatic.balanceOf(userAddress, params);
     }
 
-    async totalSupplyCurrent(multicall = this.multicall) {
-        return this.contract.multicallStatic.totalSupplyStored(multicall);
+    async positionData(userAddress: Address, params?: { multicall?: Multicall }) {
+        return this.contract.multicallStatic.positionData(userAddress, params);
+    }
+
+    async totalSupplyCurrent(params?: { multicall?: Multicall }) {
+        return this.contract.multicallStatic.totalSupplyStored(params);
     }
 }
 
 export type VePendleMainchainConfig = VePendleConfig;
 
-export class VePendleMainchain<
-    C extends WrappedContract<VotingEscrowPendleMainchain> = WrappedContract<VotingEscrowPendleMainchain>
-> extends VePendle<C> {
+export class VePendleMainchain extends VePendle {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
 
     constructor(readonly address: Address, readonly chainId: MainchainId, config: VePendleMainchainConfig) {
         super(address, chainId, { abi: VotingEscrowPendleMainchainABI, ...config });
         this.routerStatic = getRouterStatic(chainId, config);
+    }
+
+    get contract() {
+        return this._contract as WrappedContract<VotingEscrowPendleMainchain>;
     }
 
     static createObject(chainId: MainchainId, networkConnection: NetworkConnection) {
@@ -56,13 +61,13 @@ export class VePendleMainchain<
         userAddress: Address,
         additionalRawAmountToLock: BigNumberish,
         newExpiry_s: BigNumberish,
-        multicall = this.multicall
+        params?: { multicall?: Multicall }
     ) {
         return this.routerStatic.multicallStatic.increaseLockPositionStatic(
             userAddress,
             additionalRawAmountToLock,
             newExpiry_s,
-            multicall
+            params
         );
     }
 

@@ -3,36 +3,41 @@ import { PendleERC20, PendleERC20ABI, MetaMethodType, WrappedContract, MetaMetho
 import type { Address, ChainId } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
+import { Multicall } from '../multicall';
 
 export type ERC20Config = PendleEntityConfigOptionalAbi;
 
-export class ERC20<C extends WrappedContract<PendleERC20> = WrappedContract<PendleERC20>> extends PendleEntity<C> {
+export class ERC20 extends PendleEntity {
     constructor(readonly address: Address, readonly chainId: ChainId, config: ERC20Config) {
         super(address, chainId, { abi: PendleERC20ABI, ...config });
     }
 
-    allowance(owner: Address, spender: Address, multicall = this.multicall): Promise<BN> {
-        return this.contract.multicallStatic.allowance(owner, spender, multicall);
+    get contract(): WrappedContract<PendleERC20> {
+        return this._contract as WrappedContract<PendleERC20>;
     }
 
-    balanceOf(account: Address, multicall = this.multicall): Promise<BN> {
-        return this.contract.multicallStatic.balanceOf(account, multicall);
+    allowance(owner: Address, spender: Address, params?: { multicall?: Multicall }): Promise<BN> {
+        return this.contract.multicallStatic.allowance(owner, spender, params);
     }
 
-    decimals(multicall = this.multicall): Promise<number> {
-        return this.contract.multicallStatic.decimals(multicall);
+    balanceOf(account: Address, params?: { multicall?: Multicall }): Promise<BN> {
+        return this.contract.multicallStatic.balanceOf(account, params);
     }
 
-    name(multicall = this.multicall): Promise<string> {
-        return this.contract.multicallStatic.name(multicall);
+    decimals(params?: { multicall?: Multicall }): Promise<number> {
+        return this.contract.multicallStatic.decimals(params);
     }
 
-    symbol(multicall = this.multicall): Promise<string> {
-        return this.contract.multicallStatic.symbol(multicall);
+    name(params?: { multicall?: Multicall }): Promise<string> {
+        return this.contract.multicallStatic.name(params);
     }
 
-    totalSupply(multicall = this.multicall): Promise<BN> {
-        return this.contract.multicallStatic.totalSupply(multicall);
+    symbol(params?: { multicall?: Multicall }): Promise<string> {
+        return this.contract.multicallStatic.symbol(params);
+    }
+
+    totalSupply(params?: { multicall?: Multicall }): Promise<BN> {
+        return this.contract.multicallStatic.totalSupply(params);
     }
 
     async approve<T extends MetaMethodType>(

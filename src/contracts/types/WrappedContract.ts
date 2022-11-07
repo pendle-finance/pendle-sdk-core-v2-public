@@ -1,7 +1,7 @@
 import { Contract } from 'ethers';
-import { Address, RemoveLastOptionalParam, AddOptionalParam, GetField } from '../../types';
+import { Address, AddParams } from '../../types';
 import { Multicall } from '../../multicall';
-import { ContractMethodNames, Signer, Provider } from './helper';
+import { ContractMethodNames, Signer, Provider, BaseCallStaticContractMethod } from './helper';
 import { MetaMethod } from './MetaMethod';
 
 export type WrappedContractConfig = { readonly multicall?: Multicall };
@@ -20,10 +20,14 @@ export interface BaseWrappedContract<C extends Contract = Contract> extends Wrap
     readonly functions: C['functions'];
     readonly callStatic: C['callStatic'];
     readonly estimateGas: C['estimateGas'];
+    readonly filters: C['filters'];
+    readonly queryFilter: C['queryFilter'];
     readonly multicallStatic: {
-        [P in ContractMethodNames<C>]: AddOptionalParam<
-            RemoveLastOptionalParam<GetField<C['callStatic'], P>>,
-            Multicall
+        // Use the following to prevent write methods having multicall ability
+        // [P in ContractMethodNames<C> as ViewMethodName<C, P>]: AddParams<
+        [P in ContractMethodNames<C>]: AddParams<
+            BaseCallStaticContractMethod<C, P>,
+            [multicallParams?: { multicall?: Multicall }]
         >;
     };
     readonly metaCall: { [P in ContractMethodNames<C>]: MetaMethod<C, P> };

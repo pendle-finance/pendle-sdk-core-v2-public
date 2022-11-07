@@ -24,15 +24,19 @@ export class SDK {
      * @param pys PT and YT token addresses that we want to check
      * @returns UserPYInfo object array representing user's PY positions
      */
-    async getUserPYPositionsByPYs(user: Address, pys: Address[], multicall = this.multicall): Promise<UserPyInfo[]> {
-        return this.routerStatic.multicallStatic.getUserPYPositionsByPYs(user, pys, multicall);
+    async getUserPYPositionsByPYs(
+        user: Address,
+        pys: Address[],
+        params?: { multicall?: Multicall }
+    ): Promise<UserPyInfo[]> {
+        return this.routerStatic.multicallStatic.getUserPYPositionsByPYs(user, pys, params);
     }
 
     async getUserMarketPositions(
         user: Address,
         markets: Address[],
-        multicall = this.multicall
+        params?: { multicall?: Multicall }
     ): Promise<UserMarketInfo[]> {
-        return this.routerStatic.multicallStatic.getUserMarketPositions(user, markets, multicall);
+        return this.routerStatic.multicallStatic.getUserMarketPositions(user, markets, params);
     }
 }

@@ -14,6 +14,7 @@ import { getRouterStatic, isNativeToken, getGlobalBulkSellerUsageStrategyGetter 
 import { calcSlippedDownAmount } from './math';
 import { ERC20, ERC20Config } from './ERC20';
 import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
+import { Multicall } from '../multicall';
 
 export type UserSyInfo = {
     balance: BN;
@@ -24,7 +25,7 @@ export type SyEntityConfig = ERC20Config & {
     bulkSellerUsage?: BulkSellerUsageStrategy;
 };
 
-export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase>> extends ERC20<C> {
+export class SyEntity extends ERC20 {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     readonly bulkSellerUsage: BulkSellerUsageStrategy;
 
@@ -32,6 +33,14 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
         super(address, chainId, { abi: SYBaseABI, ...config });
         this.routerStatic = getRouterStatic(chainId, config);
         this.bulkSellerUsage = config.bulkSellerUsage ?? getGlobalBulkSellerUsageStrategyGetter(this.routerStatic);
+    }
+
+    get contract() {
+        return this._contract as WrappedContract<SYBase>;
+    }
+
+    override get entityConfig(): SyEntityConfig {
+        return { ...this.networkConnection, multicall: this.multicall, bulkSellerUsage: this.bulkSellerUsage };
     }
 
     /**
@@ -91,28 +100,31 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
         );
     }
 
-    async userInfo(user: Address, multicall = this.multicall): Promise<UserSyInfo> {
-        return this.routerStatic.multicallStatic.getUserSYInfo(this.address, user, multicall);
+    async userInfo(user: Address, params?: { multicall?: Multicall }): Promise<UserSyInfo> {
+        return this.routerStatic.multicallStatic.getUserSYInfo(this.address, user, params);
     }
 
-    async getTokensIn(multicall = this.multicall) {
-        return this.contract.multicallStatic.getTokensIn(multicall);
+    async getTokensIn(params?: { multicall?: Multicall }) {
+        return this.contract.multicallStatic.getTokensIn(params);
     }
 
-    async getTokensOut(multicall = this.multicall) {
-        return this.contract.multicallStatic.getTokensOut(multicall);
+    async getTokensOut(params?: { multicall?: Multicall }) {
+        return this.contract.multicallStatic.getTokensOut(params);
     }
 
-    async getRewardTokens(multicall = this.multicall) {
-        return this.contract.multicallStatic.getRewardTokens(multicall);
+    async getRewardTokens(params?: { multicall?: Multicall }) {
+        return this.contract.multicallStatic.getRewardTokens(params);
     }
 
     async previewRedeem(
         tokenOut: Address,
         amountSharesToRedeem: BigNumberish,
-        useBulk: UseBulkMode = 'auto',
-        multicall = this.multicall
+        params?: {
+            multicall?: Multicall;
+            useBulk?: UseBulkMode;
+        }
     ): Promise<BN> {
+        const useBulk = params?.useBulk ?? 'auto';
         return this.bulkSellerUsage.tryInvokeWithSy(
             useBulk,
             { token: this.address, amount: amountSharesToRedeem },
@@ -123,7 +135,7 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
                     tokenOut,
                     amountSharesToRedeem,
                     bulkSellerAddress,
-                    multicall
+                    params
                 )
         );
     }
@@ -131,9 +143,12 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
     async previewDeposit(
         tokenIn: Address,
         amountTokenToDeposit: BigNumberish,
-        useBulk: UseBulkMode = 'auto',
-        multicall = this.multicall
+        params?: {
+            multicall?: Multicall;
+            useBulk: UseBulkMode;
+        }
     ): Promise<BN> {
+        const useBulk = params?.useBulk ?? 'auto';
         return this.bulkSellerUsage.tryInvokeWithToken(
             useBulk,
             { token: tokenIn, amount: amountTokenToDeposit },
@@ -144,7 +159,7 @@ export class SyEntity<C extends WrappedContract<SYBase> = WrappedContract<SYBase
                     tokenIn,
                     amountTokenToDeposit,
                     bulkSellerAddress,
-                    multicall
+                    params
                 )
         );
     }

@@ -13,8 +13,9 @@ import { BigNumber as BN } from 'ethers';
 import { getRouterStatic, zip } from './helper';
 import { ERC20, ERC20Config } from './ERC20';
 import { ChainId } from '../types';
-import { SyEntity } from './SyEntity';
-import { PtEntity } from './PtEntity';
+import { SyEntity, SyEntityConfig } from './SyEntity';
+import { PtEntity, PtEntityConfig } from './PtEntity';
+import { Multicall } from '../multicall';
 
 export type MarketInfo = {
     pt: Address;
@@ -34,7 +35,7 @@ export type UserMarketInfo = {
 
 export type MarketEntityConfig = ERC20Config;
 
-export class MarketEntity<C extends WrappedContract<PendleMarket> = WrappedContract<PendleMarket>> extends ERC20<C> {
+export class MarketEntity extends ERC20 {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     protected _ptAddress: Address | undefined;
     protected _syAddress: Address | undefined;
@@ -44,55 +45,59 @@ export class MarketEntity<C extends WrappedContract<PendleMarket> = WrappedContr
         this.routerStatic = getRouterStatic(chainId, config);
     }
 
-    async getMarketInfo(multicall = this.multicall): Promise<MarketInfo> {
-        const res = await this.routerStatic.multicallStatic.getMarketInfo(this.address, multicall);
+    get contract() {
+        return this._contract as WrappedContract<PendleMarket>;
+    }
+
+    async getMarketInfo(params?: { multicall?: Multicall }): Promise<MarketInfo> {
+        const res = await this.routerStatic.multicallStatic.getMarketInfo(this.address, params);
         this._ptAddress = res.pt;
         this._syAddress = res.sy;
         return res;
     }
 
-    async getUserMarketInfo(user: Address, multicall = this.multicall): Promise<UserMarketInfo> {
-        return this.routerStatic.multicallStatic.getUserMarketInfo(this.address, user, multicall);
+    async getUserMarketInfo(user: Address, params?: { multicall?: Multicall }): Promise<UserMarketInfo> {
+        return this.routerStatic.multicallStatic.getUserMarketInfo(this.address, user, params);
     }
 
-    async SY(multicall = this.multicall): Promise<Address> {
-        return this._syAddress ?? this.getMarketInfo(multicall).then(({ sy }) => sy);
+    async SY(params?: { multicall?: Multicall }): Promise<Address> {
+        return this._syAddress ?? this.getMarketInfo(params).then(({ sy }) => sy);
     }
 
     /**
      * Alias for Market#SY
      * @see MarketEntity#SY
      */
-    async sy(multicall = this.multicall) {
-        return this.SY(multicall);
+    async sy(params?: { multicall?: Multicall }) {
+        return this.SY(params);
     }
 
-    async PT(multicall = this.multicall): Promise<Address> {
-        return this._ptAddress ?? this.getMarketInfo(multicall).then(({ pt }) => pt);
+    async PT(params?: { multicall?: Multicall }): Promise<Address> {
+        return this._ptAddress ?? this.getMarketInfo(params).then(({ pt }) => pt);
     }
 
     /**
      * Alias for Market#PT
      * @see MarketEntity#PT
      */
-    async pt(multicall = this.multicall) {
-        return this.PT(multicall);
+    async pt(params?: { multicall?: Multicall }) {
+        return this.PT(params);
     }
 
     // Consideration: more efficient result caching?
-    async syEntity(multicall = this.multicall) {
-        const syAddr = await this.SY(multicall);
-        return new SyEntity(syAddr, this.chainId, this.networkConnection);
+    async syEntity(params?: { multicall?: Multicall; entityConfig?: SyEntityConfig }) {
+        const syAddr = await this.SY(params);
+        return new SyEntity(syAddr, this.chainId, params?.entityConfig ?? this.entityConfig);
     }
 
     // Consideration: more efficient result caching?
-    async ptEntity(multicall = this.multicall) {
-        const ptAddr = await this.PT(multicall);
-        return new PtEntity(ptAddr, this.chainId, this.networkConnection);
+    async ptEntity(params?: { multicall?: Multicall; entityConfig?: PtEntityConfig }) {
+        const ptAddr = await this.PT(params);
+        return new PtEntity(ptAddr, this.chainId, params?.entityConfig ?? this.entityConfig);
     }
 
-    async getRewardTokens(multicall = this.multicall) {
-        return this.contract.multicallStatic.getRewardTokens(multicall);
+    async getRewardTokens(params?: { multicall?: Multicall }) {
+        return this.contract.multicallStatic.getRewardTokens(params);
     }
 
     async redeemRewards<T extends MetaMethodType>(userAddress: Address, params: MetaMethodExtraParams<T> = {}) {
@@ -107,9 +112,12 @@ export class MarketEntity<C extends WrappedContract<PendleMarket> = WrappedContr
         return this.contract.callStatic.redeemRewards(userAddress);
     }
 
-    async simulateRedeemRewardsWithTokens(userAddress: Address, multicall = this.multicall): Promise<RawTokenAmount[]> {
+    async simulateRedeemRewardsWithTokens(
+        userAddress: Address,
+        params?: { multicall?: Multicall }
+    ): Promise<RawTokenAmount[]> {
         const [rewardTokens, rewards] = await Promise.all([
-            this.getRewardTokens(multicall),
+            this.getRewardTokens(params),
             this.simulateRedeemRewards(userAddress),
         ]);
         return Array.from(zip(rewardTokens, rewards), ([rewardToken, reward]) => ({
@@ -118,11 +126,11 @@ export class MarketEntity<C extends WrappedContract<PendleMarket> = WrappedContr
         }));
     }
 
-    async activeBalance(userAddress: Address, multicall = this.multicall): Promise<BN> {
-        return this.contract.multicallStatic.activeBalance(userAddress, multicall);
+    async activeBalance(userAddress: Address, params?: { multicall?: Multicall }): Promise<BN> {
+        return this.contract.multicallStatic.activeBalance(userAddress, params);
     }
 
-    async readState(multicall = this.multicall) {
-        return this.contract.multicallStatic.readState(multicall);
+    async readState(params?: { multicall?: Multicall }) {
+        return this.contract.multicallStatic.readState(params);
     }
 }

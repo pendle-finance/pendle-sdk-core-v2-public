@@ -4,10 +4,12 @@ import type { Address, ChainId } from '../types';
 
 export type YieldContractFactoryConfig = PendleEntityConfigOptionalAbi;
 
-export class YieldContractFactory<
-    C extends WrappedContract<PendleYieldContractFactory> = WrappedContract<PendleYieldContractFactory>
-> extends PendleEntity<C> {
+export class YieldContractFactory extends PendleEntity {
     constructor(readonly address: Address, readonly chainId: ChainId, config: YieldContractFactoryConfig) {
         super(address, chainId, { abi: PendleYieldContractFactoryABI, ...config });
+    }
+
+    get contract() {
+        return this._contract as WrappedContract<PendleYieldContractFactory>;
     }
 }

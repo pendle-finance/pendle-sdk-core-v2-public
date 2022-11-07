@@ -2,13 +2,15 @@ import { Contract, CallOverrides } from 'ethers';
 import { Multicall } from '../../multicall';
 import { ContractMethodNames, MetaMethodType, EthersContractMethod } from './helper';
 import { ContractMetaMethod } from '../ContractMetaMethod';
-import { SyncReturnType } from '../../types';
+import { SyncReturnType, ConcatTuple } from '../../types';
 
 export type MetaMethod<C extends Contract, MethodName extends ContractMethodNames<C>> = C[MethodName] extends (
     ...params: [...infer Head, any?]
 ) => any
     ? <D extends MetaMethodExtraParams<MetaMethodType> = MetaMethodExtraParams<'send'>>(
-          ...params: [...MetaMethodParams<Head, C, MethodName, D>, D?]
+          ...metaParam:
+              | ConcatTuple<Head, [metaMethodData?: D]> // for keeping the param name
+              | [...MetaMethodParams<Head, C, MethodName, D>, D?] // for additional types
       ) => D extends MetaMethodExtraParams<infer T> ? MetaMethodReturnType<T, C, MethodName, D> : never
     : never;
 

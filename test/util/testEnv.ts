@@ -4,8 +4,6 @@ import { Wallet } from 'ethers';
 import { CHAIN_ID, Multicall } from '../../src';
 import './bigNumberMatcher';
 
-import assert from 'assert';
-
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
 import FUJI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-USDC-FEB-2ND.json';
 import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-WETH-DEC-1ST.json';
@@ -22,14 +20,15 @@ export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID!) as TestChain
 const LOCAL_CHAIN_ID = 31337;
 export const USE_HARDHAT_RPC = process.env.USE_LOCAL === '1';
 
-export function describeWrite(name: string, fn: () => void): void;
-export function describeWrite(fn: () => void): void;
-export function describeWrite(name: string | (() => void), fn?: () => void) {
-    if (typeof name !== 'string') {
-        fn = name;
-        name = 'Write function';
+export function describeWrite(...params: [fn: () => void] | [name: string, fn: () => void]) {
+    let name = 'Write function';
+    let fn: () => void;
+
+    if (params.length === 1) {
+        [fn] = params;
+    } else {
+        [name, fn] = params;
     }
-    assert(fn !== undefined);
 
     const fnWithSnapshot = () => {
         let globalSnapshotId = '';
@@ -42,7 +41,7 @@ export function describeWrite(name: string | (() => void), fn?: () => void) {
             await evm_revert(globalSnapshotId);
         });
 
-        fn!();
+        fn();
     };
 
     (process.env.INCLUDE_WRITE === '1' && USE_HARDHAT_RPC ? describe : describe.skip)(name, fnWithSnapshot);

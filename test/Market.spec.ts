@@ -40,7 +40,7 @@ describe(MarketEntity, () => {
 
         it('#marketInfo', async () => {
             const [marketInfo, exchangeRate] = await Promise.all([
-                market.getMarketInfo(multicall),
+                market.getMarketInfo({ multicall }),
                 Multicall.wrap(routerStatic, multicall).callStatic.getExchangeRate(market.address),
             ]);
 
@@ -53,8 +53,8 @@ describe(MarketEntity, () => {
 
         it('#userMarketInfo', async () => {
             const [marketInfo, userMarketInfo, userBalance, syInfo, syExchangeRate] = await Promise.all([
-                market.getMarketInfo(multicall),
-                market.getUserMarketInfo(sender.address, multicall),
+                market.getMarketInfo({ multicall }),
+                market.getUserMarketInfo(sender.address, { multicall }),
                 Multicall.wrap(market.contract, multicall).callStatic.balanceOf(sender.address),
                 sy.contract.assetInfo(),
                 sy.contract.exchangeRate(),
@@ -83,7 +83,7 @@ describe(MarketEntity, () => {
         });
 
         it('#getSY and #getPT', async () => {
-            const [sy, pt] = await Promise.all([market.syEntity(multicall), market.ptEntity(multicall)]);
+            const [sy, pt] = await Promise.all([market.syEntity({ multicall }), market.ptEntity({ multicall })]);
             expect(sy.address).toBe(currentMarket.SY);
             expect(pt.address).toBe(currentMarket.PT);
         });

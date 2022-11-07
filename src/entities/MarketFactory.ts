@@ -4,8 +4,12 @@ import type { Address, ChainId } from '../types';
 
 export type MarketFactoryConfig = PendleEntityConfigOptionalAbi;
 
-export class MarketFactory<C extends WrappedContract<PendleMarketFactory>> extends PendleEntity<C> {
+export class MarketFactory extends PendleEntity {
     constructor(readonly address: Address, readonly chainId: ChainId, config: MarketFactoryConfig) {
         super(address, chainId, { abi: PendleMarketFactoryABI, ...config });
+    }
+
+    get contract() {
+        return this._contract as WrappedContract<PendleMarketFactory>;
     }
 }

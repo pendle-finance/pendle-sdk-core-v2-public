@@ -3,14 +3,13 @@ import type { Address, ChainId } from '../types';
 import type { UserPyInfo, PyInfo } from './YtEntity';
 import { getRouterStatic } from './helper';
 import { ERC20, ERC20Config } from './ERC20';
-import { YtEntity } from './YtEntity';
-import { SyEntity } from './SyEntity';
+import { YtEntity, YtEntityConfig } from './YtEntity';
+import { SyEntity, SyEntityConfig } from './SyEntity';
+import { Multicall } from '../multicall';
 
 export type PtEntityConfig = ERC20Config;
 
-export class PtEntity<
-    C extends WrappedContract<PendlePrincipalToken> = WrappedContract<PendlePrincipalToken>
-> extends ERC20<C> {
+export class PtEntity extends ERC20 {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
 
     constructor(readonly address: Address, readonly chainId: ChainId, config: PtEntityConfig) {
@@ -18,45 +17,49 @@ export class PtEntity<
         this.routerStatic = getRouterStatic(chainId, config);
     }
 
-    async userInfo(user: Address, multicall = this.multicall): Promise<UserPyInfo> {
-        return this.routerStatic.multicallStatic.getUserPYInfo(this.address, user, multicall);
+    get contract() {
+        return this._contract as WrappedContract<PendlePrincipalToken>;
     }
 
-    async getInfo(multicall = this.multicall): Promise<PyInfo> {
-        return this.routerStatic.multicallStatic.getPYInfo(this.address, multicall);
+    async userInfo(user: Address, params?: { multicall?: Multicall }): Promise<UserPyInfo> {
+        return this.routerStatic.multicallStatic.getUserPYInfo(this.address, user, params);
     }
 
-    async SY(multicall = this.multicall): Promise<Address> {
-        return this.contract.multicallStatic.SY(multicall);
+    async getInfo(params?: { multicall?: Multicall }): Promise<PyInfo> {
+        return this.routerStatic.multicallStatic.getPYInfo(this.address, params);
+    }
+
+    async SY(params?: { multicall?: Multicall }): Promise<Address> {
+        return this.contract.multicallStatic.SY(params);
     }
 
     /**
      * Alias for PT#SY
      * @see PtEntity#SY
      */
-    async sy(multicall = this.multicall) {
-        return this.SY(multicall);
+    async sy(params?: { multicall?: Multicall }) {
+        return this.SY(params);
     }
 
-    async YT(multicall = this.multicall): Promise<Address> {
-        return this.contract.multicallStatic.YT(multicall);
+    async YT(params?: { multicall?: Multicall }): Promise<Address> {
+        return this.contract.multicallStatic.YT(params);
     }
 
     /**
      * Alias for PT#YT
      * @see PtEntity#YT
      */
-    async yt(multicall = this.multicall) {
-        return this.YT(multicall);
+    async yt(params?: { multicall?: Multicall }) {
+        return this.YT(params);
     }
 
-    async syEntity(multicall = this.multicall) {
-        const syAddr = await this.SY(multicall);
-        return new SyEntity(syAddr, this.chainId, this.networkConnection);
+    async syEntity(params?: { multicall?: Multicall; entityConfig?: SyEntityConfig }) {
+        const syAddr = await this.SY(params);
+        return new SyEntity(syAddr, this.chainId, params?.entityConfig ?? this.entityConfig);
     }
 
-    async ytEntity(multicall = this.multicall) {
-        const ytAddr = await this.YT(multicall);
-        return new YtEntity(ytAddr, this.chainId, this.networkConnection);
+    async ytEntity(params?: { multicall?: Multicall; entityConfig?: YtEntityConfig }) {
+        const ytAddr = await this.YT(params);
+        return new YtEntity(ytAddr, this.chainId, params?.entityConfig ?? this.entityConfig);
     }
 }

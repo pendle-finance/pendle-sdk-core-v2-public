@@ -10,9 +10,9 @@ describe('PY', () => {
     describeWithMulticall((multicall) => {
         it('#userInfo & #contract', async () => {
             const [userInfo, userPtBalance, userYtBalance, interestToken, interestAmount] = await Promise.all([
-                pt.userInfo(currentConfig.deployer, multicall),
-                pt.balanceOf(currentConfig.deployer, multicall),
-                yt.balanceOf(currentConfig.deployer, multicall),
+                pt.userInfo(currentConfig.deployer, { multicall }),
+                pt.balanceOf(currentConfig.deployer, { multicall }),
+                yt.balanceOf(currentConfig.deployer, { multicall }),
                 Multicall.wrap(yt.contract, multicall).callStatic.SY(),
                 Multicall.wrap(yt.contract, multicall).callStatic.userInterest(currentConfig.deployer),
             ]);
@@ -40,8 +40,8 @@ describe('PY', () => {
 
         it('#YT.userInfo & PT.userInfo', async () => {
             const [ytUserInfo, ptUserInfo] = await Promise.all([
-                yt.userInfo(currentConfig.deployer, multicall),
-                pt.userInfo(currentConfig.deployer, multicall),
+                yt.userInfo(currentConfig.deployer, { multicall }),
+                pt.userInfo(currentConfig.deployer, { multicall }),
             ]);
 
             expect(ytUserInfo).toEqual(ptUserInfo);
@@ -49,9 +49,9 @@ describe('PY', () => {
 
         it('#getInfo & #contract', async () => {
             const [ptInfo, ytInfo, ytTotalSupply, ytIndexCurrent, rewardToken] = await Promise.all([
-                pt.getInfo(multicall),
-                yt.getInfo(multicall),
-                yt.totalSupply(multicall),
+                pt.getInfo({ multicall }),
+                yt.getInfo({ multicall }),
+                yt.totalSupply({ multicall }),
                 Multicall.wrap(yt.contract, multicall).callStatic.pyIndexCurrent(),
                 Multicall.wrap(yt.contract, multicall).callStatic.getRewardTokens(),
             ]);

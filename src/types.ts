@@ -25,8 +25,10 @@ export type EthersJsErrorCode = ErrorCode[keyof ErrorCode];
 export { ChainId } from './constants';
 export type MainchainId = typeof CHAIN_ID.ETHEREUM | typeof CHAIN_ID.FUJI;
 
+export type ConcatTuple<A, B> = A extends any[] ? (B extends any[] ? [...A, ...B] : never) : never;
 export type GetField<Obj extends {}, Key, Default = never> = Key extends keyof Obj ? Obj[Key] : Default;
 export type RemoveLastOptional<T extends any[]> = T extends [...infer Head, any?] ? Head : T;
+export type AddOptional<T extends any[], P> = [...T, P?];
 
 /**
  * The below utility types use infer instead of Parameters and ReturnType.
@@ -65,8 +67,10 @@ export type RemoveLastOptionalParam<Fn extends (...params: any[]) => any> = Fn e
 ) => infer R
     ? (...params: Head) => R
     : Fn;
-export type AddOptionalParam<Fn extends (...params: any[]) => any, P> = Fn extends (...params: infer Params) => infer R
-    ? (...params: [...Params, P?]) => R
+export type AddParams<Fn extends (...params: any[]) => any, P extends any[]> = Fn extends (
+    ...params: infer Params
+) => infer R
+    ? (...params: ConcatTuple<Params, P>) => R
     : Fn;
 
 export type SyncReturnType<Fn extends (...params: any[]) => Promise<any>> = Awaited<ReturnType<Fn>>;

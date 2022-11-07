@@ -52,24 +52,22 @@ export function wrapContractObject<C extends Contract>(
     const metaCall: any = {};
     const methods: any = {};
 
-    // Typing here just to make sure all the fields exist
-    let result: Record<keyof BaseWrappedContract, any>;
-
     for (const fragment of contract.interface.fragments) {
         if (fragment.type !== 'function') {
             continue;
         }
         const name = fragment.name;
-        multicallStatic[name] = async function (...args: any[]) {
+        multicallStatic[name] = async (...args: any[]) => {
             const argCount = fragment.inputs.length;
             if (args.length !== argCount && args.length !== argCount + 1) {
                 throw new PendleSdkError(`Argument count mismatch for multicall static of ${name}.`);
             }
-            const multicall: Multicall | undefined = args.length === argCount ? this.multicall : args.pop();
+            const multicall: Multicall | undefined =
+                args.length === argCount ? result.multicall : args.pop().multicall ?? result.multicall;
             return Multicall.wrap(result, multicall).callStatic[name](...(args as any));
         };
 
-        metaCall[name] = async function (...args: any[]) {
+        metaCall[name] = async (...args: any[]) => {
             const argCount = fragment.inputs.length;
             if (args.length !== argCount && args.length !== argCount + 1) {
                 throw new PendleSdkError(`Argument count mismatch for meta call of ${name}.`);
@@ -95,9 +93,8 @@ export function wrapContractObject<C extends Contract>(
         methods[name] = wrapFunction(contract[name]);
     }
 
-    result = {
-        ...methods,
-        ...config,
+    const result: Record<keyof BaseWrappedContract, any> = {
+        multicall: config.multicall,
         [ORIGINAL_CONTRACT]: contract,
         address: contract.address,
         provider: contract.provider,
@@ -106,17 +103,15 @@ export function wrapContractObject<C extends Contract>(
         functions: wrapFunctions(contract.functions),
         callStatic: wrapFunctions(contract.callStatic),
         estimateGas: wrapFunctions(contract.estimateGas, wrapEstimateGasFunction),
+        filters: contract.filters,
+        queryFilter: contract.queryFilter,
         multicallStatic,
         metaCall,
         connect(signerOrProvider: string | Signer | Provider) {
-            return wrapContractObject(contract.connect(signerOrProvider), {
-                multicall: result.multicall,
-            });
+            return wrapContractObject(contract.connect(signerOrProvider), config);
         },
         attach(addressOrName: string) {
-            return wrapContractObject(contract.attach(addressOrName), {
-                multicall: result.metaCall,
-            });
+            return wrapContractObject(contract.attach(addressOrName), config);
         },
     };
 
@@ -124,6 +119,7 @@ export function wrapContractObject<C extends Contract>(
         enumerable: false,
         value: contract,
     });
+    Object.assign(result, methods);
 
     return result as WrappedContract<C>;
 }

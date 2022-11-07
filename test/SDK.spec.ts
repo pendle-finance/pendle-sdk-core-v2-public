@@ -25,9 +25,9 @@ describe(SDK, () => {
     describeWithMulticall((multicall) => {
         it('#getUserPYPositionsByPYs', async () => {
             const [userPYPositions, userPtBalance, userYtBalance, interestToken, interestAmount] = await Promise.all([
-                sdk.getUserPYPositionsByPYs(currentConfig.deployer, [ytAddress, ptAddress], multicall),
-                pt.balanceOf(currentConfig.deployer, multicall),
-                yt.balanceOf(currentConfig.deployer, multicall),
+                sdk.getUserPYPositionsByPYs(currentConfig.deployer, [ytAddress, ptAddress], { multicall }),
+                pt.balanceOf(currentConfig.deployer, { multicall }),
+                yt.balanceOf(currentConfig.deployer, { multicall }),
                 Multicall.wrap(yt.contract, multicall).callStatic.SY(),
                 Multicall.wrap(yt.contract, multicall).callStatic.userInterest(currentConfig.deployer),
             ]);
@@ -64,8 +64,8 @@ describe(SDK, () => {
 
         it('#userPositionMarket', async () => {
             const [userPositionMarket, marketInfo, userBalance, syInfo, syExchangeRate] = await Promise.all([
-                sdk.getUserMarketPositions(currentConfig.deployer, [currentConfig.marketAddress], multicall),
-                market.getMarketInfo(multicall),
+                sdk.getUserMarketPositions(currentConfig.deployer, [currentConfig.marketAddress], { multicall }),
+                market.getMarketInfo({ multicall }),
                 Multicall.wrap(market.contract, multicall).callStatic.balanceOf(currentConfig.deployer),
                 sy.contract.assetInfo(),
                 sy.contract.exchangeRate(),

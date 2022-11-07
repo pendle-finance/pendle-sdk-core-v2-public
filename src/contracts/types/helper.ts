@@ -1,4 +1,4 @@
-import { Contract, providers } from 'ethers';
+import { Contract, providers, ContractTransaction } from 'ethers';
 import { WrappedContract } from './WrappedContract';
 import { GetField } from '../../types';
 
@@ -37,3 +37,34 @@ export type ContractLike<T extends Contract = Contract> = T | WrappedContract<T>
 export type ContractMethodNames<C extends ContractLike> = keyof {
     [K in keyof C['callStatic'] as string extends K ? never : K]: true;
 };
+
+export type BaseCallStaticContractMethod<C extends ContractLike, MethodName extends ContractMethodNames<C>> = GetField<
+    C['callStatic'],
+    MethodName
+> extends (...params: [...infer Body, any?]) => infer R
+    ? (...params: Body) => R
+    : never;
+
+export type BaseCallStaticContractMethods<C extends ContractLike> = {
+    [MethodName in ContractMethodNames<C>]: BaseCallStaticContractMethod<C, MethodName>;
+};
+
+export type IsViewMethodName<C extends ContractLike, MethodName extends ContractMethodNames<C>> = GetField<
+    C,
+    MethodName
+> extends (...params: any[]) => Promise<ContractTransaction>
+    ? false
+    : true;
+
+export type ViewMethodName<C extends ContractLike, MethodName extends ContractMethodNames<C>> = IsViewMethodName<
+    C,
+    MethodName
+> extends true
+    ? MethodName
+    : never;
+export type NonViewMethodName<C extends ContractLike, MethodName extends ContractMethodNames<C>> = IsViewMethodName<
+    C,
+    MethodName
+> extends false
+    ? MethodName
+    : never;

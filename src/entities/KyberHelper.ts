@@ -144,7 +144,7 @@ export class KyberHelper {
     async checkSwappablePair(
         srcTokenAddress: Address,
         dstTokenAddress: Address,
-        multicall?: Multicall
+        params?: { multicall?: Multicall }
     ): Promise<boolean> {
         srcTokenAddress = srcTokenAddress.toLowerCase();
         dstTokenAddress = dstTokenAddress.toLowerCase();
@@ -158,7 +158,7 @@ export class KyberHelper {
         }
 
         const res = (async () => {
-            const decimals = await new ERC20(srcTokenAddress, this.chainId, this.networkConnection).decimals(multicall);
+            const decimals = await new ERC20(srcTokenAddress, this.chainId, this.networkConnection).decimals(params);
             const testAmount = BN.from(10).pow(decimals).mul(100);
             const kybercallData = await this.makeCall({ token: srcTokenAddress, amount: testAmount }, dstTokenAddress);
             const kybercall = kybercallData.encodedSwapData;

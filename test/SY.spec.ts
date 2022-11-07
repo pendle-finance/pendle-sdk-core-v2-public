@@ -27,7 +27,7 @@ describe(SyEntity, () => {
     describeWithMulticall((multicall) => {
         it('#userInfo & #contract', async () => {
             const [userInfo, rewardTokens, rewardAmounts] = await Promise.all([
-                sy.userInfo(currentConfig.deployer, multicall),
+                sy.userInfo(currentConfig.deployer, { multicall }),
                 Multicall.wrap(sy.contract, multicall).callStatic.getRewardTokens(),
                 Multicall.wrap(sy.contract, multicall).callStatic.accruedRewards(currentConfig.deployer),
             ]);
