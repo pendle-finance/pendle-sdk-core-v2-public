@@ -8,12 +8,10 @@ import {
     MetaMethodType,
     MetaMethodExtraParams,
 } from '../contracts';
-
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
-import type { Address, NetworkConnection, ChainId, MainchainId } from '../types';
+import type { Address, NetworkConnection, ChainId, MainchainId, MulticallStaticParams } from '../types';
 import { getContractAddresses, getRouterStatic } from './helper';
 import { BigNumberish } from 'ethers';
-import { Multicall } from '../multicall';
 
 export type VePendleConfig = PendleEntityConfigOptionalAbi;
 
@@ -26,15 +24,15 @@ export class VePendle extends PendleEntity {
         return this._contract as WrappedContract<VotingEscrowTokenBase>;
     }
 
-    async balanceOf(userAddress: Address, params?: { multicall?: Multicall }) {
+    async balanceOf(userAddress: Address, params?: MulticallStaticParams) {
         return this.contract.multicallStatic.balanceOf(userAddress, params);
     }
 
-    async positionData(userAddress: Address, params?: { multicall?: Multicall }) {
+    async positionData(userAddress: Address, params?: MulticallStaticParams) {
         return this.contract.multicallStatic.positionData(userAddress, params);
     }
 
-    async totalSupplyCurrent(params?: { multicall?: Multicall }) {
+    async totalSupplyCurrent(params?: MulticallStaticParams) {
         return this.contract.multicallStatic.totalSupplyStored(params);
     }
 }
@@ -61,7 +59,7 @@ export class VePendleMainchain extends VePendle {
         userAddress: Address,
         additionalRawAmountToLock: BigNumberish,
         newExpiry_s: BigNumberish,
-        params?: { multicall?: Multicall }
+        params?: MulticallStaticParams
     ) {
         return this.routerStatic.multicallStatic.increaseLockPositionStatic(
             userAddress,

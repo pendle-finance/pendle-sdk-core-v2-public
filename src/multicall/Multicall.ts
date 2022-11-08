@@ -1,12 +1,12 @@
 import type { BlockTag } from '@ethersproject/abstract-provider';
 import type { Provider } from '@ethersproject/providers';
 import type { Multicall2 } from './Multicall2';
-import { Contract } from 'ethers';
+import { Contract, CallOverrides } from 'ethers';
 import { FunctionFragment, Interface } from 'ethers/lib/utils';
 import { MULTICALL_ADDRESSES } from '../constants';
 import { abi as MulticallABI } from './Multicall2.json';
-import { ChainId, RemoveLastOptionalParam } from '../types';
-import { EthersJsError } from '../errors';
+import { ChainId, RemoveLastOptionalParam, AddParams } from '../types';
+import { EthersJsError, PendleSdkError } from '../errors';
 import { ContractLike, getInnerContract } from '../contracts';
 
 /**
@@ -51,16 +51,34 @@ class ContractCall {
     }
 }
 
+export type MulticallOverrides = {
+    blockTag?: BlockTag | Promise<BlockTag>;
+};
+
 export type MulticallStatic<T extends Contract> = {
     callStatic: {
-        [P in keyof T['callStatic']]: RemoveLastOptionalParam<T['callStatic'][P]>;
+        [P in keyof T['callStatic']]: AddParams<
+            RemoveLastOptionalParam<T['callStatic'][P]>,
+            [multicallOverrides?: MulticallOverrides]
+        >;
     };
 };
 
 export class Multicall {
+    static isMulticallOverrides(overrides?: CallOverrides): overrides is MulticallOverrides | undefined {
+        if (overrides === undefined) {
+            return true;
+        }
+        for (const key in Object.keys(overrides)) {
+            if (key !== 'blockTag' && (overrides as any)[key] != undefined) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private multicallContract: Multicall2;
-    public currentBatch: MulticallBatch | undefined = undefined;
-    readonly blockTag: BlockTag;
+    public readonly batchMap = new Map<BlockTag, MulticallBatch>();
     readonly callLimit: number;
 
     // Note: this symbol is unique for each Multicall instance
@@ -79,19 +97,8 @@ export class Multicall {
         return multicall ? multicall.wrap(contract) : (contract as unknown as MulticallStatic<T>);
     }
 
-    constructor({
-        chainId,
-        provider,
-        blockTag,
-        callLimit,
-    }: {
-        chainId: ChainId;
-        provider: Provider;
-        blockTag?: BlockTag;
-        callLimit?: number;
-    }) {
+    constructor({ chainId, provider, callLimit }: { chainId: ChainId; provider: Provider; callLimit?: number }) {
         this.multicallContract = new Contract(MULTICALL_ADDRESSES[chainId], MulticallABI, provider) as Multicall2;
-        this.blockTag = blockTag ?? 'latest';
         this.callLimit = callLimit ?? DEFAULT_CALL_LIMIT;
     }
 
@@ -141,27 +148,38 @@ export class Multicall {
         const funcs: Record<string, (...args: any[]) => Promise<any>> = {};
 
         for (const [_, fn] of Object.entries(functions)) {
-            funcs[fn.name] = (...params: any[]) => {
+            funcs[fn.name] = async (...params: any[]) => {
+                let blockTag: BlockTag = 'latest';
+                if (params.length === fn.inputs.length + 1) {
+                    const overrides: MulticallOverrides = params.pop() ?? {};
+                    if (!Multicall.isMulticallOverrides(overrides)) {
+                        throw new PendleSdkError('Overrides for multicall should contain only blockTag property');
+                    }
+                    blockTag = (await overrides.blockTag) ?? 'latest';
+                }
+
                 const contractCall = new ContractCall({
                     fragment: fn,
                     address: contract.address,
                     params,
                 });
                 const res = new Promise((resolve, reject) => {
-                    if (this.currentBatch === undefined) {
-                        this.currentBatch = new MulticallBatch(this);
+                    let currentBatch = this.batchMap.get(blockTag);
+                    if (currentBatch === undefined) {
+                        currentBatch = new MulticallBatch(this, blockTag);
+                        this.batchMap.set(blockTag, currentBatch);
                     }
-                    const dataPos = this.currentBatch.pendingContractCalls.length;
-                    this.currentBatch.pendingContractCalls.push(contractCall);
-                    this.currentBatch.promise
+                    const dataPos = currentBatch.pendingContractCalls.length;
+                    currentBatch.pendingContractCalls.push(contractCall);
+                    currentBatch.promise
                         .then((currentResult) =>
                             currentResult[dataPos] instanceof Error
                                 ? reject(currentResult[dataPos])
                                 : resolve(currentResult[dataPos])
                         )
                         .catch(reject);
-                    if (this.currentBatch.pendingContractCalls.length >= this.callLimit) {
-                        this.currentBatch = undefined;
+                    if (currentBatch.pendingContractCalls.length >= this.callLimit) {
+                        this.batchMap.delete(blockTag);
                     }
                 });
 
@@ -182,17 +200,17 @@ class MulticallBatch {
     readonly pendingContractCalls: ContractCall[] = [];
     readonly promise: Promise<any[]>;
 
-    constructor(private readonly multicallInstance: Multicall) {
+    constructor(private readonly multicallInstance: Multicall, readonly blockTag: BlockTag = 'latest') {
         this.promise = Promise.resolve().then(async () => {
             // effects
 
             // instance comparison
-            if (this.multicallInstance.currentBatch === this) {
-                this.multicallInstance.currentBatch = undefined;
+            if (this.multicallInstance.batchMap.get(this.blockTag) === this) {
+                this.multicallInstance.batchMap.delete(this.blockTag);
             }
 
             // interactions
-            return this.multicallInstance.doAggregateCalls(this.pendingContractCalls, this.multicallInstance.blockTag);
+            return this.multicallInstance.doAggregateCalls(this.pendingContractCalls, this.blockTag);
         });
     }
 }

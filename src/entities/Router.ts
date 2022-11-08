@@ -52,6 +52,9 @@ type FixedRouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtr
     receiver: Address | typeof ContractMetaMethod.utils.getContractSignerAddress;
     useBulk: UseBulkMode;
     entityConfig: RouterConfig;
+
+    // this is a copy of this type, but used for the inner callStatic to calculate stuff
+    forCallStatic: Omit<FixedRouterMetaMethodExtraParams<T>, 'forCallStatic' | 'method'>;
 };
 
 export type RouterMetaMethodReturnType<
@@ -110,11 +113,26 @@ export class Router extends PendleEntity {
     }
 
     getDefaultMetaMethodExtraParams<T extends MetaMethodType>(): FixedRouterMetaMethodExtraParams<T> {
-        return {
-            ...super.getDefaultMetaMethodExtraParams(),
+        const superParams = super.getDefaultMetaMethodExtraParams<T>();
+        const method = superParams.method;
+
+        const baseResult = {
+            ...superParams,
             receiver: ContractMetaMethod.utils.getContractSignerAddress,
             useBulk: 'auto',
             entityConfig: this.entityConfig,
+            method: undefined,
+        } as const;
+
+        const forCallStatic = {
+            ...baseResult,
+            overrides: { ...superParams.overrides, gasPrice: undefined, gasLimit: undefined, value: undefined },
+        };
+
+        return {
+            ...baseResult,
+            method,
+            forCallStatic,
         };
     }
 
@@ -252,7 +270,12 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<T, 'addLiquidityDualSyAndPt', { netLpOut: BN; netSyUsed: BN; netPtUsed: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.addLiquidityDualSyAndPtStatic(marketAddr, syDesired, ptDesired, params);
+        const res = await this.routerStaticCall.addLiquidityDualSyAndPtStatic(
+            marketAddr,
+            syDesired,
+            ptDesired,
+            params.forCallStatic
+        );
         const { netLpOut } = res;
         return this.contract.metaCall.addLiquidityDualSyAndPt(
             params.receiver,
@@ -277,8 +300,8 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.chainId, this.entityConfig);
         }
         const marketAddr = market.address;
-        const sy = await market.syEntity(params);
-        const tokenMintSyList = await sy.getTokensIn(params);
+        const sy = await market.syEntity(params.forCallStatic);
+        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
         const overrides = { value: isNativeToken(tokenIn) ? tokenDesired : undefined };
 
         const res = await this.inputParams(
@@ -288,7 +311,14 @@ export class Router extends PendleEntity {
             params.useBulk,
             ({ token, amount }, input) =>
                 this.routerStaticCall
-                    .addLiquidityDualTokenAndPtStatic(marketAddr, token, amount, input.bulk, ptDesired, params)
+                    .addLiquidityDualTokenAndPtStatic(
+                        marketAddr,
+                        token,
+                        amount,
+                        input.bulk,
+                        ptDesired,
+                        params.forCallStatic
+                    )
                     .then((data) => ({ netOut: data.netLpOut, ...data }))
         );
         if (res === undefined) {
@@ -317,7 +347,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.addLiquiditySinglePtStatic(marketAddr, netPtIn, params);
+        const res = await this.routerStaticCall.addLiquiditySinglePtStatic(marketAddr, netPtIn, params.forCallStatic);
         const { netLpOut, netPtToSwap } = res;
         const approxParam = Router.guessInApproxParams(netPtToSwap, slippage);
         return this.contract.metaCall.addLiquiditySinglePt(
@@ -342,7 +372,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.addLiquiditySingleSyStatic(marketAddr, netSyIn, params);
+        const res = await this.routerStaticCall.addLiquiditySingleSyStatic(marketAddr, netSyIn, params.forCallStatic);
         const { netPtFromSwap, netLpOut } = res;
         const approxParam = Router.guessOutApproxParams(netPtFromSwap, slippage);
 
@@ -379,8 +409,8 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.chainId, this.entityConfig);
         }
         const marketAddr = market.address;
-        const sy = await market.syEntity(params);
-        const tokenMintSyList = await sy.getTokensIn(params);
+        const sy = await market.syEntity(params.forCallStatic);
+        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
 
         const res = await this.inputParams(
             { token: tokenIn, amount: netTokenIn },
@@ -389,7 +419,13 @@ export class Router extends PendleEntity {
             params.useBulk,
             ({ amount }, input) =>
                 this.routerStaticCall
-                    .addLiquiditySingleBaseTokenStatic(marketAddr, input.tokenMintSy, amount, input.bulk, params)
+                    .addLiquiditySingleBaseTokenStatic(
+                        marketAddr,
+                        input.tokenMintSy,
+                        amount,
+                        input.bulk,
+                        params.forCallStatic
+                    )
                     .then((data) => ({ netOut: data.netLpOut, ...data }))
         );
         if (res === undefined) {
@@ -418,7 +454,11 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<T, 'removeLiquidityDualSyAndPt', { netSyOut: BN; netPtOut: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.removeLiquidityDualSyAndPtStatic(marketAddr, lpToRemove, params);
+        const res = await this.routerStaticCall.removeLiquidityDualSyAndPtStatic(
+            marketAddr,
+            lpToRemove,
+            params.forCallStatic
+        );
         const { netSyOut, netPtOut } = res;
         return this.contract.metaCall.removeLiquidityDualSyAndPt(
             params.receiver,
@@ -454,13 +494,13 @@ export class Router extends PendleEntity {
         }
 
         const marketAddr = market.address;
-        const getSyPromise = market.syEntity(params);
+        const getSyPromise = market.syEntity(params.forCallStatic);
 
         // TODO reduce RPC call
         const [sy, tokenRedeemSy, { netSyOut: intermediateSy, netPtOut }] = await Promise.all([
             getSyPromise,
-            getSyPromise.then((sy) => sy.getTokensOut(params)),
-            this.routerStaticCall.removeLiquidityDualSyAndPtStatic(marketAddr, lpToRemove, params),
+            getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
+            this.routerStaticCall.removeLiquidityDualSyAndPtStatic(marketAddr, lpToRemove, params.forCallStatic),
         ]);
 
         const res = await this.outputParams(
@@ -499,7 +539,11 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.removeLiquiditySinglePtStatic(marketAddr, lpToRemove, params);
+        const res = await this.routerStaticCall.removeLiquiditySinglePtStatic(
+            marketAddr,
+            lpToRemove,
+            params.forCallStatic
+        );
         const { netPtOut, netPtFromSwap } = res;
         return this.contract.metaCall.removeLiquiditySinglePt(
             params.receiver,
@@ -519,7 +563,11 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<T, 'removeLiquiditySingleSy', { netSyOut: BN; netSyFee: BN; priceImpact: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.removeLiquiditySingleSyStatic(marketAddr, lpToRemove, params);
+        const res = await this.routerStaticCall.removeLiquiditySingleSyStatic(
+            marketAddr,
+            lpToRemove,
+            params.forCallStatic
+        );
         const { netSyOut } = res;
         return this.contract.metaCall.removeLiquiditySingleSy(
             params.receiver,
@@ -554,11 +602,11 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.chainId, this.entityConfig);
         }
         const marketAddr = market.address;
-        const getSyPromise = market.syEntity(params);
+        const getSyPromise = market.syEntity(params.forCallStatic);
         const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact }] = await Promise.all([
             getSyPromise,
-            getSyPromise.then((sy) => sy.getTokensOut(params)),
-            this.routerStaticCall.removeLiquiditySingleSyStatic(marketAddr, lpToRemove, params),
+            getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
+            this.routerStaticCall.removeLiquiditySingleSyStatic(marketAddr, lpToRemove, params.forCallStatic),
         ]);
 
         const res = await this.outputParams(
@@ -593,7 +641,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<T, 'swapExactPtForSy', { netSyOut: BN; netSyFee: BN; priceImpact: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params);
+        const res = await this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params.forCallStatic);
         const { netSyOut } = res;
         return this.contract.metaCall.swapExactPtForSy(
             params.receiver,
@@ -616,7 +664,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapPtForExactSyStatic(marketAddr, exactSyOut, params);
+        const res = await this.routerStaticCall.swapPtForExactSyStatic(marketAddr, exactSyOut, params.forCallStatic);
         const { netPtIn } = res;
         const approxParam = Router.guessInApproxParams(netPtIn, slippage);
         return this.contract.metaCall.swapPtForExactSy(
@@ -637,7 +685,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<T, 'swapSyForExactPt', { netSyIn: BN; netSyFee: BN; priceImpact: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapSyForExactPtStatic(marketAddr, exactPtOut, params);
+        const res = await this.routerStaticCall.swapSyForExactPtStatic(marketAddr, exactPtOut, params.forCallStatic);
         const { netSyIn } = res;
         return this.contract.metaCall.swapSyForExactPt(
             params.receiver,
@@ -670,8 +718,8 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.chainId, this.entityConfig);
         }
         const marketAddr = market.address;
-        const sy = await market.syEntity(params);
-        const tokenMintSyList = await sy.getTokensIn(params);
+        const sy = await market.syEntity(params.forCallStatic);
+        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
         const overrides = {
             value: isNativeToken(tokenIn) ? netTokenIn : undefined,
         };
@@ -682,12 +730,12 @@ export class Router extends PendleEntity {
             params.useBulk,
             ({ token, amount }, input) =>
                 this.routerStaticCall
-                    .swapExactBaseTokenForPtStatic(marketAddr, token, amount, input.bulk, params)
+                    .swapExactBaseTokenForPtStatic(marketAddr, token, amount, input.bulk, params.forCallStatic)
                     .then((data) => ({ netOut: data.netPtOut, ...data }))
         );
 
         if (res === undefined) {
-            const pt = await market.pt(params);
+            const pt = await market.pt(params.forCallStatic);
             throw NoRouteFoundError.action('swap', tokenIn, pt);
         }
 
@@ -711,7 +759,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<T, 'swapExactSyForPt', { netPtOut: BN; netSyFee: BN; priceImpact: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactSyForPtStatic(marketAddr, exactSyIn, params);
+        const res = await this.routerStaticCall.swapExactSyForPtStatic(marketAddr, exactSyIn, params.forCallStatic);
         const { netPtOut } = res;
         return this.contract.metaCall.swapExactSyForPt(
             params.receiver,
@@ -740,7 +788,7 @@ export class Router extends PendleEntity {
         }
         const syAddr = sy.address;
         const syEntity = sy; // force type here
-        const tokenMintSyList = await sy.getTokensIn(params);
+        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
         const res = await this.inputParams(
             { token: tokenIn, amount: netTokenIn },
             syAddr,
@@ -748,7 +796,7 @@ export class Router extends PendleEntity {
             params.useBulk,
             ({ token, amount }, input) =>
                 syEntity
-                    .previewDeposit(token, amount, { ...params, useBulk: { withAddress: input.bulk } })
+                    .previewDeposit(token, amount, { ...params.forCallStatic, useBulk: { withAddress: input.bulk } })
                     .then((netOut) => ({ netOut }))
         );
         if (res === undefined) {
@@ -780,7 +828,7 @@ export class Router extends PendleEntity {
         if (typeof sy === 'string') {
             sy = new SyEntity(sy, this.chainId, this.entityConfig);
         }
-        const tokenRedeemSyList = await sy.getTokensOut(params);
+        const tokenRedeemSyList = await sy.getTokensOut(params.forCallStatic);
         const res = await this.outputParams(
             { token: sy.address, amount: netSyIn },
             tokenOut,
@@ -818,8 +866,8 @@ export class Router extends PendleEntity {
             yt = new YtEntity(yt, this.chainId, this.entityConfig);
         }
         const ytAddr = yt.address;
-        const sy = await yt.syEntity(params);
-        const tokenMintSyList = await sy.getTokensIn(params);
+        const sy = await yt.syEntity(params.forCallStatic);
+        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
         const overrides = { value: isNativeToken(tokenIn) ? netTokenIn : undefined };
         const res = await this.inputParams(
             { token: tokenIn, amount: netTokenIn },
@@ -828,7 +876,7 @@ export class Router extends PendleEntity {
             params.useBulk,
             ({ token, amount }, input) =>
                 this.routerStaticCall
-                    .mintPYFromBaseStatic(ytAddr, token, amount, input.bulk, params)
+                    .mintPYFromBaseStatic(ytAddr, token, amount, input.bulk, params.forCallStatic)
                     .then((netOut) => ({ netOut }))
         );
         if (res === undefined) {
@@ -879,11 +927,11 @@ export class Router extends PendleEntity {
             yt = new YtEntity(yt, this.chainId, this.entityConfig);
         }
         const ytAddr = yt.address;
-        const getSyPromise = yt.syEntity(params);
+        const getSyPromise = yt.syEntity(params.forCallStatic);
         const [sy, tokenRedeemSyList, pyIndex] = await Promise.all([
             getSyPromise,
-            getSyPromise.then((sy) => sy.getTokensOut(params)),
-            yt.pyIndexCurrent(params),
+            getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
+            yt.pyIndexCurrent(params.forCallStatic),
         ]);
         const res = await this.outputParams(
             { token: sy.address, amount: new PyIndex(pyIndex).assetToSy(netPyIn) },
@@ -935,7 +983,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactSyForYtStatic(marketAddr, exactSyIn, params);
+        const res = await this.routerStaticCall.swapExactSyForYtStatic(marketAddr, exactSyIn, params.forCallStatic);
         const { netYtOut } = res;
         const approxParam = Router.guessOutApproxParams(netYtOut, slippage);
         return this.contract.metaCall.swapExactSyForYt(
@@ -960,7 +1008,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapYtForExactSyStatic(marketAddr, exactSyOut, params);
+        const res = await this.routerStaticCall.swapYtForExactSyStatic(marketAddr, exactSyOut, params.forCallStatic);
         const { netYtIn } = res;
         const approxParam = Router.guessInApproxParams(netYtIn, slippage);
         return this.contract.metaCall.swapYtForExactSy(
@@ -996,11 +1044,11 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.chainId, this.entityConfig);
         }
         const marketAddr = market.address;
-        const getSyPromise = market.syEntity(params);
+        const getSyPromise = market.syEntity(params.forCallStatic);
         const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact }] = await Promise.all([
             getSyPromise,
-            getSyPromise.then((sy) => sy.getTokensOut(params)),
-            this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params),
+            getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
+            this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params.forCallStatic),
         ]);
         const res = await this.outputParams(
             { token: sy.address, amount: intermediateSy },
@@ -1011,7 +1059,7 @@ export class Router extends PendleEntity {
             { syEntity: sy }
         );
         if (res === undefined) {
-            throw NoRouteFoundError.action('swap', await market.pt(params), tokenOut);
+            throw NoRouteFoundError.action('swap', await market.pt(params.forCallStatic), tokenOut);
         }
 
         const { output, netOut: netTokenOut } = res;
@@ -1034,7 +1082,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<T, 'swapExactYtForSy', { netSyOut: BN; netSyFee: BN; priceImpact: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params);
+        const res = await this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params.forCallStatic);
         const { netSyOut } = res;
         return this.contract.metaCall.swapExactYtForSy(
             params.receiver,
@@ -1053,7 +1101,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<T, 'swapSyForExactYt', { netSyIn: BN; netSyFee: BN; priceImpact: BN }> {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapSyForExactYtStatic(marketAddr, exactYtOut, params);
+        const res = await this.routerStaticCall.swapSyForExactYtStatic(marketAddr, exactYtOut, params.forCallStatic);
         const { netSyIn } = res;
         return this.contract.metaCall.swapSyForExactYt(
             params.receiver,
@@ -1086,8 +1134,8 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.chainId, this.entityConfig);
         }
         const marketAddr = market.address;
-        const sy = await market.syEntity(params);
-        const tokenMintSyList = await sy.getTokensIn(params);
+        const sy = await market.syEntity(params.forCallStatic);
+        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
         const overrides = { value: isNativeToken(tokenIn) ? netTokenIn : undefined };
         const res = await this.inputParams(
             { token: tokenIn, amount: netTokenIn },
@@ -1096,12 +1144,12 @@ export class Router extends PendleEntity {
             params.useBulk,
             ({ token, amount }, input) =>
                 this.routerStaticCall
-                    .swapExactBaseTokenForYtStatic(marketAddr, token, amount, input.bulk, params)
+                    .swapExactBaseTokenForYtStatic(marketAddr, token, amount, input.bulk, params.forCallStatic)
                     .then((data) => ({ netOut: data.netYtOut, ...data }))
         );
         if (res === undefined) {
             // TODO: One additional call to get the yt address, does it worth it?
-            let yt = await market.ptEntity().then((pt) => pt.yt(params));
+            let yt = await market.ptEntity().then((pt) => pt.yt(params.forCallStatic));
             throw NoRouteFoundError.action('swap', tokenIn, yt);
         }
 
@@ -1140,11 +1188,11 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.chainId, this.entityConfig);
         }
         const marketAddr = market.address;
-        const getSyPromise = market.syEntity(params);
+        const getSyPromise = market.syEntity(params.forCallStatic);
         const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact }] = await Promise.all([
             getSyPromise,
-            getSyPromise.then((sy) => sy.getTokensOut(params)),
-            this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params),
+            getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
+            this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params.forCallStatic),
         ]);
         const res = await this.outputParams(
             { token: sy.address, amount: intermediateSy },
@@ -1156,7 +1204,7 @@ export class Router extends PendleEntity {
         );
         if (res === undefined) {
             // TODO: One additional call to get the yt address, does it worth it?
-            let yt = await market.ptEntity().then((pt) => pt.yt(params));
+            let yt = await market.ptEntity().then((pt) => pt.yt(params.forCallStatic));
             throw NoRouteFoundError.action('swap', yt, tokenOut);
         }
 
@@ -1189,7 +1237,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactYtForPtStatic(marketAddr, exactYtIn, params);
+        const res = await this.routerStaticCall.swapExactYtForPtStatic(marketAddr, exactYtIn, params.forCallStatic);
         const { netPtOut, totalPtSwapped } = res;
         const approxParam = Router.guessInApproxParams(totalPtSwapped, slippage);
         return this.contract.metaCall.swapExactYtForPt(
@@ -1220,7 +1268,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactPtForYtStatic(marketAddr, exactPtIn, params);
+        const res = await this.routerStaticCall.swapExactPtForYtStatic(marketAddr, exactPtIn, params.forCallStatic);
         const { netYtOut, totalPtToSwap } = res;
         const approxParam = Router.guessInApproxParams(totalPtToSwap, slippage);
         return this.contract.metaCall.swapExactPtForYt(

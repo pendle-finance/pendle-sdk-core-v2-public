@@ -10,7 +10,7 @@ import {
     Provider,
     EthersContractMethod,
 } from './types';
-import { getInnerContract } from './helper';
+import { MulticallStaticParams } from '../types';
 
 export type ContractMetaMethodCallback = <
     T extends MetaMethodType,
@@ -74,19 +74,27 @@ export class ContractMetaMethod<
     }
 
     /**
-     * Note: this method removes overrides from the arguments.
+     * Note:
+     * When the overrides has only blockTag property (that is, when Multicall.isMulticallOverrides(overrides) is true),
+     * multicall is used. Otherwise callStatic is used.
      */
-    multicallStatic(multicall?: Multicall): MetaMethodReturnType<'multicallStatic', C, M, Data> {
+    multicallStatic({ multicall, overrides }: MulticallStaticParams = {}): MetaMethodReturnType<
+        'multicallStatic',
+        C,
+        M,
+        Data
+    > {
         multicall = multicall ?? this.data.multicall;
+        // TODO make this some how use the same logic as contract.multicallStatic
         const callback = ((...args: any[]) => {
-            const argCount = getInnerContract(this.contract).interface.functions[this.methodName as string].inputs
-                .length;
-            if (args.length === argCount + 1) {
-                args.pop();
-            }
-            Multicall.wrap(this.contract, multicall).callStatic[this.methodName as string](...(args as any));
+            const argCount = this.contract.functionFragmentsMapping[this.methodName].inputs.length;
+            let overrides = (args.length === argCount + 1 ? args.pop() : undefined) ?? {};
+            return Multicall.wrap(this.contract, multicall).callStatic[this.methodName as string](
+                ...(args as any),
+                overrides
+            );
         }) as EthersContractMethod<C, 'multicallStatic', M>;
-        return this.callback('multicallStatic', callback, this.data, this);
+        return this.callback('multicallStatic', callback, this.addOverridesToData(overrides), this);
     }
 
     estimateGas(overrides?: CallOverrides): MetaMethodReturnType<'estimateGas', C, M, Data> {

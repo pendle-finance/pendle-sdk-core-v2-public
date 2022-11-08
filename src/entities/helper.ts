@@ -2,7 +2,7 @@ import type { RouterStatic } from '@pendle/core-v2/typechain-types';
 import { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/RouterStatic.sol/RouterStatic.json';
 import type { ContractAddresses } from '../constants';
 import { CHAIN_ID, NATIVE_ADDRESS_0x00, NATIVE_ADDRESS_0xEE, CONTRACT_ADDRESSES, KYBER_API } from '../constants';
-import { Address, ChainId, MainchainId, NetworkConnection } from '../types';
+import { Address, ChainId, MainchainId, NetworkConnection, MulticallStaticParams } from '../types';
 import { PendleSdkError } from '../errors';
 import { createContractObject, WrappedContract, ContractObjectConfig } from '../contracts';
 import { BulkSellerUsageStrategy, NeverUseBulkSellerUsageStrategy } from './../bulkSeller';
@@ -41,6 +41,13 @@ export function copyNetworkConnection(networkConnection: NetworkConnection): Net
         return { signer: networkConnection.signer };
     }
     return { provider: networkConnection.provider, signer: networkConnection.signer };
+}
+
+export function mergeMulticallStaticParams(
+    lhs: MulticallStaticParams,
+    rhs: MulticallStaticParams
+): MulticallStaticParams {
+    return { ...lhs, ...rhs };
 }
 
 export function getRouterStatic(chainId: ChainId, config: ContractObjectConfig): WrappedContract<RouterStatic> {

@@ -7,14 +7,13 @@ import {
     mergeMetaMethodExtraParams as mergeParams,
     MetaMethodExtraParams,
 } from '../contracts';
-import type { Address, RawTokenAmount, ChainId } from '../types';
+import type { Address, RawTokenAmount, ChainId, MulticallStaticParams } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
 import { getRouterStatic, isNativeToken, getGlobalBulkSellerUsageStrategyGetter } from './helper';
 import { calcSlippedDownAmount } from './math';
 import { ERC20, ERC20Config } from './ERC20';
 import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
-import { Multicall } from '../multicall';
 
 export type UserSyInfo = {
     balance: BN;
@@ -100,27 +99,26 @@ export class SyEntity extends ERC20 {
         );
     }
 
-    async userInfo(user: Address, params?: { multicall?: Multicall }): Promise<UserSyInfo> {
+    async userInfo(user: Address, params?: MulticallStaticParams): Promise<UserSyInfo> {
         return this.routerStatic.multicallStatic.getUserSYInfo(this.address, user, params);
     }
 
-    async getTokensIn(params?: { multicall?: Multicall }) {
+    async getTokensIn(params?: MulticallStaticParams) {
         return this.contract.multicallStatic.getTokensIn(params);
     }
 
-    async getTokensOut(params?: { multicall?: Multicall }) {
+    async getTokensOut(params?: MulticallStaticParams) {
         return this.contract.multicallStatic.getTokensOut(params);
     }
 
-    async getRewardTokens(params?: { multicall?: Multicall }) {
+    async getRewardTokens(params?: MulticallStaticParams) {
         return this.contract.multicallStatic.getRewardTokens(params);
     }
 
     async previewRedeem(
         tokenOut: Address,
         amountSharesToRedeem: BigNumberish,
-        params?: {
-            multicall?: Multicall;
+        params?: MulticallStaticParams & {
             useBulk?: UseBulkMode;
         }
     ): Promise<BN> {
@@ -143,8 +141,7 @@ export class SyEntity extends ERC20 {
     async previewDeposit(
         tokenIn: Address,
         amountTokenToDeposit: BigNumberish,
-        params?: {
-            multicall?: Multicall;
+        params?: MulticallStaticParams & {
             useBulk: UseBulkMode;
         }
     ): Promise<BN> {

@@ -1,5 +1,12 @@
 import { PendleContractErrorMessageHandler } from './type';
 import { PendleContractErrorType, PendleContractErrorParams } from './helperTypes';
+import { BN } from '../types';
+
+// https://stackoverflow.com/a/2901298, but I replaced "," with "_"
+// "_" works in both Solidity and Javascript
+function formatNumberString(num: string) {
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, '_');
+}
 
 export function createPendlecontractErrorMessageHandler(
     defaultHandler: Partial<PendleContractErrorMessageHandler>,
@@ -16,7 +23,14 @@ export function createPendlecontractErrorMessageHandler(
 }
 
 function joinArgs(args: any[]) {
-    return args.map((arg) => String(arg)).join(', ');
+    return args
+        .map((arg) => {
+            if (arg instanceof BN) {
+                return formatNumberString(String(arg));
+            }
+            return String(arg);
+        })
+        .join(', ');
 }
 
 // TODO write more descriptive error messages.

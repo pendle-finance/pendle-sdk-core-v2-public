@@ -1,4 +1,4 @@
-import { decimalFactor, MetaMethodReturnType, Router, SyEntity, SyncReturnType } from '../src';
+import { decimalFactor, MetaMethodReturnType, Router, SyEntity, MetaMethodData } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -51,7 +51,6 @@ type LpBalanceSnapshot = {
 };
 
 type MetaMethodCallback = () => MetaMethodReturnType<'meta-method', IPAllAction, any, any>;
-type MetaMethodData<T extends MetaMethodCallback> = SyncReturnType<T>['data'];
 type SkipTxCheckCallback<T extends MetaMethodCallback> = (readerData: MetaMethodData<T>) => boolean;
 
 describe(Router, () => {

@@ -1,8 +1,7 @@
-import { Contract, CallOverrides } from 'ethers';
-import { Multicall } from '../../multicall';
+import { Contract } from 'ethers';
 import { ContractMethodNames, MetaMethodType, EthersContractMethod } from './helper';
 import { ContractMetaMethod } from '../ContractMetaMethod';
-import { SyncReturnType, ConcatTuple } from '../../types';
+import { SyncReturnType, ConcatTuple, MulticallStaticParams } from '../../types';
 
 export type MetaMethod<C extends Contract, MethodName extends ContractMethodNames<C>> = C[MethodName] extends (
     ...params: [...infer Head, any?]
@@ -30,10 +29,8 @@ export type MetaMethodParams<
     ? [...MetaMethodParams<Body, C, MethodName, Data>, MetaMethodParam<Last, C, MethodName, Data>]
     : [];
 
-export type MetaMethodExtraParams<T extends MetaMethodType = 'send'> = {
+export type MetaMethodExtraParams<T extends MetaMethodType = 'send'> = MulticallStaticParams & {
     method?: T;
-    overrides?: CallOverrides;
-    multicall?: Multicall;
 };
 
 export type MetaMethodReturnType<
@@ -48,3 +45,10 @@ export type MetaMethodReturnType<
         ? ContractMetaMethod<C, MethodName, Data>
         : SyncReturnType<EthersContractMethod<C, T, MethodName>>
 >;
+
+// TODO make T extends some type for type safety nd IDE support.
+export type MetaMethodData<T> = T extends (..._params: any[]) => infer R
+    ? MetaMethodData<Awaited<R>>
+    : T extends ContractMetaMethod<infer _C, any, infer D>
+    ? D
+    : never;

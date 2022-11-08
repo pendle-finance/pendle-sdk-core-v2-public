@@ -1,11 +1,10 @@
-import { Address, RawTokenAmount, ChainId, NetworkConnection } from '../types';
+import { Address, RawTokenAmount, ChainId, NetworkConnection, MulticallStaticParams } from '../types';
 import type { BigNumberish, BytesLike } from 'ethers';
 import { BigNumber as BN } from 'ethers';
 import { isKyberSupportedChain, isSameAddress, isNativeToken, copyNetworkConnection } from './helper';
 import { NATIVE_ADDRESS_0xEE, NATIVE_ADDRESS_0x00, KYBER_API } from '../constants';
 import axios from 'axios';
 import { ERC20 } from './ERC20';
-import { Multicall } from '../multicall';
 
 type SwappablePairResult = {
     swappable: boolean;
@@ -144,7 +143,7 @@ export class KyberHelper {
     async checkSwappablePair(
         srcTokenAddress: Address,
         dstTokenAddress: Address,
-        params?: { multicall?: Multicall }
+        params?: MulticallStaticParams
     ): Promise<boolean> {
         srcTokenAddress = srcTokenAddress.toLowerCase();
         dstTokenAddress = dstTokenAddress.toLowerCase();

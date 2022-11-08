@@ -1,5 +1,5 @@
 import { RouterStatic, WrappedContract } from '../contracts';
-import type { Address, NetworkConnection, ChainId } from '../types';
+import type { Address, NetworkConnection, ChainId, MulticallStaticParams } from '../types';
 import type { UserPyInfo } from './YtEntity';
 import type { UserMarketInfo } from './MarketEntity';
 import { getRouterStatic } from './helper';
@@ -27,7 +27,7 @@ export class SDK {
     async getUserPYPositionsByPYs(
         user: Address,
         pys: Address[],
-        params?: { multicall?: Multicall }
+        params?: MulticallStaticParams
     ): Promise<UserPyInfo[]> {
         return this.routerStatic.multicallStatic.getUserPYPositionsByPYs(user, pys, params);
     }
@@ -35,7 +35,7 @@ export class SDK {
     async getUserMarketPositions(
         user: Address,
         markets: Address[],
-        params?: { multicall?: Multicall }
+        params?: MulticallStaticParams
     ): Promise<UserMarketInfo[]> {
         return this.routerStatic.multicallStatic.getUserMarketPositions(user, markets, params);
     }

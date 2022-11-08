@@ -1,8 +1,11 @@
-import type { BigNumber as BN, BigNumberish, providers, Signer } from 'ethers';
+import type { BigNumber as BN, BigNumberish, providers, Signer, CallOverrides } from 'ethers';
 import { ErrorCode } from '@ethersproject/logger';
 import { CHAIN_ID } from './constants';
+import { Multicall } from './multicall';
 
 export { BigNumberish, BigNumber as BN } from 'ethers';
+
+export type Address = string;
 
 // Disallow missing both of the properties
 export type NetworkConnection =
@@ -10,7 +13,7 @@ export type NetworkConnection =
     | { provider?: undefined; signer: Signer }
     | { provider: providers.Provider; signer: Signer };
 
-export type Address = string;
+export type MulticallStaticParams = { multicall?: Multicall; overrides?: CallOverrides };
 
 export type RawTokenAmount<AmountType extends BigNumberish = BN> = {
     token: Address;

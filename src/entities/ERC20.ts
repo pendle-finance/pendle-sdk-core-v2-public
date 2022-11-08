@@ -1,9 +1,8 @@
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
 import { PendleERC20, PendleERC20ABI, MetaMethodType, WrappedContract, MetaMethodExtraParams } from '../contracts';
-import type { Address, ChainId } from '../types';
+import type { Address, ChainId, MulticallStaticParams } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { Multicall } from '../multicall';
 
 export type ERC20Config = PendleEntityConfigOptionalAbi;
 
@@ -16,27 +15,27 @@ export class ERC20 extends PendleEntity {
         return this._contract as WrappedContract<PendleERC20>;
     }
 
-    allowance(owner: Address, spender: Address, params?: { multicall?: Multicall }): Promise<BN> {
+    allowance(owner: Address, spender: Address, params?: MulticallStaticParams): Promise<BN> {
         return this.contract.multicallStatic.allowance(owner, spender, params);
     }
 
-    balanceOf(account: Address, params?: { multicall?: Multicall }): Promise<BN> {
+    balanceOf(account: Address, params?: MulticallStaticParams): Promise<BN> {
         return this.contract.multicallStatic.balanceOf(account, params);
     }
 
-    decimals(params?: { multicall?: Multicall }): Promise<number> {
+    decimals(params?: MulticallStaticParams): Promise<number> {
         return this.contract.multicallStatic.decimals(params);
     }
 
-    name(params?: { multicall?: Multicall }): Promise<string> {
+    name(params?: MulticallStaticParams): Promise<string> {
         return this.contract.multicallStatic.name(params);
     }
 
-    symbol(params?: { multicall?: Multicall }): Promise<string> {
+    symbol(params?: MulticallStaticParams): Promise<string> {
         return this.contract.multicallStatic.symbol(params);
     }
 
-    totalSupply(params?: { multicall?: Multicall }): Promise<BN> {
+    totalSupply(params?: MulticallStaticParams): Promise<BN> {
         return this.contract.multicallStatic.totalSupply(params);
     }
 

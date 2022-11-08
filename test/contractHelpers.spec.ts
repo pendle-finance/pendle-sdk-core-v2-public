@@ -51,6 +51,14 @@ describeWrite('Contract Helpers', () => {
         expect(allowance).toEqBN(0);
     });
 
+    it('#multicall static method', async () => {
+        await metaCall.multicallStatic({ multicall: currentConfig.multicall });
+
+        // callStatic should not change the state of the blockchain
+        const allowance = await pendle.allowance(signerAddress, DUMMY_ADDRESS);
+        expect(allowance).toEqBN(0);
+    });
+
     it('#estimate gas', async () => {
         const gasLimit = await metaCall.estimateGas();
 

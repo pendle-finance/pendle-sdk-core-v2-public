@@ -1,5 +1,5 @@
 import { Contract, type ContractInterface, type ContractFunction, Signer, providers, BigNumber as BN } from 'ethers';
-import { Address, NetworkConnection } from '../types';
+import { Address, NetworkConnection, MulticallStaticParams } from '../types';
 import { PendleSdkError, EthersJsError, GasEstimationError } from '../errors';
 import { Multicall } from '../multicall';
 import {
@@ -51,20 +51,29 @@ export function wrapContractObject<C extends Contract>(
     const multicallStatic: any = {};
     const metaCall: any = {};
     const methods: any = {};
+    const functionFragmentsMapping: any = {};
 
     for (const fragment of contract.interface.fragments) {
         if (fragment.type !== 'function') {
             continue;
         }
         const name = fragment.name;
+        functionFragmentsMapping[name] = fragment;
+
         multicallStatic[name] = async (...args: any[]) => {
             const argCount = fragment.inputs.length;
             if (args.length !== argCount && args.length !== argCount + 1) {
                 throw new PendleSdkError(`Argument count mismatch for multicall static of ${name}.`);
             }
-            const multicall: Multicall | undefined =
-                args.length === argCount ? result.multicall : args.pop().multicall ?? result.multicall;
-            return Multicall.wrap(result, multicall).callStatic[name](...(args as any));
+            let { multicall, overrides }: MulticallStaticParams = (args.length === argCount
+                ? undefined
+                : args.pop()) ?? { multicall: result.multicall };
+
+            overrides ??= {};
+            if (!Multicall.isMulticallOverrides(overrides)) {
+                return result.callStatic[name](...(args as any), overrides);
+            }
+            return Multicall.wrap(result, multicall).callStatic[name](...(args as any), overrides);
         };
 
         metaCall[name] = async (...args: any[]) => {
@@ -100,6 +109,7 @@ export function wrapContractObject<C extends Contract>(
         provider: contract.provider,
         signer: contract.signer,
         interface: contract.interface,
+        functionFragmentsMapping,
         functions: wrapFunctions(contract.functions),
         callStatic: wrapFunctions(contract.callStatic),
         estimateGas: wrapFunctions(contract.estimateGas, wrapEstimateGasFunction),
