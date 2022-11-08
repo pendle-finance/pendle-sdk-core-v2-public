@@ -85,11 +85,7 @@ export const BigNumberMatchers = {
     },
 };
 
-try {
-    expect.extend(BigNumberMatchers);
-} catch (e) {
-    // We need to catch the error in case we are running in a non-jest environment
-}
+expect.extend(BigNumberMatchers);
 
 interface CustomMatchers<R = unknown> {
     toEqBN(value: BigNumberish, slippage?: number): R;

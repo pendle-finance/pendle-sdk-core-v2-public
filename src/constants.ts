@@ -1,5 +1,6 @@
 import type { Address } from './entities';
-import ETHEREUM_CORE_ADDRESSES from '@pendle/core-v2/deployments/1-core.json';
+import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
+import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
 import { constants as ethersConstants } from 'ethers';
 
 export type ContractAddresses = {
@@ -21,26 +22,30 @@ export const CHAIN_ID = {
 
 export type ChainId = typeof CHAIN_ID[keyof typeof CHAIN_ID];
 
-const DUMMY_ADDRESSES: ContractAddresses = {
+// TODO: Update addresses after deployment
+export const ETHEREUM_ADDRESSES: ContractAddresses = {
     ROUTER: '0xRouter',
     ROUTER_STATIC: '0xRouterStatic',
     PENDLE: '0xPendle',
     VEPENDLE: '0xVEPENDLE',
 };
 
-export const ETHEREUM_ADDRESSES: ContractAddresses = {
-    ROUTER: ETHEREUM_CORE_ADDRESSES.router,
-    ROUTER_STATIC: ETHEREUM_CORE_ADDRESSES.routerStatic,
-    PENDLE: ETHEREUM_CORE_ADDRESSES.PENDLE,
-    VEPENDLE: ETHEREUM_CORE_ADDRESSES.vePendle,
-    VOTING_CONTROLLER: ETHEREUM_CORE_ADDRESSES.votingController,
+export const AVALANCHE_ADDRESSES: ContractAddresses = ETHEREUM_ADDRESSES;
+
+export const FUJI_ADDRESSES: ContractAddresses = {
+    ROUTER: FUJI_CORE_ADDRESSES.router,
+    ROUTER_STATIC: FUJI_CORE_ADDRESSES.routerStatic,
+    PENDLE: FUJI_CORE_ADDRESSES.PENDLE,
+    VEPENDLE: FUJI_CORE_ADDRESSES.vePendle,
+    VOTING_CONTROLLER: FUJI_CORE_ADDRESSES.votingController,
 };
 
-export const FUJI_ADDRESSES: ContractAddresses = DUMMY_ADDRESSES;
-
-export const AVALANCHE_ADDRESSES: ContractAddresses = DUMMY_ADDRESSES;
-
-export const MUMBAI_ADDRESSES: ContractAddresses = DUMMY_ADDRESSES;
+export const MUMBAI_ADDRESSES: ContractAddresses = {
+    ROUTER: MUMBAI_CORE_ADDRESSES.router,
+    ROUTER_STATIC: MUMBAI_CORE_ADDRESSES.routerStatic,
+    PENDLE: MUMBAI_CORE_ADDRESSES.PENDLE,
+    VEPENDLE: MUMBAI_CORE_ADDRESSES.vePendle,
+};
 
 export const CONTRACT_ADDRESSES: Record<ChainId, ContractAddresses> = {
     [CHAIN_ID.ETHEREUM]: ETHEREUM_ADDRESSES,

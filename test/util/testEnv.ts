@@ -4,18 +4,16 @@ import { Wallet } from 'ethers';
 import { CHAIN_ID, Multicall } from '../../src';
 import './bigNumberMatcher';
 
-import MAINNET_CORE_ADDRESSES from '@pendle/core-v2/deployments/1-core.json';
-import MAINNET_FRAX_MAR23_ADDRESSES from '@pendle/core-v2/deployments/1-markets/FRAX_30_MAR_23.json';
-import MAINNET_LOOKS_MAR23_ADDRESSES from '@pendle/core-v2/deployments/1-markets/LOOKS_30_MAR_23.json';
-import MAINNET_STERH_MAR30_ADDRESSES from '@pendle/core-v2/deployments/1-markets/STETH_MARCH_30.json';
-import MAINNET_USDD_MAR30_ADDRESSES from '@pendle/core-v2/deployments/1-markets/USDD_MARCH_30.json';
+import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
+import FUJI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-USDC-FEB-2ND.json';
+import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-WETH-DEC-1ST.json';
 
+import FUJI_TEST_ENV from '@pendle/core-v2/deployments/43113-testenv.json';
 import { evm_revert, evm_snapshot } from './testHelper';
-import { DUMMY_ADDRESS } from './constants';
 
 config();
 
-type TestChainId = typeof CHAIN_ID.ETHEREUM;
+type TestChainId = typeof CHAIN_ID.FUJI;
 
 // Change this to the current active network
 export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID!) as TestChainId;
@@ -67,30 +65,33 @@ export const networkConnection = {
 } as const;
 
 export const CONTRACT_ADDRESSES = {
-    [CHAIN_ID.ETHEREUM]: {
+    [CHAIN_ID.FUJI]: {
         CORE: {
-            DEPLOYER: MAINNET_CORE_ADDRESSES.deployer,
-            MARKET_FACTORY: MAINNET_CORE_ADDRESSES.marketFactory,
-            YT_FACTORY: MAINNET_CORE_ADDRESSES.yieldContractFactory,
-            ROUTER: MAINNET_CORE_ADDRESSES.router,
-            ROUTER_STATIC: MAINNET_CORE_ADDRESSES.routerStatic,
-            VE: MAINNET_CORE_ADDRESSES.vePendle,
-            VOTING_CONTROLLER: MAINNET_CORE_ADDRESSES.votingController,
-            PENDLE: MAINNET_CORE_ADDRESSES.PENDLE,
-            PENDLE_TREASURY: MAINNET_CORE_ADDRESSES.treasury,
+            DEPLOYER: FUJI_CORE_ADDRESSES.deployer,
+            MARKET_FACTORY: FUJI_CORE_ADDRESSES.marketFactory,
+            YT_FACTORY: FUJI_CORE_ADDRESSES.yieldContractFactory,
+            ROUTER: FUJI_CORE_ADDRESSES.router,
+            ROUTER_STATIC: FUJI_CORE_ADDRESSES.routerStatic,
+            VE: FUJI_CORE_ADDRESSES.vePendle,
+            VOTING_CONTROLLER: FUJI_CORE_ADDRESSES.votingController,
+            PENDLE: FUJI_CORE_ADDRESSES.PENDLE,
+            PENDLE_TREASURY: FUJI_CORE_ADDRESSES.treasury,
         },
-        MARKETS: [
-            MAINNET_FRAX_MAR23_ADDRESSES,
-            MAINNET_LOOKS_MAR23_ADDRESSES,
-            MAINNET_STERH_MAR30_ADDRESSES,
-            MAINNET_USDD_MAR30_ADDRESSES,
-        ],
-        TOKENS: {
-            USDC: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-            USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
-            DAI: '0x6b175474e89094c44da98b954eedeac495271d0f',
-            WETH: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+        BENQI: {
+            FUND_KEEPER: FUJI_TEST_ENV.tokens.fundKeeper,
+            FAUCET: FUJI_TEST_ENV.tokens.faucet,
+            MARKETS: [
+                {
+                    ...FUJI_QIUSDC_FEB03_MARKET_ADDRESSES,
+                    token: FUJI_TEST_ENV.tokens.qiUSDC,
+                },
+                {
+                    ...FUJI_QIWETH_DEC01_ADDRESSES,
+                    token: FUJI_TEST_ENV.tokens.qiWETH,
+                },
+            ],
         },
+        TOKENS: FUJI_TEST_ENV.tokens,
     },
 } as const;
 
@@ -102,6 +103,7 @@ export const WALLET = () => ({
 });
 
 // choose the markets you want to test here
+// 0n fuji: 0 for (qiUSDC Feb 03), 1 for (qiWETH Dec 01)
 const MARKET_TO_TEST = 0;
 
 export const testConfig = (chainId: TestChainId) => ({
@@ -114,15 +116,15 @@ export const testConfig = (chainId: TestChainId) => ({
     veAddress: CONTRACT_ADDRESSES[chainId].CORE.VE,
     votingController: CONTRACT_ADDRESSES[chainId].CORE.VOTING_CONTROLLER,
     pendle: CONTRACT_ADDRESSES[chainId].CORE.PENDLE,
-    fundKeeper: DUMMY_ADDRESS,
-    faucet: DUMMY_ADDRESS,
+    fundKeeper: CONTRACT_ADDRESSES[chainId].BENQI.FUND_KEEPER,
+    faucet: CONTRACT_ADDRESSES[chainId].BENQI.FAUCET,
     pendleTreasury: CONTRACT_ADDRESSES[chainId].CORE.PENDLE_TREASURY,
     tokens: CONTRACT_ADDRESSES[chainId].TOKENS,
-    markets: CONTRACT_ADDRESSES[chainId].MARKETS,
+    markets: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS,
 
     // TODO remove ! since MUMBAI does not has any market
-    market: CONTRACT_ADDRESSES[chainId].MARKETS[MARKET_TO_TEST]!,
-    marketAddress: CONTRACT_ADDRESSES[chainId].MARKETS[MARKET_TO_TEST]!.market,
+    market: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST]!,
+    marketAddress: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST]!.market,
     // choose the token to test for swap from raw token -> py
     tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.USDT,
 
