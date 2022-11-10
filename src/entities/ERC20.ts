@@ -1,8 +1,15 @@
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
-import { PendleERC20, PendleERC20ABI, MetaMethodType, WrappedContract, MetaMethodExtraParams } from '../contracts';
-import type { Address, ChainId, MulticallStaticParams } from '../types';
+import {
+    PendleERC20,
+    PendleERC20ABI,
+    MetaMethodType,
+    WrappedContract,
+    MetaMethodExtraParams,
+    MulticallStaticParams,
+} from '../contracts';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
+import { Address, ChainId } from '../common';
 
 export type ERC20Config = PendleEntityConfigOptionalAbi;
 

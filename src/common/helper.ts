@@ -1,33 +1,4 @@
-import type { BigNumber as BN, BigNumberish, providers, Signer, CallOverrides } from 'ethers';
-import { ErrorCode } from '@ethersproject/logger';
-import { CHAIN_ID } from './constants';
-import { Multicall } from './multicall';
-
-export { BigNumberish, BigNumber as BN } from 'ethers';
-
-export type Address = `0x${string}`;
-
-// Disallow missing both of the properties
-export type NetworkConnection =
-    | { provider: providers.Provider; signer?: undefined }
-    | { provider?: undefined; signer: Signer }
-    | { provider: providers.Provider; signer: Signer };
-
-export type MulticallStaticParams = { multicall?: Multicall; overrides?: CallOverrides };
-
-export type RawTokenAmount<AmountType extends BigNumberish = BN> = {
-    token: Address;
-    amount: AmountType;
-};
-
-// The list of error code is here
-// https://docs.ethers.io/v5/troubleshooting/errors/
-// The following is done to convert an enum into union.
-export type EthersJsErrorCode = ErrorCode[keyof ErrorCode];
-
-export { ChainId } from './constants';
-export type MainchainId = typeof CHAIN_ID.ETHEREUM | typeof CHAIN_ID.FUJI;
-
+// Type helper
 export type ConcatTuple<A, B> = A extends any[] ? (B extends any[] ? [...A, ...B] : never) : never;
 export type GetField<Obj extends {}, Key, Default = never> = Key extends keyof Obj ? Obj[Key] : Default;
 export type RemoveLastOptional<T extends any[]> = T extends [...infer Head, any?] ? Head : T;
@@ -83,3 +54,44 @@ export type UnionOf<Types> = Types extends [infer Elm]
     : Types extends [...infer Body, infer Last]
     ? UnionOf<Body> & Last
     : Types;
+
+// function helpers
+
+export function filterUniqueByField<Elm, F>(arr: Iterable<Elm>, fieldGetter: (elm: Elm) => F): Elm[] {
+    const s = new Set<F>();
+    const res: Elm[] = [];
+    for (const elm of arr) {
+        const field = fieldGetter(elm);
+        if (s.has(field)) {
+            continue;
+        }
+        s.add(field);
+        res.push(elm);
+    }
+    return res;
+}
+
+export type Iterableify<T> = { [K in keyof T]: Iterable<T[K]> };
+/**
+ * Stolen from https://dev.to/chrismilson/zip-iterator-in-typescript-ldm
+ *
+ * Some common usages:
+ * - Convert generator to array:  [...zip(a, b)] or Array.from(zip(a, b));
+ * - Map element: Array.from(zip(a, b), mapFn);
+ */
+export function* zip<T extends Array<any>>(...toZip: Iterableify<T>): Generator<T> {
+    const iterators = toZip.map((i) => i[Symbol.iterator]());
+    while (true) {
+        const results = iterators.map((i) => i.next());
+        if (results.some(({ done }) => done)) {
+            break;
+        }
+        yield results.map(({ value }) => value) as T;
+    }
+}
+
+export function devLog(message?: any, ...optionalParams: any[]): void {
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(message, ...optionalParams);
+    }
+}

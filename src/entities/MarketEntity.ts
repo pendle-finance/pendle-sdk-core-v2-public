@@ -5,14 +5,13 @@ import {
     WrappedContract,
     MetaMethodType,
     MetaMethodExtraParams,
+    MulticallStaticParams,
+    getRouterStatic,
 } from '../contracts';
-import type { Address, RawTokenAmount, MulticallStaticParams } from '../types';
-import { BigNumber as BN } from 'ethers';
-import { getRouterStatic, zip, toAddress, createTokenAmount } from './helper';
 import { ERC20, ERC20Config } from './ERC20';
-import { ChainId } from '../types';
 import { SyEntity, SyEntityConfig } from './SyEntity';
 import { PtEntity, PtEntityConfig } from './PtEntity';
+import { Address, toAddress, ChainId, RawTokenAmount, createTokenAmount, BN, zip } from '../common';
 
 export type MarketState = {
     totalPt: BN;
@@ -35,9 +34,9 @@ export type MarketInfo = {
 };
 
 export type AssetAmount = {
-    assetType: BN;
+    assetType: number;
     assetAddress: Address;
-    amount: BN;
+    amount: number;
 };
 
 export type UserMarketInfo = {
@@ -95,9 +94,9 @@ export class MarketEntity extends ERC20 {
             ptBalance: createTokenAmount(ptBalance),
             syBalance: createTokenAmount(syBalance),
             assetBalance: {
-                assetType: BN.from(assetBalance.assetType),
+                assetType: BN.from(assetBalance.assetType).toNumber(),
                 assetAddress: toAddress(assetBalance.assetAddress),
-                amount: BN.from(assetBalance.amount),
+                amount: BN.from(assetBalance.amount).toNumber(),
             },
         };
     }

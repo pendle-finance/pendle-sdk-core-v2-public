@@ -1,7 +1,6 @@
 import { SDK } from '../src/entities/SDK';
-import { MarketEntity, PtEntity, SyEntity, YtEntity, Multicall } from '../src';
+import { MarketEntity, PtEntity, SyEntity, YtEntity, Multicall, decimalFactor, toAddress, BN } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
-import { decimalFactor } from '../src/entities/math';
 import { describeWithMulticall } from './util/testHelper';
 
 describe(SDK, () => {
@@ -28,7 +27,7 @@ describe(SDK, () => {
                 sdk.getUserPYPositionsByPYs(currentConfig.deployer, [ytAddress, ptAddress], { multicall }),
                 pt.balanceOf(currentConfig.deployer, { multicall }),
                 yt.balanceOf(currentConfig.deployer, { multicall }),
-                Multicall.wrap(yt.contract, multicall).callStatic.SY(),
+                Multicall.wrap(yt.contract, multicall).callStatic.SY().then(toAddress),
                 Multicall.wrap(yt.contract, multicall).callStatic.userInterest(currentConfig.deployer),
             ]);
 
@@ -89,8 +88,8 @@ describe(SDK, () => {
                 userBalance.mul(marketInfo.state.totalSy).div(marketInfo.state.totalLp)
             );
 
-            expect(userMarketInfo.assetBalance.assetType).toBe(syInfo.assetType);
-            expect(userMarketInfo.assetBalance.assetAddress).toBe(syInfo.assetAddress);
+            expect(userMarketInfo.assetBalance.assetType).toEqBN(BN.from(syInfo.assetType));
+            expect(userMarketInfo.assetBalance.assetAddress).toBe(toAddress(syInfo.assetAddress));
             expect(userMarketInfo.assetBalance.amount).toEqBN(
                 userMarketInfo.syBalance.amount.mul(syExchangeRate).div(decimalFactor(18))
             );

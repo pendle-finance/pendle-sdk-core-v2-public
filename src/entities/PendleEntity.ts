@@ -5,11 +5,9 @@ import {
     MetaMethodType,
     mergeMetaMethodExtraParams as mergeParams,
 } from '../contracts';
-
-import { ContractInterface } from 'ethers';
-import { NetworkConnection, Address, ChainId } from '../types';
+import { Address, NetworkConnection, copyNetworkConnection, ChainId } from '../common';
 import { Multicall } from '../multicall';
-import { copyNetworkConnection } from './helper';
+import { ContractInterface } from 'ethers';
 
 export type PendleEntityConfigOptionalAbi = NetworkConnection & {
     multicall?: Multicall;

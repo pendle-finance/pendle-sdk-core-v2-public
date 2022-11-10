@@ -1,7 +1,8 @@
 import { Contract } from 'ethers';
 import { ContractMethodNames, MetaMethodType, EthersContractMethod } from './helper';
 import { ContractMetaMethod } from '../ContractMetaMethod';
-import { SyncReturnType, ConcatTuple, MulticallStaticParams } from '../../types';
+import { SyncReturnType, ConcatTuple } from '../../common';
+import { MulticallStaticParams } from './MulticallStaticMethod';
 
 export type MetaMethod<C extends Contract, MethodName extends ContractMethodNames<C>> = C[MethodName] extends (
     ...params: [...infer Head, any?]

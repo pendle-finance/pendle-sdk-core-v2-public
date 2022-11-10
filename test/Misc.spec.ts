@@ -1,7 +1,12 @@
 import { BigNumber as BN } from 'ethers';
-import { CHAIN_ID, ERC20 } from '../src';
-import { getContractAddresses, isMainchain } from '../src/entities/helper';
-import { calcSlippedDownAmount, calcSlippedUpAmount } from '../src/entities/math';
+import {
+    CHAIN_ID_MAPPING,
+    ERC20,
+    getContractAddresses,
+    isMainchain,
+    calcSlippedDownAmount,
+    calcSlippedUpAmount,
+} from '../src';
 import { InvalidSlippageError } from '../src/errors';
 import { currentConfig, ACTIVE_CHAIN_ID, networkConnection } from './util/testEnv';
 
@@ -29,7 +34,7 @@ describe('Misc', () => {
     });
 
     it('#getContractAddresses', () => {
-        Object.values(CHAIN_ID).forEach((chainId) => {
+        Object.values(CHAIN_ID_MAPPING).forEach((chainId) => {
             let addresses = getContractAddresses(chainId);
             expect(addresses.ROUTER_STATIC).toBeDefined();
             expect(addresses.ROUTER).toBeDefined();
@@ -39,10 +44,10 @@ describe('Misc', () => {
     });
 
     it('#isMainchain', () => {
-        expect(isMainchain(CHAIN_ID.ETHEREUM)).toBe(true);
-        expect(isMainchain(CHAIN_ID.FUJI)).toBe(true);
-        expect(isMainchain(CHAIN_ID.AVALANCHE)).toBe(false);
-        expect(isMainchain(CHAIN_ID.MUMBAI)).toBe(false);
+        expect(isMainchain(CHAIN_ID_MAPPING.ETHEREUM)).toBe(true);
+        expect(isMainchain(CHAIN_ID_MAPPING.FUJI)).toBe(true);
+        expect(isMainchain(CHAIN_ID_MAPPING.AVALANCHE)).toBe(false);
+        expect(isMainchain(CHAIN_ID_MAPPING.MUMBAI)).toBe(false);
     });
 
     it('test requiresSigner', async () => {

@@ -8,26 +8,29 @@ import {
     ContractMetaMethod,
     MetaMethodExtraParams,
     mergeMetaMethodExtraParams as mergeParams,
+    getRouterStatic,
 } from '../contracts';
 import type { ApproxParamsStruct, IPAllAction } from '@pendle/core-v2/typechain-types/IPAllAction';
 import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
-import type { Address, NetworkConnection, ChainId, RawTokenAmount } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN, constants as etherConstants, BytesLike } from 'ethers';
-import {
-    getContractAddresses,
-    getRouterStatic,
-    isNativeToken,
-    getGlobalBulkSellerUsageStrategyGetter,
-    devLog,
-} from './helper';
-import { calcSlippedDownAmount, calcSlippedUpAmount, PyIndex } from './math';
 import { MarketEntity } from './MarketEntity';
 import { SyEntity } from './SyEntity';
 import { YtEntity } from './YtEntity';
 import { NoRouteFoundError } from '../errors';
 import { KyberHelper, KybercallData, KyberState, KyberHelperCoreConfig } from './KyberHelper';
 import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
+import { getGlobalBulkSellerUsageStrategyGetter } from '../bulkSeller';
+import {
+    Address,
+    getContractAddresses,
+    isNativeToken,
+    NetworkConnection,
+    ChainId,
+    RawTokenAmount,
+    devLog,
+} from '../common';
+import { calcSlippedDownAmount, calcSlippedUpAmount, PyIndex } from '../common/math';
 
 export type TokenInput = {
     tokenIn: Address;
@@ -189,12 +192,14 @@ export class Router extends PendleEntity {
     ): Promise<undefined | (Data & { input: TokenInput; kybercallData: KybercallData })> {
         const processTokenMinSy = async (tokenMintSy: Address) => {
             try {
-                const kybercallData = await this.kyberHelper.makeCall(tokenInAmount, tokenMintSy);
-                if (kybercallData.encodedSwapData === undefined) {
+                const kybercallDataOrUndefined = await this.kyberHelper.makeCall(tokenInAmount, tokenMintSy);
+                if (kybercallDataOrUndefined == undefined) {
                     return [];
                 }
-                // force typing to be non-undefined
+                // force typeing before the callback
+                const kybercallData = kybercallDataOrUndefined;
                 const kybercall = kybercallData.encodedSwapData;
+
                 return this.bulkSellerUsage.tryInvokeWithToken(
                     useBulkMode,
                     { token: tokenMintSy, amount: kybercallData.outputAmount },
@@ -248,7 +253,7 @@ export class Router extends PendleEntity {
                     { token: tokenRedeemSy, amount: redeemedFromSyAmount },
                     tokenOut
                 );
-                if (kybercallData.encodedSwapData === undefined) {
+                if (kybercallData === undefined) {
                     return [];
                 }
 

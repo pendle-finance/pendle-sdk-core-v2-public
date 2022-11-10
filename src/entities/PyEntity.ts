@@ -1,8 +1,7 @@
-import { RouterStatic, WrappedContract } from '../contracts';
-import type { Address, RawTokenAmount, ChainId, MulticallStaticParams } from '../types';
+import { RouterStatic, WrappedContract, MulticallStaticParams, getRouterStatic } from '../contracts';
 import { BigNumber as BN } from 'ethers';
-import { getRouterStatic, toAddress, createTokenAmount } from './helper';
 import { ERC20, ERC20Config } from './ERC20';
+import { Address, toAddress, RawTokenAmount, createTokenAmount, ChainId } from '../common';
 
 export type UserPyInfo = {
     yt: Address;

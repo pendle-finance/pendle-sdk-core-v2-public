@@ -1,6 +1,6 @@
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
 import { PendleMarketFactory, PendleMarketFactoryABI, WrappedContract } from '../contracts';
-import type { Address, ChainId } from '../types';
+import { Address, ChainId } from '../common';
 
 export type MarketFactoryConfig = PendleEntityConfigOptionalAbi;
 

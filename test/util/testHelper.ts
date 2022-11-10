@@ -1,7 +1,6 @@
 import { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import { BigNumber as BN, BigNumberish } from 'ethers';
-import { ERC20, Address, MarketEntity, WrappedContract, bnMin, Multicall } from '../../src';
-import { isNativeToken } from '../../src/entities/helper';
+import { ERC20, Address, MarketEntity, WrappedContract, bnMin, Multicall, isNativeToken } from '../../src';
 import { INF } from './constants';
 import { ACTIVE_CHAIN_ID, networkConnection, BLOCK_CONFIRMATION, USE_HARDHAT_RPC, currentConfig } from './testEnv';
 import { inspect } from 'util';
@@ -117,4 +116,9 @@ export function describeWithMulticall(fn: (multicall: Multicall | undefined) => 
     if (process.env.DISABLE_TEST_WITHOUT_MULTICALL !== '1') {
         describe('without multicall', () => fn(undefined));
     }
+}
+
+export function itWhen(condition: boolean) {
+    if (!condition) return it.skip;
+    return it;
 }

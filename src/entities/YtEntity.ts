@@ -1,6 +1,5 @@
-import { PendleYieldToken, PendleYieldTokenABI, WrappedContract } from '../contracts';
-import type { Address, ChainId, MulticallStaticParams } from '../types';
-import { toAddress } from './helper';
+import { PendleYieldToken, PendleYieldTokenABI, WrappedContract, MulticallStaticParams } from '../contracts';
+import { Address, toAddress, ChainId } from '../common';
 import { PtEntity, PtEntityConfig } from './PtEntity';
 import { SyEntity, SyEntityConfig } from './SyEntity';
 import { PyEntity, PyEntityConfig } from './PyEntity';

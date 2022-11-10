@@ -1,11 +1,10 @@
-import { Contract, providers, ContractTransaction } from 'ethers';
+import { Contract, ContractTransaction, providers } from 'ethers';
 import { WrappedContract } from './WrappedContract';
-import { GetField } from '../../types';
-
-export { ORIGINAL_CONTRACT } from './WrappedContract';
-export type { Signer } from 'ethers';
+import { GetField } from '../../common';
 
 export type Provider = providers.Provider;
+export { ORIGINAL_CONTRACT } from './WrappedContract';
+export type { Signer } from 'ethers';
 
 export type EthersContractMetaClass = 'functions' | 'callStatic' | 'estimateGas';
 export type MetaMethodType = 'send' | 'callStatic' | 'estimateGas' | 'meta-method' | 'multicallStatic';

@@ -1,4 +1,4 @@
-import { PtEntity, YtEntity, Multicall } from '../src';
+import { PtEntity, YtEntity, Multicall, toAddress, toAddresses } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
 import { describeWithMulticall } from './util/testHelper';
 
@@ -13,7 +13,7 @@ describe('PY', () => {
                 pt.userInfo(currentConfig.deployer, { multicall }),
                 pt.balanceOf(currentConfig.deployer, { multicall }),
                 yt.balanceOf(currentConfig.deployer, { multicall }),
-                Multicall.wrap(yt.contract, multicall).callStatic.SY(),
+                Multicall.wrap(yt.contract, multicall).callStatic.SY().then(toAddress),
                 Multicall.wrap(yt.contract, multicall).callStatic.userInterest(currentConfig.deployer),
             ]);
 
@@ -53,7 +53,7 @@ describe('PY', () => {
                 yt.getInfo({ multicall }),
                 yt.totalSupply({ multicall }),
                 Multicall.wrap(yt.contract, multicall).callStatic.pyIndexCurrent(),
-                Multicall.wrap(yt.contract, multicall).callStatic.getRewardTokens(),
+                Multicall.wrap(yt.contract, multicall).callStatic.getRewardTokens().then(toAddresses),
             ]);
 
             const eps = multicall ? 0 : 0.01; // if !multicall, requests might be in different block

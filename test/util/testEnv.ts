@@ -1,7 +1,7 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
 import { Wallet } from 'ethers';
-import { CHAIN_ID, Multicall, Address, toAddress } from '../../src';
+import { CHAIN_ID_MAPPING, Multicall, Address, toAddress } from '../../src';
 import './bigNumberMatcher';
 
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
@@ -13,7 +13,7 @@ import { evm_revert, evm_snapshot } from './testHelper';
 
 config();
 
-type TestChainId = typeof CHAIN_ID.FUJI;
+type TestChainId = typeof CHAIN_ID_MAPPING.FUJI;
 
 // Change this to the current active network
 export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID!) as TestChainId;
@@ -50,10 +50,10 @@ export function describeWrite(...params: [fn: () => void] | [name: string, fn: (
 export const BLOCK_CONFIRMATION = USE_HARDHAT_RPC ? 1 : parseInt(process.env.BLOCK_CONFIRMATION ?? '1');
 
 const providerUrls = {
-    [CHAIN_ID.ETHEREUM]: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
-    [CHAIN_ID.AVALANCHE]: 'https://api.avax.network/ext/bc/C/rpc',
-    [CHAIN_ID.FUJI]: 'https://api.avax-test.network/ext/bc/C/rpc',
-    [CHAIN_ID.MUMBAI]: 'https://matic-mumbai.chainstacklabs.com',
+    [CHAIN_ID_MAPPING.ETHEREUM]: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+    [CHAIN_ID_MAPPING.AVALANCHE]: 'https://api.avax.network/ext/bc/C/rpc',
+    [CHAIN_ID_MAPPING.FUJI]: 'https://api.avax-test.network/ext/bc/C/rpc',
+    [CHAIN_ID_MAPPING.MUMBAI]: 'https://matic-mumbai.chainstacklabs.com',
     [LOCAL_CHAIN_ID]: 'http://127.0.0.1:8545',
 };
 
@@ -91,7 +91,7 @@ function shallowToAddress<T>(obj: T): ShallowToAddressType<T> {
 }
 
 export const CONTRACT_ADDRESSES = shallowToAddress({
-    [CHAIN_ID.FUJI]: {
+    [CHAIN_ID_MAPPING.FUJI]: {
         CORE: {
             DEPLOYER: FUJI_CORE_ADDRESSES.deployer,
             MARKET_FACTORY: FUJI_CORE_ADDRESSES.marketFactory,

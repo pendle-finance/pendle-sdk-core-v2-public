@@ -1,10 +1,31 @@
-import { Address, RawTokenAmount, ChainId, NetworkConnection, MulticallStaticParams } from '../types';
 import type { BigNumberish, BytesLike } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { isKyberSupportedChain, isSameAddress, isNativeToken, copyNetworkConnection, toAddress } from './helper';
-import { NATIVE_ADDRESS_0xEE, NATIVE_ADDRESS_0x00, KYBER_API } from '../constants';
 import axios from 'axios';
 import { ERC20 } from './ERC20';
+import { MulticallStaticParams } from '../contracts';
+import {
+    CHAIN_ID_MAPPING,
+    ChainId,
+    Address,
+    isSameAddress,
+    isNativeToken,
+    toAddress,
+    NATIVE_ADDRESS_0x00,
+    NATIVE_ADDRESS_0xEE,
+    NetworkConnection,
+    copyNetworkConnection,
+    RawTokenAmount,
+} from '../common';
+
+const KYBER_API = {
+    [CHAIN_ID_MAPPING.ETHEREUM]: 'https://aggregator-api.kyberswap.com/ethereum/route/encode',
+    [CHAIN_ID_MAPPING.AVALANCHE]: 'https://aggregator-api.kyberswap.com/avalanche/route/encode',
+    [CHAIN_ID_MAPPING.FUJI]: 'https://aggregator-api.stg.kyberengineering.io/fuji/route/encode',
+} as const;
+
+export function isKyberSupportedChain(chainId: ChainId): chainId is keyof typeof KYBER_API {
+    return chainId in KYBER_API;
+}
 
 type SwappablePairResult = {
     swappable: boolean;
@@ -25,12 +46,25 @@ export type KyberHelperCoreConfig = {
 
 export type KyberHelperConfig = NetworkConnection & KyberHelperCoreConfig;
 
+// Documentation
+// https://kyber-network.stoplight.io/docs/api-docs/5ac2df86149df-get-swap-info-with-encoded-data
+//
+// We extract only what is necessary
 export type KybercallData = {
+    // can be undefined in case we didn't use KyberSwap
     amountInUsd?: number;
     amountOutUsd?: number;
     outputAmount: BigNumberish;
-    encodedSwapData?: BytesLike;
+    encodedSwapData: BytesLike;
     routerAddress: Address;
+};
+
+type RawKybercallData = {
+    amountInUsd: number;
+    amountOutUsd: number;
+    outputAmount: BigNumberish;
+    encodedSwapData: BytesLike;
+    routerAddress: string; // the only different
 };
 
 export class KyberHelper {
@@ -98,12 +132,16 @@ export class KyberHelper {
         };
     }
 
-    async makeCall(input: RawTokenAmount<BigNumberish>, output: Address): Promise<KybercallData> {
+    async makeCall(input: RawTokenAmount<BigNumberish>, output: Address): Promise<KybercallData | undefined> {
         if (!isKyberSupportedChain(this.chainId)) {
             throw new Error(`Chain ${this.chainId} is not supported for kybercall.`);
         }
         if (isSameAddress(input.token, output))
-            return { outputAmount: input.amount, encodedSwapData: [], routerAddress: NATIVE_ADDRESS_0x00 };
+            return {
+                outputAmount: input.amount,
+                encodedSwapData: [],
+                routerAddress: NATIVE_ADDRESS_0x00,
+            };
         // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
         if (isNativeToken(input.token)) input.token = NATIVE_ADDRESS_0xEE;
         if (isNativeToken(output)) output = NATIVE_ADDRESS_0xEE;
@@ -124,32 +162,18 @@ export class KyberHelper {
             slippageTolerance: 2_000,
         };
 
-        type RawKybercallData = {
-            amountInUsd?: number;
-            amountOutUsd?: number;
-            outputAmount: BigNumberish;
-            encodedSwapData?: BytesLike;
-            routerAddress: string;
-        };
-
-        const { data }: { data: RawKybercallData } = await axios
-            .get(KYBER_API[this.chainId], {
+        try {
+            const { data }: { data: RawKybercallData } = await axios.get(KYBER_API[this.chainId], {
                 params,
                 headers: { 'Accept-Version': 'Latest' },
-            })
-            .catch(() => {
-                return {
-                    data: {
-                        outputAmount: 0,
-                        encodedSwapData: undefined,
-                        routerAddress: NATIVE_ADDRESS_0x00,
-                    },
-                };
             });
-        return {
-            ...data,
-            routerAddress: toAddress(data.routerAddress),
-        };
+            return {
+                ...data,
+                routerAddress: toAddress(data.routerAddress),
+            };
+        } catch {
+            return undefined;
+        }
     }
 
     async checkSwappablePair(
@@ -173,8 +197,7 @@ export class KyberHelper {
             const decimals = await new ERC20(srcTokenAddress, this.chainId, this.networkConnection).decimals(params);
             const testAmount = BN.from(10).pow(decimals).mul(100);
             const kybercallData = await this.makeCall({ token: srcTokenAddress, amount: testAmount }, dstTokenAddress);
-            const kybercall = kybercallData.encodedSwapData;
-            const swappable = kybercall != undefined;
+            const swappable = kybercallData != undefined;
             this.swappablePairs.set(key, { swappable, checkedAtTimestamp: Date.now() });
             return swappable;
         })();

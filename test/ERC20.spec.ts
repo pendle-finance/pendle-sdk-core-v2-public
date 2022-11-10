@@ -1,5 +1,4 @@
-import { ERC20 } from '../src';
-import { decimalFactor } from '../src/entities/math';
+import { ERC20, decimalFactor } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,

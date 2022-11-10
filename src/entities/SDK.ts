@@ -1,8 +1,7 @@
-import { RouterStatic, WrappedContract } from '../contracts';
-import type { Address, NetworkConnection, ChainId, MulticallStaticParams } from '../types';
-import type { UserPyInfo } from './YtEntity';
+import { RouterStatic, WrappedContract, MulticallStaticParams, getRouterStatic } from '../contracts';
+import type { Address, NetworkConnection, ChainId } from '../common';
+import type { UserPyInfo } from './PyEntity';
 import type { UserMarketInfo } from './MarketEntity';
-import { getRouterStatic } from './helper';
 import { Multicall } from '../multicall';
 import { MarketEntity } from './MarketEntity';
 import { PyEntity } from './PyEntity';

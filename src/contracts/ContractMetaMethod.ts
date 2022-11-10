@@ -10,7 +10,7 @@ import {
     Provider,
     EthersContractMethod,
 } from './types';
-import { MulticallStaticParams } from '../types';
+import { MulticallStaticParams } from './types';
 
 export type ContractMetaMethodCallback = <
     T extends MetaMethodType,

@@ -1,7 +1,6 @@
 import { BulkSellerUsageBaseStrategy } from './BulkSellerUsageBaseStrategy';
-import { BN, BigNumberish, RawTokenAmount, Address } from '../types';
+import { BN, BigNumberish, RawTokenAmount, Address, NATIVE_ADDRESS_0x00 } from '../common';
 import { RouterStatic, WrappedContract } from '../contracts';
-import { NATIVE_ADDRESS_0x00 } from '../constants';
 
 export class DummyBulkSellerUsageStrategy extends BulkSellerUsageBaseStrategy {
     readonly thresHold: BN;

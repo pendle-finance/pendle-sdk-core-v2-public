@@ -9,7 +9,7 @@ const lines = [];
 lines.push(`
 // This file is generated via \`yarn generatePendleContractErrorMessageHandler\`
 import { type BigNumber as BN, BytesLike } from 'ethers';
-import { Address } from '../types';
+import { Address } from '../common';
 `);
 lines.push('export type PendleContractErrorMessageHandler = {');
 

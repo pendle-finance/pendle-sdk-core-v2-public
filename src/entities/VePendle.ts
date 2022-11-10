@@ -7,11 +7,12 @@ import {
     WrappedContract,
     MetaMethodType,
     MetaMethodExtraParams,
+    MulticallStaticParams,
+    getRouterStatic,
 } from '../contracts';
+import { BigNumber as BN, BigNumberish } from 'ethers';
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
-import type { Address, NetworkConnection, ChainId, MainchainId, MulticallStaticParams, BN } from '../types';
-import { getContractAddresses, getRouterStatic } from './helper';
-import { BigNumberish } from 'ethers';
+import { Address, getContractAddresses, ChainId, MainchainId, NetworkConnection } from '../common';
 
 export type VePendleConfig = PendleEntityConfigOptionalAbi;
 

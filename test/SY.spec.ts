@@ -1,4 +1,4 @@
-import { SyEntity, Multicall } from '../src';
+import { SyEntity, Multicall, toAddresses } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -29,7 +29,7 @@ describe(SyEntity, () => {
         it('#userInfo & #contract', async () => {
             const [userInfo, rewardTokens, rewardAmounts] = await Promise.all([
                 sy.userInfo(currentConfig.deployer, { multicall }),
-                Multicall.wrap(sy.contract, multicall).callStatic.getRewardTokens(),
+                Multicall.wrap(sy.contract, multicall).callStatic.getRewardTokens().then(toAddresses),
                 Multicall.wrap(sy.contract, multicall).callStatic.accruedRewards(currentConfig.deployer),
             ]);
             expect(userInfo.balance).toBeGteBN(0);

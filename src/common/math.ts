@@ -3,9 +3,8 @@
  *
  *      const ONE = BN.from(10).pow(18);
  */
-import { BigNumber as BN, constants as ethersConstants } from 'ethers';
-import type { BigNumberish } from 'ethers';
-import { PERCENTAGE_DECIMALS } from '../constants';
+import { BN, BigNumberish, ethersConstants } from './ethersjs';
+export const PERCENTAGE_DECIMALS = 6;
 
 export function decimalFactor(decimals: number): BN {
     return BN.from(10).pow(decimals);

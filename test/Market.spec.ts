@@ -1,6 +1,4 @@
-import { MarketEntity, SyEntity, Multicall, toAddress } from '../src';
-import { getRouterStatic } from '../src/entities/helper';
-import { decimalFactor } from '../src/entities/math';
+import { MarketEntity, SyEntity, Multicall, toAddress, getRouterStatic, decimalFactor } from '../src';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testEnv';
 import { describeWithMulticall } from './util/testHelper';
 
@@ -33,9 +31,9 @@ describe(MarketEntity, () => {
             ]);
 
             expect(totalSupply).toBeGteBN(0);
-            expect(tokens._PT).toBe(currentMarket.PT);
-            expect(tokens._YT).toBe(currentMarket.YT);
-            expect(tokens._SY).toBe(currentMarket.SY);
+            expect(toAddress(tokens._PT)).toBe(currentMarket.PT);
+            expect(toAddress(tokens._YT)).toBe(currentMarket.YT);
+            expect(toAddress(tokens._SY)).toBe(currentMarket.SY);
             expect(isExpired).toBe(false);
         });
 
@@ -77,7 +75,7 @@ describe(MarketEntity, () => {
 
             // Verify underlying balance
             expect(userMarketInfo.assetBalance.assetType).toBe(syInfo.assetType);
-            expect(userMarketInfo.assetBalance.assetAddress).toBe(syInfo.assetAddress);
+            expect(userMarketInfo.assetBalance.assetAddress).toBe(toAddress(syInfo.assetAddress));
             expect(userMarketInfo.assetBalance.amount).toEqBN(
                 userMarketInfo.syBalance.amount.mul(syExchangeRate).div(decimalFactor(18))
             );

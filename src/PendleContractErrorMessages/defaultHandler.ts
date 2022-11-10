@@ -1,6 +1,6 @@
 import { PendleContractErrorMessageHandler } from './type';
 import { PendleContractErrorType, PendleContractErrorParams } from './helperTypes';
-import { BN } from '../types';
+import { BigNumber as BN } from 'ethers';
 
 // https://stackoverflow.com/a/2901298, but I replaced "," with "_"
 // "_" works in both Solidity and Javascript

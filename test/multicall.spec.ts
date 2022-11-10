@@ -2,7 +2,8 @@ import { PendleERC20, ERC20, SyEntity, decimalFactor, Address, zip, toAddress } 
 import { BigNumber as BN, ethers } from 'ethers';
 import { MarketEntity, PtEntity, WrappedContract } from '../src';
 import './util/bigNumberMatcher.ts';
-import { currentConfig, networkConnection } from './util/testEnv';
+import { currentConfig, networkConnection, USE_HARDHAT_RPC } from './util/testEnv';
+import { itWhen } from './util/testHelper';
 
 describe('Multicall', () => {
     const chainId = currentConfig.chainId;
@@ -89,7 +90,7 @@ describe('Multicall', () => {
         await Promise.all(calls);
     });
 
-    it('by block tags', async () => {
+    itWhen(!USE_HARDHAT_RPC)('by block tags', async () => {
         const currentBlock = await networkConnection.provider.getBlockNumber();
         const syContract = new SyEntity(currentConfig.market.SY, currentConfig.chainId, networkConnection).contract;
 

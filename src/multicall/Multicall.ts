@@ -3,11 +3,18 @@ import type { Provider } from '@ethersproject/providers';
 import type { Multicall2 } from './Multicall2';
 import { Contract, CallOverrides } from 'ethers';
 import { FunctionFragment, Interface } from 'ethers/lib/utils';
-import { MULTICALL_ADDRESSES } from '../constants';
 import { abi as MulticallABI } from './Multicall2.json';
-import { ChainId, RemoveLastOptionalParam, AddParams } from '../types';
 import { EthersJsError, PendleSdkError } from '../errors';
-import { ContractLike, getInnerContract } from '../contracts';
+import { Address, ChainId, CHAIN_ID_MAPPING, RemoveLastOptionalParam, AddParams } from '../common';
+import { ContractLike } from '../contracts/types';
+import { getInnerContract } from '../contracts/helper';
+
+export const MULTICALL_ADDRESSES: Record<ChainId, Address> = {
+    [CHAIN_ID_MAPPING.ETHEREUM]: '0x5ba1e12693dc8f9c48aad8770482f4739beed696',
+    [CHAIN_ID_MAPPING.AVALANCHE]: '0x11b8399bc71e8b67a0f7cca2663612af1ca38536',
+    [CHAIN_ID_MAPPING.FUJI]: '0x07e46d95cc98f0d7493d679e89e396ea99020185',
+    [CHAIN_ID_MAPPING.MUMBAI]: '0x08411add0b5aa8ee47563b146743c13b3556c9cc',
+} as const;
 
 /**
  * Multicall implementation, allowing to call function of contract.callStatic functions

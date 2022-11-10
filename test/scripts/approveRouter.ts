@@ -1,8 +1,7 @@
 import { ethers } from 'ethers';
-import { isSameAddress } from '../../src/entities/helper';
 import { approveHelper, getAllowance } from '../util/testHelper';
 import { currentConfig, networkConnection } from '../util/testEnv';
-import { toAddress } from '../../src';
+import { toAddress, isSameAddress } from '../../src';
 
 const INF = ethers.constants.MaxUint256;
 async function main() {

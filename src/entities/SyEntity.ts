@@ -6,20 +6,16 @@ import {
     MetaMethodType,
     mergeMetaMethodExtraParams as mergeParams,
     MetaMethodExtraParams,
+    MulticallStaticParams,
+    getRouterStatic,
 } from '../contracts';
-import type { Address, RawTokenAmount, ChainId, MulticallStaticParams } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import {
-    getRouterStatic,
-    isNativeToken,
-    getGlobalBulkSellerUsageStrategyGetter,
-    createTokenAmount,
-    toAddress,
-} from './helper';
-import { calcSlippedDownAmount } from './math';
 import { ERC20, ERC20Config } from './ERC20';
 import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
+import { Address, toAddress, isNativeToken, ChainId, RawTokenAmount, createTokenAmount } from '../common';
+import { calcSlippedDownAmount } from '../common/math';
+import { getGlobalBulkSellerUsageStrategyGetter } from '../bulkSeller/defaultStrategy';
 
 export type UserSyInfo = {
     balance: BN;

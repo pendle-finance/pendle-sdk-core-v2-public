@@ -1,8 +1,7 @@
 import { Contract } from 'ethers';
 import { ContractLike, ORIGINAL_CONTRACT, MetaMethodType } from './types/helper';
-import { WrappedContract, MetaMethodExtraParams } from './types';
-import { UnionOf } from '../types';
-import { mergeMulticallStaticParams } from '../entities/helper';
+import { WrappedContract, MetaMethodExtraParams, MulticallStaticParams } from './types';
+import { UnionOf } from '../common';
 
 export function isWrapped<T extends Contract>(contract: ContractLike<T>): contract is WrappedContract<T> {
     return ORIGINAL_CONTRACT in contract;
@@ -24,4 +23,11 @@ export function mergeMetaMethodExtraParams<T extends MetaMethodType, ARGS extend
         ...v,
         ...mergeMulticallStaticParams(u, v),
     })) as UnionOf<ARGS>;
+}
+
+export function mergeMulticallStaticParams(
+    lhs: MulticallStaticParams,
+    rhs: MulticallStaticParams
+): MulticallStaticParams {
+    return { ...lhs, ...rhs };
 }

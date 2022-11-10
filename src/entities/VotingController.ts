@@ -7,10 +7,8 @@ import {
     MetaMethodType,
     MetaMethodExtraParams,
 } from '../contracts';
-import type { Address, ChainId } from '../types';
+import { Address, ChainId, BN, ethersConstants, isMainchain } from '../common';
 import { BigNumber } from 'bignumber.js';
-import { BigNumber as BN, constants } from 'ethers';
-import { isMainchain } from './helper';
 import { MarketEntity } from './MarketEntity';
 
 export type VotingControllerConfig = PendleEntityConfigOptionalAbi;
@@ -29,13 +27,13 @@ export class VotingController extends PendleEntity {
 
     static scaleWeight(weight: number): BN {
         if (weight < 0 || weight > 1) throw new Error('Weight must be in range [0, 1]');
-        return BN.from(new BigNumber(constants.WeiPerEther.toString()).times(weight).toFixed());
+        return BN.from(new BigNumber(ethersConstants.WeiPerEther.toString()).times(weight).toFixed());
     }
 
     // TODO: Uncomment this after the relevant view function is written
     // async getUserTotalVotedWeight(user: Address): Promise<number> {
     //     const totalVotedWeight = await this.contract.callStatic.userData(user);
-    //     return new BigNumber(totalVotedWeight.toString()).div(constants.WeiPerEther.toString()).toNumber();
+    //     return new BigNumber(totalVotedWeight.toString()).div(ethersConstants.WeiPerEther.toString()).toNumber();
     // }
 
     async vote<T extends MetaMethodType>(

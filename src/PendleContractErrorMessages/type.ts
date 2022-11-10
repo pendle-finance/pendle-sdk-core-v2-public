@@ -1,6 +1,6 @@
 // This file is generated via `yarn generatePendleContractErrorMessageHandler`
 import { type BigNumber as BN, BytesLike } from 'ethers';
-import { Address } from '../types';
+import { Address } from '../common';
 
 export type PendleContractErrorMessageHandler = {
     ApproxDstExecutionGasNotSet: () => string;

@@ -1,9 +1,10 @@
 import { Contract } from 'ethers';
 import { FunctionFragment } from '@ethersproject/abi';
-import { Address, AddParams, MulticallStaticParams } from '../../types';
 import { Multicall } from '../../multicall';
-import { ContractMethodNames, Signer, Provider, BaseCallStaticContractMethod } from './helper';
+import { ContractMethodNames, Signer, Provider } from './helper';
 import { MetaMethod } from './MetaMethod';
+import { MulticallStaticMethod } from './MulticallStaticMethod';
+import { Address } from '../../common';
 
 export type WrappedContractConfig = { readonly multicall?: Multicall };
 
@@ -26,19 +27,10 @@ export interface BaseWrappedContract<C extends Contract = Contract> extends Wrap
     readonly filters: C['filters'];
     readonly queryFilter: C['queryFilter'];
 
-    /**
-     * Note:
-     * When the overrides has only blockTag property (that is, when Multicall.isMulticallOverrides(overrides) is true),
-     * multicall is used. Otherwise callStatic is used.
-     */
-    readonly multicallStatic: {
-        // Use the following to prevent write methods having multicall ability
-        // [P in ContractMethodNames<C> as ViewMethodName<C, P>]: AddParams<
-        [P in ContractMethodNames<C>]: AddParams<
-            BaseCallStaticContractMethod<C, P>,
-            [multicallStaticParams?: MulticallStaticParams]
-        >;
-    };
+    // Use the following to prevent write methods having multicall ability
+    // readonly multicallStatic: { [P in ContractMethodNames<C> as ViewMethodName<C>]: MulticallStaticMethod<C, P> };
+    readonly multicallStatic: { [P in ContractMethodNames<C>]: MulticallStaticMethod<C, P> };
+
     readonly metaCall: { [P in ContractMethodNames<C>]: MetaMethod<C, P> };
 }
 

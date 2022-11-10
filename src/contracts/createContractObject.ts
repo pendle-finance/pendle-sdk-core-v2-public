@@ -1,5 +1,4 @@
 import { Contract, type ContractInterface, type ContractFunction, Signer, providers, BigNumber as BN } from 'ethers';
-import { Address, NetworkConnection, MulticallStaticParams } from '../types';
 import { PendleSdkError, EthersJsError, GasEstimationError } from '../errors';
 import { Multicall } from '../multicall';
 import {
@@ -9,8 +8,10 @@ import {
     WrappedContract,
     WrappedContractConfig,
     MetaMethodType,
+    MulticallStaticParams,
 } from './types';
 import { callMetaMethod } from './ContractMetaMethod';
+import { Address, NetworkConnection } from '../common';
 
 type Provider = providers.Provider;
 
