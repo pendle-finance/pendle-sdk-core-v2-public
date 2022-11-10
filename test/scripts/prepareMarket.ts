@@ -1,5 +1,5 @@
 import { BigNumber as BN, Contract } from 'ethers';
-import { Router } from '../../src';
+import { Router, Address } from '../../src';
 import FUND_KEEPER_ABI from './fundKeeperAbi.json';
 import { getBalance, getERC20Decimals, bnMinAsBn, stalkAccount, approveInfHelper } from '../util/testHelper';
 import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, networkConnection } from '../util/testEnv';
@@ -13,7 +13,7 @@ const MINT_SY_PERCENTAGE = 50;
 // typechain for fundKeeper is not available
 const FUND_KEEPER = new Contract(currentConfig.fundKeeper, FUND_KEEPER_ABI, networkConnection.signer);
 
-async function fundToken(token: string, user: string) {
+async function fundToken(token: Address, user: string) {
     let decimal = await getERC20Decimals(token);
 
     // 1/50 of the fundKeeper balance, or 100 tokens.
@@ -30,7 +30,7 @@ async function fundToken(token: string, user: string) {
 }
 
 async function main() {
-    const signerAddress = await networkConnection.signer!.getAddress()!;
+    const signerAddress = networkConnection.signerAddress;
     const tokenIn = currentConfig.market.token;
     const routerAddress = currentConfig.router;
     const ytAddress = currentConfig.market.YT;

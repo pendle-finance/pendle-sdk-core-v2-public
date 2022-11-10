@@ -9,7 +9,7 @@ import {
     MetaMethodExtraParams,
 } from '../contracts';
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
-import type { Address, NetworkConnection, ChainId, MainchainId, MulticallStaticParams } from '../types';
+import type { Address, NetworkConnection, ChainId, MainchainId, MulticallStaticParams, BN } from '../types';
 import { getContractAddresses, getRouterStatic } from './helper';
 import { BigNumberish } from 'ethers';
 
@@ -60,7 +60,7 @@ export class VePendleMainchain extends VePendle {
         additionalRawAmountToLock: BigNumberish,
         newExpiry_s: BigNumberish,
         params?: MulticallStaticParams
-    ) {
+    ): Promise<BN> {
         return this.routerStatic.multicallStatic.increaseLockPositionStatic(
             userAddress,
             additionalRawAmountToLock,

@@ -14,6 +14,7 @@ describe(SyEntity, () => {
     const syAddress = currentConfig.market.SY;
     const sy = new SyEntity(syAddress, ACTIVE_CHAIN_ID, networkConnection);
     const signer = WALLET().wallet;
+    const signerAddress = networkConnection.signerAddress;
 
     it('#constructor', () => {
         expect(sy).toBeInstanceOf(SyEntity);
@@ -46,8 +47,8 @@ describe(SyEntity, () => {
             for (const tokenMintSyAddr of tokensMintSy) {
                 await approveHelper(tokenMintSyAddr, syAddress, INF);
 
-                const syBalanceBefore = await getBalance(syAddress, signer.address);
-                const amountIn = await getBalance(tokenMintSyAddr, signer.address);
+                const syBalanceBefore = await getBalance(syAddress, signerAddress);
+                const amountIn = await getBalance(tokenMintSyAddr, signerAddress);
 
                 if (amountIn.eq(0)) {
                     console.warn(`[${await getERC20Name(tokenMintSyAddr)}] No balance to deposit to sy contract.`);
@@ -56,10 +57,10 @@ describe(SyEntity, () => {
 
                 const previewDeposit = await sy.previewDeposit(tokenMintSyAddr, amountIn);
                 await sy
-                    .deposit(signer.address, tokenMintSyAddr, amountIn, SLIPPAGE_TYPE2)
+                    .deposit(signerAddress, tokenMintSyAddr, amountIn, SLIPPAGE_TYPE2)
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-                const syBalanceAfter = await getBalance(syAddress, signer.address);
+                const syBalanceAfter = await getBalance(syAddress, signerAddress);
                 expect(syBalanceAfter.sub(syBalanceBefore)).toEqBN(previewDeposit, DEFAULT_EPSILON);
             }
         });
@@ -69,19 +70,19 @@ describe(SyEntity, () => {
             for (const tokenRedeemSyAddr of tokensRedeemSy) {
                 await approveHelper(syAddress, tokenRedeemSyAddr, INF);
 
-                const syBalance = await getBalance(syAddress, signer.address);
+                const syBalance = await getBalance(syAddress, signerAddress);
                 if (syBalance.eq(0)) {
                     console.warn('No sy balance to redeem');
                     return;
                 }
-                const tokenBalanceBefore = await getBalance(tokenRedeemSyAddr, signer.address);
+                const tokenBalanceBefore = await getBalance(tokenRedeemSyAddr, signerAddress);
 
                 const previewRedeem = await sy.previewRedeem(tokenRedeemSyAddr, syBalance);
                 await sy
-                    .redeem(signer.address, tokenRedeemSyAddr, syBalance, SLIPPAGE_TYPE2, false)
+                    .redeem(signerAddress, tokenRedeemSyAddr, syBalance, SLIPPAGE_TYPE2, false)
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-                const tokenBalanceAfter = await getBalance(tokenRedeemSyAddr, signer.address);
+                const tokenBalanceAfter = await getBalance(tokenRedeemSyAddr, signerAddress);
                 expect(tokenBalanceAfter.sub(tokenBalanceBefore)).toEqBN(previewRedeem, DEFAULT_EPSILON);
             }
         });

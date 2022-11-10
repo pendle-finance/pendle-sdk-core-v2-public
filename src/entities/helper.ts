@@ -2,10 +2,30 @@ import type { RouterStatic } from '@pendle/core-v2/typechain-types';
 import { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/RouterStatic.sol/RouterStatic.json';
 import type { ContractAddresses } from '../constants';
 import { CHAIN_ID, NATIVE_ADDRESS_0x00, NATIVE_ADDRESS_0xEE, CONTRACT_ADDRESSES, KYBER_API } from '../constants';
-import { Address, ChainId, MainchainId, NetworkConnection, MulticallStaticParams } from '../types';
+import {
+    Address,
+    ChainId,
+    MainchainId,
+    NetworkConnection,
+    MulticallStaticParams,
+    RawTokenAmount,
+    BN,
+    BigNumberish,
+} from '../types';
 import { PendleSdkError } from '../errors';
 import { createContractObject, WrappedContract, ContractObjectConfig } from '../contracts';
 import { BulkSellerUsageStrategy, NeverUseBulkSellerUsageStrategy } from './../bulkSeller';
+
+/**
+ * Convert a raw address to Pendle SDK's Address for type safety.
+ */
+export function toAddress(rawAddress: string): Address {
+    return rawAddress.toLowerCase() as Address;
+}
+
+export function createTokenAmount({ token, amount }: { token: string; amount: BigNumberish }): RawTokenAmount {
+    return { token: toAddress(token), amount: BN.from(amount) };
+}
 
 /**
  * This is a decorator that check if this.networkConnection.signer existed

@@ -5,11 +5,12 @@ describeWrite('Custom error', () => {
     const syAddress = currentConfig.market.SY;
     const sy = new SyEntity(syAddress, ACTIVE_CHAIN_ID, networkConnection);
     const signer = WALLET().wallet;
+    const signerAddress = networkConnection.signerAddress;
     const errorMessage = PendleContractError.errorMessageHandler['SYZeroDeposit']();
     const slippage = 0.1;
 
     it('catch Entity error', async () => {
-        await expect(sy.deposit(signer.address, currentConfig.market.token, 0, slippage)).rejects.toThrow(errorMessage);
+        await expect(sy.deposit(signerAddress, currentConfig.market.token, 0, slippage)).rejects.toThrow(errorMessage);
     });
 
     it('catch contract call static', async () => {

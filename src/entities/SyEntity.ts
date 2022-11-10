@@ -10,7 +10,13 @@ import {
 import type { Address, RawTokenAmount, ChainId, MulticallStaticParams } from '../types';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { getRouterStatic, isNativeToken, getGlobalBulkSellerUsageStrategyGetter } from './helper';
+import {
+    getRouterStatic,
+    isNativeToken,
+    getGlobalBulkSellerUsageStrategyGetter,
+    createTokenAmount,
+    toAddress,
+} from './helper';
 import { calcSlippedDownAmount } from './math';
 import { ERC20, ERC20Config } from './ERC20';
 import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
@@ -100,19 +106,23 @@ export class SyEntity extends ERC20 {
     }
 
     async userInfo(user: Address, params?: MulticallStaticParams): Promise<UserSyInfo> {
-        return this.routerStatic.multicallStatic.getUserSYInfo(this.address, user, params);
+        const { balance, rewards } = await this.routerStatic.multicallStatic.getUserSYInfo(this.address, user, params);
+        return { balance, rewards: rewards.map(createTokenAmount) };
     }
 
-    async getTokensIn(params?: MulticallStaticParams) {
-        return this.contract.multicallStatic.getTokensIn(params);
+    async getTokensIn(params?: MulticallStaticParams): Promise<Address[]> {
+        const results = await this.contract.multicallStatic.getTokensIn(params);
+        return results.map(toAddress);
     }
 
-    async getTokensOut(params?: MulticallStaticParams) {
-        return this.contract.multicallStatic.getTokensOut(params);
+    async getTokensOut(params?: MulticallStaticParams): Promise<Address[]> {
+        const results = await this.contract.multicallStatic.getTokensOut(params);
+        return results.map(toAddress);
     }
 
-    async getRewardTokens(params?: MulticallStaticParams) {
-        return this.contract.multicallStatic.getRewardTokens(params);
+    async getRewardTokens(params?: MulticallStaticParams): Promise<Address[]> {
+        const results = await this.contract.multicallStatic.getRewardTokens(params);
+        return results.map(toAddress);
     }
 
     async previewRedeem(

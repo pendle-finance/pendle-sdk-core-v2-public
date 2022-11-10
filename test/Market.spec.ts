@@ -1,4 +1,4 @@
-import { MarketEntity, SyEntity, Multicall } from '../src';
+import { MarketEntity, SyEntity, Multicall, toAddress } from '../src';
 import { getRouterStatic } from '../src/entities/helper';
 import { decimalFactor } from '../src/entities/math';
 import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testEnv';
@@ -9,6 +9,7 @@ describe(MarketEntity, () => {
     const market = new MarketEntity(currentMarket.market, ACTIVE_CHAIN_ID, networkConnection);
     const contract = market.contract;
     const sender = WALLET().wallet;
+    const senderAddress = toAddress(sender.address);
     const sy = new SyEntity(currentMarket.SY, ACTIVE_CHAIN_ID, networkConnection);
     const routerStatic = getRouterStatic(ACTIVE_CHAIN_ID, networkConnection);
 
@@ -54,7 +55,7 @@ describe(MarketEntity, () => {
         it('#userMarketInfo', async () => {
             const [marketInfo, userMarketInfo, userBalance, syInfo, syExchangeRate] = await Promise.all([
                 market.getMarketInfo({ multicall }),
-                market.getUserMarketInfo(sender.address, { multicall }),
+                market.getUserMarketInfo(senderAddress, { multicall }),
                 Multicall.wrap(market.contract, multicall).callStatic.balanceOf(sender.address),
                 sy.contract.assetInfo(),
                 sy.contract.exchangeRate(),

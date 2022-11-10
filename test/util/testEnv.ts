@@ -1,7 +1,7 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
 import { Wallet } from 'ethers';
-import { CHAIN_ID, Multicall } from '../../src';
+import { CHAIN_ID, Multicall, Address, toAddress } from '../../src';
 import './bigNumberMatcher';
 
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
@@ -62,9 +62,35 @@ export const networkConnection = {
     get signer() {
         return WALLET().wallet; // this.provider.getSigner();
     },
+    get signerAddress(): Address {
+        return toAddress(this.signer.address);
+    },
 } as const;
 
-export const CONTRACT_ADDRESSES = {
+type ShallowToAddressType<T> = T extends string
+    ? Address
+    : T extends {}
+    ? { [Key in keyof T]: ShallowToAddressType<T[Key]> }
+    : T;
+
+function shallowToAddress<T>(obj: T): ShallowToAddressType<T> {
+    if (typeof obj === 'string') {
+        return toAddress(obj) as any;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(shallowToAddress) as any;
+    }
+    if (typeof obj !== 'object') {
+        return obj as any;
+    }
+    const res: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj as {})) {
+        res[key] = shallowToAddress(value);
+    }
+    return res as any;
+}
+
+export const CONTRACT_ADDRESSES = shallowToAddress({
     [CHAIN_ID.FUJI]: {
         CORE: {
             DEPLOYER: FUJI_CORE_ADDRESSES.deployer,
@@ -93,7 +119,7 @@ export const CONTRACT_ADDRESSES = {
         },
         TOKENS: FUJI_TEST_ENV.tokens,
     },
-} as const;
+} as const);
 
 export const WALLET = () => ({
     wallet: (process.env.PRIVATE_KEY

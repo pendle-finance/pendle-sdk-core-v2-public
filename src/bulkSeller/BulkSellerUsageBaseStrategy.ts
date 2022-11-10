@@ -2,6 +2,7 @@ import { RawTokenAmount, BigNumberish, Address, BN } from '../types';
 import { RouterStatic, WrappedContract } from '../contracts';
 import { NATIVE_ADDRESS_0x00 } from '../constants';
 import { PendleContractError } from '../errors';
+import { toAddress } from '../entities/helper';
 
 /**
  * Mode to use with BulkSellerUsageStrategy
@@ -125,13 +126,14 @@ export abstract class BulkSellerUsageBaseStrategy implements BulkSellerUsageStra
             tokenTradeAmount.token,
             syAddress
         );
+        const bulkAddress = toAddress(bulk);
         if (useBulk === true) {
-            return bulk;
+            return bulkAddress;
         }
         if (totalToken.lt(tokenTradeAmount.amount)) {
             return NATIVE_ADDRESS_0x00;
         }
-        return this.determineByTokenLogic(bulk, tokenTradeAmount, syAddress, { totalToken, totalSy });
+        return this.determineByTokenLogic(bulkAddress, tokenTradeAmount, syAddress, { totalToken, totalSy });
     }
 
     async determineBySy(
@@ -152,13 +154,14 @@ export abstract class BulkSellerUsageBaseStrategy implements BulkSellerUsageStra
             tokenAddress,
             syTradeAmount.token
         );
+        const bulkAddress = toAddress(bulk);
         if (useBulk === true) {
-            return bulk;
+            return bulkAddress;
         }
         if (totalSy.lt(syTradeAmount.amount)) {
             return NATIVE_ADDRESS_0x00;
         }
-        return this.determineBySyLogic(bulk, syTradeAmount, tokenAddress, { totalToken, totalSy });
+        return this.determineBySyLogic(bulkAddress, syTradeAmount, tokenAddress, { totalToken, totalSy });
     }
 
     protected abstract determineByTokenLogic(

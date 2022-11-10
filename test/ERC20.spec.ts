@@ -13,6 +13,7 @@ import { describeWithMulticall } from './util/testHelper';
 describe(ERC20, () => {
     const usdc = new ERC20(currentConfig.tokens.USDC, ACTIVE_CHAIN_ID, networkConnection);
     const signer = WALLET().wallet;
+    const signerAddress = networkConnection.signerAddress;
 
     it('#constructor', () => {
         expect(usdc).toBeInstanceOf(ERC20);
@@ -41,13 +42,13 @@ describe(ERC20, () => {
             const approveAmount = decimalFactor(17);
             await usdc.approve(currentConfig.marketAddress, approveAmount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-            const currentAllowance = await usdc.allowance(signer.address, currentConfig.marketAddress);
+            const currentAllowance = await usdc.allowance(signerAddress, currentConfig.marketAddress);
             expect(currentAllowance).toEqBN(approveAmount);
         });
 
         it('#balanceOf & #transfer', async () => {
             const transferAmount = 1;
-            const beforeBalance = await usdc.balanceOf(signer.address);
+            const beforeBalance = await usdc.balanceOf(signerAddress);
             if (beforeBalance.lt(transferAmount)) {
                 console.log('Not enough balance to test transfer');
                 return;
@@ -55,7 +56,7 @@ describe(ERC20, () => {
 
             await usdc.transfer(currentConfig.marketAddress, transferAmount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-            const afterBalance = await usdc.balanceOf(signer.address);
+            const afterBalance = await usdc.balanceOf(signerAddress);
             expect(beforeBalance.sub(afterBalance)).toEqBN(transferAmount);
         });
     });

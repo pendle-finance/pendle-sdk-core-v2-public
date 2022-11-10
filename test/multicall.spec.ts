@@ -1,4 +1,4 @@
-import { PendleERC20, ERC20, SyEntity, decimalFactor, Address, zip } from '../src';
+import { PendleERC20, ERC20, SyEntity, decimalFactor, Address, zip, toAddress } from '../src';
 import { BigNumber as BN, ethers } from 'ethers';
 import { MarketEntity, PtEntity, WrappedContract } from '../src';
 import './util/bigNumberMatcher.ts';
@@ -93,8 +93,8 @@ describe('Multicall', () => {
         const currentBlock = await networkConnection.provider.getBlockNumber();
         const syContract = new SyEntity(currentConfig.market.SY, currentConfig.chainId, networkConnection).contract;
 
-        const tokensIn = await syContract.getTokensIn();
-        const tokensOut = await syContract.getTokensOut();
+        const tokensIn = (await syContract.getTokensIn()).map(toAddress);
+        const tokensOut = (await syContract.getTokensOut()).map(toAddress);
 
         const getOne = async (token: Address) => {
             const decimals = await new ERC20(token, currentConfig.chainId, networkConnection).decimals();

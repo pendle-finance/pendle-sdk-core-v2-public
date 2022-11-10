@@ -9,16 +9,11 @@ import {
     MetaMethodExtraParams,
     mergeMetaMethodExtraParams as mergeParams,
 } from '../contracts';
-import type {
-    ApproxParamsStruct,
-    IPAllAction,
-    TokenInputStruct,
-    TokenOutputStruct,
-} from '@pendle/core-v2/typechain-types/IPAllAction';
+import type { ApproxParamsStruct, IPAllAction } from '@pendle/core-v2/typechain-types/IPAllAction';
 import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
 import type { Address, NetworkConnection, ChainId, RawTokenAmount } from '../types';
 import type { BigNumberish } from 'ethers';
-import { BigNumber as BN, constants as etherConstants } from 'ethers';
+import { BigNumber as BN, constants as etherConstants, BytesLike } from 'ethers';
 import {
     getContractAddresses,
     getRouterStatic,
@@ -33,6 +28,24 @@ import { YtEntity } from './YtEntity';
 import { NoRouteFoundError } from '../errors';
 import { KyberHelper, KybercallData, KyberState, KyberHelperCoreConfig } from './KyberHelper';
 import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
+
+export type TokenInput = {
+    tokenIn: Address;
+    netTokenIn: BigNumberish;
+    tokenMintSy: Address;
+    bulk: Address;
+    kyberRouter: Address;
+    kybercall: BytesLike;
+};
+
+export type TokenOutput = {
+    tokenOut: Address;
+    minTokenOut: BigNumberish;
+    tokenRedeemSy: Address;
+    bulk: Address;
+    kyberRouter: Address;
+    kybercall: BytesLike;
+};
 
 export type RouterState = {
     kyberHelper: KyberState;
@@ -172,8 +185,8 @@ export class Router extends PendleEntity {
         sy: Address,
         tokenMintSyList: Address[],
         useBulkMode: UseBulkMode,
-        fn: (tokenMintSyAmount: RawTokenAmount<BigNumberish>, input: TokenInputStruct) => Promise<Data>
-    ): Promise<undefined | (Data & { input: TokenInputStruct; kybercallData: KybercallData })> {
+        fn: (tokenMintSyAmount: RawTokenAmount<BigNumberish>, input: TokenInput) => Promise<Data>
+    ): Promise<undefined | (Data & { input: TokenInput; kybercallData: KybercallData })> {
         const processTokenMinSy = async (tokenMintSy: Address) => {
             try {
                 const kybercallData = await this.kyberHelper.makeCall(tokenInAmount, tokenMintSy);
@@ -187,7 +200,7 @@ export class Router extends PendleEntity {
                     { token: tokenMintSy, amount: kybercallData.outputAmount },
                     sy,
                     async (bulkSellerAddress) => {
-                        const input: TokenInputStruct = {
+                        const input: TokenInput = {
                             tokenIn: tokenInAmount.token,
                             netTokenIn: tokenInAmount.amount,
                             tokenMintSy,
@@ -222,7 +235,7 @@ export class Router extends PendleEntity {
         slippage: number,
         params: { syEntity?: SyEntity } = {}
     ): Promise<
-        undefined | { netOut: BN; output: TokenOutputStruct; kybercallData: KybercallData; redeemedFromSyAmount: BN }
+        undefined | { netOut: BN; output: TokenOutput; kybercallData: KybercallData; redeemedFromSyAmount: BN }
     > {
         const syEntity = params.syEntity ?? new SyEntity(syAmount.token, this.chainId, this.entityConfig);
 
@@ -241,7 +254,7 @@ export class Router extends PendleEntity {
 
                 const netOut = BN.from(kybercallData.outputAmount);
 
-                const output: TokenOutputStruct = {
+                const output: TokenOutput = {
                     tokenOut,
                     tokenRedeemSy,
                     kybercall: kybercallData.encodedSwapData,
@@ -398,7 +411,7 @@ export class Router extends PendleEntity {
         {
             netLpOut: BN;
             netPtFromSwap: BN;
-            input: TokenInputStruct;
+            input: TokenInput;
             priceImpact: BN;
             kybercallData: KybercallData;
             netSyFee: BN;
@@ -483,7 +496,7 @@ export class Router extends PendleEntity {
             netTokenOut: BN;
             netPtOut: BN;
             intermediateSy: BN;
-            output: TokenOutputStruct;
+            output: TokenOutput;
             kybercallData: KybercallData;
             redeemedFromSyAmount: BN;
         }
@@ -589,7 +602,7 @@ export class Router extends PendleEntity {
         'removeLiquiditySingleToken',
         {
             netTokenOut: BN;
-            output: TokenOutputStruct;
+            output: TokenOutput;
             kybercallData: KybercallData;
             netSyFee: BN;
             intermediateSy: BN;
@@ -707,7 +720,7 @@ export class Router extends PendleEntity {
         'swapExactTokenForPt',
         {
             netPtOut: BN;
-            input: TokenInputStruct;
+            input: TokenInput;
             kybercallData: KybercallData;
             netSyFee: BN;
             priceImpact: BN;
@@ -780,7 +793,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'mintSyFromToken',
-        { netSyOut: BN; input: TokenInputStruct; kybercallData: KybercallData }
+        { netSyOut: BN; input: TokenInput; kybercallData: KybercallData }
     > {
         const params = this.addExtraParams(_params);
         if (typeof sy === 'string') {
@@ -822,7 +835,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'redeemSyToToken',
-        { netTokenOut: BN; output: TokenOutputStruct; kybercallData: KybercallData }
+        { netTokenOut: BN; output: TokenOutput; kybercallData: KybercallData }
     > {
         const params = this.addExtraParams(_params);
         if (typeof sy === 'string') {
@@ -859,7 +872,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'mintPyFromToken',
-        { netPyOut: BN; input: TokenInputStruct; kybercallData: KybercallData }
+        { netPyOut: BN; input: TokenInput; kybercallData: KybercallData }
     > {
         const params = this.addExtraParams(_params);
         if (typeof yt === 'string') {
@@ -920,7 +933,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'redeemPyToToken',
-        { netTokenOut: BN; kybercallData: KybercallData; output: TokenOutputStruct }
+        { netTokenOut: BN; kybercallData: KybercallData; output: TokenOutput }
     > {
         const params = this.addExtraParams(_params);
         if (typeof yt === 'string') {
@@ -1032,7 +1045,7 @@ export class Router extends PendleEntity {
         'swapExactPtForToken',
         {
             netTokenOut: BN;
-            output: TokenOutputStruct;
+            output: TokenOutput;
             kybercallData: KybercallData;
             netSyFee: BN;
             intermediateSy: BN;
@@ -1123,7 +1136,7 @@ export class Router extends PendleEntity {
         'swapExactTokenForYt',
         {
             netYtOut: BN;
-            input: TokenInputStruct;
+            input: TokenInput;
             kybercallData: KybercallData;
             netSyFee: BN;
             priceImpact: BN;
@@ -1176,7 +1189,7 @@ export class Router extends PendleEntity {
         'swapExactYtForToken',
         {
             netTokenOut: BN;
-            output: TokenOutputStruct;
+            output: TokenOutput;
             kybercallData: KybercallData;
             netSyFee: BN;
             intermediateSy: BN;

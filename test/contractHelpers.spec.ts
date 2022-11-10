@@ -6,7 +6,7 @@ import { BigNumber as BN } from 'ethers';
 
 describeWrite('Contract Helpers', () => {
     const signer = networkConnection.signer;
-    const signerAddress = signer.address;
+    const signerAddress = networkConnection.signerAddress;
     const pendle = new ERC20(currentConfig.pendle, ACTIVE_CHAIN_ID, { provider: networkConnection.provider });
     const approveAmount = 69;
 

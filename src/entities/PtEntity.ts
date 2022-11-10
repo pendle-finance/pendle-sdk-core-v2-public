@@ -1,35 +1,23 @@
-import { PendlePrincipalToken, RouterStatic, PendlePrincipalTokenABI, WrappedContract } from '../contracts';
+import { PendlePrincipalToken, PendlePrincipalTokenABI, WrappedContract } from '../contracts';
 import type { Address, ChainId, MulticallStaticParams } from '../types';
-import type { UserPyInfo, PyInfo } from './YtEntity';
-import { getRouterStatic } from './helper';
-import { ERC20, ERC20Config } from './ERC20';
 import { YtEntity, YtEntityConfig } from './YtEntity';
 import { SyEntity, SyEntityConfig } from './SyEntity';
+import { PyEntity, PyEntityConfig } from './PyEntity';
+import { toAddress } from './helper';
 
-export type PtEntityConfig = ERC20Config;
+export type PtEntityConfig = PyEntityConfig;
 
-export class PtEntity extends ERC20 {
-    protected readonly routerStatic: WrappedContract<RouterStatic>;
-
+export class PtEntity extends PyEntity {
     constructor(readonly address: Address, readonly chainId: ChainId, config: PtEntityConfig) {
         super(address, chainId, { abi: PendlePrincipalTokenABI, ...config });
-        this.routerStatic = getRouterStatic(chainId, config);
     }
 
     get contract() {
         return this._contract as WrappedContract<PendlePrincipalToken>;
     }
 
-    async userInfo(user: Address, params?: MulticallStaticParams): Promise<UserPyInfo> {
-        return this.routerStatic.multicallStatic.getUserPYInfo(this.address, user, params);
-    }
-
-    async getInfo(params?: MulticallStaticParams): Promise<PyInfo> {
-        return this.routerStatic.multicallStatic.getPYInfo(this.address, params);
-    }
-
     async SY(params?: MulticallStaticParams): Promise<Address> {
-        return this.contract.multicallStatic.SY(params);
+        return this.contract.multicallStatic.SY(params).then(toAddress);
     }
 
     /**
@@ -41,7 +29,7 @@ export class PtEntity extends ERC20 {
     }
 
     async YT(params?: MulticallStaticParams): Promise<Address> {
-        return this.contract.multicallStatic.YT(params);
+        return this.contract.multicallStatic.YT(params).then(toAddress);
     }
 
     /**

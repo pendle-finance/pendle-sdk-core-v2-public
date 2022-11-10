@@ -4,6 +4,8 @@ import type { UserPyInfo } from './YtEntity';
 import type { UserMarketInfo } from './MarketEntity';
 import { getRouterStatic } from './helper';
 import { Multicall } from '../multicall';
+import { MarketEntity } from './MarketEntity';
+import { PyEntity } from './PyEntity';
 
 export type SDKConfig = NetworkConnection & {
     multicall?: Multicall;
@@ -29,7 +31,8 @@ export class SDK {
         pys: Address[],
         params?: MulticallStaticParams
     ): Promise<UserPyInfo[]> {
-        return this.routerStatic.multicallStatic.getUserPYPositionsByPYs(user, pys, params);
+        const result = await this.routerStatic.multicallStatic.getUserPYPositionsByPYs(user, pys, params);
+        return result.map(PyEntity.toUserPyInfo);
     }
 
     async getUserMarketPositions(
@@ -37,6 +40,7 @@ export class SDK {
         markets: Address[],
         params?: MulticallStaticParams
     ): Promise<UserMarketInfo[]> {
-        return this.routerStatic.multicallStatic.getUserMarketPositions(user, markets, params);
+        const results = await this.routerStatic.multicallStatic.getUserMarketPositions(user, markets, params);
+        return results.map(MarketEntity.toUserMarketInfo);
     }
 }

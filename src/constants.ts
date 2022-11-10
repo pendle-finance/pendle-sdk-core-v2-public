@@ -2,6 +2,7 @@ import type { Address } from './entities';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
 import { constants as ethersConstants } from 'ethers';
+import { toAddress } from './entities/helper';
 
 export type ContractAddresses = {
     ROUTER: Address;
@@ -33,18 +34,18 @@ export const ETHEREUM_ADDRESSES: ContractAddresses = {
 export const AVALANCHE_ADDRESSES: ContractAddresses = ETHEREUM_ADDRESSES;
 
 export const FUJI_ADDRESSES: ContractAddresses = {
-    ROUTER: FUJI_CORE_ADDRESSES.router,
-    ROUTER_STATIC: FUJI_CORE_ADDRESSES.routerStatic,
-    PENDLE: FUJI_CORE_ADDRESSES.PENDLE,
-    VEPENDLE: FUJI_CORE_ADDRESSES.vePendle,
-    VOTING_CONTROLLER: FUJI_CORE_ADDRESSES.votingController,
+    ROUTER: toAddress(FUJI_CORE_ADDRESSES.router),
+    ROUTER_STATIC: toAddress(FUJI_CORE_ADDRESSES.routerStatic),
+    PENDLE: toAddress(FUJI_CORE_ADDRESSES.PENDLE),
+    VEPENDLE: toAddress(FUJI_CORE_ADDRESSES.vePendle),
+    VOTING_CONTROLLER: toAddress(FUJI_CORE_ADDRESSES.votingController),
 };
 
 export const MUMBAI_ADDRESSES: ContractAddresses = {
-    ROUTER: MUMBAI_CORE_ADDRESSES.router,
-    ROUTER_STATIC: MUMBAI_CORE_ADDRESSES.routerStatic,
-    PENDLE: MUMBAI_CORE_ADDRESSES.PENDLE,
-    VEPENDLE: MUMBAI_CORE_ADDRESSES.vePendle,
+    ROUTER: toAddress(MUMBAI_CORE_ADDRESSES.router),
+    ROUTER_STATIC: toAddress(MUMBAI_CORE_ADDRESSES.routerStatic),
+    PENDLE: toAddress(MUMBAI_CORE_ADDRESSES.PENDLE),
+    VEPENDLE: toAddress(MUMBAI_CORE_ADDRESSES.vePendle),
 };
 
 export const CONTRACT_ADDRESSES: Record<ChainId, ContractAddresses> = {

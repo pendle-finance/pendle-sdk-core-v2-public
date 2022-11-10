@@ -5,7 +5,7 @@ import { Multicall } from './multicall';
 
 export { BigNumberish, BigNumber as BN } from 'ethers';
 
-export type Address = string;
+export type Address = `0x${string}`;
 
 // Disallow missing both of the properties
 export type NetworkConnection =

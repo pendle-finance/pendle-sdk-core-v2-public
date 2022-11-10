@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { isSameAddress } from '../../src/entities/helper';
 import { approveHelper, getAllowance } from '../util/testHelper';
 import { currentConfig, networkConnection } from '../util/testEnv';
+import { toAddress } from '../../src';
 
 const INF = ethers.constants.MaxUint256;
 async function main() {
@@ -14,7 +15,7 @@ async function main() {
         currentConfig.markets.map((m) => m.market),
     ].flat();
 
-    const signerAddress = await networkConnection.signer?.getAddress()!;
+    const signerAddress = toAddress(await networkConnection.signer?.getAddress()!);
     for (let token of tokens) {
         if (isSameAddress(token, currentConfig.faucet) || isSameAddress(token, currentConfig.fundKeeper)) {
             continue;

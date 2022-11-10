@@ -26,7 +26,7 @@ describe(VePendle, () => {
     describeWrite(() => {
         const pendle = new ERC20(currentConfig.pendle, ACTIVE_CHAIN_ID, networkConnection);
         const signer = WALLET().wallet;
-        const signerAddress = signer.address;
+        const signerAddress = networkConnection.signerAddress;
         const contract = vePendle.contract;
 
         // only test if ACTIVE_CHAIN_ID is mainchain
@@ -36,7 +36,7 @@ describe(VePendle, () => {
         }
 
         it('#increaseLockPosition', async () => {
-            const pendleBalanceBefore = await pendle.balanceOf(signer.address);
+            const pendleBalanceBefore = await pendle.balanceOf(signerAddress);
             if (pendleBalanceBefore.isZero()) {
                 console.warn(`No PENDLE balance in ${signerAddress}.`);
                 return;
@@ -69,7 +69,7 @@ describe(VePendle, () => {
                 .increaseLockPosition(pendleBalanceBefore, newExpiry)
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-            const pendleBalanceAfter = await pendle.balanceOf(signer.address);
+            const pendleBalanceAfter = await pendle.balanceOf(signerAddress);
             expect(pendleBalanceBefore.sub(pendleBalanceAfter)).toEqBN(lockAmount);
 
             const positionDataAfter = await vePendle.positionData(signerAddress);

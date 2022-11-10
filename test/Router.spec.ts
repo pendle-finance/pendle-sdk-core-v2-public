@@ -1,4 +1,4 @@
-import { decimalFactor, MetaMethodReturnType, Router, SyEntity, MetaMethodData } from '../src';
+import { decimalFactor, MetaMethodReturnType, Router, SyEntity, MetaMethodData, Address } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -56,6 +56,7 @@ type SkipTxCheckCallback<T extends MetaMethodCallback> = (readerData: MetaMethod
 describe(Router, () => {
     const router = Router.getRouter(ACTIVE_CHAIN_ID, networkConnection);
     const signer = WALLET().wallet;
+    const signerAddress = networkConnection.signerAddress;
     const marketAddress = currentConfig.market.market;
     const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
@@ -105,7 +106,7 @@ describe(Router, () => {
         zeroApprovalSnapshotId = await evm_snapshot();
     }
 
-    async function batchInfApprove(tokens: string[]) {
+    async function batchInfApprove(tokens: Address[]) {
         for (const token of tokens) {
             await approveInfHelper(token, router.address);
         }
@@ -113,7 +114,7 @@ describe(Router, () => {
 
     async function sendTxWithInfApproval<T extends MetaMethodCallback>(
         callback: T,
-        tokens: string[],
+        tokens: Address[],
         skipTxCheck?: SkipTxCheckCallback<T>
     ): Promise<MetaMethodData<T>> {
         const metaCall = await callback();
@@ -139,11 +140,11 @@ describe(Router, () => {
         it('#addLiquidityDualSyAndPt', async () => {
             const syAdd = bnMinAsBn(
                 decimalFactor(syDecimals).mul(MAX_SY_ADD_AMOUNT),
-                await getBalance(syAddress, signer.address)
+                await getBalance(syAddress, signerAddress)
             );
             const ptAdd = bnMinAsBn(
                 decimalFactor(ptDecimals).mul(MAX_PT_ADD_AMOUNT),
-                await getBalance(ptAddress, signer.address)
+                await getBalance(ptAddress, signerAddress)
             );
 
             if (syAdd.eq(0) || ptAdd.eq(0)) {
@@ -151,7 +152,7 @@ describe(Router, () => {
                 return;
             }
 
-            const lpBalanceBefore = await getBalance(marketAddress, signer.address);
+            const lpBalanceBefore = await getBalance(marketAddress, signerAddress);
 
             const readerData = await sendTxWithInfApproval(
                 () =>
@@ -161,23 +162,23 @@ describe(Router, () => {
                 [syAddress, ptAddress]
             );
 
-            const lpBalanceAfter = await getBalance(marketAddress, signer.address);
+            const lpBalanceAfter = await getBalance(marketAddress, signerAddress);
             expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
         });
 
         it('#addLiquidityDualTokenAndPt', async () => {
-            let tokensIn = await sySdk.contract.getTokensIn();
+            let tokensIn = await sySdk.getTokensIn();
             for (let token of tokensIn) {
                 const tokenDecimals = await getERC20Decimals(token);
                 const tokenAddAmount = bnMinAsBn(
                     // Use small amount of token to make sure we will add all of them
                     // TODO: use actual logic to calculate the amount to add
                     decimalFactor(tokenDecimals),
-                    await getBalance(token, signer.address)
+                    await getBalance(token, signerAddress)
                 );
                 const ptAdd = bnMinAsBn(
                     decimalFactor(ptDecimals).mul(MAX_PT_ADD_AMOUNT),
-                    await getBalance(ptAddress, signer.address)
+                    await getBalance(ptAddress, signerAddress)
                 );
 
                 if (tokenAddAmount.eq(0) || ptAdd.eq(0)) {
@@ -185,7 +186,7 @@ describe(Router, () => {
                     continue;
                 }
 
-                const lpBalanceBefore = await getBalance(marketAddress, signer.address);
+                const lpBalanceBefore = await getBalance(marketAddress, signerAddress);
 
                 const readerData = await sendTxWithInfApproval(
                     () =>
@@ -201,7 +202,7 @@ describe(Router, () => {
                         ),
                     [token, ptAddress]
                 );
-                const lpBalanceAfter = await getBalance(marketAddress, signer.address);
+                const lpBalanceAfter = await getBalance(marketAddress, signerAddress);
                 expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
                 // for some technical reasons, we need to test all tokens inside a single test
                 // so we need to revert manually instead of `afterEach`
@@ -212,7 +213,7 @@ describe(Router, () => {
         it('#addLiquiditySinglePt', async () => {
             const ptAdd = bnMinAsBn(
                 decimalFactor(ptDecimals).mul(MAX_PT_ADD_AMOUNT),
-                await getBalance(ptAddress, signer.address)
+                await getBalance(ptAddress, signerAddress)
             );
             if (ptAdd.eq(0)) {
                 console.warn('skip test because ptAdd is 0');
@@ -237,7 +238,7 @@ describe(Router, () => {
         it('#addLiquiditySingleSy', async () => {
             const syAdd = bnMinAsBn(
                 decimalFactor(syDecimals).mul(MAX_SY_ADD_AMOUNT),
-                await getBalance(syAddress, signer.address)
+                await getBalance(syAddress, signerAddress)
             );
             if (syAdd.eq(0)) {
                 console.warn('skip test because syAdd is 0');
@@ -261,11 +262,11 @@ describe(Router, () => {
         });
 
         describeWrite('#addLiquiditySingleToken', () => {
-            async function checkAddLiquiditySingleToken(token: string) {
+            async function checkAddLiquiditySingleToken(token: Address) {
                 const tokenDecimals = await getERC20Decimals(token);
                 const tokenAddAmount = bnMinAsBn(
                     decimalFactor(tokenDecimals).mul(MAX_TOKEN_ADD_AMOUNT),
-                    await getBalance(token, signer.address)
+                    await getBalance(token, signerAddress)
                 );
 
                 if (tokenAddAmount.eq(0)) {
@@ -298,7 +299,7 @@ describe(Router, () => {
             });
 
             it('tokens in sy', async () => {
-                const tokensIn = await sySdk.contract.getTokensIn();
+                const tokensIn = await sySdk.getTokensIn();
                 for (const token of tokensIn) {
                     await checkAddLiquiditySingleToken(token);
                     await switchToZeroApproval();
@@ -307,7 +308,7 @@ describe(Router, () => {
         });
 
         it('#removeLiquidityDualSyAndPt', async () => {
-            const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR);
+            const liquidityRemove = (await getBalance(marketAddress, signerAddress)).div(REMOVE_LIQUIDITY_FACTOR);
 
             if (liquidityRemove.eq(0)) {
                 console.warn('skip test because liquidityRemove is 0');
@@ -341,9 +342,9 @@ describe(Router, () => {
         });
 
         it('#removeLiquidityDualTokenAndPt', async () => {
-            let tokensOut = await sySdk.contract.getTokensOut();
+            let tokensOut = await sySdk.getTokensOut();
             for (let token of tokensOut) {
-                const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(
+                const liquidityRemove = (await getBalance(marketAddress, signerAddress)).div(
                     REMOVE_LIQUIDITY_FACTOR_ZAP
                 );
                 if (liquidityRemove.eq(0)) {
@@ -387,7 +388,7 @@ describe(Router, () => {
         });
 
         it('#removeLiquiditySinglePt', async () => {
-            const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR_ZAP);
+            const liquidityRemove = (await getBalance(marketAddress, signerAddress)).div(REMOVE_LIQUIDITY_FACTOR_ZAP);
             if (liquidityRemove.eq(0)) {
                 console.warn('skip test because liquidityRemove is 0');
                 return;
@@ -411,7 +412,7 @@ describe(Router, () => {
         });
 
         it('#removeLiquiditySingleSy', async () => {
-            const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(REMOVE_LIQUIDITY_FACTOR_ZAP);
+            const liquidityRemove = (await getBalance(marketAddress, signerAddress)).div(REMOVE_LIQUIDITY_FACTOR_ZAP);
             if (liquidityRemove.eq(0)) {
                 console.warn('skip test because liquidityRemove is 0');
             }
@@ -433,8 +434,8 @@ describe(Router, () => {
         });
 
         describeWrite('#removeLiquiditySingleToken', () => {
-            async function checkRemoveLiquiditySingleToken(token: string) {
-                const liquidityRemove = (await getBalance(marketAddress, signer.address)).div(
+            async function checkRemoveLiquiditySingleToken(token: Address) {
+                const liquidityRemove = (await getBalance(marketAddress, signerAddress)).div(
                     REMOVE_LIQUIDITY_FACTOR_ZAP
                 );
                 if (liquidityRemove.eq(0)) {
@@ -469,7 +470,7 @@ describe(Router, () => {
             });
 
             it('tokens out sy', async () => {
-                const tokensOut = await sySdk.contract.getTokensOut();
+                const tokensOut = await sySdk.getTokensOut();
                 for (let token of tokensOut) {
                     await checkRemoveLiquiditySingleToken(token);
                     await switchToZeroApproval();
@@ -1001,10 +1002,10 @@ describe(Router, () => {
      */
     async function getSwapBalanceSnapshot(): Promise<BalanceSnapshot> {
         const [ptBalance, syBalance, ytBalance, tokenBalance, marketPtBalance, marketSyBalance] = await Promise.all([
-            getBalance(ptAddress, signer.address),
-            getBalance(syAddress, signer.address),
-            getBalance(ytAddress, signer.address),
-            getBalance(rawTokenAddress, signer.address),
+            getBalance(ptAddress, signerAddress),
+            getBalance(syAddress, signerAddress),
+            getBalance(ytAddress, signerAddress),
+            getBalance(rawTokenAddress, signerAddress),
             getBalance(ptAddress, currentConfig.marketAddress),
             getBalance(syAddress, currentConfig.marketAddress),
         ]);
@@ -1018,8 +1019,8 @@ describe(Router, () => {
         };
     }
 
-    async function getBalanceSnapshot(tokens: string[]): Promise<BN[]> {
-        return Promise.all(tokens.map((token) => getBalance(token, signer.address)));
+    async function getBalanceSnapshot(tokens: Address[]): Promise<BN[]> {
+        return Promise.all(tokens.map((token) => getBalance(token, signerAddress)));
     }
 
     function getSySwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean): BN {

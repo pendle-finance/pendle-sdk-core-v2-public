@@ -1,55 +1,23 @@
-import { PendleYieldToken, RouterStatic, PendleYieldTokenABI, WrappedContract } from '../contracts';
-import type { Address, RawTokenAmount, ChainId, MulticallStaticParams } from '../types';
-import { BigNumber as BN } from 'ethers';
-import { getRouterStatic } from './helper';
-import { ERC20, ERC20Config } from './ERC20';
+import { PendleYieldToken, PendleYieldTokenABI, WrappedContract } from '../contracts';
+import type { Address, ChainId, MulticallStaticParams } from '../types';
+import { toAddress } from './helper';
 import { PtEntity, PtEntityConfig } from './PtEntity';
 import { SyEntity, SyEntityConfig } from './SyEntity';
+import { PyEntity, PyEntityConfig } from './PyEntity';
 
-export type UserPyInfo = {
-    yt: Address;
-    ytBalance: BN;
-    pt: Address;
-    ptBalance: BN;
-    unclaimedInterest: RawTokenAmount;
-    unclaimedRewards: RawTokenAmount[];
-};
+export type YtEntityConfig = PyEntityConfig;
 
-export type PyInfo = {
-    exchangeRate: BN;
-    totalSupply: BN;
-    rewardIndexes: RewardIndex[];
-};
-
-export type RewardIndex = {
-    rewardToken: Address;
-    index: BN;
-};
-
-export type YtEntityConfig = ERC20Config;
-
-export class YtEntity extends ERC20 {
-    protected readonly routerStatic: WrappedContract<RouterStatic>;
-
+export class YtEntity extends PyEntity {
     constructor(readonly address: Address, readonly chainId: ChainId, config: YtEntityConfig) {
         super(address, chainId, { abi: PendleYieldTokenABI, ...config });
-        this.routerStatic = getRouterStatic(chainId, config);
     }
 
     get contract() {
         return this._contract as WrappedContract<PendleYieldToken>;
     }
 
-    async userInfo(user: Address, params?: MulticallStaticParams): Promise<UserPyInfo> {
-        return this.routerStatic.multicallStatic.getUserPYInfo(this.address, user, params);
-    }
-
-    async getInfo(params?: MulticallStaticParams): Promise<PyInfo> {
-        return this.routerStatic.multicallStatic.getPYInfo(this.address, params);
-    }
-
     async SY(params?: MulticallStaticParams): Promise<Address> {
-        return this.contract.multicallStatic.SY(params);
+        return this.contract.multicallStatic.SY(params).then(toAddress);
     }
 
     /**
@@ -61,7 +29,7 @@ export class YtEntity extends ERC20 {
     }
 
     async PT(params?: MulticallStaticParams): Promise<Address> {
-        return this.contract.multicallStatic.PT(params);
+        return this.contract.multicallStatic.PT(params).then(toAddress);
     }
 
     /**
@@ -86,7 +54,8 @@ export class YtEntity extends ERC20 {
         return this.contract.multicallStatic.pyIndexCurrent(params);
     }
 
-    async getRewardTokens(params?: MulticallStaticParams) {
-        return this.contract.multicallStatic.getRewardTokens(params);
+    async getRewardTokens(params?: MulticallStaticParams): Promise<Address[]> {
+        const results = await this.contract.multicallStatic.getRewardTokens(params);
+        return results.map(toAddress);
     }
 }

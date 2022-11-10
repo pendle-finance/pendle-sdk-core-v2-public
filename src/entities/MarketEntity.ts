@@ -1,7 +1,5 @@
 import {
     PendleMarket,
-    MarketStateStructOutput,
-    IPRouterStatic,
     RouterStatic,
     PendleMarketABI,
     WrappedContract,
@@ -10,18 +8,36 @@ import {
 } from '../contracts';
 import type { Address, RawTokenAmount, MulticallStaticParams } from '../types';
 import { BigNumber as BN } from 'ethers';
-import { getRouterStatic, zip } from './helper';
+import { getRouterStatic, zip, toAddress, createTokenAmount } from './helper';
 import { ERC20, ERC20Config } from './ERC20';
 import { ChainId } from '../types';
 import { SyEntity, SyEntityConfig } from './SyEntity';
 import { PtEntity, PtEntityConfig } from './PtEntity';
 
+export type MarketState = {
+    totalPt: BN;
+    totalSy: BN;
+    totalLp: BN;
+    treasury: Address;
+    scalarRoot: BN;
+    lnFeeRateRoot: BN;
+    expiry: BN;
+    reserveFeePercent: BN;
+    lastLnImpliedRate: BN;
+};
+
 export type MarketInfo = {
     pt: Address;
     sy: Address;
-    state: MarketStateStructOutput;
+    state: MarketState;
     impliedYield: BN;
     exchangeRate: BN;
+};
+
+export type AssetAmount = {
+    assetType: BN;
+    assetAddress: Address;
+    amount: BN;
 };
 
 export type UserMarketInfo = {
@@ -29,7 +45,7 @@ export type UserMarketInfo = {
     lpBalance: BN;
     ptBalance: RawTokenAmount;
     syBalance: RawTokenAmount;
-    assetBalance: IPRouterStatic.AssetAmountStructOutput;
+    assetBalance: AssetAmount;
 };
 
 export type MarketEntityConfig = ERC20Config;
@@ -50,13 +66,40 @@ export class MarketEntity extends ERC20 {
 
     async getMarketInfo(params?: MulticallStaticParams): Promise<MarketInfo> {
         const res = await this.routerStatic.multicallStatic.getMarketInfo(this.address, params);
-        this._ptAddress = res.pt;
-        this._syAddress = res.sy;
-        return res;
+        this._ptAddress = toAddress(res.pt);
+        this._syAddress = toAddress(res.sy);
+        return {
+            ...res,
+            pt: this._ptAddress,
+            sy: this._syAddress,
+            state: { ...res.state, treasury: toAddress(res.state.treasury) },
+        };
     }
 
     async getUserMarketInfo(user: Address, params?: MulticallStaticParams): Promise<UserMarketInfo> {
-        return this.routerStatic.multicallStatic.getUserMarketInfo(this.address, user, params);
+        return this.routerStatic.multicallStatic
+            .getUserMarketInfo(this.address, user, params)
+            .then(MarketEntity.toUserMarketInfo);
+    }
+
+    static toUserMarketInfo({
+        market,
+        lpBalance,
+        ptBalance,
+        syBalance,
+        assetBalance,
+    }: RouterStatic.UserMarketInfoStruct): UserMarketInfo {
+        return {
+            market: toAddress(market),
+            lpBalance: BN.from(lpBalance),
+            ptBalance: createTokenAmount(ptBalance),
+            syBalance: createTokenAmount(syBalance),
+            assetBalance: {
+                assetType: BN.from(assetBalance.assetType),
+                assetAddress: toAddress(assetBalance.assetAddress),
+                amount: BN.from(assetBalance.amount),
+            },
+        };
     }
 
     async SY(params?: MulticallStaticParams): Promise<Address> {
@@ -95,8 +138,9 @@ export class MarketEntity extends ERC20 {
         return new PtEntity(ptAddr, this.chainId, params?.entityConfig ?? this.entityConfig);
     }
 
-    async getRewardTokens(params?: MulticallStaticParams) {
-        return this.contract.multicallStatic.getRewardTokens(params);
+    async getRewardTokens(params?: MulticallStaticParams): Promise<Address[]> {
+        const res = await this.contract.multicallStatic.getRewardTokens(params);
+        return res.map(toAddress);
     }
 
     async redeemRewards<T extends MetaMethodType>(userAddress: Address, params: MetaMethodExtraParams<T> = {}) {
@@ -107,7 +151,7 @@ export class MarketEntity extends ERC20 {
      * This function cannot be called with multicall because it is not a `views` function.
      * Calling with multicall will mutate the contract's state.
      */
-    async simulateRedeemRewards(userAddress: Address) {
+    async simulateRedeemRewards(userAddress: Address): Promise<BN[]> {
         return this.contract.callStatic.redeemRewards(userAddress);
     }
 
@@ -129,7 +173,8 @@ export class MarketEntity extends ERC20 {
         return this.contract.multicallStatic.activeBalance(userAddress, params);
     }
 
-    async readState(params?: MulticallStaticParams) {
-        return this.contract.multicallStatic.readState(params);
+    async readState(params?: MulticallStaticParams): Promise<MarketState> {
+        const res = await this.contract.multicallStatic.readState(params);
+        return { ...res, treasury: toAddress(res.treasury) };
     }
 }

@@ -1,7 +1,7 @@
 import { Address, RawTokenAmount, ChainId, NetworkConnection, MulticallStaticParams } from '../types';
 import type { BigNumberish, BytesLike } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { isKyberSupportedChain, isSameAddress, isNativeToken, copyNetworkConnection } from './helper';
+import { isKyberSupportedChain, isSameAddress, isNativeToken, copyNetworkConnection, toAddress } from './helper';
 import { NATIVE_ADDRESS_0xEE, NATIVE_ADDRESS_0x00, KYBER_API } from '../constants';
 import axios from 'axios';
 import { ERC20 } from './ERC20';
@@ -124,7 +124,15 @@ export class KyberHelper {
             slippageTolerance: 2_000,
         };
 
-        const { data } = await axios
+        type RawKybercallData = {
+            amountInUsd?: number;
+            amountOutUsd?: number;
+            outputAmount: BigNumberish;
+            encodedSwapData?: BytesLike;
+            routerAddress: string;
+        };
+
+        const { data }: { data: RawKybercallData } = await axios
             .get(KYBER_API[this.chainId], {
                 params,
                 headers: { 'Accept-Version': 'Latest' },
@@ -134,10 +142,14 @@ export class KyberHelper {
                     data: {
                         outputAmount: 0,
                         encodedSwapData: undefined,
+                        routerAddress: NATIVE_ADDRESS_0x00,
                     },
                 };
             });
-        return data;
+        return {
+            ...data,
+            routerAddress: toAddress(data.routerAddress),
+        };
     }
 
     async checkSwappablePair(
@@ -145,8 +157,9 @@ export class KyberHelper {
         dstTokenAddress: Address,
         params?: MulticallStaticParams
     ): Promise<boolean> {
-        srcTokenAddress = srcTokenAddress.toLowerCase();
-        dstTokenAddress = dstTokenAddress.toLowerCase();
+        // force lowercase
+        srcTokenAddress = toAddress(srcTokenAddress);
+        dstTokenAddress = toAddress(dstTokenAddress);
         const key = `${srcTokenAddress}-${dstTokenAddress}` as const;
         const cachedResult = this.swappablePairs.get(key);
         if (cachedResult && 'pendingResult' in cachedResult) {
