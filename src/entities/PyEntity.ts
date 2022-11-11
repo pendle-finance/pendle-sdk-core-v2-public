@@ -44,12 +44,12 @@ export abstract class PyEntity extends ERC20 {
         ptBalance,
         unclaimedRewards,
         unclaimedInterest,
-    }: RouterStatic.UserPYInfoStruct): UserPyInfo {
+    }: RouterStatic.UserPYInfoStructOutput): UserPyInfo {
         return {
             yt: toAddress(yt),
             pt: toAddress(pt),
-            ytBalance: BN.from(ytBalance),
-            ptBalance: BN.from(ptBalance),
+            ytBalance: ytBalance,
+            ptBalance: ptBalance,
             unclaimedInterest: createTokenAmount(unclaimedInterest),
             unclaimedRewards: unclaimedRewards.map(createTokenAmount),
         };

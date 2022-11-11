@@ -36,7 +36,7 @@ export type MarketInfo = {
 export type AssetAmount = {
     assetType: number;
     assetAddress: Address;
-    amount: number;
+    amount: BN;
 };
 
 export type UserMarketInfo = {
@@ -87,16 +87,16 @@ export class MarketEntity extends ERC20 {
         ptBalance,
         syBalance,
         assetBalance,
-    }: RouterStatic.UserMarketInfoStruct): UserMarketInfo {
+    }: RouterStatic.UserMarketInfoStructOutput): UserMarketInfo {
         return {
             market: toAddress(market),
             lpBalance: BN.from(lpBalance),
             ptBalance: createTokenAmount(ptBalance),
             syBalance: createTokenAmount(syBalance),
             assetBalance: {
-                assetType: BN.from(assetBalance.assetType).toNumber(),
+                assetType: assetBalance.assetType,
                 assetAddress: toAddress(assetBalance.assetAddress),
-                amount: BN.from(assetBalance.amount).toNumber(),
+                amount: assetBalance.amount,
             },
         };
     }
