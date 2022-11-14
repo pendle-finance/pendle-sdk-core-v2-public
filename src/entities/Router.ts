@@ -21,15 +21,7 @@ import { NoRouteFoundError } from '../errors';
 import { KyberHelper, KybercallData, KyberState, KyberHelperCoreConfig } from './KyberHelper';
 import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
 import { getGlobalBulkSellerUsageStrategyGetter } from '../bulkSeller';
-import {
-    Address,
-    getContractAddresses,
-    isNativeToken,
-    NetworkConnection,
-    ChainId,
-    RawTokenAmount,
-    devLog,
-} from '../common';
+import { Address, getContractAddresses, isNativeToken, ChainId, RawTokenAmount, devLog } from '../common';
 import { calcSlippedDownAmount, calcSlippedUpAmount, PyIndex } from '../common/math';
 
 export type TokenInput = {
@@ -55,6 +47,7 @@ export type RouterState = {
 };
 
 export type RouterConfig = PendleEntityConfigOptionalAbi & {
+    chainId: ChainId;
     kyberHelper?: KyberHelperCoreConfig;
     bulkSellerUsage?: BulkSellerUsageStrategy;
 };
@@ -92,13 +85,16 @@ export class Router extends PendleEntity {
     readonly routerStatic: WrappedContract<RouterStatic>;
     readonly kyberHelper: KyberHelper;
     readonly bulkSellerUsage: BulkSellerUsageStrategy;
+    readonly chainId: ChainId;
 
-    constructor(readonly address: Address, readonly chainId: ChainId, config: RouterConfig) {
-        super(address, chainId, { abi: IPAllActionABI, ...config });
+    constructor(readonly address: Address, config: RouterConfig) {
+        super(address, { abi: IPAllActionABI, ...config });
+        this.chainId = config.chainId;
         const { kyberHelper: kyberHelperCoreConfig } = { ...config };
-        this.routerStatic = getRouterStatic(chainId, config);
+        this.routerStatic = getRouterStatic(config);
 
-        this.kyberHelper = new KyberHelper(address, chainId, {
+        this.kyberHelper = new KyberHelper(address, {
+            chainId: this.chainId,
             ...this.networkConnection,
             ...kyberHelperCoreConfig,
         });
@@ -111,7 +107,7 @@ export class Router extends PendleEntity {
     }
 
     override get entityConfig(): RouterConfig {
-        return { ...super.entityConfig, bulkSellerUsage: this.bulkSellerUsage };
+        return { ...super.entityConfig, chainId: this.chainId, bulkSellerUsage: this.bulkSellerUsage };
     }
 
     protected get routerStaticCall() {
@@ -161,8 +157,8 @@ export class Router extends PendleEntity {
         return mergeParams(this.getDefaultMetaMethodExtraParams(), params);
     }
 
-    static getRouter(chainId: ChainId, networkConnection: NetworkConnection): Router {
-        return new Router(getContractAddresses(chainId).ROUTER, chainId, networkConnection);
+    static getRouter(config: RouterConfig): Router {
+        return new Router(getContractAddresses(config.chainId).ROUTER, config);
     }
 
     static guessOutApproxParams(guessAmountOut: BN, slippage: number): ApproxParamsStruct {
@@ -242,7 +238,7 @@ export class Router extends PendleEntity {
     ): Promise<
         undefined | { netOut: BN; output: TokenOutput; kybercallData: KybercallData; redeemedFromSyAmount: BN }
     > {
-        const syEntity = params.syEntity ?? new SyEntity(syAmount.token, this.chainId, this.entityConfig);
+        const syEntity = params.syEntity ?? new SyEntity(syAmount.token, this.entityConfig);
 
         const processTokenRedeemSy = (tokenRedeemSy: Address) =>
             this.bulkSellerUsage.tryInvokeWithSy(useBulkMode, syAmount, tokenRedeemSy, async (bulkSellerAddress) => {
@@ -315,7 +311,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<T, 'addLiquidityDualTokenAndPt', { netLpOut: BN; netTokenUsed: BN; netPtUsed: BN }> {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.chainId, this.entityConfig);
+            market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
         const sy = await market.syEntity(params.forCallStatic);
@@ -424,7 +420,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.chainId, this.entityConfig);
+            market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
         const sy = await market.syEntity(params.forCallStatic);
@@ -508,7 +504,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.chainId, this.entityConfig);
+            market = new MarketEntity(market, this.entityConfig);
         }
 
         const marketAddr = market.address;
@@ -617,7 +613,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.chainId, this.entityConfig);
+            market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity(params.forCallStatic);
@@ -733,7 +729,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.chainId, this.entityConfig);
+            market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
         const sy = await market.syEntity(params.forCallStatic);
@@ -802,7 +798,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         if (typeof sy === 'string') {
-            sy = new SyEntity(sy, this.chainId, this.entityConfig);
+            sy = new SyEntity(sy, this.entityConfig);
         }
         const syAddr = sy.address;
         const syEntity = sy; // force type here
@@ -844,7 +840,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         if (typeof sy === 'string') {
-            sy = new SyEntity(sy, this.chainId, this.entityConfig);
+            sy = new SyEntity(sy, this.entityConfig);
         }
         const tokenRedeemSyList = await sy.getTokensOut(params.forCallStatic);
         const res = await this.outputParams(
@@ -881,7 +877,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         if (typeof yt === 'string') {
-            yt = new YtEntity(yt, this.chainId, this.entityConfig);
+            yt = new YtEntity(yt, this.entityConfig);
         }
         const ytAddr = yt.address;
         const sy = await yt.syEntity(params.forCallStatic);
@@ -942,7 +938,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         if (typeof yt === 'string') {
-            yt = new YtEntity(yt, this.chainId, this.entityConfig);
+            yt = new YtEntity(yt, this.entityConfig);
         }
         const ytAddr = yt.address;
         const getSyPromise = yt.syEntity(params.forCallStatic);
@@ -1059,7 +1055,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.chainId, this.entityConfig);
+            market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity(params.forCallStatic);
@@ -1149,7 +1145,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.chainId, this.entityConfig);
+            market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
         const sy = await market.syEntity(params.forCallStatic);
@@ -1203,7 +1199,7 @@ export class Router extends PendleEntity {
     > {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
-            market = new MarketEntity(market, this.chainId, this.entityConfig);
+            market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity(params.forCallStatic);

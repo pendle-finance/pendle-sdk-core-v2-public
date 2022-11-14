@@ -1,20 +1,20 @@
 import { SDK } from '../src/entities/SDK';
 import { MarketEntity, PtEntity, SyEntity, YtEntity, Multicall, decimalFactor, toAddress, BN } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnectionWithChainId } from './util/testEnv';
 import { describeWithMulticall } from './util/testHelper';
 
 describe(SDK, () => {
-    const sdk = new SDK(ACTIVE_CHAIN_ID, networkConnection);
+    const sdk = new SDK(networkConnectionWithChainId);
 
     const marketAddress = currentConfig.market.market;
     const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
     const ytAddress = currentConfig.market.YT;
 
-    const pt = new PtEntity(ptAddress, ACTIVE_CHAIN_ID, networkConnection);
-    const yt = new YtEntity(ytAddress, ACTIVE_CHAIN_ID, networkConnection);
-    const market = new MarketEntity(marketAddress, ACTIVE_CHAIN_ID, networkConnection);
-    const sy = new SyEntity(syAddress, ACTIVE_CHAIN_ID, networkConnection);
+    const pt = new PtEntity(ptAddress, networkConnectionWithChainId);
+    const yt = new YtEntity(ytAddress, networkConnectionWithChainId);
+    const market = new MarketEntity(marketAddress, networkConnectionWithChainId);
+    const sy = new SyEntity(syAddress, networkConnectionWithChainId);
 
     it('#constructor', async () => {
         expect(sdk).toBeInstanceOf(SDK);

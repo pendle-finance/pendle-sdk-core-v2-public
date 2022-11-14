@@ -9,13 +9,13 @@ import {
 } from '../contracts';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { Address, ChainId } from '../common';
+import { Address } from '../common';
 
 export type ERC20Config = PendleEntityConfigOptionalAbi;
 
 export class ERC20 extends PendleEntity {
-    constructor(readonly address: Address, readonly chainId: ChainId, config: ERC20Config) {
-        super(address, chainId, { abi: PendleERC20ABI, ...config });
+    constructor(readonly address: Address, config: ERC20Config) {
+        super(address, { abi: PendleERC20ABI, ...config });
     }
 
     get contract(): WrappedContract<PendleERC20> {

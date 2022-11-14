@@ -8,7 +8,7 @@ import {
     calcSlippedUpAmount,
 } from '../src';
 import { InvalidSlippageError } from '../src/errors';
-import { currentConfig, ACTIVE_CHAIN_ID, networkConnection } from './util/testEnv';
+import { currentConfig, networkConnection } from './util/testEnv';
 
 describe('Misc', () => {
     it('#InvalidSlippageError', () => {
@@ -50,8 +50,8 @@ describe('Misc', () => {
         expect(isMainchain(CHAIN_ID_MAPPING.MUMBAI)).toBe(false);
     });
 
-    it('test requiresSigner', async () => {
-        const usdWithoutSigner = new ERC20(currentConfig.tokens.USDC, ACTIVE_CHAIN_ID, {
+    it('test write without signer', async () => {
+        const usdWithoutSigner = new ERC20(currentConfig.tokens.USDC, {
             provider: networkConnection.provider,
         });
 

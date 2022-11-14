@@ -1,17 +1,17 @@
-import { ERC20, VePendle, VePendleMainchain, isMainchain, MainchainId } from '../src';
+import { ERC20, VePendle, VePendleMainchain, isMainchain } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
     describeWrite,
     networkConnection,
+    networkConnectionWithChainId,
     BLOCK_CONFIRMATION,
-    WALLET,
 } from './util/testEnv';
 import { BigNumber as BN } from 'ethers';
 import { DEFAULT_EPSILON, INF } from './util/constants';
 
 describe(VePendle, () => {
-    const vePendle = new VePendleMainchain(currentConfig.veAddress, ACTIVE_CHAIN_ID as MainchainId, networkConnection);
+    const vePendle = new VePendleMainchain(currentConfig.veAddress, networkConnectionWithChainId);
 
     it('#constructor', () => {
         expect(vePendle).toBeInstanceOf(VePendle);
@@ -24,8 +24,7 @@ describe(VePendle, () => {
     });
 
     describeWrite(() => {
-        const pendle = new ERC20(currentConfig.pendle, ACTIVE_CHAIN_ID, networkConnection);
-        const signer = WALLET().wallet;
+        const pendle = new ERC20(currentConfig.pendle, networkConnection);
         const signerAddress = networkConnection.signerAddress;
         const contract = vePendle.contract;
 

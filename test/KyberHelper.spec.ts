@@ -1,12 +1,12 @@
 import { KyberHelper } from '../src/entities/KyberHelper';
 import { DUMMY_ADDRESS } from './util/constants';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
+import { currentConfig, networkConnectionWithChainId } from './util/testEnv';
 
 describe(KyberHelper, () => {
-    const kyberHelper = new KyberHelper(currentConfig.router, ACTIVE_CHAIN_ID, networkConnection);
+    const kyberHelper = new KyberHelper(currentConfig.router, networkConnectionWithChainId);
 
     const tokens = Object.entries(currentConfig.tokens).filter(
-        ([name, address]) => name != 'fundKeeper' && name != 'faucet' && !name.startsWith('qi')
+        ([name, _address]) => name != 'fundKeeper' && name != 'faucet' && !name.startsWith('qi')
     );
 
     describe('checkSwappablePair', () => {

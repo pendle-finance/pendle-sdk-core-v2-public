@@ -2,7 +2,7 @@ import { PendleERC20, ERC20, SyEntity, decimalFactor, Address, zip, toAddress } 
 import { BigNumber as BN, ethers } from 'ethers';
 import { MarketEntity, PtEntity, WrappedContract } from '../src';
 import './util/bigNumberMatcher.ts';
-import { currentConfig, networkConnection, USE_HARDHAT_RPC } from './util/testEnv';
+import { currentConfig, networkConnection, networkConnectionWithChainId, USE_HARDHAT_RPC } from './util/testEnv';
 import { itWhen } from './util/testHelper';
 
 describe('Multicall', () => {
@@ -15,12 +15,12 @@ describe('Multicall', () => {
         dummy: WrappedContract<PendleERC20>;
 
     beforeAll(async () => {
-        market = new MarketEntity(currentConfig.marketAddress, chainId, networkConnection);
+        market = new MarketEntity(currentConfig.marketAddress, networkConnectionWithChainId);
         const marketInfo = await market.getMarketInfo();
-        pt = new ERC20(marketInfo.pt, chainId, networkConnection).contract;
-        yt = (await new PtEntity(marketInfo.pt, chainId, networkConnection).ytEntity()).contract;
-        sy = new ERC20(marketInfo.sy, chainId, networkConnection).contract;
-        dummy = new ERC20(ethers.constants.AddressZero, chainId, networkConnection).contract;
+        pt = new ERC20(marketInfo.pt, networkConnection).contract;
+        yt = (await new PtEntity(marketInfo.pt, networkConnectionWithChainId).ytEntity()).contract;
+        sy = new ERC20(marketInfo.sy, networkConnection).contract;
+        dummy = new ERC20(ethers.constants.AddressZero, networkConnection).contract;
     });
 
     it('Single call', async () => {
@@ -92,13 +92,13 @@ describe('Multicall', () => {
 
     itWhen(!USE_HARDHAT_RPC)('by block tags', async () => {
         const currentBlock = await networkConnection.provider.getBlockNumber();
-        const syContract = new SyEntity(currentConfig.market.SY, currentConfig.chainId, networkConnection).contract;
+        const syContract = new SyEntity(currentConfig.market.SY, networkConnectionWithChainId).contract;
 
         const tokensIn = (await syContract.getTokensIn()).map(toAddress);
         const tokensOut = (await syContract.getTokensOut()).map(toAddress);
 
         const getOne = async (token: Address) => {
-            const decimals = await new ERC20(token, currentConfig.chainId, networkConnection).decimals();
+            const decimals = await new ERC20(token, networkConnectionWithChainId).decimals();
             return decimalFactor(decimals);
         };
 

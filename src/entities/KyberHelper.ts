@@ -44,7 +44,10 @@ export type KyberHelperCoreConfig = {
     cacheTimeout_ms?: number;
 };
 
-export type KyberHelperConfig = NetworkConnection & KyberHelperCoreConfig;
+export type KyberHelperConfig = NetworkConnection &
+    KyberHelperCoreConfig & {
+        chainId: ChainId;
+    };
 
 // Documentation
 // https://kyber-network.stoplight.io/docs/api-docs/5ac2df86149df-get-swap-info-with-encoded-data
@@ -82,7 +85,7 @@ export class KyberHelper {
         SwappablePairResult | { pendingResult: Promise<boolean> }
     >();
 
-    constructor(routerAddress: Address, chainId: ChainId, config: KyberHelperConfig) {
+    constructor(routerAddress: Address, config: KyberHelperConfig) {
         const { cacheTimeout_ms: swappablePairsExpirationTimeout_ms, state } = {
             ...KyberHelper.DEFAULT_CONFIG_PARAM,
             ...config,
@@ -90,7 +93,7 @@ export class KyberHelper {
 
         this.routerAddress = routerAddress;
         this.networkConnection = copyNetworkConnection(config);
-        this.chainId = chainId;
+        this.chainId = config.chainId;
         this.cacheTimeout_ms = swappablePairsExpirationTimeout_ms;
         if (state != undefined) {
             this.state = state;
@@ -194,7 +197,7 @@ export class KyberHelper {
         }
 
         const res = (async () => {
-            const decimals = await new ERC20(srcTokenAddress, this.chainId, this.networkConnection).decimals(params);
+            const decimals = await new ERC20(srcTokenAddress, this.networkConnection).decimals(params);
             const testAmount = BN.from(10).pow(decimals).mul(100);
             const kybercallData = await this.makeCall({ token: srcTokenAddress, amount: testAmount }, dstTokenAddress);
             const swappable = kybercallData != undefined;

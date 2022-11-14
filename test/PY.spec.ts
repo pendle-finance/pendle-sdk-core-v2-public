@@ -1,11 +1,11 @@
 import { PtEntity, YtEntity, Multicall, toAddress, toAddresses } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
+import { currentConfig, networkConnectionWithChainId } from './util/testEnv';
 import { describeWithMulticall } from './util/testHelper';
 
 describe('PY', () => {
     const currentMarket = currentConfig.market;
-    const pt = new PtEntity(currentMarket.PT, ACTIVE_CHAIN_ID, networkConnection);
-    const yt = new YtEntity(currentMarket.YT, ACTIVE_CHAIN_ID, networkConnection);
+    const pt = new PtEntity(currentMarket.PT, networkConnectionWithChainId);
+    const yt = new YtEntity(currentMarket.YT, networkConnectionWithChainId);
 
     describeWithMulticall((multicall) => {
         it('#userInfo & #contract', async () => {

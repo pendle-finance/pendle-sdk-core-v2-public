@@ -7,18 +7,15 @@ import {
     MetaMethodType,
     MetaMethodExtraParams,
 } from '../contracts';
-import { Address, ChainId, BN, ethersConstants, isMainchain } from '../common';
+import { Address, BN, ethersConstants } from '../common';
 import { BigNumber } from 'bignumber.js';
 import { MarketEntity } from './MarketEntity';
 
 export type VotingControllerConfig = PendleEntityConfigOptionalAbi;
 
 export class VotingController extends PendleEntity {
-    constructor(readonly address: Address, readonly chainId: ChainId, config: VotingControllerConfig) {
-        if (!isMainchain(chainId)) {
-            throw Error('Voting only available on main chain (Ethereum)');
-        }
-        super(address, chainId, { abi: PendleVotingControllerUpgABI, ...config });
+    constructor(readonly address: Address, config: VotingControllerConfig) {
+        super(address, { abi: PendleVotingControllerUpgABI, ...config });
     }
 
     get contract() {

@@ -1,11 +1,17 @@
 import BigNumber from 'bignumber.js';
 import { MarketEntity, VotingController } from '../src';
 import { ONE_E18_BN } from './util/constants';
-import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, describeWrite, networkConnection } from './util/testEnv';
+import {
+    BLOCK_CONFIRMATION,
+    currentConfig,
+    describeWrite,
+    networkConnection,
+    networkConnectionWithChainId,
+} from './util/testEnv';
 
 describe(VotingController, () => {
-    const votingController = new VotingController(currentConfig.votingController!, ACTIVE_CHAIN_ID, networkConnection);
-    const market = new MarketEntity(currentConfig.marketAddress, ACTIVE_CHAIN_ID, networkConnection);
+    const votingController = new VotingController(currentConfig.votingController!, networkConnection);
+    const market = new MarketEntity(currentConfig.marketAddress, networkConnectionWithChainId);
     const signerAddress = networkConnection.signer.address;
 
     it('#constructor', async () => {

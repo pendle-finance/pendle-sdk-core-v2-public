@@ -1,12 +1,12 @@
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
 import { PendleMarketFactory, PendleMarketFactoryABI, WrappedContract } from '../contracts';
-import { Address, ChainId } from '../common';
+import { Address } from '../common';
 
 export type MarketFactoryConfig = PendleEntityConfigOptionalAbi;
 
 export class MarketFactory extends PendleEntity {
-    constructor(readonly address: Address, readonly chainId: ChainId, config: MarketFactoryConfig) {
-        super(address, chainId, { abi: PendleMarketFactoryABI, ...config });
+    constructor(readonly address: Address, config: MarketFactoryConfig) {
+        super(address, { abi: PendleMarketFactoryABI, ...config });
     }
 
     get contract() {

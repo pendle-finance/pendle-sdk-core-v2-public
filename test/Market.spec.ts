@@ -1,15 +1,19 @@
 import { MarketEntity, SyEntity, Multicall, toAddress, getRouterStatic, decimalFactor } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection, WALLET } from './util/testEnv';
+import {
+    ACTIVE_CHAIN_ID,
+    currentConfig,
+    networkConnectionWithChainId,
+    signer as sender,
+    signerAddress as senderAddress,
+} from './util/testEnv';
 import { describeWithMulticall } from './util/testHelper';
 
 describe(MarketEntity, () => {
     const currentMarket = currentConfig.market;
-    const market = new MarketEntity(currentMarket.market, ACTIVE_CHAIN_ID, networkConnection);
+    const market = new MarketEntity(currentMarket.market, networkConnectionWithChainId);
     const contract = market.contract;
-    const sender = WALLET().wallet;
-    const senderAddress = toAddress(sender.address);
-    const sy = new SyEntity(currentMarket.SY, ACTIVE_CHAIN_ID, networkConnection);
-    const routerStatic = getRouterStatic(ACTIVE_CHAIN_ID, networkConnection);
+    const sy = new SyEntity(currentMarket.SY, networkConnectionWithChainId);
+    const routerStatic = getRouterStatic(networkConnectionWithChainId);
 
     it('#constructor', () => {
         expect(market).toBeInstanceOf(MarketEntity);
@@ -22,7 +26,7 @@ describe(MarketEntity, () => {
 
     describeWithMulticall((multicall) => {
         it('#contract', async () => {
-            const [totalSupply, tokens, isExpired, rewardTokens, state] = await Promise.all([
+            const [totalSupply, tokens, isExpired, _rewardTokens, _state] = await Promise.all([
                 contract.totalSupply(),
                 contract.readTokens(),
                 contract.isExpired(),

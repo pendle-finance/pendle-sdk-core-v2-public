@@ -1,5 +1,5 @@
 import { ERC20 } from '../src';
-import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, describeWrite, networkConnection } from './util/testEnv';
+import { BLOCK_CONFIRMATION, currentConfig, describeWrite, networkConnection } from './util/testEnv';
 import { evm_revert, evm_snapshot } from './util/testHelper';
 import { DUMMY_ADDRESS } from './util/constants';
 import { BigNumber as BN } from 'ethers';
@@ -7,7 +7,7 @@ import { BigNumber as BN } from 'ethers';
 describeWrite('Contract Helpers', () => {
     const signer = networkConnection.signer;
     const signerAddress = networkConnection.signerAddress;
-    const pendle = new ERC20(currentConfig.pendle, ACTIVE_CHAIN_ID, { provider: networkConnection.provider });
+    const pendle = new ERC20(currentConfig.pendle, { provider: networkConnection.provider });
     const approveAmount = 69;
 
     let localSnapshotId = '';

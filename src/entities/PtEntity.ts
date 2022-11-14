@@ -2,13 +2,13 @@ import { PendlePrincipalToken, PendlePrincipalTokenABI, WrappedContract, Multica
 import { YtEntity, YtEntityConfig } from './YtEntity';
 import { SyEntity, SyEntityConfig } from './SyEntity';
 import { PyEntity, PyEntityConfig } from './PyEntity';
-import { Address, toAddress, ChainId } from '../common';
+import { Address, toAddress } from '../common';
 
 export type PtEntityConfig = PyEntityConfig;
 
 export class PtEntity extends PyEntity {
-    constructor(readonly address: Address, readonly chainId: ChainId, config: PtEntityConfig) {
-        super(address, chainId, { abi: PendlePrincipalTokenABI, ...config });
+    constructor(readonly address: Address, config: PtEntityConfig) {
+        super(address, { abi: PendlePrincipalTokenABI, ...config });
     }
 
     get contract() {
@@ -41,11 +41,11 @@ export class PtEntity extends PyEntity {
 
     async syEntity(params?: MulticallStaticParams & { entityConfig?: SyEntityConfig }) {
         const syAddr = await this.SY(params);
-        return new SyEntity(syAddr, this.chainId, params?.entityConfig ?? this.entityConfig);
+        return new SyEntity(syAddr, params?.entityConfig ?? this.entityConfig);
     }
 
     async ytEntity(params?: MulticallStaticParams & { entityConfig?: YtEntityConfig }) {
         const ytAddr = await this.YT(params);
-        return new YtEntity(ytAddr, this.chainId, params?.entityConfig ?? this.entityConfig);
+        return new YtEntity(ytAddr, params?.entityConfig ?? this.entityConfig);
     }
 }

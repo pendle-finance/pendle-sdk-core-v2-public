@@ -2,7 +2,7 @@ import { BigNumber as BN, Contract } from 'ethers';
 import { Router, Address } from '../../src';
 import FUND_KEEPER_ABI from './fundKeeperAbi.json';
 import { getBalance, getERC20Decimals, bnMinAsBn, stalkAccount, approveInfHelper } from '../util/testHelper';
-import { ACTIVE_CHAIN_ID, BLOCK_CONFIRMATION, currentConfig, networkConnection } from '../util/testEnv';
+import { BLOCK_CONFIRMATION, currentConfig, networkConnection, networkConnectionWithChainId } from '../util/testEnv';
 import { SLIPPAGE_TYPE3 } from '../util/constants';
 
 const FUND_FACTOR = 100;
@@ -37,7 +37,7 @@ async function main() {
     const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
 
-    const router = new Router(routerAddress, ACTIVE_CHAIN_ID, networkConnection);
+    const router = new Router(routerAddress, networkConnectionWithChainId);
 
     // Inner working of this script:
     // 1. Fund accounts with a tokenIn

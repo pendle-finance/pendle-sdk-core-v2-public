@@ -1,8 +1,8 @@
 import { YtEntity } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnectionWithChainId } from './util/testEnv';
 
 describe(YtEntity, () => {
-    const yt = new YtEntity(currentConfig.market.YT, ACTIVE_CHAIN_ID, networkConnection);
+    const yt = new YtEntity(currentConfig.market.YT, networkConnectionWithChainId);
 
     it('#constructor', async () => {
         expect(yt).toBeInstanceOf(YtEntity);

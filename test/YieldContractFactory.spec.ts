@@ -1,19 +1,14 @@
 import { YieldContractFactory } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
+import { currentConfig, networkConnection } from './util/testEnv';
 
 describe(YieldContractFactory, () => {
     const ptAddress = currentConfig.market.PT;
     const ytAddress = currentConfig.market.YT;
-    const yieldFactory = new YieldContractFactory(
-        currentConfig.yieldContractFactory,
-        ACTIVE_CHAIN_ID,
-        networkConnection
-    );
+    const yieldFactory = new YieldContractFactory(currentConfig.yieldContractFactory, networkConnection);
 
     it('#constructor', async () => {
         expect(yieldFactory).toBeInstanceOf(YieldContractFactory);
         expect(yieldFactory.address).toBe(currentConfig.yieldContractFactory);
-        expect(yieldFactory.chainId).toBe(ACTIVE_CHAIN_ID);
         // expect(yieldFactory.contract).toBeInstanceOf(Contract);
         expect(yieldFactory.contract.address).toBe(currentConfig.yieldContractFactory);
     });

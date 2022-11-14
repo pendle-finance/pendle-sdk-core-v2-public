@@ -47,16 +47,20 @@ export type UserMarketInfo = {
     assetBalance: AssetAmount;
 };
 
-export type MarketEntityConfig = ERC20Config;
+export type MarketEntityConfig = ERC20Config & {
+    readonly chainId: ChainId;
+};
 
 export class MarketEntity extends ERC20 {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     protected _ptAddress: Address | undefined;
     protected _syAddress: Address | undefined;
+    readonly chainId: ChainId;
 
-    constructor(readonly address: Address, readonly chainId: ChainId, config: MarketEntityConfig) {
-        super(address, chainId, { abi: PendleMarketABI, ...config });
-        this.routerStatic = getRouterStatic(chainId, config);
+    constructor(readonly address: Address, config: MarketEntityConfig) {
+        super(address, { abi: PendleMarketABI, ...config });
+        this.chainId = config.chainId;
+        this.routerStatic = getRouterStatic(config);
     }
 
     get contract() {
@@ -125,16 +129,20 @@ export class MarketEntity extends ERC20 {
         return this.PT(params);
     }
 
+    get entityConfig(): MarketEntityConfig {
+        return { ...super.entityConfig, chainId: this.chainId };
+    }
+
     // Consideration: more efficient result caching?
     async syEntity(params?: MulticallStaticParams & { entityConfig?: SyEntityConfig }) {
         const syAddr = await this.SY(params);
-        return new SyEntity(syAddr, this.chainId, params?.entityConfig ?? this.entityConfig);
+        return new SyEntity(syAddr, params?.entityConfig ?? this.entityConfig);
     }
 
     // Consideration: more efficient result caching?
     async ptEntity(params?: MulticallStaticParams & { entityConfig?: PtEntityConfig }) {
         const ptAddr = await this.PT(params);
-        return new PtEntity(ptAddr, this.chainId, params?.entityConfig ?? this.entityConfig);
+        return new PtEntity(ptAddr, params?.entityConfig ?? this.entityConfig);
     }
 
     async getRewardTokens(params?: MulticallStaticParams): Promise<Address[]> {

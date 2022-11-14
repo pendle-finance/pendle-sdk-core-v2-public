@@ -7,6 +7,14 @@ import { ChainId, getContractAddresses } from '../common';
 // reexport
 export { RouterStatic } from './typechainTypes';
 
-export function getRouterStatic(chainId: ChainId, config: ContractObjectConfig): WrappedContract<RouterStatic> {
-    return createContractObject<RouterStatic>(getContractAddresses(chainId).ROUTER_STATIC, RouterStaticABI, config);
+export type RouterStaticConfig = ContractObjectConfig & {
+    chainId: ChainId;
+};
+
+export function getRouterStatic(config: RouterStaticConfig): WrappedContract<RouterStatic> {
+    return createContractObject<RouterStatic>(
+        getContractAddresses(config.chainId).ROUTER_STATIC,
+        RouterStaticABI,
+        config
+    );
 }

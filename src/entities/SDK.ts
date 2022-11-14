@@ -7,16 +7,19 @@ import { MarketEntity } from './MarketEntity';
 import { PyEntity } from './PyEntity';
 
 export type SDKConfig = NetworkConnection & {
+    chainId: ChainId;
     multicall?: Multicall;
 };
 
 export class SDK {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     readonly multicall?: Multicall;
+    readonly chainId: ChainId;
 
-    constructor(readonly chainId: ChainId, config: SDKConfig) {
+    constructor(config: SDKConfig) {
+        this.chainId = config.chainId;
         this.multicall = config?.multicall;
-        this.routerStatic = getRouterStatic(chainId, config);
+        this.routerStatic = getRouterStatic(config);
     }
 
     /**

@@ -23,16 +23,19 @@ export type UserSyInfo = {
 };
 
 export type SyEntityConfig = ERC20Config & {
+    chainId: ChainId;
     bulkSellerUsage?: BulkSellerUsageStrategy;
 };
 
 export class SyEntity extends ERC20 {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     readonly bulkSellerUsage: BulkSellerUsageStrategy;
+    readonly chainId: ChainId;
 
-    constructor(readonly address: Address, readonly chainId: ChainId, config: SyEntityConfig) {
-        super(address, chainId, { abi: SYBaseABI, ...config });
-        this.routerStatic = getRouterStatic(chainId, config);
+    constructor(readonly address: Address, config: SyEntityConfig) {
+        super(address, { abi: SYBaseABI, ...config });
+        this.chainId = config.chainId;
+        this.routerStatic = getRouterStatic(config);
         this.bulkSellerUsage = config.bulkSellerUsage ?? getGlobalBulkSellerUsageStrategyGetter(this.routerStatic);
     }
 
@@ -41,7 +44,12 @@ export class SyEntity extends ERC20 {
     }
 
     override get entityConfig(): SyEntityConfig {
-        return { ...this.networkConnection, multicall: this.multicall, bulkSellerUsage: this.bulkSellerUsage };
+        return {
+            ...this.networkConnection,
+            chainId: this.chainId,
+            multicall: this.multicall,
+            bulkSellerUsage: this.bulkSellerUsage,
+        };
     }
 
     /**

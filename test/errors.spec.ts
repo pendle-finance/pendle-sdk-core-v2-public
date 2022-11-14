@@ -1,11 +1,9 @@
 import { SyEntity, PendleContractError } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, describeWrite, networkConnection, WALLET } from './util/testEnv';
+import { currentConfig, describeWrite, networkConnectionWithChainId, signer, signerAddress } from './util/testEnv';
 
 describeWrite('Custom error', () => {
     const syAddress = currentConfig.market.SY;
-    const sy = new SyEntity(syAddress, ACTIVE_CHAIN_ID, networkConnection);
-    const signer = WALLET().wallet;
-    const signerAddress = networkConnection.signerAddress;
+    const sy = new SyEntity(syAddress, networkConnectionWithChainId);
     const errorMessage = PendleContractError.errorMessageHandler['SYZeroDeposit']();
     const slippage = 0.1;
 

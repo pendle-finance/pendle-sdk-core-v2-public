@@ -1,8 +1,8 @@
 import { MarketFactory } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
+import { currentConfig, networkConnection } from './util/testEnv';
 
 describe('MarketFactory', () => {
-    const marketFactory = new MarketFactory(currentConfig.marketFactory, ACTIVE_CHAIN_ID, networkConnection);
+    const marketFactory = new MarketFactory(currentConfig.marketFactory, networkConnection);
     const contract = marketFactory.contract;
 
     it('#constructor', async () => {

@@ -1,8 +1,8 @@
 import { PtEntity } from '../src';
-import { ACTIVE_CHAIN_ID, currentConfig, networkConnection } from './util/testEnv';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnectionWithChainId } from './util/testEnv';
 
 describe(PtEntity, () => {
-    const pt = new PtEntity(currentConfig.market.PT, ACTIVE_CHAIN_ID, networkConnection);
+    const pt = new PtEntity(currentConfig.market.PT, networkConnectionWithChainId);
 
     it('#constructor', async () => {
         expect(pt).toBeInstanceOf(PtEntity);

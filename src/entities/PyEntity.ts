@@ -23,14 +23,22 @@ export type RewardIndex = {
     index: BN;
 };
 
-export type PyEntityConfig = ERC20Config;
+export type PyEntityConfig = ERC20Config & {
+    chainId: ChainId;
+};
 
 export abstract class PyEntity extends ERC20 {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
+    readonly chainId: ChainId;
 
-    constructor(readonly address: Address, readonly chainId: ChainId, config: PyEntityConfig) {
-        super(address, chainId, { ...config });
-        this.routerStatic = getRouterStatic(chainId, config);
+    constructor(readonly address: Address, config: PyEntityConfig) {
+        super(address, { ...config });
+        this.chainId = config.chainId;
+        this.routerStatic = getRouterStatic(config);
+    }
+
+    get entityConfig(): PyEntityConfig {
+        return { ...super.entityConfig, chainId: this.chainId };
     }
 
     async userInfo(user: Address, params?: MulticallStaticParams): Promise<UserPyInfo> {

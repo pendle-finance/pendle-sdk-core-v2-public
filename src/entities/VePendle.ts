@@ -17,8 +17,8 @@ import { Address, getContractAddresses, ChainId, MainchainId, NetworkConnection 
 export type VePendleConfig = PendleEntityConfigOptionalAbi;
 
 export class VePendle extends PendleEntity {
-    constructor(readonly address: Address, readonly chainId: ChainId, config: VePendleConfig) {
-        super(address, chainId, { abi: VotingEscrowTokenBaseABI, ...config });
+    constructor(readonly address: Address, config: VePendleConfig) {
+        super(address, { abi: VotingEscrowTokenBaseABI, ...config });
     }
 
     get contract() {
@@ -38,14 +38,18 @@ export class VePendle extends PendleEntity {
     }
 }
 
-export type VePendleMainchainConfig = VePendleConfig;
+export type VePendleMainchainConfig = VePendleConfig & {
+    chainId: ChainId;
+};
 
 export class VePendleMainchain extends VePendle {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
+    readonly chainId: ChainId;
 
-    constructor(readonly address: Address, readonly chainId: MainchainId, config: VePendleMainchainConfig) {
-        super(address, chainId, { abi: VotingEscrowPendleMainchainABI, ...config });
-        this.routerStatic = getRouterStatic(chainId, config);
+    constructor(readonly address: Address, config: VePendleMainchainConfig) {
+        super(address, { abi: VotingEscrowPendleMainchainABI, ...config });
+        this.chainId = config.chainId;
+        this.routerStatic = getRouterStatic(config);
     }
 
     get contract() {
@@ -53,7 +57,10 @@ export class VePendleMainchain extends VePendle {
     }
 
     static createObject(chainId: MainchainId, networkConnection: NetworkConnection) {
-        return new VePendleMainchain(getContractAddresses(chainId).VEPENDLE, chainId, networkConnection);
+        return new VePendleMainchain(getContractAddresses(chainId).VEPENDLE, {
+            chainId,
+            ...networkConnection,
+        });
     }
 
     async simulateIncreaseLockPosition(

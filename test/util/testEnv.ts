@@ -57,15 +57,26 @@ const providerUrls = {
     [LOCAL_CHAIN_ID]: 'http://127.0.0.1:8545',
 };
 
+export const provider = new JsonRpcProvider(
+    USE_HARDHAT_RPC ? providerUrls[LOCAL_CHAIN_ID] : providerUrls[ACTIVE_CHAIN_ID]
+);
+export const wallet = (
+    process.env.PRIVATE_KEY ? new Wallet(process.env.PRIVATE_KEY!) : Wallet.fromMnemonic('test '.repeat(11) + 'junk')
+).connect(provider);
+
+export const signer = wallet;
+export const signerAddress = toAddress(signer.address);
+
 export const networkConnection = {
-    provider: new JsonRpcProvider(USE_HARDHAT_RPC ? providerUrls[LOCAL_CHAIN_ID] : providerUrls[ACTIVE_CHAIN_ID]),
-    get signer() {
-        return WALLET().wallet; // this.provider.getSigner();
-    },
-    get signerAddress(): Address {
-        return toAddress(this.signer.address);
-    },
+    provider,
+    signer,
+    signerAddress,
 } as const;
+
+export const networkConnectionWithChainId = {
+    ...networkConnection,
+    chainId: ACTIVE_CHAIN_ID,
+};
 
 type ShallowToAddressType<T> = T extends string
     ? Address
@@ -121,13 +132,6 @@ export const CONTRACT_ADDRESSES = shallowToAddress({
     },
 } as const);
 
-export const WALLET = () => ({
-    wallet: (process.env.PRIVATE_KEY
-        ? new Wallet(process.env.PRIVATE_KEY!)
-        : Wallet.fromMnemonic('test '.repeat(11) + 'junk')
-    ).connect(networkConnection.provider),
-});
-
 // choose the markets you want to test here
 // 0n fuji: 0 for (qiUSDC Feb 03), 1 for (qiWETH Dec 01)
 const MARKET_TO_TEST = 0;
@@ -154,7 +158,7 @@ export const testConfig = (chainId: TestChainId) => ({
     // choose the token to test for swap from raw token -> py
     tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.USDT,
 
-    userAddress: WALLET().wallet.address,
+    userAddress: signerAddress,
     multicall: new Multicall({
         chainId,
         provider: networkConnection.provider,

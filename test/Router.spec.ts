@@ -1,12 +1,5 @@
 import { decimalFactor, MetaMethodReturnType, Router, SyEntity, MetaMethodData, Address } from '../src';
-import {
-    ACTIVE_CHAIN_ID,
-    currentConfig,
-    describeWrite,
-    networkConnection,
-    BLOCK_CONFIRMATION,
-    WALLET,
-} from './util/testEnv';
+import { currentConfig, describeWrite, networkConnectionWithChainId, BLOCK_CONFIRMATION, signer } from './util/testEnv';
 import {
     getBalance,
     evm_snapshot,
@@ -54,15 +47,14 @@ type MetaMethodCallback = () => MetaMethodReturnType<'meta-method', IPAllAction,
 type SkipTxCheckCallback<T extends MetaMethodCallback> = (readerData: MetaMethodData<T>) => boolean;
 
 describe(Router, () => {
-    const router = Router.getRouter(ACTIVE_CHAIN_ID, networkConnection);
-    const signer = WALLET().wallet;
-    const signerAddress = networkConnection.signerAddress;
+    const router = Router.getRouter(networkConnectionWithChainId);
+    const signerAddress = networkConnectionWithChainId.signerAddress;
     const marketAddress = currentConfig.market.market;
     const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
     const ytAddress = currentConfig.market.YT;
     const rawTokenAddress = currentConfig.tokenToSwap;
-    const sySdk = new SyEntity(syAddress, ACTIVE_CHAIN_ID, networkConnection);
+    const sySdk = new SyEntity(syAddress, networkConnectionWithChainId);
 
     let syDecimals: number;
     let ptDecimals: number;

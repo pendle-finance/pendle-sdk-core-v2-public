@@ -3,18 +3,16 @@ import {
     ACTIVE_CHAIN_ID,
     currentConfig,
     describeWrite,
-    networkConnection,
+    networkConnectionWithChainId,
     BLOCK_CONFIRMATION,
-    WALLET,
 } from './util/testEnv';
 import { getBalance, approveHelper, describeWithMulticall, getERC20Name } from './util/testHelper';
 import { DEFAULT_EPSILON, INF, SLIPPAGE_TYPE2 } from './util/constants';
 
 describe(SyEntity, () => {
     const syAddress = currentConfig.market.SY;
-    const sy = new SyEntity(syAddress, ACTIVE_CHAIN_ID, networkConnection);
-    const signer = WALLET().wallet;
-    const signerAddress = networkConnection.signerAddress;
+    const sy = new SyEntity(syAddress, networkConnectionWithChainId);
+    const signerAddress = networkConnectionWithChainId.signerAddress;
 
     it('#constructor', () => {
         expect(sy).toBeInstanceOf(SyEntity);

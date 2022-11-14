@@ -2,7 +2,13 @@ import { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import { BigNumber as BN, BigNumberish } from 'ethers';
 import { ERC20, Address, MarketEntity, WrappedContract, bnMin, Multicall, isNativeToken } from '../../src';
 import { INF } from './constants';
-import { ACTIVE_CHAIN_ID, networkConnection, BLOCK_CONFIRMATION, USE_HARDHAT_RPC, currentConfig } from './testEnv';
+import {
+    networkConnection,
+    networkConnectionWithChainId,
+    BLOCK_CONFIRMATION,
+    USE_HARDHAT_RPC,
+    currentConfig,
+} from './testEnv';
 import { inspect } from 'util';
 
 type EntitiesMapType = {
@@ -12,7 +18,7 @@ type EntitiesMapType = {
 const ERC20_CREATE_HANDLER = {
     get: function (target: EntitiesMapType, address: Address) {
         if (target[address] === undefined) {
-            target[address] = new ERC20(address, ACTIVE_CHAIN_ID, {
+            target[address] = new ERC20(address, {
                 ...networkConnection,
                 multicall: currentConfig.multicall,
             }).contract;
@@ -84,7 +90,7 @@ export async function stalkAccount(user: Address, markets: any[]) {
         console.log('Market: ', market.symbol);
         console.log('Portfolio');
 
-        const marketEntity = new MarketEntity(market.market, ACTIVE_CHAIN_ID, networkConnection);
+        const marketEntity = new MarketEntity(market.market, networkConnectionWithChainId);
 
         console.log('balanceOf');
         console.log('market                 :', (await marketEntity.balanceOf(user)).toString());

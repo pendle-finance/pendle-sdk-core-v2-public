@@ -5,7 +5,7 @@ import {
     MetaMethodType,
     mergeMetaMethodExtraParams as mergeParams,
 } from '../contracts';
-import { Address, NetworkConnection, copyNetworkConnection, ChainId } from '../common';
+import { Address, NetworkConnection, copyNetworkConnection } from '../common';
 import { Multicall } from '../multicall';
 import { ContractInterface } from 'ethers';
 
@@ -23,7 +23,7 @@ export class PendleEntity {
     readonly multicall?: Multicall;
     readonly networkConnection: NetworkConnection;
 
-    constructor(readonly address: Address, readonly chainId: ChainId, config: PendleEntityConfig) {
+    constructor(readonly address: Address, config: PendleEntityConfig) {
         this.multicall = config.multicall;
         this.networkConnection = copyNetworkConnection(config);
         this._contract = createContractObject(address, config.abi, config);
