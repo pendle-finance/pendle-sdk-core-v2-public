@@ -3,6 +3,10 @@ import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
 import { Address, toAddress } from './Address';
 import { CHAIN_ID_MAPPING, ChainId } from './ChainId';
 
+/**
+ * Group of Pendle's contract addresses by name
+ * @see CONTRACT_ADDRESSES
+ */
 export type ContractAddresses = {
     ROUTER: Address;
     ROUTER_STATIC: Address;
@@ -36,6 +40,9 @@ export const MUMBAI_ADDRESSES: ContractAddresses = {
     VEPENDLE: toAddress(MUMBAI_CORE_ADDRESSES.vePendle),
 };
 
+/**
+ * Contract addresses by chain id
+ */
 export const CONTRACT_ADDRESSES: Record<ChainId, ContractAddresses> = {
     [CHAIN_ID_MAPPING.ETHEREUM]: ETHEREUM_ADDRESSES,
     [CHAIN_ID_MAPPING.AVALANCHE]: AVALANCHE_ADDRESSES,

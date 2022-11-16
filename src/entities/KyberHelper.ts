@@ -17,21 +17,26 @@ import {
     RawTokenAmount,
 } from '../common';
 
+// The type is only for documentation.
+
 const KYBER_API = {
     [CHAIN_ID_MAPPING.ETHEREUM]: 'https://aggregator-api.kyberswap.com/ethereum/route/encode',
     [CHAIN_ID_MAPPING.AVALANCHE]: 'https://aggregator-api.kyberswap.com/avalanche/route/encode',
     [CHAIN_ID_MAPPING.FUJI]: 'https://aggregator-api.stg.kyberengineering.io/fuji/route/encode',
 } as const;
 
-export function isKyberSupportedChain(chainId: ChainId): chainId is keyof typeof KYBER_API {
+function isKyberSupportedChain(chainId: ChainId): chainId is keyof typeof KYBER_API {
     return chainId in KYBER_API;
 }
 
-type SwappablePairResult = {
+export type SwappablePairResult = {
     swappable: boolean;
     checkedAtTimestamp: number;
 };
 
+/**
+ * The state of the kyber helper than is an POJO and ready to be stored elsewhere.
+ */
 export type KyberState = {
     swappablePairs: (SwappablePairResult & {
         srcTokenAddress: Address;
@@ -39,8 +44,15 @@ export type KyberState = {
     })[];
 };
 
+/**
+ * _Core_ configuration for kyber helper.
+ */
 export type KyberHelperCoreConfig = {
     state?: KyberState;
+
+    /**
+     * Max timeout to cache, in milliseconds.
+     */
     cacheTimeout_ms?: number;
 };
 
@@ -49,12 +61,16 @@ export type KyberHelperConfig = NetworkConnection &
         chainId: ChainId;
     };
 
-// Documentation
-// https://kyber-network.stoplight.io/docs/api-docs/5ac2df86149df-get-swap-info-with-encoded-data
-//
-// We extract only what is necessary
+/**
+ * Here are the extracted fields from the kyber aggregator API.
+ *
+ * https://kyber-network.stoplight.io/docs/api-docs/5ac2df86149df-get-swap-info-with-encoded-data
+ *
+ * We only extract some interesting fields.
+ */
 export type KybercallData = {
     // can be undefined in case we didn't use KyberSwap
+    // TODO actually made these field defined, and just assign 0 when we don't use it.
     amountInUsd?: number;
     amountOutUsd?: number;
     outputAmount: BigNumberish;
@@ -62,6 +78,9 @@ export type KybercallData = {
     routerAddress: Address;
 };
 
+/**
+ * These are similar to {@link KybercallData}, but with _raw_ fields type.
+ */
 type RawKybercallData = {
     amountInUsd: number;
     amountOutUsd: number;
@@ -80,11 +99,25 @@ export class KyberHelper {
     readonly networkConnection: NetworkConnection;
     readonly routerAddress: Address;
     readonly cacheTimeout_ms: number;
+
+    /**
+     * A map that cache the result for swappable pairs.
+     * @remarks
+     * The key is concatenation of 2 addresses, as Javascript's Map
+     * currently does not have a way to customize the key type.
+     *
+     * For the value type, it can also be a `Promise` to avoid
+     * sending multiple call at the same time.
+     */
     protected swappablePairs = new Map<
         `${Address}-${Address}`,
         SwappablePairResult | { pendingResult: Promise<boolean> }
     >();
 
+    /**
+     * @param routerAddress the address of the router (that is, the address that can be passed to {@link Router})
+     * @param config
+     */
     constructor(routerAddress: Address, config: KyberHelperConfig) {
         const { cacheTimeout_ms: swappablePairsExpirationTimeout_ms, state } = {
             ...KyberHelper.DEFAULT_CONFIG_PARAM,
@@ -135,6 +168,21 @@ export class KyberHelper {
         };
     }
 
+    /**
+     * Make a kyber call
+     * @remarks
+     * - If `input.token` is the same as `output`, no actual call is done.
+     * We will just return the input amount.
+     * - If `input.token` is a native token (it is checked by calling {@link isNativeToken}),
+     * it will be convert to {@link NATIVE_ADDRESS_0xEE} before calling.
+     *
+     * @param input - the pair of the token address with the desired amount to trade.
+     * @param output - the destination token address
+     * @returns
+     * {@link KybercallData} is returned if there is a route to trade via Kyberswap.
+     * If there is no route, `undefined` is returned.
+     * If `input.token` is the same as `output`, no actual call is done.
+     */
     async makeCall(input: RawTokenAmount<BigNumberish>, output: Address): Promise<KybercallData | undefined> {
         if (!isKyberSupportedChain(this.chainId)) {
             throw new Error(`Chain ${this.chainId} is not supported for kybercall.`);
@@ -179,6 +227,24 @@ export class KyberHelper {
         }
     }
 
+    /**
+     * Check if two tokens are swappable via KyberSwap.
+     * @remarks
+     * Before making kyber call (via {@link KyberHelper#makeCall}), this method
+     * will look up the cache result. The result will be cached for
+     * {@link KyberHelper#cacheTimeout_ms} milliseconds.
+     *
+     * To find the amount for checking, the decimals of `srcTokenAddress` will
+     * first be fetched.  Then we try to trade 100 source tokens via KyberSwap.
+     * As the operation for find the decimals is an RPC call, this method cache
+     * the swap result to reduce the amount of calls over the network.
+     *
+     * @param srcTokenAddress - the address of the source token.
+     * @param dstTokenAddress - the address of the destination token.
+     * @param params - the additional parameters for read method.
+     * @returns true if there is a route to swap from the source token to the
+     * destination token.
+     */
     async checkSwappablePair(
         srcTokenAddress: Address,
         dstTokenAddress: Address,

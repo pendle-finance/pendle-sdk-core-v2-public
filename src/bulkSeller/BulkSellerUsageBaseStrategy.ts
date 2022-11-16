@@ -3,12 +3,12 @@ import { PendleContractError } from '../errors';
 import { RawTokenAmount, Address, NATIVE_ADDRESS_0x00, toAddress, BigNumberish, BN } from '../common';
 
 /**
- * Mode to use with BulkSellerUsageStrategy
- * - true: force using bulkseller
- * - false: force NOT using bulkseller
- * - 'auto': let the SDK handle the usage
- * - { withAddress }: try using a custom bulkseller with a custom address
- * - { withStrategy }: try using a custom strategy rather than the given one
+ * Mode to use with BulkSellerUsageStrategy:
+ * - `true`: force using bulkseller
+ * - `false`: force NOT using bulkseller
+ * - `'auto'`: let the SDK handle the usage
+ * - `{ withAddress }`: try using a custom bulkseller with a custom address
+ * - `{ withStrategy }`: try using a custom strategy rather than the given one
  */
 export type UseBulkMode = boolean | 'auto' | { withAddress: Address } | { withStrategy: BulkSellerUsageStrategy };
 export type TradeVolume = { totalSy: BN; totalToken: BN };

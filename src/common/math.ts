@@ -50,8 +50,8 @@ export function bnSafeClamp(num: BigNumberish) {
 
 /**
  * Based on the following two contracts
- * https://github.com/pendle-finance/pendle-core-internal-v2/blob/main/contracts/core/StandardizedYield/SYUtils.sol
- * https://github.com/pendle-finance/pendle-core-internal-v2/blob/main/contracts/core/StandardizedYield/PYIndex.sol
+ * - https://github.com/pendle-finance/pendle-core-internal-v2/blob/main/contracts/core/StandardizedYield/SYUtils.sol
+ * - https://github.com/pendle-finance/pendle-core-internal-v2/blob/main/contracts/core/StandardizedYield/PYIndex.sol
  */
 export class PyIndex {
     readonly index: BN;
@@ -64,8 +64,9 @@ export class PyIndex {
     }
 
     /**
-     * Precondition: syAmount >= 0
-     * If not sure, use PyIndex#syToAsset
+     * @remarks
+     * Precondition: `syAmount >= 0`
+     * If not sure, use {@link PyIndex#syToAsset}
      */
     syToAssetUnsigned(syAmount: BigNumberish): BN {
         return this.index.mul(syAmount).div(ONE);
@@ -78,8 +79,9 @@ export class PyIndex {
     }
 
     /**
-     * Precondition: syAmount >= 0
-     * If not sure, use PyIndex#syToAssetUp
+     * @remarks
+     * Precondition: `syAmount >= 0`
+     * If not sure, use {@link PyIndex#syToAssetUp}
      */
     syToAssetUpUnsigned(syAmount: BigNumberish): BN {
         return this.index.mul(syAmount).add(ONE).sub(1).div(ONE);
@@ -92,8 +94,9 @@ export class PyIndex {
     }
 
     /**
-     * Precondition: syAmount >= 0
-     * If not sure, use PyIndex#assetToSy
+     * @remarks
+     * Precondition: `syAmount >= 0`
+     * If not sure, use {@link PyIndex#assetToSy}
      */
     assetToSyUnsigned(assetAmount: BigNumberish): BN {
         return ONE.mul(assetAmount).div(this.index);
@@ -106,8 +109,9 @@ export class PyIndex {
     }
 
     /**
-     * Precondition: syAmount >= 0
-     * If not sure, use PyIndex#assetToSyUp
+     * @remarks
+     * Precondition: `syAmount >= 0`
+     * If not sure, use {@link PyIndex#assetToSyUp}
      */
     assetToSyUpUnsigned(assetAmount: BigNumberish): BN {
         return ONE.mul(assetAmount).add(this.index).sub(1).div(this.index);
@@ -127,7 +131,7 @@ export class PyIndex {
  * Market's exchange rate can be obtained from
  * MarketEntity#getMarketInfo().exchangeRate, divided by ONE (10^18)
  *
- * The exchange rate (x) is the rate of converting the underlying asset into
+ * The exchange rate ($x$) is the rate of converting the underlying asset into
  * pt, that is
  *
  *      1 asset = x PT                      (1.1)

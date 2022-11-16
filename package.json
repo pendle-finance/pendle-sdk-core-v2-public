@@ -33,7 +33,8 @@
         "build": "tsdx build --tsconfig tsconfig.build.json",
         "prepare": "yarn generateContractErrors && yarn build",
         "clean": "rm -rf dist/",
-        "generateContractErrors": "yarn ts-node scripts/generatePendleContractErrorMessageHandler.ts"
+        "generateContractErrors": "yarn ts-node scripts/generatePendleContractErrorMessageHandler.ts",
+        "generate-docs": "yarn typedoc --out docs src/index.ts"
     },
     "dependencies": {
         "@pendle/core-v2": "0.16.5-testnet",
@@ -58,6 +59,7 @@
         "ts-node": "^10.9.1",
         "tsdx": "^0.14.1",
         "tslib": "^2.4.0",
+        "typedoc": "^0.23.21",
         "typescript": "^4.8.4"
     },
     "resolutions": {

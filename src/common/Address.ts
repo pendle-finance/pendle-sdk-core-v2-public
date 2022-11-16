@@ -1,22 +1,52 @@
 import { constants as ethersConstants } from 'ethers';
 
+/**
+ * @remarks
+ * This type is defined to avoid using raw string as address.
+ * The address returned by a contract call often have mixed cases,
+ * which sometimes causes bug in comparison.
+ *
+ * Even though it only checks if the string begins with `0x`, we are
+ * still sure that the address is not a raw string.
+ *
+ * Use {@link toAddress} to convert a raw address to this type.
+ */
 export type Address = `0x${string}`;
 
 /**
- * Convert a raw address to Pendle SDK's Address for type safety.
+ * Convert a raw address to Pendle SDK's {@link Address} for type safety.
+ * @remarks
+ * Note that this function **does not** validate the given string.
+ *
+ * @returns The converted address. The result will be in **lowercase**.
  */
 export function toAddress(rawAddress: string): Address {
     return rawAddress.toLowerCase() as Address;
 }
 
+/**
+ * Convert multiple raw addresses to {@link Address}.
+ * @returns
+ */
 export function toAddresses(rawAddresses: string[]): Address[] {
     return rawAddresses.map(toAddress);
 }
 
+/**
+ * Check if two given address are the same
+ * @param address1
+ * @param address2
+ * @returns true if two address are the same.
+ */
 export function isSameAddress(address1: Address, address2: Address): boolean {
     return address1.toLowerCase() === address2.toLowerCase();
 }
 
+/**
+ * Check if an address is a native token (which are {@link NATIVE_ADDRESS_0x00} and {@link NATIVE_ADDRESS_0xEE})
+ * @param address
+ * @returns
+ */
 export function isNativeToken(address: Address): boolean {
     return isSameAddress(address, NATIVE_ADDRESS_0x00) || isSameAddress(address, NATIVE_ADDRESS_0xEE);
 }

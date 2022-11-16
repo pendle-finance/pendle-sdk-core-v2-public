@@ -26,6 +26,7 @@ export class SDK {
      * Get information about the user's PY positions
      * @param user Address of the user
      * @param pys PT and YT token addresses that we want to check
+     * @param params - the additional parameters for read method.
      * @returns UserPYInfo object array representing user's PY positions
      */
     async getUserPYPositionsByPYs(
@@ -37,6 +38,13 @@ export class SDK {
         return result.map(PyEntity.toUserPyInfo);
     }
 
+    /**
+     * Get user market information from multiple markets.
+     * @param user - the user Address
+     * @param markets - the list of addresses of markets.
+     * @param params - the additional parameters for read method.
+     * @returns
+     */
     async getUserMarketPositions(
         user: Address,
         markets: Address[],

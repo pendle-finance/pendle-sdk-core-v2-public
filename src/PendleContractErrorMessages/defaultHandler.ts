@@ -8,6 +8,12 @@ function formatNumberString(num: string) {
     return num.replace(/\B(?=(\d{3})+(?!\d))/g, '_');
 }
 
+/**
+ * Create a message handler for Pendle contract errors.
+ * @param defaultHandler - the handle mapping with some partially defined handlers
+ * @param fallback - the fallback handler if there is no handler in `defaultHandler
+ * @returns the proxy handler
+ */
 export function createPendlecontractErrorMessageHandler(
     defaultHandler: Partial<PendleContractErrorMessageHandler>,
     fallback: <Key extends PendleContractErrorType>(errorName: Key, ...args: PendleContractErrorParams<Key>) => string
@@ -33,7 +39,14 @@ function joinArgs(args: any[]) {
         .join(', ');
 }
 
-// TODO write more descriptive error messages.
+/**
+ * The default handler used in Pendle SDK
+ * @remarks
+ * Every message will have the following form:
+ * ```text
+ * Pendle contract error: ErrorName(arg1, arg2, ...)
+ * ```
+ */
 export const defaultPendleContractErrorMessageHandler: PendleContractErrorMessageHandler =
     createPendlecontractErrorMessageHandler(
         {},

@@ -77,7 +77,7 @@ describe(SyEntity, () => {
 
                 const previewRedeem = await sy.previewRedeem(tokenRedeemSyAddr, syBalance);
                 await sy
-                    .redeem(signerAddress, tokenRedeemSyAddr, syBalance, SLIPPAGE_TYPE2, false)
+                    .redeem(signerAddress, tokenRedeemSyAddr, syBalance, SLIPPAGE_TYPE2)
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
                 const tokenBalanceAfter = await getBalance(tokenRedeemSyAddr, signerAddress);

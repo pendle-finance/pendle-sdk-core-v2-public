@@ -8,12 +8,17 @@ import {
     MetaMethodType,
     MetaMethodExtraParams,
     MulticallStaticParams,
+    ContractMethodNames,
     getRouterStatic,
+    MetaMethodReturnType,
 } from '../contracts';
 import { BigNumber as BN, BigNumberish } from 'ethers';
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
 import { Address, getContractAddresses, ChainId, MainchainId, NetworkConnection } from '../common';
 
+/**
+ * Configuration for {@link VePendle}
+ */
 export type VePendleConfig = PendleEntityConfigOptionalAbi;
 
 export class VePendle extends PendleEntity {
@@ -21,23 +26,57 @@ export class VePendle extends PendleEntity {
         super(address, { abi: VotingEscrowTokenBaseABI, ...config });
     }
 
+    /**
+     * `this._contract` but with the casted type.
+     *
+     * @remarks
+     * It is intended to be overridden in the subclasses.
+     * @see PendleEntity#_contract
+     */
     get contract() {
         return this._contract as WrappedContract<VotingEscrowTokenBase>;
     }
 
-    async balanceOf(userAddress: Address, params?: MulticallStaticParams) {
+    /**
+     * Get the balance of an user, given the account
+     * @param userAddress - the account address of the user
+     * @param params - the additional parameters for read method.
+     * @returns the balance of the user
+     */
+    async balanceOf(userAddress: Address, params?: MulticallStaticParams): Promise<BN> {
         return this.contract.multicallStatic.balanceOf(userAddress, params);
     }
 
+    /**
+     * Get the user lock position.
+     * @param userAddress - the address of the user.
+     * @param params - the additional parameters for read method.
+     * @returns
+     */
     async positionData(userAddress: Address, params?: MulticallStaticParams) {
         return this.contract.multicallStatic.positionData(userAddress, params);
     }
 
+    /**
+     * Get the current total supply of this VePendle token
+     * @param params - the additional parameters for read method.
+     * @returns
+     */
+    // TODO remove multicall usage (???)
     async totalSupplyCurrent(params?: MulticallStaticParams) {
         return this.contract.multicallStatic.totalSupplyStored(params);
     }
 }
 
+export type VePendleMainchainMetaMethodReturnType<
+    T extends MetaMethodType,
+    MethodName extends ContractMethodNames<VotingEscrowPendleMainchain>,
+    ExtraData extends {} = {}
+> = MetaMethodReturnType<T, VotingEscrowPendleMainchain, MethodName, ExtraData & MetaMethodExtraParams<T>>;
+
+/**
+ * The configuration for {@link VePendleMainchain}
+ */
 export type VePendleMainchainConfig = VePendleConfig & {
     chainId: ChainId;
 };
@@ -52,10 +91,21 @@ export class VePendleMainchain extends VePendle {
         this.routerStatic = getRouterStatic(config);
     }
 
+    /**
+     * `this._contract` but with the casted type.
+     *
+     * @see PendleEntity#_contract
+     */
     get contract() {
         return this._contract as WrappedContract<VotingEscrowPendleMainchain>;
     }
 
+    /**
+     * Create a {@link VePendleMainchain} object for a given the chainId.
+     * @param chainId
+     * @param networkConnection
+     * @returns
+     */
     static createObject(chainId: MainchainId, networkConnection: NetworkConnection) {
         return new VePendleMainchain(getContractAddresses(chainId).VEPENDLE, {
             chainId,
@@ -63,6 +113,14 @@ export class VePendleMainchain extends VePendle {
         });
     }
 
+    /**
+     * Simulate increase lock position
+     * @param userAddress
+     * @param additionalRawAmountToLock
+     * @param newExpiry_s
+     * @param params - the additional parameters for read method.
+     * @returns
+     */
     async simulateIncreaseLockPosition(
         userAddress: Address,
         additionalRawAmountToLock: BigNumberish,
@@ -77,11 +135,33 @@ export class VePendleMainchain extends VePendle {
         );
     }
 
+    /**
+     * Increase Lock position.
+     *
+     * @remarks
+     * The `sender` will be the one who has his lock position increased.
+     *
+     * @typeParam T - the type of the meta method. This should be infer by `tsc` to
+     *      determine the correct return type. See
+     *      [ERC20 contract interaction tutorial with Pendle SDK](https://github.com/pendle-finance/pendle-sdk-core-v2-docs/blob/main/rendered-docs/docs/erc20-tutorial.md)
+     *      to see the example usage with explanation.
+     * @param additionalRawAmountToLock
+     * @param newExpiry_s
+     * @param params - the additional parameters for **write** method.
+     * @returns
+     *
+     * When `params` is not defined, or when `params.method` is not defined, this
+     * method will perform the transaction, and return
+     * `Promise<ethers.ContractTransaction>`.
+     *
+     * Otherwise, `params.method`'s value is used to determine the return type.
+     * See {@link MetaMethodReturnType} for the detailed explanation of the return type.
+     */
     async increaseLockPosition<T extends MetaMethodType>(
         additionalRawAmountToLock: BigNumberish,
         newExpiry_s: BigNumberish,
         params: MetaMethodExtraParams<T> = {}
-    ) {
+    ): VePendleMainchainMetaMethodReturnType<T, 'increaseLockPosition'> {
         return this.contract.metaCall.increaseLockPosition(
             additionalRawAmountToLock,
             newExpiry_s,
@@ -89,7 +169,27 @@ export class VePendleMainchain extends VePendle {
         );
     }
 
-    async withdraw<T extends MetaMethodType = 'send'>(params: MetaMethodExtraParams<T> = {}) {
+    /**
+     * Withdraw an expired lock position, get back all locked PENDLE
+     * @remarks
+     * The user that receives the locked PENDLED is the `sender`.
+     * @typeParam T - the type of the meta method. This should be infer by `tsc` to
+     *      determine the correct return type. See
+     *      [ERC20 contract interaction tutorial with Pendle SDK](https://github.com/pendle-finance/pendle-sdk-core-v2-docs/blob/main/rendered-docs/docs/erc20-tutorial.md)
+     *      to see the example usage with explanation.
+     * @param params - the additional parameters for **write** method.
+     * @returns
+     *
+     * When `params` is not defined, or when `params.method` is not defined, this
+     * method will perform the transaction, and return
+     * `Promise<ethers.ContractTransaction>`.
+     *
+     * Otherwise, `params.method`'s value is used to determine the return type.
+     * See {@link MetaMethodReturnType} for the detailed explanation of the return type.
+     */
+    async withdraw<T extends MetaMethodType>(
+        params: MetaMethodExtraParams<T> = {}
+    ): VePendleMainchainMetaMethodReturnType<T, 'withdraw'> {
         return this.contract.metaCall.withdraw(this.addExtraParams(params));
     }
 }

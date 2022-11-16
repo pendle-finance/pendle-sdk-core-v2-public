@@ -115,3 +115,6 @@ dist
 .DS_Store
 #lock
 package-lock.json
+
+# Documentation
+docs/

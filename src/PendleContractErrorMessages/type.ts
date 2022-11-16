@@ -2,6 +2,12 @@
 import { type BigNumber as BN, BytesLike } from 'ethers';
 import { Address } from '../common';
 
+/**
+ * This type is generated from the ABI of Pendle contract Errors.
+ *
+ * @see https://github.com/pendle-finance/pendle-core-internal-v2/blob/main/contracts/core/libraries/Errors.sol
+ */
+
 export type PendleContractErrorMessageHandler = {
     ApproxDstExecutionGasNotSet: () => string;
     ApproxFail: () => string;

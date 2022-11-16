@@ -7,6 +7,8 @@ import {
     MetaMethodExtraParams,
     MulticallStaticParams,
     getRouterStatic,
+    ContractMethodNames,
+    MetaMethodReturnType,
 } from '../contracts';
 import { ERC20, ERC20Config } from './ERC20';
 import { SyEntity, SyEntityConfig } from './SyEntity';
@@ -47,7 +49,19 @@ export type UserMarketInfo = {
     assetBalance: AssetAmount;
 };
 
+export type MarketEntityMetaMethodReturnType<
+    T extends MetaMethodType,
+    MethodName extends ContractMethodNames<PendleMarket>,
+    ExtraData extends {}
+> = MetaMethodReturnType<T, PendleMarket, MethodName, ExtraData & MetaMethodExtraParams<T>>;
+
+/**
+ * The configuration of a {@link MarketEntity}.
+ */
 export type MarketEntityConfig = ERC20Config & {
+    /**
+     * The chainId. Used to get the {@link RouterStatic} for additional computation.
+     */
     readonly chainId: ChainId;
 };
 
@@ -63,10 +77,20 @@ export class MarketEntity extends ERC20 {
         this.routerStatic = getRouterStatic(config);
     }
 
+    /**
+     * `this._contract` but with the casted type.
+     *
+     * @see PendleEntity#_contract
+     */
     get contract() {
         return this._contract as WrappedContract<PendleMarket>;
     }
 
+    /**
+     * Get the info of the market.
+     * @param params - the additional parameters for read method.
+     * @returns
+     */
     async getMarketInfo(params?: MulticallStaticParams): Promise<MarketInfo> {
         const res = await this.routerStatic.multicallStatic.getMarketInfo(this.address, params);
         this._ptAddress = toAddress(res.pt);
@@ -79,12 +103,23 @@ export class MarketEntity extends ERC20 {
         };
     }
 
+    /**
+     * Get the market info of an user.
+     * @param user
+     * @param params - the additional parameters for read method.
+     * @returns
+     */
     async getUserMarketInfo(user: Address, params?: MulticallStaticParams): Promise<UserMarketInfo> {
         return this.routerStatic.multicallStatic
             .getUserMarketInfo(this.address, user, params)
             .then(MarketEntity.toUserMarketInfo);
     }
 
+    /**
+     * Convert {@link RouterStatic.UserMarketInfoStructOutput} to {@link UserMarketInfo}.
+     * @remarks
+     * Both structures have the same shape, but the return type has a stricter type.
+     */
     static toUserMarketInfo({
         market,
         lpBalance,
@@ -105,25 +140,37 @@ export class MarketEntity extends ERC20 {
         };
     }
 
+    /**
+     * Get the address of the SY token, correspond to this market.
+     * @remarks
+     * The naming is in uppercase to reflect the same function of the contract.
+     * @param params - the additional parameters for read method.
+     * @returns
+     */
     async SY(params?: MulticallStaticParams): Promise<Address> {
         return this._syAddress ?? this.getMarketInfo(params).then(({ sy }) => sy);
     }
 
     /**
-     * Alias for Market#SY
-     * @see MarketEntity#SY
+     * Alias for {@link MarketEntity#SY}
      */
     async sy(params?: MulticallStaticParams) {
         return this.SY(params);
     }
 
+    /**
+     * Get the address of the PT token, correspond to this market.
+     * @remarks
+     * The naming is in uppercase to reflect the same function of the contract.
+     * @param params - the additional parameters for read method.
+     * @returns
+     */
     async PT(params?: MulticallStaticParams): Promise<Address> {
         return this._ptAddress ?? this.getMarketInfo(params).then(({ pt }) => pt);
     }
 
     /**
-     * Alias for Market#PT
-     * @see MarketEntity#PT
+     * Alias for {@link MarketEntity#PT}
      */
     async pt(params?: MulticallStaticParams) {
         return this.PT(params);
@@ -133,35 +180,86 @@ export class MarketEntity extends ERC20 {
         return { ...super.entityConfig, chainId: this.chainId };
     }
 
+    /**
+     * Get the entity of the SY token, correspond to this market.
+     *
+     * @param params - the additional parameters for read method.
+     * @param params.entityConfig - the additional config for the SY token.
+     * @returns
+     */
     // Consideration: more efficient result caching?
     async syEntity(params?: MulticallStaticParams & { entityConfig?: SyEntityConfig }) {
         const syAddr = await this.SY(params);
         return new SyEntity(syAddr, params?.entityConfig ?? this.entityConfig);
     }
 
+    /**
+     * Get the entity of the PT token, correspond to this market.
+     *
+     * @param params - the additional parameters for read method.
+     * @param params.entityConfig - the additional config for the PT token.
+     * @returns
+     */
     // Consideration: more efficient result caching?
     async ptEntity(params?: MulticallStaticParams & { entityConfig?: PtEntityConfig }) {
         const ptAddr = await this.PT(params);
         return new PtEntity(ptAddr, params?.entityConfig ?? this.entityConfig);
     }
 
+    /**
+     * Get the reward tokens of a market.
+     * @param params - the additional parameters for read method.
+     * @returns List of addresses of the reward tokens.
+     */
     async getRewardTokens(params?: MulticallStaticParams): Promise<Address[]> {
         const res = await this.contract.multicallStatic.getRewardTokens(params);
         return res.map(toAddress);
     }
 
-    async redeemRewards<T extends MetaMethodType>(userAddress: Address, params: MetaMethodExtraParams<T> = {}) {
+    /**
+     * Perform the redeem reward action.
+     * @typeParam T - the type of the meta method. This should be infer by `tsc` to
+     *      determine the correct return type. See
+     *      [ERC20 contract interaction tutorial with Pendle SDK](https://github.com/pendle-finance/pendle-sdk-core-v2-docs/blob/main/rendered-docs/docs/erc20-tutorial.md)
+     *      to see the example usage with explanation.
+     * @param userAddress - the receiver address.
+     * @param params - the additional parameters for **write** method.
+     * @returns
+     *
+     * When `params` is not defined, or when `params.method` is not defined, this
+     * method will perform the transaction, and return
+     * `Promise<ethers.ContractTransaction>`.
+     *
+     * Otherwise, `params.method`'s value is used to determine the return type.
+     * See {@link MetaMethodReturnType} for the detailed explanation of the return type.
+     */
+    async redeemRewards<T extends MetaMethodType>(
+        userAddress: Address,
+        params: MetaMethodExtraParams<T> = {}
+    ): MarketEntityMetaMethodReturnType<T, 'redeemRewards', {}> {
         return this.contract.metaCall.redeemRewards(userAddress, this.addExtraParams(params));
     }
 
     /**
+     * Simulate the redeem rewards actions, and return only the amounts for each reward tokens.
+     * @remarks
+     *
      * This function cannot be called with multicall because it is not a `views` function.
      * Calling with multicall will mutate the contract's state.
+     * @param userAddress - the receiver address.
      */
+    // TODO Add overrides
     async simulateRedeemRewards(userAddress: Address): Promise<BN[]> {
         return this.contract.callStatic.redeemRewards(userAddress);
     }
 
+    /**
+     * Simulate the redeem rewards actions, and return only the list of pair of
+     * token address with the corresponding amount.
+     * @param userAddress
+     * @param params - the additional parameters for read method.
+     * @returns
+     */
     async simulateRedeemRewardsWithTokens(
         userAddress: Address,
         params?: MulticallStaticParams
@@ -176,10 +274,21 @@ export class MarketEntity extends ERC20 {
         }));
     }
 
+    /**
+     * Get the active balance of a give user.
+     * @param userAddress
+     * @param params - the additional parameters for read method.
+     * @returns
+     */
     async activeBalance(userAddress: Address, params?: MulticallStaticParams): Promise<BN> {
         return this.contract.multicallStatic.activeBalance(userAddress, params);
     }
 
+    /**
+     * Get the market state.
+     * @param params - the additional parameters for read method.
+     * @returns
+     */
     async readState(params?: MulticallStaticParams): Promise<MarketState> {
         const res = await this.contract.multicallStatic.readState(params);
         return { ...res, treasury: toAddress(res.treasury) };

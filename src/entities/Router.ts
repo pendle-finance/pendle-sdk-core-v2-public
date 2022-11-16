@@ -157,6 +157,13 @@ export class Router extends PendleEntity {
         return mergeParams(this.getDefaultMetaMethodExtraParams(), params);
     }
 
+    /**
+     * Create a Router object for a given config.
+     * @remarks
+     * The address of {@link Router} is obtained from the `config`.
+     * @param config
+     * @returns
+     */
     static getRouter(config: RouterConfig): Router {
         return new Router(getContractAddresses(config.chainId).ROUTER, config);
     }
@@ -179,11 +186,35 @@ export class Router extends PendleEntity {
         };
     }
 
+    /**
+     * Find the best route to convert `tokenInAmount.token` to a token from `tokenMintSyList` via KyberSwap,
+     * so that the result of `fn` is maximized.
+     *
+     * @param tokenInAmount - to pair of token in address with its amount to test.
+     * @param sy - the address of the SY token.
+     * @param tokenMintSyList - the list of of token in of `sy`.
+     * @param useBulkMode
+     * @param fn the function to maximize
+     * @returns
+     * Besides `Data` that is returned from `fn`, the {@link TokenInput} and the {@link KybercallData} is
+     * also returned.
+     *
+     * If there is no route at all, `undefined` is returned.
+     */
     async inputParams<Data extends { netOut: BN }>(
         tokenInAmount: RawTokenAmount<BigNumberish>,
         sy: Address,
         tokenMintSyList: Address[],
         useBulkMode: UseBulkMode,
+        /**
+         * @param tokenMintSyAmount - the pair of token mint sy, with its amount traded from `tokenInAmount`
+         * @param input - the {@link TokenInput} struct. It is the type-safe version of {@link TokenInputStruct},
+         *      and can be used to pass to some contract methods.
+         * @returns
+         * The result must have the `netOut` properties - the amount to maximized.
+         *
+         * It can also return more additional fields, and the fields are merged to the result of this function.
+         */
         fn: (tokenMintSyAmount: RawTokenAmount<BigNumberish>, input: TokenInput) => Promise<Data>
     ): Promise<undefined | (Data & { input: TokenInput; kybercallData: KybercallData })> {
         const processTokenMinSy = async (tokenMintSy: Address) => {
@@ -228,6 +259,25 @@ export class Router extends PendleEntity {
         return results.reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
     }
 
+    /**
+     * Find the best route to redeem from a SY token to a given token via KyberSwap,
+     * so that the amount received is maximized.
+     * @param syAmount - the pair of SY token address with the corresponding amount.
+     * @param tokenOut - the token to redeem to.
+     * @param tokenRedeemSyList - the list of token out of the given SY token.
+     * @param useBulkMode
+     * @param slippage
+     * @param params.syEntity - the syEntity of the given token, to avoid recreating object.
+     * @returns
+     * - `netOut` - the amount of `tokenOut` to maximize.
+     * - `output` - the {@link TokenOutput}, which is a type-safe version of {@link TokenOutputStruct}, and
+     * can be used to pass to contract methods.
+     * - `kybercallData` - the data returned from KyberSwap, contains the swapping route.
+     * - `redeemFromSyAmount` - the amount of the intermediate token (that is, of `output.tokenRedeemSy`)
+     * got from redeeming the given SY to that token.
+     *
+     * If no route exists, `undefined` is returned instead.
+     */
     async outputParams(
         syAmount: RawTokenAmount<BigNumberish>,
         tokenOut: Address,
