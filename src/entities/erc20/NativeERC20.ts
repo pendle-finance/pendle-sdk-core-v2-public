@@ -15,6 +15,10 @@ import { PendleSdkError } from '../../errors';
 
 export type NativeERC20Config = NetworkConnection;
 
+/**
+ * A wrapper class to interact with native tokens the same way as
+ * a normal ERC20 token.
+ */
 export class NativeERC20 implements ERC20Like {
     readonly networkConnection: NetworkConnection;
     private readonly _name: string;
@@ -32,10 +36,22 @@ export class NativeERC20 implements ERC20Like {
         }
     }
 
+    /**
+     * As a native token is not a real ERC20, a placeholder name is returned instead.
+     * @returns
+     * - `'[NATIVE TOKEN 0x00]'` is returned when `this.address` is {@link NATIVE_ADDRESS_0x00}.
+     * - `'[NATIVE TOKEN 0xEE]'` is returned otherwise.
+     */
     async name(): Promise<string> {
         return this._name;
     }
 
+    /**
+     * As a native token is not a real ERC20, a placeholder symbol is returned instead.
+     * @returns
+     * - `'0x00'` is returned when `this.address` is {@link NATIVE_ADDRESS_0x00}.
+     * - `'0xEE'` is returned otherwise.
+     */
     async symbol(): Promise<string> {
         return this._symbol;
     }
@@ -65,10 +81,17 @@ export class NativeERC20 implements ERC20Like {
         return this.provider.getBalance(userAddress);
     }
 
+    /**
+     * As a native token is not a real ERC20, `2^256 - 1` is returned instead.
+     */
     async allowance(_owner: Address, _spender: Address): Promise<BN> {
         return ethersConstants.MaxUint256;
     }
 
+    /**
+     * No actual action is done.
+     * @returns undefined
+     */
     async approve(_spender: Address, _amount: BN) {
         return undefined;
     }

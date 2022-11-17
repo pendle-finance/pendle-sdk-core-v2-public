@@ -6,6 +6,7 @@ import {
     decimalFactor,
     NATIVE_ADDRESS_0xEE,
     NativeERC20,
+    isNativeToken,
 } from '../src';
 import { INF } from './util/constants';
 import { currentConfig, describeWrite, networkConnection, BLOCK_CONFIRMATION, signerAddress } from './util/testEnv';
