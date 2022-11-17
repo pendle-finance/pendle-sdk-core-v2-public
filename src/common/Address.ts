@@ -42,15 +42,20 @@ export function isSameAddress(address1: Address, address2: Address): boolean {
     return address1.toLowerCase() === address2.toLowerCase();
 }
 
+export const NATIVE_ADDRESS_0x00 = ethersConstants.AddressZero;
+
+export const NATIVE_ADDRESS_0xEE = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+
+/**
+ * Union type of native tokens' address
+ */
+export type NativeTokenAddress = typeof NATIVE_ADDRESS_0x00 | typeof NATIVE_ADDRESS_0xEE;
+
 /**
  * Check if an address is a native token (which are {@link NATIVE_ADDRESS_0x00} and {@link NATIVE_ADDRESS_0xEE})
  * @param address
  * @returns
  */
-export function isNativeToken(address: Address): boolean {
+export function isNativeToken(address: Address): address is NativeTokenAddress {
     return isSameAddress(address, NATIVE_ADDRESS_0x00) || isSameAddress(address, NATIVE_ADDRESS_0xEE);
 }
-
-export const NATIVE_ADDRESS_0x00 = ethersConstants.AddressZero;
-
-export const NATIVE_ADDRESS_0xEE = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';

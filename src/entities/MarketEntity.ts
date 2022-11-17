@@ -10,7 +10,7 @@ import {
     ContractMethodNames,
     MetaMethodReturnType,
 } from '../contracts';
-import { ERC20, ERC20Config } from './ERC20';
+import { ERC20EntityConfig, ERC20Entity } from './erc20';
 import { SyEntity, SyEntityConfig } from './SyEntity';
 import { PtEntity, PtEntityConfig } from './PtEntity';
 import { Address, toAddress, ChainId, RawTokenAmount, createTokenAmount, BN, zip } from '../common';
@@ -58,14 +58,14 @@ export type MarketEntityMetaMethodReturnType<
 /**
  * The configuration of a {@link MarketEntity}.
  */
-export type MarketEntityConfig = ERC20Config & {
+export type MarketEntityConfig = ERC20EntityConfig & {
     /**
      * The chainId. Used to get the {@link RouterStatic} for additional computation.
      */
     readonly chainId: ChainId;
 };
 
-export class MarketEntity extends ERC20 {
+export class MarketEntity extends ERC20Entity {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     protected _ptAddress: Address | undefined;
     protected _syAddress: Address | undefined;

@@ -13,7 +13,7 @@ import {
 } from '../contracts';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { ERC20, ERC20Config } from './ERC20';
+import { ERC20Entity, ERC20EntityConfig } from './erc20';
 import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
 import { Address, toAddress, isNativeToken, ChainId, RawTokenAmount, createTokenAmount } from '../common';
 import { calcSlippedDownAmount } from '../common/math';
@@ -27,7 +27,7 @@ export type UserSyInfo = {
 /**
  * Configuration for {@link SyEntity}
  */
-export type SyEntityConfig = ERC20Config & {
+export type SyEntityConfig = ERC20EntityConfig & {
     chainId: ChainId;
     bulkSellerUsage?: BulkSellerUsageStrategy;
 };
@@ -41,7 +41,7 @@ export type SyEntityMetaMethodReturnType<
 /**
  * This class represent a Standardized Yield (SY) token.
  */
-export class SyEntity extends ERC20 {
+export class SyEntity extends ERC20Entity {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     readonly bulkSellerUsage: BulkSellerUsageStrategy;
     readonly chainId: ChainId;

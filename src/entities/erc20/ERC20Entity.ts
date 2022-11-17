@@ -1,4 +1,4 @@
-import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
+import { PendleEntity, PendleEntityConfigOptionalAbi } from '../PendleEntity';
 import {
     PendleERC20,
     PendleERC20ABI,
@@ -8,21 +8,22 @@ import {
     MulticallStaticParams,
     MetaMethodReturnType,
     ContractMethodNames,
-} from '../contracts';
+} from '../../contracts';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
-import { Address } from '../common';
+import { Address } from '../../common';
+import { ERC20Like } from './ERC20Like';
 
 /**
  * The configuration for an `ERC20` entity. As `ERC20` extends `PendleEntity`,
  * its config should be the subtype of `PendleEntity`'s config type.
  */
-export type ERC20Config = PendleEntityConfigOptionalAbi;
+export type ERC20EntityConfig = PendleEntityConfigOptionalAbi;
 
 /**
- * Return type shorthand for the write methods of {@link ERC20}
+ * Return type shorthand for the write methods of {@link ERC20Entity}
  */
-export type ERC20MetaMethodReturnType<
+export type ERC20EntityMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<PendleERC20>,
     ExtraData extends {} = {}
@@ -31,12 +32,12 @@ export type ERC20MetaMethodReturnType<
 /**
  * This class represents an ERC20 token
  */
-export class ERC20 extends PendleEntity {
+export class ERC20Entity extends PendleEntity implements ERC20Like {
     /**
      * @param address - the inner contract address
      * @param config - the entity configuration.
      */
-    constructor(readonly address: Address, config: ERC20Config) {
+    constructor(readonly address: Address, config: ERC20EntityConfig) {
         super(address, { abi: PendleERC20ABI, ...config });
     }
 
@@ -128,7 +129,7 @@ export class ERC20 extends PendleEntity {
         spender: Address,
         amount: BigNumberish,
         params: MetaMethodExtraParams<T> = {}
-    ): ERC20MetaMethodReturnType<T, 'approve'> {
+    ): ERC20EntityMetaMethodReturnType<T, 'approve'> {
         return this.contract.metaCall.approve(spender, amount, this.addExtraParams(params));
     }
 
@@ -154,7 +155,7 @@ export class ERC20 extends PendleEntity {
         to: Address,
         amount: BigNumberish,
         params: MetaMethodExtraParams<T> = {}
-    ): ERC20MetaMethodReturnType<T, 'transfer'> {
+    ): ERC20EntityMetaMethodReturnType<T, 'transfer'> {
         return this.contract.metaCall.transfer(to, amount, this.addExtraParams(params));
     }
 }

@@ -1,6 +1,6 @@
 import { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import { BigNumber as BN, BigNumberish } from 'ethers';
-import { ERC20, Address, MarketEntity, WrappedContract, bnMin, Multicall, isNativeToken } from '../../src';
+import { ERC20Entity, Address, MarketEntity, WrappedContract, bnMin, Multicall, isNativeToken } from '../../src';
 import { INF } from './constants';
 import {
     networkConnection,
@@ -18,7 +18,7 @@ type EntitiesMapType = {
 const ERC20_CREATE_HANDLER = {
     get: function (target: EntitiesMapType, address: Address) {
         if (target[address] === undefined) {
-            target[address] = new ERC20(address, {
+            target[address] = new ERC20Entity(address, {
                 ...networkConnection,
                 multicall: currentConfig.multicall,
             }).contract;

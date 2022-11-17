@@ -1,7 +1,7 @@
 import type { BigNumberish, BytesLike } from 'ethers';
 import { BigNumber as BN } from 'ethers';
 import axios from 'axios';
-import { ERC20 } from './ERC20';
+import { createERC20 } from './erc20';
 import { MulticallStaticParams } from '../contracts';
 import {
     CHAIN_ID_MAPPING,
@@ -263,7 +263,7 @@ export class KyberHelper {
         }
 
         const res = (async () => {
-            const decimals = await new ERC20(srcTokenAddress, this.networkConnection).decimals(params);
+            const decimals = await createERC20(srcTokenAddress, { ...this.networkConnection, ...params }).decimals();
             const testAmount = BN.from(10).pow(decimals).mul(100);
             const kybercallData = await this.makeCall({ token: srcTokenAddress, amount: testAmount }, dstTokenAddress);
             const swappable = kybercallData != undefined;

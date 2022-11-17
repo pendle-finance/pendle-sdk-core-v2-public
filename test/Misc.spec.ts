@@ -1,7 +1,7 @@
 import { BigNumber as BN } from 'ethers';
 import {
     CHAIN_ID_MAPPING,
-    ERC20,
+    ERC20Entity,
     getContractAddresses,
     isMainchain,
     calcSlippedDownAmount,
@@ -51,7 +51,7 @@ describe('Misc', () => {
     });
 
     it('test write without signer', async () => {
-        const usdWithoutSigner = new ERC20(currentConfig.tokens.USDC, {
+        const usdWithoutSigner = new ERC20Entity(currentConfig.tokens.USDC, {
             provider: networkConnection.provider,
         });
 

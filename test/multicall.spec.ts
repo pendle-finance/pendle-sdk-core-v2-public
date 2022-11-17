@@ -1,4 +1,4 @@
-import { PendleERC20, ERC20, SyEntity, decimalFactor, Address, zip, toAddress } from '../src';
+import { PendleERC20, ERC20Entity, SyEntity, decimalFactor, Address, zip, toAddress } from '../src';
 import { BigNumber as BN, ethers } from 'ethers';
 import { MarketEntity, PtEntity, WrappedContract } from '../src';
 import './util/bigNumberMatcher.ts';
@@ -17,10 +17,10 @@ describe('Multicall', () => {
     beforeAll(async () => {
         market = new MarketEntity(currentConfig.marketAddress, networkConnectionWithChainId);
         const marketInfo = await market.getMarketInfo();
-        pt = new ERC20(marketInfo.pt, networkConnection).contract;
+        pt = new ERC20Entity(marketInfo.pt, networkConnection).contract;
         yt = (await new PtEntity(marketInfo.pt, networkConnectionWithChainId).ytEntity()).contract;
-        sy = new ERC20(marketInfo.sy, networkConnection).contract;
-        dummy = new ERC20(ethers.constants.AddressZero, networkConnection).contract;
+        sy = new ERC20Entity(marketInfo.sy, networkConnection).contract;
+        dummy = new ERC20Entity(ethers.constants.AddressZero, networkConnection).contract;
     });
 
     it('Single call', async () => {
@@ -98,7 +98,7 @@ describe('Multicall', () => {
         const tokensOut = (await syContract.getTokensOut()).map(toAddress);
 
         const getOne = async (token: Address) => {
-            const decimals = await new ERC20(token, networkConnectionWithChainId).decimals();
+            const decimals = await new ERC20Entity(token, networkConnectionWithChainId).decimals();
             return decimalFactor(decimals);
         };
 

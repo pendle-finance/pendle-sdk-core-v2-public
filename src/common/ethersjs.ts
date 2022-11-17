@@ -9,3 +9,5 @@ export {
     BigNumberish,
     constants as ethersConstants,
 } from 'ethers';
+
+export { TransactionResponse } from '@ethersproject/abstract-provider';

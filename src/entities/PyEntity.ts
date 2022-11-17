@@ -1,6 +1,6 @@
 import { RouterStatic, WrappedContract, MulticallStaticParams, getRouterStatic } from '../contracts';
 import { BigNumber as BN } from 'ethers';
-import { ERC20, ERC20Config } from './ERC20';
+import { ERC20Entity, ERC20EntityConfig } from './erc20';
 import { Address, toAddress, RawTokenAmount, createTokenAmount, ChainId } from '../common';
 
 export type UserPyInfo = {
@@ -26,7 +26,7 @@ export type RewardIndex = {
 /**
  * Configuration for a {@link PyEntity}
  */
-export type PyEntityConfig = ERC20Config & {
+export type PyEntityConfig = ERC20EntityConfig & {
     chainId: ChainId;
 };
 
@@ -39,7 +39,7 @@ export type PyEntityConfig = ERC20Config & {
  * There is no `contract` getter for this class, as there is no
  * base ABI for both PT and YT. This should be done in the subclasses.
  */
-export abstract class PyEntity extends ERC20 {
+export abstract class PyEntity extends ERC20Entity {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     readonly chainId: ChainId;
 

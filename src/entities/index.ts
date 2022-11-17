@@ -1,5 +1,5 @@
 export * from './PendleEntity';
-export * from './ERC20';
+export * from './erc20';
 export * from './MarketEntity';
 export * from './MarketFactory';
 export * from './PyEntity';

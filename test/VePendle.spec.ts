@@ -1,4 +1,4 @@
-import { ERC20, VePendle, VePendleMainchain, isMainchain } from '../src';
+import { ERC20Entity, VePendle, VePendleMainchain, isMainchain } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -24,7 +24,7 @@ describe(VePendle, () => {
     });
 
     describeWrite(() => {
-        const pendle = new ERC20(currentConfig.pendle, networkConnection);
+        const pendle = new ERC20Entity(currentConfig.pendle, networkConnection);
         const signerAddress = networkConnection.signerAddress;
         const contract = vePendle.contract;
 
