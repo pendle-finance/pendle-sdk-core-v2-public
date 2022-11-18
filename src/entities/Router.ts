@@ -22,7 +22,7 @@ import { KyberHelper, KybercallData, KyberState, KyberHelperCoreConfig } from '.
 import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
 import { getGlobalBulkSellerUsageStrategyGetter } from '../bulkSeller';
 import { Address, getContractAddresses, isNativeToken, ChainId, RawTokenAmount, devLog } from '../common';
-import { calcSlippedDownAmount, calcSlippedUpAmount, PyIndex } from '../common/math';
+import { calcSlippedDownAmount, calcSlippedUpAmount, calcSlippedDownAmountSqrt, PyIndex } from '../common/math';
 
 export type TokenInput = {
     tokenIn: Address;
@@ -346,7 +346,7 @@ export class Router extends PendleEntity {
             marketAddr,
             syDesired,
             ptDesired,
-            calcSlippedDownAmount(netLpOut, slippage),
+            calcSlippedDownAmountSqrt(netLpOut, slippage), // note: different slip down amount function
             { ..._params, ...res }
         );
     }
@@ -394,7 +394,7 @@ export class Router extends PendleEntity {
             marketAddr,
             input,
             ptDesired,
-            calcSlippedDownAmount(netLpOut, slippage),
+            calcSlippedDownAmountSqrt(netLpOut, slippage), // note: different slip down amount function
             { ...res, ...mergeParams({ overrides }, params) }
         );
     }
@@ -418,7 +418,7 @@ export class Router extends PendleEntity {
             params.receiver,
             marketAddr,
             netPtIn,
-            calcSlippedDownAmount(netLpOut, slippage),
+            calcSlippedDownAmountSqrt(netLpOut, slippage), // note: different slip down amount function
             approxParam,
             { ...res, approxParam, ...params }
         );
@@ -444,7 +444,7 @@ export class Router extends PendleEntity {
             params.receiver,
             marketAddr,
             netSyIn,
-            calcSlippedDownAmount(netLpOut, slippage),
+            calcSlippedDownAmountSqrt(netLpOut, slippage), // note: different slip down amount function
             Router.guessOutApproxParams(netPtFromSwap, slippage),
             { ...res, approxParam, ...params }
         );
@@ -503,7 +503,7 @@ export class Router extends PendleEntity {
         return this.contract.metaCall.addLiquiditySingleToken(
             params.receiver,
             marketAddr,
-            calcSlippedDownAmount(netLpOut, slippage),
+            calcSlippedDownAmountSqrt(netLpOut, slippage), // note: different slip down amount function
             approxParam,
             input,
             { ...res, ...mergeParams({ overrides }, params) }

@@ -6,6 +6,7 @@ import {
     isMainchain,
     calcSlippedDownAmount,
     calcSlippedUpAmount,
+    calcSlippedDownAmountSqrt,
 } from '../src';
 import { InvalidSlippageError } from '../src/errors';
 import { currentConfig, networkConnection } from './util/testEnv';
@@ -31,6 +32,15 @@ describe('Misc', () => {
         expect(calcSlippedUpAmount(amount, 0.3)).toEqBN(amount.mul(130).div(100));
         expect(calcSlippedUpAmount(amount, 0.5)).toEqBN(amount.mul(150).div(100));
         expect(calcSlippedUpAmount(amount, 1)).toEqBN(amount.mul(2));
+    });
+
+    it('#calcSlippedUpAmount', () => {
+        const amount = BN.from(100);
+        expect(calcSlippedDownAmountSqrt(amount, 0)).toEqBN(amount);
+        expect(calcSlippedDownAmountSqrt(amount, 0.19)).toEqBN(amount.mul(9).div(10));
+        expect(calcSlippedDownAmountSqrt(amount, 0.64)).toEqBN(amount.mul(6).div(10));
+        expect(calcSlippedDownAmountSqrt(amount, 0.36)).toEqBN(amount.mul(8).div(10));
+        expect(calcSlippedDownAmountSqrt(amount, 1)).toEqBN(0);
     });
 
     it('#getContractAddresses', () => {

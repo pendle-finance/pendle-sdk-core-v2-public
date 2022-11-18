@@ -5,6 +5,7 @@
  */
 import { BN, BigNumberish, ethersConstants } from './ethersjs';
 export const PERCENTAGE_DECIMALS = 6;
+export const PERCENTAGE_NUMBER_FACTOR = 10 ** PERCENTAGE_DECIMALS;
 
 export function decimalFactor(decimals: number): BN {
     return BN.from(10).pow(decimals);
@@ -12,20 +13,20 @@ export function decimalFactor(decimals: number): BN {
 
 const ONE = decimalFactor(18);
 
+function mulSmallNum(bn: BN, num: number): BN {
+    return bnSafeClamp(bn.mul(Math.floor(num * PERCENTAGE_NUMBER_FACTOR)).div(PERCENTAGE_NUMBER_FACTOR));
+}
+
 export function calcSlippedDownAmount(theoreticalAmount: BN, slippage: number): BN {
-    return bnSafeClamp(
-        theoreticalAmount
-            .mul(decimalFactor(PERCENTAGE_DECIMALS).sub(Math.trunc(slippage * 10 ** PERCENTAGE_DECIMALS)))
-            .div(decimalFactor(PERCENTAGE_DECIMALS))
-    );
+    return mulSmallNum(theoreticalAmount, 1 - slippage);
+}
+
+export function calcSlippedDownAmountSqrt(theoreticalAmount: BN, slippage: number): BN {
+    return mulSmallNum(theoreticalAmount, Math.sqrt(1 - slippage));
 }
 
 export function calcSlippedUpAmount(theoreticalAmount: BN, slippage: number): BN {
-    return bnSafeClamp(
-        theoreticalAmount
-            .mul(decimalFactor(PERCENTAGE_DECIMALS).add(Math.trunc(slippage * 10 ** PERCENTAGE_DECIMALS)))
-            .div(decimalFactor(PERCENTAGE_DECIMALS))
-    );
+    return mulSmallNum(theoreticalAmount, 1 + slippage);
 }
 
 export function bnMax(a: BigNumberish, b: BigNumberish): BigNumberish {
