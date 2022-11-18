@@ -1,5 +1,4 @@
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2/deployments/80001-core.json';
 import { Address, toAddress } from './Address';
 import { CHAIN_ID_MAPPING, ChainId } from './ChainId';
 
@@ -15,13 +14,15 @@ export type ContractAddresses = {
     VOTING_CONTROLLER?: Address;
 };
 
-// TODO: Update addresses after deployment
-export const ETHEREUM_ADDRESSES: ContractAddresses = {
+const DUMMY_ADDRESSES: ContractAddresses = {
     ROUTER: '0xRouter',
     ROUTER_STATIC: '0xRouterStatic',
     PENDLE: '0xPendle',
     VEPENDLE: '0xVEPENDLE',
 };
+
+// TODO: Update addresses after deployment
+export const ETHEREUM_ADDRESSES: ContractAddresses = DUMMY_ADDRESSES;
 
 export const AVALANCHE_ADDRESSES: ContractAddresses = ETHEREUM_ADDRESSES;
 
@@ -33,12 +34,7 @@ export const FUJI_ADDRESSES: ContractAddresses = {
     VOTING_CONTROLLER: toAddress(FUJI_CORE_ADDRESSES.votingController),
 };
 
-export const MUMBAI_ADDRESSES: ContractAddresses = {
-    ROUTER: toAddress(MUMBAI_CORE_ADDRESSES.router),
-    ROUTER_STATIC: toAddress(MUMBAI_CORE_ADDRESSES.routerStatic),
-    PENDLE: toAddress(MUMBAI_CORE_ADDRESSES.PENDLE),
-    VEPENDLE: toAddress(MUMBAI_CORE_ADDRESSES.vePendle),
-};
+export const MUMBAI_ADDRESSES: ContractAddresses = DUMMY_ADDRESSES;
 
 /**
  * Contract addresses by chain id

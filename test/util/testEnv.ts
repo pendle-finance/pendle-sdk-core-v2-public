@@ -5,8 +5,9 @@ import { CHAIN_ID_MAPPING, Multicall, Address, toAddress } from '../../src';
 import './bigNumberMatcher';
 
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import FUJI_QIUSDC_FEB03_MARKET_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-USDC-FEB-2ND.json';
+import FUJI_QIUSDC_FEB02_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-USDC-FEB-2ND.json';
 import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-WETH-DEC-1ST.json';
+import FUJI_QIAVAX_FEB02_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/benqi-market-QI-AVAX-FEB-2ND.json';
 
 import FUJI_TEST_ENV from '@pendle/core-v2/deployments/43113-testenv.json';
 import { evm_revert, evm_snapshot } from './testHelper';
@@ -114,20 +115,9 @@ export const CONTRACT_ADDRESSES = shallowToAddress({
             PENDLE: FUJI_CORE_ADDRESSES.PENDLE,
             PENDLE_TREASURY: FUJI_CORE_ADDRESSES.treasury,
         },
-        BENQI: {
-            FUND_KEEPER: FUJI_TEST_ENV.tokens.fundKeeper,
-            FAUCET: FUJI_TEST_ENV.tokens.faucet,
-            MARKETS: [
-                {
-                    ...FUJI_QIUSDC_FEB03_MARKET_ADDRESSES,
-                    token: FUJI_TEST_ENV.tokens.qiUSDC,
-                },
-                {
-                    ...FUJI_QIWETH_DEC01_ADDRESSES,
-                    token: FUJI_TEST_ENV.tokens.qiWETH,
-                },
-            ],
-        },
+        MARKETS: [FUJI_QIUSDC_FEB02_ADDRESSES, FUJI_QIWETH_DEC01_ADDRESSES, FUJI_QIAVAX_FEB02_ADDRESSES],
+        FUND_KEEPER: FUJI_TEST_ENV.tokens.fundKeeper,
+        FAUCET: FUJI_TEST_ENV.tokens.faucet,
         TOKENS: FUJI_TEST_ENV.tokens,
     },
 } as const);
@@ -146,15 +136,15 @@ export const testConfig = (chainId: TestChainId) => ({
     veAddress: CONTRACT_ADDRESSES[chainId].CORE.VE,
     votingController: CONTRACT_ADDRESSES[chainId].CORE.VOTING_CONTROLLER,
     pendle: CONTRACT_ADDRESSES[chainId].CORE.PENDLE,
-    fundKeeper: CONTRACT_ADDRESSES[chainId].BENQI.FUND_KEEPER,
-    faucet: CONTRACT_ADDRESSES[chainId].BENQI.FAUCET,
+    fundKeeper: CONTRACT_ADDRESSES[chainId].FUND_KEEPER,
+    faucet: CONTRACT_ADDRESSES[chainId].FAUCET,
     pendleTreasury: CONTRACT_ADDRESSES[chainId].CORE.PENDLE_TREASURY,
     tokens: CONTRACT_ADDRESSES[chainId].TOKENS,
-    markets: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS,
+    markets: CONTRACT_ADDRESSES[chainId].MARKETS,
 
     // TODO remove ! since MUMBAI does not has any market
-    market: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST]!,
-    marketAddress: CONTRACT_ADDRESSES[chainId].BENQI.MARKETS[MARKET_TO_TEST]!.market,
+    market: CONTRACT_ADDRESSES[chainId].MARKETS[MARKET_TO_TEST]!,
+    marketAddress: CONTRACT_ADDRESSES[chainId].MARKETS[MARKET_TO_TEST]!.market,
     // choose the token to test for swap from raw token -> py
     tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.USDT,
 

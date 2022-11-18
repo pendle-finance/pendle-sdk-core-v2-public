@@ -1,8 +1,15 @@
-import { BigNumber as BN, Contract } from 'ethers';
-import { Router, Address } from '../../src';
+import { BigNumber as BN, Contract, ethers } from 'ethers';
+import { Address, CHAIN_ID_MAPPING, Router, SyEntity } from '../../src';
 import FUND_KEEPER_ABI from './fundKeeperAbi.json';
 import { getBalance, getERC20Decimals, bnMinAsBn, stalkAccount, approveInfHelper } from '../util/testHelper';
-import { BLOCK_CONFIRMATION, currentConfig, networkConnection, networkConnectionWithChainId } from '../util/testEnv';
+import {
+    ACTIVE_CHAIN_ID,
+    BLOCK_CONFIRMATION,
+    currentConfig,
+    networkConnection,
+    networkConnectionWithChainId,
+    USE_HARDHAT_RPC,
+} from '../util/testEnv';
 import { SLIPPAGE_TYPE3 } from '../util/constants';
 
 const FUND_FACTOR = 100;
@@ -31,13 +38,32 @@ async function fundToken(token: Address, user: string) {
 
 async function main() {
     const signerAddress = networkConnection.signerAddress;
-    const tokenIn = currentConfig.market.token;
+    const tokenIn = await new SyEntity(currentConfig.market.SY, networkConnectionWithChainId)
+        .getTokensIn()
+        .then((tokens) => tokens[0]);
     const routerAddress = currentConfig.router;
     const ytAddress = currentConfig.market.YT;
     const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
 
     const router = new Router(routerAddress, networkConnectionWithChainId);
+    // fund native token if using hardhat
+
+    if (USE_HARDHAT_RPC) {
+        await networkConnection.provider.send('hardhat_setBalance', [
+            signerAddress,
+            // 100 ETH
+            ethers.utils.hexStripZeros(BN.from(10).pow(20).toHexString()),
+        ]);
+    }
+
+    if (
+        (ACTIVE_CHAIN_ID as number) != CHAIN_ID_MAPPING.FUJI ||
+        (ACTIVE_CHAIN_ID as number) != CHAIN_ID_MAPPING.MUMBAI
+    ) {
+        console.log('This script is only for Fuji and Mumbai');
+        return;
+    }
 
     // Inner working of this script:
     // 1. Fund accounts with a tokenIn
