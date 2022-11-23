@@ -1,4 +1,12 @@
-import { MarketEntity, SyEntity, Multicall, toAddress, getRouterStatic, decimalFactor } from '../src';
+import {
+    MarketEntity,
+    SyEntity,
+    Multicall,
+    toAddress,
+    getRouterStatic,
+    decimalFactor,
+    NATIVE_ADDRESS_0x00,
+} from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -31,7 +39,7 @@ describe(MarketEntity, () => {
                 contract.readTokens(),
                 contract.isExpired(),
                 contract.getRewardTokens(),
-                contract.readState(),
+                contract.readState(NATIVE_ADDRESS_0x00),
             ]);
 
             expect(totalSupply).toBeGteBN(0);

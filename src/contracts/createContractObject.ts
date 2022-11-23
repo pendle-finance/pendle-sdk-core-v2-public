@@ -12,6 +12,7 @@ import {
 } from './types';
 import { callMetaMethod } from './ContractMetaMethod';
 import { Address, NetworkConnection } from '../common';
+import { Fragment, FunctionFragment } from 'ethers/lib/utils';
 
 type Provider = providers.Provider;
 
@@ -54,7 +55,38 @@ export function wrapContractObject<C extends Contract>(
     const methods: any = {};
     const functionFragmentsMapping: any = {};
 
+    const uniqueFragNames: { [name: string]: Array<FunctionFragment> } = {};
+
     for (const fragment of contract.interface.fragments) {
+        if (fragment.type !== 'function') {
+            continue;
+        }
+
+        const { name } = fragment;
+        if (!uniqueFragNames[name]) uniqueFragNames[name] = [];
+        uniqueFragNames[name].push(fragment as FunctionFragment);
+    }
+
+    const fragments: Array<FunctionFragment> = [];
+    for (const name of Object.keys(uniqueFragNames)) {
+        if (uniqueFragNames[name].length > 1) {
+            for (const fragment of uniqueFragNames[name]) {
+                // A hack here, create new fragments with name equals to the signature
+                // For example, if there is 2 foo functions: foo(uint256) and foo(uint256, uint256)
+                // there will be 2 new fragments with name foo(uint256) and foo(uint256, uint256),
+                // and we will create 2 functions with those name (without creating the `foo` function)
+                const newFragment = Fragment.from({
+                    ...fragment,
+                    name: fragment.format(),
+                } as any) as FunctionFragment;
+                fragments.push(newFragment);
+            }
+        } else {
+            fragments.push(uniqueFragNames[name][0]);
+        }
+    }
+
+    for (const fragment of fragments) {
         if (fragment.type !== 'function') {
             continue;
         }

@@ -9,6 +9,12 @@ import { Address } from '../common';
  */
 
 export type PendleContractErrorMessageHandler = {
+    ApproxBinarySearchInputInvalid: (
+        approxGuessMin: BN,
+        approxGuessMax: BN,
+        minGuessMin: BN,
+        maxGuessMax: BN
+    ) => string;
     ApproxDstExecutionGasNotSet: () => string;
     ApproxFail: () => string;
     ApproxParamsInvalid: (guessMin: BN, guessMax: BN, eps: BN) => string;
@@ -36,13 +42,15 @@ export type PendleContractErrorMessageHandler = {
     InsufficientFeeToSendMsg: (currentFee: BN, requiredFee: BN) => string;
     InvalidRetryData: () => string;
     InvalidWTime: (wTime: BN) => string;
-    MFactoryLnFeeRateRootTooHigh: (lnFeeRateRoot: BN, maxLnFeeRateRoot: BN) => string;
-    MFactoryReserveFeePercentTooHigh: (reserveFeePercent: BN, maxReserveFeePercent: BN) => string;
     MarketExchangeRateBelowOne: (exchangeRate: BN) => string;
     MarketExpired: () => string;
     MarketFactoryExpiredPt: () => string;
+    MarketFactoryInitialAnchorTooLow: (initialAnchor: BN, minInitialAnchor: BN) => string;
     MarketFactoryInvalidPt: () => string;
+    MarketFactoryLnFeeRateRootTooHigh: (lnFeeRateRoot: BN, maxLnFeeRateRoot: BN) => string;
     MarketFactoryMarketExists: () => string;
+    MarketFactoryReserveFeePercentTooHigh: (reserveFeePercent: BN, maxReserveFeePercent: BN) => string;
+    MarketFactoryZeroTreasury: () => string;
     MarketInsufficientPtForTrade: (currentAmount: BN, requiredAmount: BN) => string;
     MarketInsufficientPtReceived: (actualBalance: BN, requiredBalance: BN) => string;
     MarketInsufficientSyReceived: (actualBalance: BN, requiredBalance: BN) => string;
@@ -102,12 +110,17 @@ export type PendleContractErrorMessageHandler = {
     VEInvalidNewExpiry: (newExpiry: BN) => string;
     VENotAllowedReduceExpiry: () => string;
     VEPositionNotExpired: () => string;
+    VEReceiveOldSupply: (msgTime: BN) => string;
     VEZeroAmountLocked: () => string;
     VEZeroPosition: () => string;
     VEZeroSlope: (bias: BN, slope: BN) => string;
     YCExpired: () => string;
+    YCFactoryInterestFeeRateTooHigh: (interestFeeRate: BN, maxInterestFeeRate: BN) => string;
     YCFactoryInvalidExpiry: () => string;
+    YCFactoryRewardFeeRateTooHigh: (newRewardFeeRate: BN, maxRewardFeeRate: BN) => string;
     YCFactoryYieldContractExisted: () => string;
+    YCFactoryZeroExpiryDivisor: () => string;
+    YCFactoryZeroTreasury: () => string;
     YCNoFloatingSy: () => string;
     YCNotExpired: () => string;
     YCNothingToRedeem: () => string;

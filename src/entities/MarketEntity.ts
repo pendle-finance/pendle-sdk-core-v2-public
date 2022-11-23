@@ -13,7 +13,16 @@ import {
 import { ERC20EntityConfig, ERC20Entity } from './erc20';
 import { SyEntity, SyEntityConfig } from './SyEntity';
 import { PtEntity, PtEntityConfig } from './PtEntity';
-import { Address, toAddress, ChainId, RawTokenAmount, createTokenAmount, BN, zip } from '../common';
+import {
+    Address,
+    toAddress,
+    ChainId,
+    RawTokenAmount,
+    createTokenAmount,
+    BN,
+    zip,
+    NATIVE_ADDRESS_0x00,
+} from '../common';
 
 export type MarketState = {
     totalPt: BN;
@@ -285,12 +294,14 @@ export class MarketEntity extends ERC20Entity {
     }
 
     /**
-     * Get the market state.
+     * Get the market state of a given router.
      * @param params - the additional parameters for read method.
-     * @returns
+     * @param params.routerAddress - the router address to check the market state.
+     * @returns The market state base on the router address.
      */
-    async readState(params?: MulticallStaticParams): Promise<MarketState> {
-        const res = await this.contract.multicallStatic.readState(params);
+    async readState(params?: MulticallStaticParams & { routerAddress?: Address }): Promise<MarketState> {
+        const router = params?.routerAddress ?? NATIVE_ADDRESS_0x00;
+        const res = await this.contract.multicallStatic.readState(router, params);
         return { ...res, treasury: toAddress(res.treasury) };
     }
 }

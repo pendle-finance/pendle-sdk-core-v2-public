@@ -120,16 +120,12 @@ export abstract class BulkSellerUsageBaseStrategy implements BulkSellerUsageStra
         if (useBulk === false) {
             return NATIVE_ADDRESS_0x00;
         }
-        const { bulk, totalToken, totalSy } = await this.routerStatic.getBulkSellerInfo(
-            tokenTradeAmount.token,
-            syAddress
-        );
+        const { bulk, totalToken, totalSy } = await this.routerStatic[
+            'getBulkSellerInfo(address,address,uint256,uint256)'
+        ](tokenTradeAmount.token, syAddress, tokenTradeAmount.amount, 0);
         const bulkAddress = toAddress(bulk);
         if (useBulk === true) {
             return bulkAddress;
-        }
-        if (totalToken.lt(tokenTradeAmount.amount)) {
-            return NATIVE_ADDRESS_0x00;
         }
         return this.determineByTokenLogic(bulkAddress, tokenTradeAmount, syAddress, { totalToken, totalSy });
     }
@@ -148,16 +144,12 @@ export abstract class BulkSellerUsageBaseStrategy implements BulkSellerUsageStra
         if (useBulk === false) {
             return NATIVE_ADDRESS_0x00;
         }
-        const { bulk, totalToken, totalSy } = await this.routerStatic.getBulkSellerInfo(
-            tokenAddress,
-            syTradeAmount.token
-        );
+        const { bulk, totalToken, totalSy } = await this.routerStatic[
+            'getBulkSellerInfo(address,address,uint256,uint256)'
+        ](tokenAddress, syTradeAmount.token, 0, syTradeAmount.amount);
         const bulkAddress = toAddress(bulk);
         if (useBulk === true) {
             return bulkAddress;
-        }
-        if (totalSy.lt(syTradeAmount.amount)) {
-            return NATIVE_ADDRESS_0x00;
         }
         return this.determineBySyLogic(bulkAddress, syTradeAmount, tokenAddress, { totalToken, totalSy });
     }
