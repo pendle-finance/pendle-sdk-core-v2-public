@@ -17,11 +17,19 @@ import { BigNumber as BN, constants as etherConstants, BytesLike } from 'ethers'
 import { MarketEntity } from './MarketEntity';
 import { SyEntity } from './SyEntity';
 import { YtEntity } from './YtEntity';
-import { NoRouteFoundError } from '../errors';
+import { NoRouteFoundError, PendleSdkError } from '../errors';
 import { KyberHelper, KybercallData, KyberState, KyberHelperCoreConfig } from './KyberHelper';
 import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
 import { getGlobalBulkSellerUsageStrategyGetter } from '../bulkSeller';
-import { Address, getContractAddresses, isNativeToken, ChainId, RawTokenAmount, devLog } from '../common';
+import {
+    Address,
+    getContractAddresses,
+    isNativeToken,
+    ChainId,
+    RawTokenAmount,
+    devLog,
+    promiseAllWithErrors,
+} from '../common';
 import { calcSlippedDownAmount, calcSlippedUpAmount, calcSlippedDownAmountSqrt, PyIndex } from '../common/math';
 
 export type TokenInput = {
@@ -247,16 +255,26 @@ export class Router extends PendleEntity {
                 );
             } catch (e: any) {
                 devLog('Router input params error: ', e);
+                if (e instanceof PendleSdkError) {
+                    throw e;
+                }
                 return [];
             }
         };
         if (tokenMintSyList.includes(tokenInAmount.token)) {
-            const [result] = await processTokenMinSy(tokenInAmount.token);
-            return result;
+            // force routing through tokenInAmount.token
+            tokenMintSyList = [tokenInAmount.token];
         }
-        const results = (await Promise.all(tokenMintSyList.map(processTokenMinSy))).flat();
-        if (results.length === 0) return undefined;
-        return results.reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
+
+        const [results, errors] = await promiseAllWithErrors(tokenMintSyList.map(processTokenMinSy));
+
+        if (results.length === 0) {
+            if (errors.length > 0) {
+                throw errors[0];
+            }
+            return undefined;
+        }
+        return results.flat().reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
     }
 
     /**

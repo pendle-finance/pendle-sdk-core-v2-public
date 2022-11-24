@@ -194,3 +194,17 @@ export function devLog(message?: any, ...optionalParams: any[]): void {
         console.log(message, ...optionalParams);
     }
 }
+
+/**
+ * @remarks
+ * The results might be un ordered.
+ * @returns pairs of arrays. The first array being the succesful results, and the second ones is the errors
+ * of the failing ones.
+ */
+export async function promiseAllWithErrors<T, ErrorType = Error>(promises: Promise<T>[]): Promise<[T[], ErrorType[]]> {
+    const results: T[] = [];
+    const errors: ErrorType[] = [];
+
+    await Promise.all(promises.map((promise) => promise.then((r) => results.push(r)).catch((e) => errors.push(e))));
+    return [results, errors];
+}
