@@ -187,15 +187,16 @@ export class KyberHelper {
         if (!isKyberSupportedChain(this.chainId)) {
             throw new Error(`Chain ${this.chainId} is not supported for kybercall.`);
         }
+        // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
+        if (isNativeToken(input.token)) input.token = NATIVE_ADDRESS_0xEE;
+        if (isNativeToken(output)) output = NATIVE_ADDRESS_0xEE;
+
         if (isSameAddress(input.token, output))
             return {
                 outputAmount: input.amount,
                 encodedSwapData: [],
                 routerAddress: NATIVE_ADDRESS_0x00,
             };
-        // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
-        if (isNativeToken(input.token)) input.token = NATIVE_ADDRESS_0xEE;
-        if (isNativeToken(output)) output = NATIVE_ADDRESS_0xEE;
 
         // Using type here because Rest API doesn't have type
         const params: {
