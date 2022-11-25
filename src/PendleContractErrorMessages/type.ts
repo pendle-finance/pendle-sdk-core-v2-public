@@ -28,7 +28,6 @@ export type PendleContractErrorMessageHandler = {
     BulkInsufficientSyForTrade: (currentAmount: BN, requiredAmount: BN) => string;
     BulkInsufficientSyReceived: (actualBalance: BN, requiredBalance: BN) => string;
     BulkInsufficientTokenForTrade: (currentAmount: BN, requiredAmount: BN) => string;
-    BulkInsufficientTokenReceived: (actualBalance: BN, requiredBalance: BN) => string;
     BulkNotAdmin: () => string;
     BulkNotMaintainer: () => string;
     BulkSellerAlreadyExisted: (token: Address, SY: Address, bulk: Address) => string;

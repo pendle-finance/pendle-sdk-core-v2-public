@@ -3,7 +3,7 @@
     "author": "Pendle Labs",
     "description": "SDK of Pendle Protocol.",
     "license": "MIT",
-    "version": "1.0.0-beta-weekly",
+    "version": "1.0.2-beta-mainnet",
     "main": "dist/index.js",
     "typings": "dist/index.d.ts",
     "files": [
@@ -37,7 +37,7 @@
         "generate-docs": "yarn typedoc --out docs src/index.ts"
     },
     "dependencies": {
-        "@pendle/core-v2": "0.17.4-testnet",
+        "@pendle/core-v2": "1.0.0-mainnet",
         "axios": "^0.27.2",
         "bignumber.js": "^9.1.0",
         "ethers": "^5.7.1"
