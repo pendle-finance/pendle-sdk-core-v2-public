@@ -29,6 +29,7 @@ import {
     RawTokenAmount,
     devLog,
     promiseAllWithErrors,
+    mapPromisesToSyncUp,
 } from '../common';
 import { calcSlippedDownAmount, calcSlippedUpAmount, calcSlippedDownAmountSqrt, PyIndex } from '../common/math';
 
@@ -225,21 +226,35 @@ export class Router extends PendleEntity {
          */
         fn: (tokenMintSyAmount: RawTokenAmount<BigNumberish>, input: TokenInput) => Promise<Data>
     ): Promise<undefined | (Data & { input: TokenInput; kybercallData: KybercallData })> {
-        const processTokenMinSy = async (tokenMintSy: Address) => {
-            try {
-                const kybercallDataOrUndefined = await this.kyberHelper.makeCall(tokenInAmount, tokenMintSy);
-                if (kybercallDataOrUndefined == undefined) {
-                    return [];
-                }
-                // force typeing before the callback
-                const kybercallData = kybercallDataOrUndefined;
-                const kybercall = kybercallData.encodedSwapData;
+        if (tokenMintSyList.includes(tokenInAmount.token)) {
+            // force routing through tokenInAmount.token
+            tokenMintSyList = [tokenInAmount.token];
+        }
 
-                return this.bulkSellerUsage.tryInvokeWithToken(
-                    useBulkMode,
-                    { token: tokenMintSy, amount: kybercallData.outputAmount },
-                    sy,
-                    async (bulkSellerAddress) => {
+        const processTokenCalls = mapPromisesToSyncUp(
+            2,
+            tokenMintSyList,
+            async ([afterKyberSwapSyncUp, afterBulkSellerSyncUp], tokenMintSy: Address, id: number) => {
+                try {
+                    const kybercallDataOrUndefined = await this.kyberHelper.makeCall(tokenInAmount, tokenMintSy);
+                    await afterKyberSwapSyncUp(id);
+
+                    if (kybercallDataOrUndefined == undefined) {
+                        return [];
+                    }
+                    // force typing before the callback
+                    const kybercallData = kybercallDataOrUndefined;
+                    const kybercall = kybercallData.encodedSwapData;
+
+                    const bulkResult = await this.bulkSellerUsage.determineByToken(
+                        useBulkMode,
+                        { token: tokenMintSy, amount: kybercallData.outputAmount },
+                        sy
+                    );
+
+                    await afterBulkSellerSyncUp(id);
+
+                    return bulkResult.tryInvoke(async (bulkSellerAddress) => {
                         const input: TokenInput = {
                             tokenIn: tokenInAmount.token,
                             netTokenIn: tokenInAmount.amount,
@@ -251,30 +266,29 @@ export class Router extends PendleEntity {
 
                         const data = await fn({ token: tokenMintSy, amount: kybercallData.outputAmount }, input);
                         return [{ ...data, input, kybercallData }];
+                    });
+                } catch (e: any) {
+                    devLog('Router input params error: ', e);
+                    if (e instanceof PendleSdkError) {
+                        throw e;
                     }
-                );
-            } catch (e: any) {
-                devLog('Router input params error: ', e);
-                if (e instanceof PendleSdkError) {
-                    throw e;
+                    return [];
                 }
-                return [];
             }
-        };
-        if (tokenMintSyList.includes(tokenInAmount.token)) {
-            // force routing through tokenInAmount.token
-            tokenMintSyList = [tokenInAmount.token];
-        }
+        );
 
-        const [results, errors] = await promiseAllWithErrors(tokenMintSyList.map(processTokenMinSy));
-
+        const [results, errors] = await promiseAllWithErrors(processTokenCalls);
         if (results.length === 0) {
             if (errors.length > 0) {
                 throw errors[0];
             }
             return undefined;
         }
-        return results.flat().reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
+        const flattenResults = results.flat();
+        if (flattenResults.length === 0) {
+            return undefined;
+        }
+        return flattenResults.reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
     }
 
     /**
@@ -308,8 +322,9 @@ export class Router extends PendleEntity {
     > {
         const syEntity = params.syEntity ?? new SyEntity(syAmount.token, this.entityConfig);
 
-        const processTokenRedeemSy = (tokenRedeemSy: Address) =>
-            this.bulkSellerUsage.tryInvokeWithSy(useBulkMode, syAmount, tokenRedeemSy, async (bulkSellerAddress) => {
+        const processTokenRedeemSy = async (tokenRedeemSy: Address) => {
+            const useBulkResult = await this.bulkSellerUsage.determineBySy(useBulkMode, syAmount, tokenRedeemSy);
+            return useBulkResult.tryInvoke(async (bulkSellerAddress) => {
                 const redeemedFromSyAmount = await syEntity.previewRedeem(tokenRedeemSy, syAmount.amount, {
                     useBulk: { withAddress: bulkSellerAddress },
                 });
@@ -334,6 +349,7 @@ export class Router extends PendleEntity {
 
                 return [{ netOut, output, kybercallData, redeemedFromSyAmount }];
             });
+        };
         if (tokenRedeemSyList.includes(tokenOut)) {
             const [result] = await processTokenRedeemSy(tokenOut);
             return result;

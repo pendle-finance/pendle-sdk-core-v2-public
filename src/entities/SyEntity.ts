@@ -217,18 +217,19 @@ export class SyEntity extends ERC20Entity {
         }
     ): Promise<BN> {
         const useBulk = params?.useBulk ?? 'auto';
-        return this.bulkSellerUsage.tryInvokeWithSy(
+        const useBulkResult = await this.bulkSellerUsage.determineBySy(
             useBulk,
             { token: this.address, amount: amountSharesToRedeem },
-            tokenOut,
-            (bulkSellerAddress) =>
-                this.routerStatic.multicallStatic.previewRedeemStatic(
-                    this.address,
-                    tokenOut,
-                    amountSharesToRedeem,
-                    bulkSellerAddress,
-                    params
-                )
+            tokenOut
+        );
+        return useBulkResult.tryInvoke((bulkSellerAddress) =>
+            this.routerStatic.multicallStatic.previewRedeemStatic(
+                this.address,
+                tokenOut,
+                amountSharesToRedeem,
+                bulkSellerAddress,
+                params
+            )
         );
     }
 
@@ -248,18 +249,19 @@ export class SyEntity extends ERC20Entity {
         }
     ): Promise<BN> {
         const useBulk = params?.useBulk ?? 'auto';
-        return this.bulkSellerUsage.tryInvokeWithToken(
+        const useBulkResult = await this.bulkSellerUsage.determineByToken(
             useBulk,
             { token: tokenIn, amount: amountTokenToDeposit },
-            this.address,
-            (bulkSellerAddress) =>
-                this.routerStatic.multicallStatic.previewDepositStatic(
-                    this.address,
-                    tokenIn,
-                    amountTokenToDeposit,
-                    bulkSellerAddress,
-                    params
-                )
+            this.address
+        );
+        return useBulkResult.tryInvoke((bulkSellerAddress) =>
+            this.routerStatic.multicallStatic.previewDepositStatic(
+                this.address,
+                tokenIn,
+                amountTokenToDeposit,
+                bulkSellerAddress,
+                params
+            )
         );
     }
 }

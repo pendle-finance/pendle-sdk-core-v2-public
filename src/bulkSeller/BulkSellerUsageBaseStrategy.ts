@@ -9,60 +9,29 @@ import { RawTokenAmount, Address, NATIVE_ADDRESS_0x00, toAddress, BigNumberish, 
  * - `'auto'`: let the SDK handle the usage
  * - `{ withAddress }`: try using a custom bulkseller with a custom address
  * - `{ withStrategy }`: try using a custom strategy rather than the given one
+ * - '{ withResult }': use the calculated result
  */
-export type UseBulkMode = boolean | 'auto' | { withAddress: Address } | { withStrategy: BulkSellerUsageStrategy };
+export type UseBulkMode =
+    | boolean
+    | 'auto'
+    | { withAddress: Address }
+    | { withStrategy: BulkSellerUsageStrategy }
+    | { withResult: BulkSellerUsageResult };
 export type TradeVolume = { totalSy: BN; totalToken: BN };
 
-export interface BulkSellerUsageStrategy {
-    tryInvoke<T>(
-        bulkSellerAddress: Address,
-        callback: (bulkSellerAddress: Address) => Promise<T>,
-        noRetry?: boolean
-    ): Promise<T>;
+export class BulkSellerUsageResult {
+    constructor(readonly bulkAddress: Address, private forceNoRetryWhenInvoke: boolean = false) {}
 
-    tryInvokeWithToken<T>(
-        useBulk: UseBulkMode,
-        tokenTradeAmount: RawTokenAmount<BigNumberish>,
-        syAddress: Address,
-        callback: (bulkSellerAddress: Address) => Promise<T>,
-        noRetry?: boolean
-    ): Promise<T>;
-
-    tryInvokeWithSy<T>(
-        useBulk: UseBulkMode,
-        syTradeAmount: RawTokenAmount<BigNumberish>,
-        tokenAddress: Address,
-        Callback: (bulkSellerAddress: Address) => Promise<T>,
-        noRetry?: boolean
-    ): Promise<T>;
-
-    determineByToken(
-        useBulk: UseBulkMode,
-        tokenTradeAmount: RawTokenAmount<BigNumberish>,
-        syAddress: Address
-    ): Promise<Address>;
-
-    determineBySy(
-        useBulk: UseBulkMode,
-        syTradeAmount: RawTokenAmount<BigNumberish>,
-        tokenAddress: Address
-    ): Promise<Address>;
-}
-
-export abstract class BulkSellerUsageBaseStrategy implements BulkSellerUsageStrategy {
-    constructor(readonly routerStatic: WrappedContract<RouterStatic>) {}
-
-    async tryInvoke<T>(
-        bulkSellerAddress: Address,
-        callback: (bulkSellerAddress: Address) => Promise<T>,
-        noRetry: boolean = false
-    ): Promise<T> {
+    async tryInvoke<T>(callback: (bulkAddress: Address) => Promise<T>, noRetry?: boolean) {
+        if (this.forceNoRetryWhenInvoke) {
+            noRetry = true;
+        }
         try {
-            return callback(bulkSellerAddress);
+            return callback(this.bulkAddress);
         } catch (e: any) {
             if (
                 !noRetry &&
-                bulkSellerAddress !== NATIVE_ADDRESS_0x00 &&
+                this.bulkAddress !== NATIVE_ADDRESS_0x00 &&
                 e instanceof PendleContractError &&
                 (e.isType('BulkInsufficientTokenForTrade') || e.isType('BulkInsufficientSyForTrade'))
             ) {
@@ -71,34 +40,24 @@ export abstract class BulkSellerUsageBaseStrategy implements BulkSellerUsageStra
             throw e;
         }
     }
+}
 
-    async tryInvokeWithToken<T>(
+export interface BulkSellerUsageStrategy {
+    determineByToken(
         useBulk: UseBulkMode,
         tokenTradeAmount: RawTokenAmount<BigNumberish>,
-        syAddress: Address,
-        callback: (bulkSellerAddress: Address) => Promise<T>,
-        noRetry: boolean = false
-    ): Promise<T> {
-        if (this.shouldForceNoRetry(useBulk)) {
-            noRetry = true;
-        }
-        const bulkSellerAddress = await this.determineByToken(useBulk, tokenTradeAmount, syAddress);
-        return this.tryInvoke(bulkSellerAddress, callback, noRetry);
-    }
+        syAddress: Address
+    ): Promise<BulkSellerUsageResult>;
 
-    async tryInvokeWithSy<T>(
+    determineBySy(
         useBulk: UseBulkMode,
         syTradeAmount: RawTokenAmount<BigNumberish>,
-        tokenAddress: Address,
-        callback: (bulkSellerAddress: Address) => Promise<T>,
-        noRetry: boolean = false
-    ): Promise<T> {
-        if (this.shouldForceNoRetry(useBulk)) {
-            noRetry = true;
-        }
-        const bulkSellerAddress = await this.determineBySy(useBulk, syTradeAmount, tokenAddress);
-        return this.tryInvoke(bulkSellerAddress, callback, noRetry);
-    }
+        tokenAddress: Address
+    ): Promise<BulkSellerUsageResult>;
+}
+
+export abstract class BulkSellerUsageBaseStrategy implements BulkSellerUsageStrategy {
+    constructor(readonly routerStatic: WrappedContract<RouterStatic>) {}
 
     shouldForceNoRetry(useBulk: UseBulkMode) {
         if (useBulk === 'auto') return false;
@@ -110,48 +69,64 @@ export abstract class BulkSellerUsageBaseStrategy implements BulkSellerUsageStra
         useBulk: UseBulkMode,
         tokenTradeAmount: RawTokenAmount<BigNumberish>,
         syAddress: Address
-    ): Promise<Address> {
+    ): Promise<BulkSellerUsageResult> {
+        const shouldForceNoRetry = this.shouldForceNoRetry(useBulk);
         if (typeof useBulk === 'object') {
+            if ('withResult' in useBulk) {
+                return useBulk.withResult;
+            }
             if ('withStrategy' in useBulk) {
                 return useBulk.withStrategy.determineByToken('auto', tokenTradeAmount, syAddress);
             }
-            return this.determineByTokenLogic(useBulk.withAddress, tokenTradeAmount, syAddress);
+            const bulkAddress = await this.determineByTokenLogic(useBulk.withAddress, tokenTradeAmount, syAddress);
+            return new BulkSellerUsageResult(bulkAddress, shouldForceNoRetry);
         }
         if (useBulk === false) {
-            return NATIVE_ADDRESS_0x00;
+            return new BulkSellerUsageResult(NATIVE_ADDRESS_0x00, shouldForceNoRetry);
         }
-        const { bulk, totalToken, totalSy } = await this.routerStatic[
+        const { bulk, totalToken, totalSy } = await this.routerStatic.multicallStatic[
             'getBulkSellerInfo(address,address,uint256,uint256)'
         ](tokenTradeAmount.token, syAddress, tokenTradeAmount.amount, 0);
-        const bulkAddress = toAddress(bulk);
-        if (useBulk === true) {
-            return bulkAddress;
+        let bulkAddress = toAddress(bulk);
+        if (useBulk !== true) {
+            bulkAddress = await this.determineByTokenLogic(bulkAddress, tokenTradeAmount, syAddress, {
+                totalToken,
+                totalSy,
+            });
         }
-        return this.determineByTokenLogic(bulkAddress, tokenTradeAmount, syAddress, { totalToken, totalSy });
+        return new BulkSellerUsageResult(bulkAddress, shouldForceNoRetry);
     }
 
     async determineBySy(
         useBulk: UseBulkMode,
         syTradeAmount: RawTokenAmount<BigNumberish>,
         tokenAddress: Address
-    ): Promise<Address> {
+    ): Promise<BulkSellerUsageResult> {
+        const shouldForceNoRetry = this.shouldForceNoRetry(useBulk);
         if (typeof useBulk === 'object') {
+            if ('withResult' in useBulk) {
+                return useBulk.withResult;
+            }
             if ('withStrategy' in useBulk) {
                 return useBulk.withStrategy.determineBySy('auto', syTradeAmount, tokenAddress);
             }
-            return this.determineBySyLogic(useBulk.withAddress, syTradeAmount, tokenAddress);
+            const bulkAddress = await this.determineBySyLogic(useBulk.withAddress, syTradeAmount, tokenAddress);
+            return new BulkSellerUsageResult(bulkAddress, shouldForceNoRetry);
         }
         if (useBulk === false) {
-            return NATIVE_ADDRESS_0x00;
+            return new BulkSellerUsageResult(NATIVE_ADDRESS_0x00, shouldForceNoRetry);
         }
-        const { bulk, totalToken, totalSy } = await this.routerStatic[
+        const { bulk, totalToken, totalSy } = await this.routerStatic.multicallStatic[
             'getBulkSellerInfo(address,address,uint256,uint256)'
         ](tokenAddress, syTradeAmount.token, 0, syTradeAmount.amount);
-        const bulkAddress = toAddress(bulk);
-        if (useBulk === true) {
-            return bulkAddress;
+        let bulkAddress = toAddress(bulk);
+        if (useBulk !== true) {
+            bulkAddress = await this.determineBySyLogic(bulkAddress, syTradeAmount, tokenAddress, {
+                totalToken,
+                totalSy,
+            });
         }
-        return this.determineBySyLogic(bulkAddress, syTradeAmount, tokenAddress, { totalToken, totalSy });
+        return new BulkSellerUsageResult(bulkAddress, shouldForceNoRetry);
     }
 
     protected abstract determineByTokenLogic(

@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from '@ethersproject/providers';
+import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
 import { Wallet } from 'ethers';
 import { CHAIN_ID_MAPPING, Multicall, Address, toAddress } from '../../src';
@@ -57,7 +57,7 @@ const providerUrls = {
     [LOCAL_CHAIN_ID]: 'http://127.0.0.1:8545',
 };
 
-export const provider = new JsonRpcProvider(
+export const provider = new StaticJsonRpcProvider(
     USE_HARDHAT_RPC ? providerUrls[LOCAL_CHAIN_ID] : providerUrls[ACTIVE_CHAIN_ID]
 );
 export const wallet = (

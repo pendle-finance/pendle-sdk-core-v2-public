@@ -130,6 +130,16 @@ export type UnionOf<Types> = Types extends [infer Elm]
     ? UnionOf<Body> & Last
     : Types;
 
+// https://stackoverflow.com/a/52490977
+export type FixedLengthTuple<T, Length extends number> = Length extends Length
+    ? number extends Length
+        ? T[]
+        : _FixedLengthTupleOf<T, Length, []>
+    : never;
+type _FixedLengthTupleOf<T, N extends number, R extends unknown[]> = R['length'] extends N
+    ? R
+    : _FixedLengthTupleOf<T, N, [T, ...R]>;
+
 // function helpers
 
 /**
@@ -207,4 +217,50 @@ export async function promiseAllWithErrors<T, ErrorType = Error>(promises: Promi
 
     await Promise.all(promises.map((promise) => promise.then((r) => results.push(r)).catch((e) => errors.push(e))));
     return [results, errors];
+}
+
+export type SyncUpCheckpointFn = (id: number) => Promise<void>;
+
+// Consideration: add timeout?
+function createSyncUpCheckpointFn(entriesCount: number): SyncUpCheckpointFn {
+    let awaitedEntries = Array.from({ length: entriesCount }, () => false);
+    let awaitedEntriesCount = 0;
+    let promiseResolve: () => void;
+    let curPromise = new Promise<void>((resolve) => {
+        promiseResolve = resolve;
+    });
+    return (id: number) => {
+        if (awaitedEntries[id] === false) {
+            awaitedEntries[id] = true;
+            ++awaitedEntriesCount;
+            if (awaitedEntriesCount === entriesCount) {
+                promiseResolve();
+            }
+        }
+        return curPromise;
+    };
+}
+
+export function mapPromisesToSyncUp<SyncUpCheckpointCount extends number, ArrayToMap extends any[], Res>(
+    syncUpCheckpointCount: SyncUpCheckpointCount,
+    arr: ArrayToMap,
+    fn: (
+        syncUpCheckpoints: FixedLengthTuple<SyncUpCheckpointFn, SyncUpCheckpointCount>,
+        elm: ArrayToMap[number],
+        index: number
+    ) => Promise<Res>
+): Promise<Res>[] {
+    const syncUpCheckpointFns = Array.from({ length: syncUpCheckpointCount }, () =>
+        createSyncUpCheckpointFn(arr.length)
+    ) as FixedLengthTuple<SyncUpCheckpointFn, SyncUpCheckpointCount>;
+    return arr.map(async (elm, index) => {
+        try {
+            return await fn(syncUpCheckpointFns, elm, index);
+        } finally {
+            // call/re-call all checkpoint fn to not block the others
+            for (const fn of syncUpCheckpointFns) {
+                fn(index);
+            }
+        }
+    });
 }
