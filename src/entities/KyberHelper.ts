@@ -183,17 +183,20 @@ export class KyberHelper {
      * If there is no route, `undefined` is returned.
      * If `input.token` is the same as `output`, no actual call is done.
      */
-    async makeCall(input: RawTokenAmount<BigNumberish>, output: Address): Promise<KybercallData | undefined> {
+    async makeCall(
+        { token, amount }: RawTokenAmount<BigNumberish>,
+        output: Address
+    ): Promise<KybercallData | undefined> {
         if (!isKyberSupportedChain(this.chainId)) {
             throw new Error(`Chain ${this.chainId} is not supported for kybercall.`);
         }
         // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
-        if (isNativeToken(input.token)) input.token = NATIVE_ADDRESS_0xEE;
+        if (isNativeToken(token)) token = NATIVE_ADDRESS_0xEE;
         if (isNativeToken(output)) output = NATIVE_ADDRESS_0xEE;
 
-        if (isSameAddress(input.token, output))
+        if (isSameAddress(token, output))
             return {
-                outputAmount: input.amount,
+                outputAmount: amount,
                 encodedSwapData: [],
                 routerAddress: NATIVE_ADDRESS_0x00,
             };
@@ -206,9 +209,9 @@ export class KyberHelper {
             to: Address;
             slippageTolerance: number;
         } = {
-            tokenIn: input.token,
+            tokenIn: token,
             tokenOut: output,
-            amountIn: BN.from(input.amount).toString(),
+            amountIn: BN.from(amount).toString(),
             to: this.routerAddress,
             // set the slippage to 20% since we already enforced the minimum output in our contract
             slippageTolerance: 2_000,
