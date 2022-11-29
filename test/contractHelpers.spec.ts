@@ -77,7 +77,7 @@ describeWrite('Contract Helpers', () => {
 
         const tx = await metaCall
             .connect(signer)
-            .send({ gasPrice: gasPrice })
+            .send({ overrides: { gasPrice: gasPrice } })
             .then((tx) => tx.wait(BLOCK_CONFIRMATION));
         expect(tx.effectiveGasPrice).toEqBN(gasPrice);
     });
@@ -87,7 +87,7 @@ describeWrite('Contract Helpers', () => {
             method: 'meta-method',
         });
 
-        await expect(() => sendPendleMetaCall.callStatic({ from: DUMMY_ADDRESS })).rejects.toThrow(
+        await expect(() => sendPendleMetaCall.callStatic({ overrides: { from: DUMMY_ADDRESS } })).rejects.toThrow(
             'ERC20: transfer amount exceeds balance'
         );
     });

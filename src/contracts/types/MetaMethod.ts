@@ -34,6 +34,7 @@ export type MetaMethodParams<
 
 export type MetaMethodExtraParams<T extends MetaMethodType = 'send'> = MulticallStaticParams & {
     method?: T;
+    gasLimitBufferingPercent?: number;
 };
 
 /**

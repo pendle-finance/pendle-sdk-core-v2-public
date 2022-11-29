@@ -1,4 +1,4 @@
-import { Contract, CallOverrides } from 'ethers';
+import { Contract, BigNumber as BN } from 'ethers';
 import { Multicall } from '../multicall';
 import {
     WrappedContract,
@@ -11,6 +11,7 @@ import {
     EthersContractMethod,
 } from './types';
 import { MulticallStaticParams } from './types';
+import { calcSlippedUpAmount } from '../common/math';
 
 export type ContractMetaMethodCallback = <
     T extends MetaMethodType,
@@ -29,6 +30,7 @@ export class ContractMetaMethod<
     M extends ContractMethodNames<C>,
     Data extends MetaMethodExtraParams<any>
 > {
+    static DEFAULT_GAS_LIMIT_BUFFERING_PERCENT = 10;
     constructor(
         readonly contract: WrappedContract<C>,
         readonly methodName: M,
@@ -36,12 +38,13 @@ export class ContractMetaMethod<
         readonly data: Data
     ) {}
 
-    private addOverridesToData(overrides?: CallOverrides): Data {
+    private addOverridesToData(dataOverrides?: MetaMethodExtraParams): Data {
         return {
             ...this.data,
+            ...dataOverrides,
             overrides: {
                 ...this.data.overrides,
-                ...overrides,
+                ...dataOverrides?.overrides,
             },
         };
     }
@@ -55,20 +58,30 @@ export class ContractMetaMethod<
         return this.withContract(newContract);
     }
 
-    send(overrides?: CallOverrides): MetaMethodReturnType<'send', C, M, Data> {
-        return this.callback(
+    async send(dataOverrides?: MetaMethodExtraParams): MetaMethodReturnType<'send', C, M, Data> {
+        const data = this.addOverridesToData(dataOverrides);
+        const gas = await (data.overrides?.gasLimit ??
+            this.estimateGas({ ...dataOverrides, overrides: { ...dataOverrides, gasLimit: undefined } }));
+        const bufferedGas = calcSlippedUpAmount(
+            BN.from(gas),
+            (data.gasLimitBufferingPercent ?? ContractMetaMethod.DEFAULT_GAS_LIMIT_BUFFERING_PERCENT) / 100
+        );
+
+        data.overrides = { ...data.overrides, gasLimit: bufferedGas };
+
+        return await this.callback(
             'send',
             this.contract.functions[this.methodName as string] as EthersContractMethod<C, 'send', M>,
-            this.addOverridesToData(overrides),
+            data,
             this
         );
     }
 
-    callStatic(overrides?: CallOverrides): MetaMethodReturnType<'callStatic', C, M, Data> {
+    callStatic(dataOverrides?: MetaMethodExtraParams): MetaMethodReturnType<'callStatic', C, M, Data> {
         return this.callback(
             'callStatic',
             this.contract.callStatic[this.methodName as string] as EthersContractMethod<C, 'callStatic', M>,
-            this.addOverridesToData(overrides),
+            this.addOverridesToData(dataOverrides),
             this
         );
     }
@@ -78,13 +91,11 @@ export class ContractMetaMethod<
      * When the overrides has only blockTag property (that is, when Multicall.isMulticallOverrides(overrides) is true),
      * multicall is used. Otherwise callStatic is used.
      */
-    multicallStatic({ multicall, overrides }: MulticallStaticParams = {}): MetaMethodReturnType<
-        'multicallStatic',
-        C,
-        M,
-        Data
-    > {
-        multicall = multicall ?? this.data.multicall;
+    multicallStatic(
+        multicallStaticParams: MulticallStaticParams = {}
+    ): MetaMethodReturnType<'multicallStatic', C, M, Data> {
+        const data = this.addOverridesToData(multicallStaticParams);
+        const multicall = data.multicall;
         // TODO make this some how use the same logic as contract.multicallStatic
         const callback = ((...args: any[]) => {
             const argCount = this.contract.functionFragmentsMapping[this.methodName].inputs.length;
@@ -94,14 +105,14 @@ export class ContractMetaMethod<
                 overrides
             );
         }) as EthersContractMethod<C, 'multicallStatic', M>;
-        return this.callback('multicallStatic', callback, this.addOverridesToData(overrides), this);
+        return this.callback('multicallStatic', callback, data, this);
     }
 
-    estimateGas(overrides?: CallOverrides): MetaMethodReturnType<'estimateGas', C, M, Data> {
+    estimateGas(dataOverrides?: MetaMethodExtraParams): MetaMethodReturnType<'estimateGas', C, M, Data> {
         return this.callback(
             'estimateGas',
             this.contract.estimateGas[this.methodName as string] as EthersContractMethod<C, 'estimateGas', M>,
-            this.addOverridesToData(overrides),
+            this.addOverridesToData(dataOverrides),
             this
         );
     }
