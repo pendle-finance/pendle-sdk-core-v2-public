@@ -208,6 +208,7 @@ export class KyberHelper {
             amountIn: string;
             to: Address;
             slippageTolerance: number;
+            useMeta: boolean;
         } = {
             tokenIn: token,
             tokenOut: output,
@@ -215,6 +216,7 @@ export class KyberHelper {
             to: this.routerAddress,
             // set the slippage to 20% since we already enforced the minimum output in our contract
             slippageTolerance: 2_000,
+            useMeta: false,
         };
 
         try {
