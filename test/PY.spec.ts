@@ -1,21 +1,28 @@
 import { PtEntity, YtEntity, Multicall, toAddress, toAddresses } from '../src';
+import { DEFAULT_EPSILON } from './util/constants';
 import { currentConfig, networkConnectionWithChainId } from './util/testEnv';
 import { describeWithMulticall } from './util/testHelper';
 
 describe('PY', () => {
     const currentMarket = currentConfig.market;
+    const userAddress = currentConfig.userAddress;
     const pt = new PtEntity(currentMarket.PT, networkConnectionWithChainId);
     const yt = new YtEntity(currentMarket.YT, networkConnectionWithChainId);
 
     describeWithMulticall((multicall) => {
         it('#userInfo & #contract', async () => {
-            const [userInfo, userPtBalance, userYtBalance, interestToken, interestAmount] = await Promise.all([
-                pt.userInfo(currentConfig.deployer, { multicall }),
-                pt.balanceOf(currentConfig.deployer, { multicall }),
-                yt.balanceOf(currentConfig.deployer, { multicall }),
-                Multicall.wrap(yt.contract, multicall).callStatic.SY().then(toAddress),
-                Multicall.wrap(yt.contract, multicall).callStatic.userInterest(currentConfig.deployer),
-            ]);
+            const [userInfo, userPtBalance, userYtBalance, interestToken, simulateInterestAndRewards] =
+                await Promise.all([
+                    pt.userInfo(userAddress, { multicall }),
+                    pt.balanceOf(userAddress, { multicall }),
+                    yt.balanceOf(userAddress, { multicall }),
+                    Multicall.wrap(yt.contract, multicall).callStatic.SY().then(toAddress),
+                    Multicall.wrap(yt.contract, multicall).callStatic.redeemDueInterestAndRewards(
+                        userAddress,
+                        true,
+                        true
+                    ),
+                ]);
 
             expect(userInfo.pt).toBe(currentMarket.PT);
             expect(userInfo.ptBalance).toEqBN(userPtBalance);
@@ -25,23 +32,19 @@ describe('PY', () => {
 
             const interest = userInfo.unclaimedInterest;
             expect(interest.token).toBe(interestToken);
-            expect(interest.amount).toEqBN(interestAmount[1]);
+            expect(interest.amount).toEqBN(simulateInterestAndRewards.interestOut, DEFAULT_EPSILON);
 
             await Promise.all(
-                userInfo.unclaimedRewards.map(async ({ token, amount }) => {
-                    const { accrued } = await Multicall.wrap(yt.contract, multicall).callStatic.userReward(
-                        token,
-                        currentConfig.deployer
-                    );
-                    expect(amount).toEqBN(accrued);
+                userInfo.unclaimedRewards.map(async ({ token, amount }, i) => {
+                    expect(amount).toEqBN(simulateInterestAndRewards.rewardsOut[i], DEFAULT_EPSILON);
                 })
             );
         });
 
         it('#YT.userInfo & PT.userInfo', async () => {
             const [ytUserInfo, ptUserInfo] = await Promise.all([
-                yt.userInfo(currentConfig.deployer, { multicall }),
-                pt.userInfo(currentConfig.deployer, { multicall }),
+                yt.userInfo(userAddress, { multicall }),
+                pt.userInfo(userAddress, { multicall }),
             ]);
 
             expect(ytUserInfo).toEqual(ptUserInfo);

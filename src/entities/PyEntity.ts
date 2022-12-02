@@ -1,7 +1,14 @@
-import { RouterStatic, WrappedContract, MulticallStaticParams, getRouterStatic } from '../contracts';
+import {
+    RouterStatic,
+    WrappedContract,
+    MulticallStaticParams,
+    getRouterStatic,
+    PendleYieldTokenABI,
+} from '../contracts';
 import { BigNumber as BN } from 'ethers';
 import { ERC20Entity, ERC20EntityConfig } from './erc20';
 import { Address, toAddress, RawTokenAmount, createTokenAmount, ChainId } from '../common';
+import { YtEntity } from './YtEntity';
 
 export type UserPyInfo = {
     yt: Address;
@@ -60,7 +67,30 @@ export abstract class PyEntity extends ERC20Entity {
      * @returns
      */
     async userInfo(user: Address, params?: MulticallStaticParams): Promise<UserPyInfo> {
-        return this.routerStatic.multicallStatic.getUserPYInfo(this.address, user, params).then(PyEntity.toUserPyInfo);
+        const { yt } = await this.routerStatic.multicallStatic.getPY(this.address, params);
+        const ytEntity = new YtEntity(toAddress(yt), {
+            ...this.entityConfig,
+            abi: PendleYieldTokenABI,
+        });
+
+        const [userPyCurrentInfo, simulateInterestAndRewards] = await Promise.all([
+            this.routerStatic.multicallStatic.getUserPYInfo(this.address, user, params),
+            ytEntity.contract.multicallStatic.redeemDueInterestAndRewards(user, true, true, params),
+        ]);
+
+        return PyEntity.toUserPyInfo({
+            ...userPyCurrentInfo,
+            unclaimedInterest: {
+                ...userPyCurrentInfo.unclaimedInterest,
+                amount: simulateInterestAndRewards.interestOut,
+                [1]: simulateInterestAndRewards.interestOut,
+            },
+            unclaimedRewards: userPyCurrentInfo.unclaimedRewards.map((reward, i) => ({
+                ...reward,
+                amount: simulateInterestAndRewards.rewardsOut[i],
+                [1]: simulateInterestAndRewards.rewardsOut[i],
+            })),
+        });
     }
 
     /**
