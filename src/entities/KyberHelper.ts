@@ -209,6 +209,7 @@ export class KyberHelper {
             to: Address;
             slippageTolerance: number;
             useMeta: boolean;
+            saveGas: "0" | "1";
         } = {
             tokenIn: token,
             tokenOut: output,
@@ -217,6 +218,7 @@ export class KyberHelper {
             // set the slippage to 20% since we already enforced the minimum output in our contract
             slippageTolerance: 2_000,
             useMeta: false,
+            saveGas: "1",
         };
 
         try {

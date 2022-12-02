@@ -16,7 +16,6 @@ describe(KyberHelper, () => {
             it(`${tokenInName}-${tokenOutName}`, async () => {
                 expect(await kyberHelper.checkSwappablePair(tokenInAddr, tokenOutAddr)).toBe(true);
             });
-            break;
         }
 
         it(`${tokenInName}-dummy`, async () => {
