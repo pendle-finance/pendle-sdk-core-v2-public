@@ -4,18 +4,17 @@ import { Wallet } from 'ethers';
 import { CHAIN_ID_MAPPING, Multicall, Address, toAddress } from '../../src';
 import './bigNumberMatcher';
 
-import MAINNET_CORE_ADDRESSES from '@pendle/core-v2/deployments/1-core.json';
-import MAINNET_FRAX_MAR23_ADDRESSES from '@pendle/core-v2/deployments/1-markets/FRAXUSDC-CURVELP-MARCH30.json';
-import MAINNET_LOOKS_MAR23_ADDRESSES from '@pendle/core-v2/deployments/1-markets/LOOKS-STAKING-MARCH30.json';
-import MAINNET_STETH_MAR30_ADDRESSES from '@pendle/core-v2/deployments/1-markets/STETH-MARCH30.json';
-import MAINNET_STETH_JUN29_ADDRESSES from '@pendle/core-v2/deployments/1-markets/STETH-JUNE29.json';
+import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
+import FUJI_QIUSDC_FEB02_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/USDC-FEB-2ND.json';
+import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/WETH-FEB-2ND.json';
 
+import FUJI_TEST_ENV from '@pendle/core-v2/deployments/43113-testenv.json';
 import { evm_revert, evm_snapshot } from './testHelper';
 import { DUMMY_ADDRESS } from './constants';
 
 config();
 
-type TestChainId = typeof CHAIN_ID_MAPPING.ETHEREUM;
+type TestChainId = typeof CHAIN_ID_MAPPING.FUJI;
 
 // Change this to the current active network
 export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID!) as TestChainId;
@@ -104,31 +103,24 @@ function shallowToAddress<T>(obj: T): ShallowToAddressType<T> {
 }
 
 export const CONTRACT_ADDRESSES = shallowToAddress({
-    [CHAIN_ID_MAPPING.ETHEREUM]: {
+    [CHAIN_ID_MAPPING.FUJI]: {
         CORE: {
-            DEPLOYER: MAINNET_CORE_ADDRESSES.deployer,
-            MARKET_FACTORY: MAINNET_CORE_ADDRESSES.marketFactory,
-            YT_FACTORY: MAINNET_CORE_ADDRESSES.yieldContractFactory,
-            ROUTER: MAINNET_CORE_ADDRESSES.router,
-            ROUTER_STATIC: MAINNET_CORE_ADDRESSES.routerStatic,
-            VE: MAINNET_CORE_ADDRESSES.vePendle,
-            VOTING_CONTROLLER: MAINNET_CORE_ADDRESSES.votingController,
-            PENDLE: MAINNET_CORE_ADDRESSES.PENDLE,
+            DEPLOYER: FUJI_CORE_ADDRESSES.deployer,
+            MARKET_FACTORY: FUJI_CORE_ADDRESSES.marketFactory,
+            YT_FACTORY: FUJI_CORE_ADDRESSES.yieldContractFactory,
+            ROUTER: FUJI_CORE_ADDRESSES.router,
+            ROUTER_STATIC: FUJI_CORE_ADDRESSES.routerStatic,
+            VE: FUJI_CORE_ADDRESSES.vePendle,
+            VOTING_CONTROLLER: FUJI_CORE_ADDRESSES.votingController,
+            PENDLE: FUJI_CORE_ADDRESSES.PENDLE,
         },
         MARKETS: [
-            MAINNET_FRAX_MAR23_ADDRESSES,
-            MAINNET_LOOKS_MAR23_ADDRESSES,
-            MAINNET_STETH_MAR30_ADDRESSES,
-            MAINNET_STETH_JUN29_ADDRESSES,
+            FUJI_QIUSDC_FEB02_ADDRESSES,
+            FUJI_QIWETH_DEC01_ADDRESSES
         ],
-        FUND_KEEPER: DUMMY_ADDRESS,
-        FAUCET: DUMMY_ADDRESS,
-        TOKENS: {
-            USDC: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-            USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
-            DAI: '0x6b175474e89094c44da98b954eedeac495271d0f',
-            WETH: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
-        },
+        FUND_KEEPER: FUJI_TEST_ENV.tokens.fundKeeper,
+        FAUCET: FUJI_TEST_ENV.tokens.faucet,
+        TOKENS: FUJI_TEST_ENV.tokens,
     },
 } as const);
 
