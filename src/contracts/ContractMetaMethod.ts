@@ -61,7 +61,7 @@ export class ContractMetaMethod<
     async send(dataOverrides?: MetaMethodExtraParams): MetaMethodReturnType<'send', C, M, Data> {
         const data = this.addOverridesToData(dataOverrides);
         const gas = await (data.overrides?.gasLimit ??
-            this.estimateGas({ ...dataOverrides, overrides: { ...dataOverrides, gasLimit: undefined } }));
+            this.estimateGas({ ...dataOverrides, overrides: { ...dataOverrides?.overrides, gasLimit: undefined } }));
         const bufferedGas = calcSlippedUpAmount(
             BN.from(gas),
             (data.gasLimitBufferingPercent ?? ContractMetaMethod.DEFAULT_GAS_LIMIT_BUFFERING_PERCENT) / 100
