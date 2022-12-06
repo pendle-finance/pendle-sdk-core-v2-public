@@ -441,7 +441,14 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'addLiquiditySinglePt',
-        { netLpOut: BN; netPtToSwap: BN; netSyFee: BN; priceImpact: BN; approxParam: ApproxParamsStruct }
+        {
+            netLpOut: BN;
+            netPtToSwap: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+            approxParam: ApproxParamsStruct;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -466,7 +473,14 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'addLiquiditySingleSy',
-        { netLpOut: BN; netPtFromSwap: BN; netSyFee: BN; priceImpact: BN; approxParam: ApproxParamsStruct }
+        {
+            netLpOut: BN;
+            netPtFromSwap: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+            approxParam: ApproxParamsStruct;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -500,6 +514,7 @@ export class Router extends PendleEntity {
             priceImpact: BN;
             kybercallData: KybercallData;
             netSyFee: BN;
+            exchangeRateAfter: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -633,7 +648,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'removeLiquiditySinglePt',
-        { netPtOut: BN; netPtFromSwap: BN; netSyFee: BN; priceImpact: BN }
+        { netPtOut: BN; netPtFromSwap: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -658,7 +673,11 @@ export class Router extends PendleEntity {
         lpToRemove: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'removeLiquiditySingleSy', { netSyOut: BN; netSyFee: BN; priceImpact: BN }> {
+    ): RouterMetaMethodReturnType<
+        T,
+        'removeLiquiditySingleSy',
+        { netSyOut: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+    > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.removeLiquiditySingleSyStatic(
@@ -693,6 +712,7 @@ export class Router extends PendleEntity {
             intermediateSy: BN;
             priceImpact: BN;
             redeemedFromSyAmount: BN;
+            exchangeRateAfter: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -701,11 +721,12 @@ export class Router extends PendleEntity {
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity(params.forCallStatic);
-        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact }] = await Promise.all([
-            getSyPromise,
-            getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
-            this.routerStaticCall.removeLiquiditySingleSyStatic(marketAddr, lpToRemove, params.forCallStatic),
-        ]);
+        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact, exchangeRateAfter }] =
+            await Promise.all([
+                getSyPromise,
+                getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
+                this.routerStaticCall.removeLiquiditySingleSyStatic(marketAddr, lpToRemove, params.forCallStatic),
+            ]);
 
         const res = await this.outputParams(
             { token: sy.address, amount: intermediateSy },
@@ -727,6 +748,7 @@ export class Router extends PendleEntity {
             netSyFee,
             netTokenOut,
             priceImpact,
+            exchangeRateAfter,
             ...params,
         });
     }
@@ -736,7 +758,11 @@ export class Router extends PendleEntity {
         exactPtIn: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'swapExactPtForSy', { netSyOut: BN; netSyFee: BN; priceImpact: BN }> {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapExactPtForSy',
+        { netSyOut: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+    > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params.forCallStatic);
@@ -758,7 +784,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapPtForExactSy',
-        { netPtIn: BN; netSyFee: BN; approxParam: ApproxParamsStruct; priceImpact: BN }
+        { netPtIn: BN; netSyFee: BN; approxParam: ApproxParamsStruct; priceImpact: BN; exchangeRateAfter: BN }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -780,7 +806,11 @@ export class Router extends PendleEntity {
         exactPtOut: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'swapSyForExactPt', { netSyIn: BN; netSyFee: BN; priceImpact: BN }> {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapSyForExactPt',
+        { netSyIn: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+    > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapSyForExactPtStatic(marketAddr, exactPtOut, params.forCallStatic);
@@ -809,6 +839,7 @@ export class Router extends PendleEntity {
             kybercallData: KybercallData;
             netSyFee: BN;
             priceImpact: BN;
+            exchangeRateAfter: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -854,7 +885,11 @@ export class Router extends PendleEntity {
         exactSyIn: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'swapExactSyForPt', { netPtOut: BN; netSyFee: BN; priceImpact: BN }> {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapExactSyForPt',
+        { netPtOut: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+    > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapExactSyForPtStatic(marketAddr, exactSyIn, params.forCallStatic);
@@ -1077,7 +1112,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactSyForYt',
-        { netYtOut: BN; netSyFee: BN; approxParam: ApproxParamsStruct; priceImpact: BN }
+        { netYtOut: BN; netSyFee: BN; approxParam: ApproxParamsStruct; priceImpact: BN; exchangeRateAfter: BN }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -1102,7 +1137,7 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapYtForExactSy',
-        { netYtIn: BN; netSyFee: BN; priceImpact: BN; approxParam: ApproxParamsStruct }
+        { netYtIn: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN; approxParam: ApproxParamsStruct }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -1135,6 +1170,7 @@ export class Router extends PendleEntity {
             netSyFee: BN;
             intermediateSy: BN;
             priceImpact: BN;
+            exchangeRateAfter: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1143,11 +1179,12 @@ export class Router extends PendleEntity {
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity(params.forCallStatic);
-        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact }] = await Promise.all([
-            getSyPromise,
-            getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
-            this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params.forCallStatic),
-        ]);
+        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact, exchangeRateAfter }] =
+            await Promise.all([
+                getSyPromise,
+                getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
+                this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params.forCallStatic),
+            ]);
         const res = await this.outputParams(
             { token: sy.address, amount: intermediateSy },
             tokenOut,
@@ -1168,6 +1205,7 @@ export class Router extends PendleEntity {
             intermediateSy,
             netSyFee,
             priceImpact,
+            exchangeRateAfter,
             ...params,
         });
     }
@@ -1177,7 +1215,11 @@ export class Router extends PendleEntity {
         exactYtIn: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'swapExactYtForSy', { netSyOut: BN; netSyFee: BN; priceImpact: BN }> {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapExactYtForSy',
+        { netSyOut: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+    > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params.forCallStatic);
@@ -1196,7 +1238,11 @@ export class Router extends PendleEntity {
         exactYtOut: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'swapSyForExactYt', { netSyIn: BN; netSyFee: BN; priceImpact: BN }> {
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapSyForExactYt',
+        { netSyIn: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+    > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapSyForExactYtStatic(marketAddr, exactYtOut, params.forCallStatic);
@@ -1225,6 +1271,7 @@ export class Router extends PendleEntity {
             kybercallData: KybercallData;
             netSyFee: BN;
             priceImpact: BN;
+            exchangeRateAfter: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1279,6 +1326,7 @@ export class Router extends PendleEntity {
             netSyFee: BN;
             intermediateSy: BN;
             priceImpact: BN;
+            exchangeRateAfter: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1287,11 +1335,12 @@ export class Router extends PendleEntity {
         }
         const marketAddr = market.address;
         const getSyPromise = market.syEntity(params.forCallStatic);
-        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact }] = await Promise.all([
-            getSyPromise,
-            getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
-            this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params.forCallStatic),
-        ]);
+        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact, exchangeRateAfter }] =
+            await Promise.all([
+                getSyPromise,
+                getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
+                this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params.forCallStatic),
+            ]);
         const res = await this.outputParams(
             { token: sy.address, amount: intermediateSy },
             tokenOut,
@@ -1313,6 +1362,7 @@ export class Router extends PendleEntity {
             intermediateSy,
             netSyFee,
             priceImpact,
+            exchangeRateAfter,
             ...params,
         });
     }
@@ -1330,6 +1380,7 @@ export class Router extends PendleEntity {
             totalPtSwapped: BN;
             netSyFee: BN;
             priceImpact: BN;
+            exchangeRateAfter: BN;
             approxParam: ApproxParamsStruct;
         }
     > {
@@ -1361,6 +1412,7 @@ export class Router extends PendleEntity {
             totalPtToSwap: BN;
             netSyFee: BN;
             priceImpact: BN;
+            exchangeRateAfter: BN;
             approxParam: ApproxParamsStruct;
         }
     > {
