@@ -86,6 +86,7 @@ export type PendleContractErrorMessageHandler = {
     RouterKyberSwapDataZero: () => string;
     RouterNotAllSyUsed: (netSyDesired: BN, netSyUsed: BN) => string;
     RouterTimeRangeZero: () => string;
+    SYApeDepositAmountTooSmall: (amountDeposited: BN) => string;
     SYCurve3crvPoolNotFound: () => string;
     SYCurveInvalidPid: () => string;
     SYInsufficientSharesOut: (actualSharesOut: BN, requiredSharesOut: BN) => string;
