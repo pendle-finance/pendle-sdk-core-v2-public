@@ -1,5 +1,5 @@
 import { SyEntity, PendleContractError, Address } from '../src';
-import { currentConfig, describeWrite, networkConnectionWithChainId, signer, signerAddress } from './util/testEnv';
+import { currentConfig, describeWrite, networkConnectionWithChainId, signer } from './util/testEnv';
 
 describeWrite('Custom error', () => {
     const syAddress = currentConfig.market.SY;
@@ -13,7 +13,7 @@ describeWrite('Custom error', () => {
     });
 
     it('catch Entity error', async () => {
-        await expect(sy.deposit(signerAddress, tokenIn, 0, slippage)).rejects.toThrow(errorMessage);
+        await expect(sy.deposit(tokenIn, 0, slippage)).rejects.toThrow(errorMessage);
     });
 
     it('catch contract call static', async () => {

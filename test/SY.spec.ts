@@ -54,9 +54,7 @@ describe(SyEntity, () => {
                 }
 
                 const previewDeposit = await sy.previewDeposit(tokenMintSyAddr, amountIn);
-                await sy
-                    .deposit(signerAddress, tokenMintSyAddr, amountIn, SLIPPAGE_TYPE2)
-                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                await sy.deposit(tokenMintSyAddr, amountIn, SLIPPAGE_TYPE2).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
                 const syBalanceAfter = await getBalance(syAddress, signerAddress);
                 expect(syBalanceAfter.sub(syBalanceBefore)).toEqBN(previewDeposit, DEFAULT_EPSILON);
@@ -76,9 +74,7 @@ describe(SyEntity, () => {
                 const tokenBalanceBefore = await getBalance(tokenRedeemSyAddr, signerAddress);
 
                 const previewRedeem = await sy.previewRedeem(tokenRedeemSyAddr, syBalance);
-                await sy
-                    .redeem(signerAddress, tokenRedeemSyAddr, syBalance, SLIPPAGE_TYPE2)
-                    .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+                await sy.redeem(tokenRedeemSyAddr, syBalance, SLIPPAGE_TYPE2).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
                 const tokenBalanceAfter = await getBalance(tokenRedeemSyAddr, signerAddress);
                 expect(tokenBalanceAfter.sub(tokenBalanceBefore)).toEqBN(previewRedeem, DEFAULT_EPSILON);

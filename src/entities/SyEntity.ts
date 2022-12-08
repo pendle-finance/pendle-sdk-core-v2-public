@@ -10,6 +10,7 @@ import {
     getRouterStatic,
     MetaMethodReturnType,
     ContractMethodNames,
+    ContractMetaMethod,
 } from '../contracts';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
@@ -77,11 +78,11 @@ export class SyEntity extends ERC20Entity {
      *      determine the correct return type. See
      *      [ERC20 contract interaction tutorial with Pendle SDK](https://github.com/pendle-finance/pendle-sdk-core-v2-docs/blob/main/rendered-docs/docs/erc20-tutorial.md)
      *      to see the example usage with explanation.
-     * @param receiver - the receiver's Address
      * @param baseAssetIn - the base asset's Address to deposit
      * @param amountBaseToPull
      * @param slippage
      * @param params - the additional parameters for **write** method
+     * @param params.receiver - the receiver's Address. Default is the signer address.
      * @returns
      *
      * When `params` is not defined, or when `params.method` is not defined, this
@@ -92,22 +93,27 @@ export class SyEntity extends ERC20Entity {
      * See {@link MetaMethodReturnType} for the detailed explanation of the return type.
      * */
     async deposit<T extends MetaMethodType = 'send'>(
-        receiver: Address,
         baseAssetIn: Address,
         amountBaseToPull: BigNumberish,
         slippage: number,
-        params?: MetaMethodExtraParams<T>
-    ): SyEntityMetaMethodReturnType<T, 'deposit'> {
-        const amountSyOut = await this.contract.callStatic.deposit(receiver, baseAssetIn, amountBaseToPull, 0, {
-            value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined,
+        params?: MetaMethodExtraParams<T> & { receiver?: Address }
+    ): SyEntityMetaMethodReturnType<T, 'deposit', { amountSyOut: BN }> {
+        const amountSyOut = await this.previewDeposit(baseAssetIn, amountBaseToPull, {
+            ...params,
+            useBulk: false, // hmm what to do with useBulk in this case?
         });
         return this.contract.metaCall.deposit(
-            receiver,
+            params?.receiver ?? ContractMetaMethod.utils.getContractSignerAddress,
             baseAssetIn,
             amountBaseToPull,
             calcSlippedDownAmount(amountSyOut, slippage),
-            mergeParams(params ?? {}, {
-                overrides: { value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined },
+            mergeParams({
+                ...params,
+                overrides: {
+                    value: isNativeToken(baseAssetIn) ? amountBaseToPull : undefined,
+                    ...params?.overrides,
+                },
+                amountSyOut,
             })
         );
     }
@@ -119,12 +125,12 @@ export class SyEntity extends ERC20Entity {
      *      determine the correct return type. See
      *      [ERC20 contract interaction tutorial with Pendle SDK](https://github.com/pendle-finance/pendle-sdk-core-v2-docs/blob/main/rendered-docs/docs/erc20-tutorial.md)
      *      to see the example usage with explanation.
-     * @param receiver - the receiver's Address
      * @param baseAssetOut - the base asset's Address to redeem
      * @param amountSyToPull
      * @param slippage
      * @param params - the additional parameters for **write** method
      * @param params.burnFromInternalBalance
+     * @param params.receiver - the receiver's address. Default is the signer's address.
      * @returns
      *
      * When `params` is not defined, or when `params.method` is not defined, this
@@ -135,27 +141,23 @@ export class SyEntity extends ERC20Entity {
      * See {@link MetaMethodReturnType} for the detailed explanation of the return type.
      */
     async redeem<T extends MetaMethodType = 'send'>(
-        receiver: Address,
         baseAssetOut: Address,
         amountSyToPull: BigNumberish,
         slippage: number,
-        params?: MetaMethodExtraParams<T> & { burnFromInternalBalance?: boolean }
-    ): SyEntityMetaMethodReturnType<T, 'redeem'> {
+        params?: MetaMethodExtraParams<T> & {
+            burnFromInternalBalance?: boolean;
+            receiver?: Address;
+        }
+    ): SyEntityMetaMethodReturnType<T, 'redeem', { amountBaseOut: BN }> {
         const burnFromInternalBalance = params?.burnFromInternalBalance ?? false;
-        const amountBaseOut = await this.contract.callStatic.redeem(
-            receiver,
-            amountSyToPull,
-            baseAssetOut,
-            0,
-            burnFromInternalBalance
-        );
+        const amountBaseOut = await this.previewRedeem(baseAssetOut, amountSyToPull, { ...params, useBulk: false });
         return this.contract.metaCall.redeem(
-            receiver,
+            params?.receiver ?? ContractMetaMethod.utils.getContractSignerAddress,
             amountSyToPull,
             baseAssetOut,
             calcSlippedDownAmount(amountBaseOut, slippage),
             burnFromInternalBalance,
-            params
+            { ...params, amountBaseOut }
         );
     }
 
@@ -245,7 +247,7 @@ export class SyEntity extends ERC20Entity {
         tokenIn: Address,
         amountTokenToDeposit: BigNumberish,
         params?: MulticallStaticParams & {
-            useBulk: UseBulkMode;
+            useBulk?: UseBulkMode;
         }
     ): Promise<BN> {
         const useBulk = params?.useBulk ?? 'auto';
