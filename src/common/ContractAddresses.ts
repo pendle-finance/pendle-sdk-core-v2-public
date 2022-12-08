@@ -32,7 +32,7 @@ export const FUJI_ADDRESSES: ContractAddresses = {
     PENDLE: toAddress(FUJI_CORE_ADDRESSES.PENDLE),
     VEPENDLE: toAddress(FUJI_CORE_ADDRESSES.vePendle),
     VOTING_CONTROLLER: toAddress(FUJI_CORE_ADDRESSES.votingController),
-};;
+};
 
 export const MUMBAI_ADDRESSES: ContractAddresses = DUMMY_ADDRESSES;
 

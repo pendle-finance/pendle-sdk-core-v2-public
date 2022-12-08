@@ -10,7 +10,6 @@ import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/43113-marke
 
 import FUJI_TEST_ENV from '@pendle/core-v2/deployments/43113-testenv.json';
 import { evm_revert, evm_snapshot } from './testHelper';
-import { DUMMY_ADDRESS } from './constants';
 
 config();
 
@@ -114,10 +113,7 @@ export const CONTRACT_ADDRESSES = shallowToAddress({
             VOTING_CONTROLLER: FUJI_CORE_ADDRESSES.votingController,
             PENDLE: FUJI_CORE_ADDRESSES.PENDLE,
         },
-        MARKETS: [
-            FUJI_QIUSDC_FEB02_ADDRESSES,
-            FUJI_QIWETH_DEC01_ADDRESSES
-        ],
+        MARKETS: [FUJI_QIUSDC_FEB02_ADDRESSES, FUJI_QIWETH_DEC01_ADDRESSES],
         FUND_KEEPER: FUJI_TEST_ENV.tokens.fundKeeper,
         FAUCET: FUJI_TEST_ENV.tokens.faucet,
         TOKENS: FUJI_TEST_ENV.tokens,
