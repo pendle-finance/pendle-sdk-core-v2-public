@@ -9,3 +9,4 @@ export { abi as PendleVotingControllerUpgABI } from '@pendle/core-v2/build/artif
 export { abi as PendleYieldContractFactoryABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldContractFactory.sol/PendleYieldContractFactory.json';
 export { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldToken.sol/PendleYieldToken.json';
 export { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/RouterStatic.sol/RouterStatic.json';
+export { abi as IApeStakingABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IApeStaking.sol/IApeStaking.json';
