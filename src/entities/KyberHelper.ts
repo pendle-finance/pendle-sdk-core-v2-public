@@ -210,6 +210,7 @@ export class KyberHelper {
             slippageTolerance: number;
             useMeta: boolean;
             saveGas: '0' | '1';
+            clientData: { source: string };
         } = {
             tokenIn: token,
             tokenOut: output,
@@ -219,6 +220,7 @@ export class KyberHelper {
             slippageTolerance: 2_000,
             useMeta: false,
             saveGas: '1',
+            clientData: { source: 'Pendle' },
         };
 
         try {
