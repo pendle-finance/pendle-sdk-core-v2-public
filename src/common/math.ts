@@ -13,7 +13,7 @@ export function decimalFactor(decimals: number): BN {
 
 const ONE = decimalFactor(18);
 
-function mulSmallNum(bn: BN, num: number): BN {
+export function mulSmallNum(bn: BN, num: number): BN {
     return bnSafeClamp(bn.mul(Math.floor(num * PERCENTAGE_NUMBER_FACTOR)).div(PERCENTAGE_NUMBER_FACTOR));
 }
 
