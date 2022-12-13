@@ -88,7 +88,7 @@ export class Router extends PendleEntity {
         guessMin: Router.MIN_AMOUNT,
         guessMax: Router.MAX_AMOUNT,
         guessOffchain: 0,
-        maxIteration: 256,
+        maxIteration: 20,
         eps: BN.from(10).pow(15),
     };
     readonly routerStatic: WrappedContract<RouterStatic>;
