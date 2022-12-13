@@ -39,3 +39,16 @@ to run test on a local RPC.
 - All tests must run sequentially and not in parallel. Most of the tests require
   sending transactions, so running them in parallel will cause the transactions
   to fail due to nonce errors.
+
+## Packages release notes
+There are two release branches `main` (for mainnet) and `main-fuji` (for fuji testnet).
+The developing branch is `develop`, so before publishing a new package, make sure
+to cherry-pick/merge the features from `develop` into the corresponding branch.
+
+The following steps should be done:
+1. Checkout the `develop` branch and pull.
+2. Checkout the desired release branch and pull.
+3. `merge/cherry-pick` features from `develop`
+4. `yarn`
+5. `yarn publish`
+6. `push`
