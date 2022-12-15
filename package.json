@@ -44,7 +44,7 @@
         "ethers": "^5.7.1"
     },
     "devDependencies": {
-        "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@1.0.0-mainnet",
+        "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@1.1.1-mainnet",
         "@pendle/core-v2-testnet": "npm:@pendle/core-v2@0.17.4-testnet",
         "@size-limit/preset-small-lib": "^8.1.0",
         "@types/jest": "^29.2.0",
