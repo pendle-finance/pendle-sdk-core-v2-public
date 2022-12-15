@@ -1,7 +1,5 @@
 import { abi as PendleContractErrorsAbi } from '@pendle/core-v2/build/artifacts/contracts/core/libraries/Errors.sol/Errors.json';
-import { spawnSync } from 'child_process';
-
-import fs from 'fs';
+import { writeTsThenFormat } from './writeTsThenFormat';
 
 const FILENAME = './src/PendleContractErrorMessages/type.ts';
 const lines = [];
@@ -45,7 +43,5 @@ for (const fragment of PendleContractErrorsAbi) {
 
 lines.push('};');
 
-fs.writeFile(FILENAME, lines.join('\n'), (err) => {
-    if (err) throw err;
-    spawnSync('yarn', ['prettier', '--write', FILENAME], { shell: true, stdio: 'inherit' });
-});
+writeTsThenFormat(FILENAME, lines.join('\n'));
+
