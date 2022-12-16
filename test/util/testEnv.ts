@@ -1,15 +1,12 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
 import { Wallet } from 'ethers';
-import { CHAIN_ID_MAPPING, Multicall, Address, toAddress } from '../../src';
+import { CHAIN_ID_MAPPING, Multicall, toAddress } from '../../src';
 import './bigNumberMatcher';
 
-import FUJI_CORE_ADDRESSES from '@pendle/core-v2/deployments/43113-core.json';
-import FUJI_QIUSDC_FEB02_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/USDC-FEB-2ND.json';
-import FUJI_QIWETH_DEC01_ADDRESSES from '@pendle/core-v2/deployments/43113-markets/WETH-FEB-2ND.json';
-
-import FUJI_TEST_ENV from '@pendle/core-v2/deployments/43113-testenv.json';
 import { evm_revert, evm_snapshot } from './testHelper';
+
+import { CONTRACT_ADDRESSES, MARKET_TO_TEST } from './contractAddresses';
 
 config();
 
@@ -78,52 +75,6 @@ export const networkConnectionWithChainId = {
     chainId: ACTIVE_CHAIN_ID,
 };
 
-type ShallowToAddressType<T> = T extends string
-    ? Address
-    : T extends {}
-    ? { [Key in keyof T]: ShallowToAddressType<T[Key]> }
-    : T;
-
-function shallowToAddress<T>(obj: T): ShallowToAddressType<T> {
-    if (typeof obj === 'string') {
-        return toAddress(obj) as any;
-    }
-    if (Array.isArray(obj)) {
-        return obj.map(shallowToAddress) as any;
-    }
-    if (typeof obj !== 'object') {
-        return obj as any;
-    }
-    const res: Record<string, any> = {};
-    for (const [key, value] of Object.entries(obj as {})) {
-        res[key] = shallowToAddress(value);
-    }
-    return res as any;
-}
-
-export const CONTRACT_ADDRESSES = shallowToAddress({
-    [CHAIN_ID_MAPPING.FUJI]: {
-        CORE: {
-            DEPLOYER: FUJI_CORE_ADDRESSES.deployer,
-            MARKET_FACTORY: FUJI_CORE_ADDRESSES.marketFactory,
-            YT_FACTORY: FUJI_CORE_ADDRESSES.yieldContractFactory,
-            ROUTER: FUJI_CORE_ADDRESSES.router,
-            ROUTER_STATIC: FUJI_CORE_ADDRESSES.routerStatic,
-            VE: FUJI_CORE_ADDRESSES.vePendle,
-            VOTING_CONTROLLER: FUJI_CORE_ADDRESSES.votingController,
-            PENDLE: FUJI_CORE_ADDRESSES.PENDLE,
-        },
-        MARKETS: [FUJI_QIUSDC_FEB02_ADDRESSES, FUJI_QIWETH_DEC01_ADDRESSES],
-        FUND_KEEPER: FUJI_TEST_ENV.tokens.fundKeeper,
-        FAUCET: FUJI_TEST_ENV.tokens.faucet,
-        TOKENS: FUJI_TEST_ENV.tokens,
-    },
-} as const);
-
-// choose the markets you want to test here
-// 0n fuji: 0 for (qiUSDC Feb 03), 1 for (qiWETH Dec 01)
-const MARKET_TO_TEST = 0;
-
 export const testConfig = (chainId: TestChainId) => ({
     chainId,
     deployer: CONTRACT_ADDRESSES[chainId].CORE.DEPLOYER,
@@ -140,8 +91,8 @@ export const testConfig = (chainId: TestChainId) => ({
     markets: CONTRACT_ADDRESSES[chainId].MARKETS,
 
     // TODO remove ! since MUMBAI does not has any market
-    market: CONTRACT_ADDRESSES[chainId].MARKETS[MARKET_TO_TEST]!,
-    marketAddress: CONTRACT_ADDRESSES[chainId].MARKETS[MARKET_TO_TEST]!.market,
+    market: MARKET_TO_TEST[chainId],
+    marketAddress: MARKET_TO_TEST[chainId].market,
     // choose the token to test for swap from raw token -> py
     tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.USDT,
 
