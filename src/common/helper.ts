@@ -140,6 +140,12 @@ type _FixedLengthTupleOf<T, N extends number, R extends unknown[]> = R['length']
     ? R
     : _FixedLengthTupleOf<T, N, [T, ...R]>;
 
+export type If<Condition extends boolean, TrueType, FalseType = undefined> = Condition extends true
+    ? TrueType
+    : Condition extends false
+    ? FalseType
+    : TrueType | FalseType;
+
 // function helpers
 
 /**

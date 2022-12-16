@@ -15,6 +15,7 @@ import {
     NetworkConnection,
     copyNetworkConnection,
     RawTokenAmount,
+    If,
 } from '../common';
 
 // The type is only for documentation.
@@ -81,13 +82,17 @@ export type KybercallData = {
 /**
  * These are similar to {@link KybercallData}, but with _raw_ fields type.
  */
-type RawKybercallData = {
+type RawKybercallData<HasEncodedData extends boolean = boolean> = {
     amountInUsd: number;
     amountOutUsd: number;
     outputAmount: BigNumberish;
-    encodedSwapData: BytesLike;
+    encodedSwapData: If<HasEncodedData, BytesLike>;
     routerAddress: string; // the only different
 };
+
+function rawKybercallDataHasEncodedData(data: RawKybercallData): data is RawKybercallData<true> {
+    return data.encodedSwapData !== undefined;
+}
 
 export class KyberHelper {
     static readonly DEFAULT_CONFIG_PARAM = {
@@ -228,6 +233,9 @@ export class KyberHelper {
                 params,
                 headers: { 'Accept-Version': 'Latest' },
             });
+            if (!rawKybercallDataHasEncodedData(data)) {
+                return undefined;
+            }
             return {
                 ...data,
                 routerAddress: toAddress(data.routerAddress),
