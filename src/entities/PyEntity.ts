@@ -73,10 +73,18 @@ export abstract class PyEntity extends ERC20Entity {
             abi: PendleYieldTokenABI,
         });
 
-        const [userPyCurrentInfo, simulateInterestAndRewards] = await Promise.all([
+        const [userPyCurrentInfo, simulateInterestAndRewards, rewardTokens] = await Promise.all([
             this.routerStatic.multicallStatic.getUserPYInfo(this.address, user, params),
             ytEntity.contract.multicallStatic.redeemDueInterestAndRewards(user, true, true, params),
+            ytEntity.getRewardTokens(params),
         ]);
+
+        const unclaimedRewards: RouterStatic.TokenAmountStructOutput[] = rewardTokens.map((token, i) => {
+            return Object.assign([token, simulateInterestAndRewards.rewardsOut[i]] as [string, BN], {
+                token,
+                amount: simulateInterestAndRewards.rewardsOut[i],
+            });
+        });
 
         return PyEntity.toUserPyInfo({
             ...userPyCurrentInfo,
@@ -85,11 +93,7 @@ export abstract class PyEntity extends ERC20Entity {
                 amount: simulateInterestAndRewards.interestOut,
                 [1]: simulateInterestAndRewards.interestOut,
             },
-            unclaimedRewards: userPyCurrentInfo.unclaimedRewards.map((reward, i) => ({
-                ...reward,
-                amount: simulateInterestAndRewards.rewardsOut[i],
-                [1]: simulateInterestAndRewards.rewardsOut[i],
-            })),
+            unclaimedRewards,
         });
     }
 
