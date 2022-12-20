@@ -15,3 +15,9 @@ export const FUJI_CORE_ADDRESSES: ContractAddresses = {
     VEPENDLE: '0xb20e3c268c993bc3c9bc1c1cc5d7491f2268cd91',
     VOTING_CONTROLLER: '0x40ea97a7e9a4a0520229d1bbdf4d82e36b1a5475',
 };
+export const MUMBAI_CORE_ADDRESSES: ContractAddresses = {
+    PENDLE: '0xa6dc67ff3b241dedec6af907ff24bb5cfc3eeeaf',
+    ROUTER: '0x5141ad90aafb0d45e9f19bd9f861362d56f2cf79',
+    ROUTER_STATIC: '0xc7f8f9f1dde1104664b6fc8f33e49b169c12f41e',
+    VEPENDLE: '0xc0bc61112d9fd7ba5809047a86ec245593ba0e1e',
+};

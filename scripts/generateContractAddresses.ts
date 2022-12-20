@@ -1,5 +1,6 @@
 import ETHEREUM_CORE_ADDRESSES from '@pendle/core-v2-mainnet/deployments/1-core.json';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-core.json';
+import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2-testnet/deployments/80001-core.json';
 import { toAddress } from '../src/common';
 import { ContractAddresses } from '../src/common/ContractAddresses';
 import { writeTsThenFormat } from './writeTsThenFormat';
@@ -36,5 +37,6 @@ function genData(varName: string, data: any) {
 
 genData('ETHEREUM_CORE_ADDRESSES', ETHEREUM_CORE_ADDRESSES);
 genData('FUJI_CORE_ADDRESSES', FUJI_CORE_ADDRESSES);
+genData('MUMBAI_CORE_ADDRESSES', MUMBAI_CORE_ADDRESSES);
 
 writeTsThenFormat(FILENAME, lines.join('\n'));

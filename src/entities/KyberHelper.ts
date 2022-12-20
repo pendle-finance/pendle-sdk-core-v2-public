@@ -24,6 +24,7 @@ const KYBER_API = {
     [CHAIN_ID_MAPPING.ETHEREUM]: 'https://aggregator-api.kyberswap.com/ethereum/route/encode',
     [CHAIN_ID_MAPPING.AVALANCHE]: 'https://aggregator-api.kyberswap.com/avalanche/route/encode',
     [CHAIN_ID_MAPPING.FUJI]: 'https://aggregator-api.stg.kyberengineering.io/fuji/route/encode',
+    [CHAIN_ID_MAPPING.MUMBAI]: 'https://aggregator-api.stg.kyberengineering.io/mumbai/route/encode',
 } as const;
 
 function isKyberSupportedChain(chainId: ChainId): chainId is keyof typeof KYBER_API {

@@ -46,7 +46,7 @@ type LpBalanceSnapshot = {
 type MetaMethodCallback = () => MetaMethodReturnType<'meta-method', IPAllAction, any, any>;
 type SkipTxCheckCallback<T extends MetaMethodCallback> = (readerData: MetaMethodData<T>) => boolean;
 
-describe(Router, () => {
+describeWrite('Router', () => {
     const router = Router.getRouter(networkConnectionWithChainId);
     const signerAddress = networkConnectionWithChainId.signerAddress;
     const marketAddress = currentConfig.market.market;

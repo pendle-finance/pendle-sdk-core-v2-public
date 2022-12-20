@@ -38,14 +38,14 @@
         "generate-docs": "yarn typedoc --out docs src/index.ts"
     },
     "dependencies": {
-        "@pendle/core-v2": "0.17.8-testnet",
+        "@pendle/core-v2": "0.18.0-testnet",
         "axios": "^0.27.2",
         "bignumber.js": "^9.1.0",
         "ethers": "^5.7.1"
     },
     "devDependencies": {
         "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@1.1.1-mainnet",
-        "@pendle/core-v2-testnet": "npm:@pendle/core-v2@0.17.8-testnet",
+        "@pendle/core-v2-testnet": "npm:@pendle/core-v2@0.18.0-testnet",
         "@size-limit/preset-small-lib": "^8.1.0",
         "@types/jest": "^29.2.0",
         "@typescript-eslint/parser": "^5.40.1",

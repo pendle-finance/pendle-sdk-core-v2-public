@@ -6,11 +6,12 @@ import {
     networkConnection,
     networkConnectionWithChainId,
     BLOCK_CONFIRMATION,
+    describeIf,
 } from './util/testEnv';
 import { BigNumber as BN } from 'ethers';
 import { DEFAULT_EPSILON, INF } from './util/constants';
 
-describe(VePendle, () => {
+describeIf(isMainchain(ACTIVE_CHAIN_ID), 'VePendle', () => {
     const vePendle = new VePendleMainchain(currentConfig.veAddress, networkConnectionWithChainId);
 
     it('#constructor', () => {
@@ -27,12 +28,6 @@ describe(VePendle, () => {
         const pendle = new ERC20Entity(currentConfig.pendle, networkConnection);
         const signerAddress = networkConnection.signerAddress;
         const contract = vePendle.contract;
-
-        // only test if ACTIVE_CHAIN_ID is mainchain
-        if (!isMainchain(ACTIVE_CHAIN_ID)) {
-            console.warn(`Testing chain ${ACTIVE_CHAIN_ID} is not mainchain. No #contract methods have been tested.`);
-            return;
-        }
 
         it('#increaseLockPosition', async () => {
             const pendleBalanceBefore = await pendle.balanceOf(signerAddress);

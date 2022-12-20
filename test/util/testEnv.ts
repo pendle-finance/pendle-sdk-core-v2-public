@@ -10,7 +10,7 @@ import { CONTRACT_ADDRESSES, MARKET_TO_TEST } from './contractAddresses';
 
 config();
 
-type TestChainId = typeof CHAIN_ID_MAPPING.FUJI;
+type TestChainId = typeof CHAIN_ID_MAPPING.FUJI | typeof CHAIN_ID_MAPPING.ETHEREUM | typeof CHAIN_ID_MAPPING.MUMBAI;
 
 // Change this to the current active network
 export const ACTIVE_CHAIN_ID = Number(process.env.ACTIVE_CHAIN_ID!) as TestChainId;
@@ -42,6 +42,19 @@ export function describeWrite(...params: [fn: () => void] | [name: string, fn: (
     };
 
     (process.env.INCLUDE_WRITE === '1' && USE_HARDHAT_RPC ? describe : describe.skip)(name, fnWithSnapshot);
+}
+
+export function describeIf(condition: boolean, ...params: [fn: () => void] | [name: string, fn: () => void]) {
+    let name = 'Write function';
+    let fn: () => void;
+
+    if (params.length === 1) {
+        [fn] = params;
+    } else {
+        [name, fn] = params;
+    }
+
+    (condition ? describe : describe.skip)(name, fn);
 }
 
 export const BLOCK_CONFIRMATION = USE_HARDHAT_RPC ? 1 : parseInt(process.env.BLOCK_CONFIRMATION ?? '1');
@@ -90,7 +103,6 @@ export const testConfig = (chainId: TestChainId) => ({
     tokens: CONTRACT_ADDRESSES[chainId].TOKENS,
     markets: CONTRACT_ADDRESSES[chainId].MARKETS,
 
-    // TODO remove ! since MUMBAI does not has any market
     market: MARKET_TO_TEST[chainId],
     marketAddress: MARKET_TO_TEST[chainId].market,
     // choose the token to test for swap from raw token -> py
