@@ -11,6 +11,7 @@ import {
     ContractMethodNames,
     getRouterStatic,
     MetaMethodReturnType,
+    ContractMetaMethod,
 } from '../contracts';
 import { BigNumber as BN, BigNumberish } from 'ethers';
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
@@ -135,11 +136,32 @@ export class VePendleMainchain extends VePendle {
         );
     }
 
+    async increaseLockPosition<T extends MetaMethodType>(
+        additionalRawAmountToLock: BigNumberish,
+        newExpiry_s: BigNumberish,
+        params?: MetaMethodExtraParams<T> & {
+            broadCastChainIds?: [];
+        }
+    ): VePendleMainchainMetaMethodReturnType<T, 'increaseLockPosition'>;
+
+    async increaseLockPosition<T extends MetaMethodType>(
+        additionalRawAmountToLock: BigNumberish,
+        newExpiry_s: BigNumberish,
+        params: MetaMethodExtraParams<T> & {
+            broadCastChainIds: ChainId[];
+        }
+    ): VePendleMainchainMetaMethodReturnType<T, 'increaseLockPositionAndBroadcast'>;
+
     /**
      * Increase Lock position.
      *
      * @remarks
      * The `sender` will be the one who has his lock position increased.
+     *
+     * If params.broadCastChainIds are specified and **non-empty**, the
+     * contract function `increaseLockPositionAndBroadcast` is called,
+     * otherwise `increaseLockPosition` is called instead. Note that this also
+     * affects the return type of the function, but the difference is minimal.
      *
      * @typeParam T - the type of the meta method. This should be infer by `tsc` to
      *      determine the correct return type. See
@@ -148,6 +170,9 @@ export class VePendleMainchain extends VePendle {
      * @param additionalRawAmountToLock
      * @param newExpiry_s
      * @param params - the additional parameters for **write** method.
+     * @param params.broadCastChainIds - if specify and **non-empty**, the lock
+     *      position will be broadcasted to the other chain, the ID of which are
+     *      specified by the parameter.
      * @returns
      *
      * When `params` is not defined, or when `params.method` is not defined, this
@@ -160,11 +185,44 @@ export class VePendleMainchain extends VePendle {
     async increaseLockPosition<T extends MetaMethodType>(
         additionalRawAmountToLock: BigNumberish,
         newExpiry_s: BigNumberish,
-        params: MetaMethodExtraParams<T> = {}
-    ): VePendleMainchainMetaMethodReturnType<T, 'increaseLockPosition'> {
+        params: MetaMethodExtraParams<T> & {
+            broadCastChainIds?: ChainId[];
+        } = {}
+    ): VePendleMainchainMetaMethodReturnType<T, 'increaseLockPosition' | 'increaseLockPositionAndBroadcast'> {
+        if (params.broadCastChainIds != undefined && params.broadCastChainIds.length > 0) {
+            return this.contract.metaCall.increaseLockPositionAndBroadcast(
+                additionalRawAmountToLock,
+                newExpiry_s,
+                params.broadCastChainIds.map((chainId) => BN.from(chainId)),
+                this.addExtraParams(params)
+            );
+        }
         return this.contract.metaCall.increaseLockPosition(
             additionalRawAmountToLock,
             newExpiry_s,
+            this.addExtraParams(params)
+        );
+    }
+
+    async broadcastUserPosition<T extends MetaMethodType>(
+        chainIds: ChainId[],
+        params: MetaMethodExtraParams<T> & {
+            userAddress?: Address;
+        }
+    ): VePendleMainchainMetaMethodReturnType<T, 'broadcastUserPosition'> {
+        return this.contract.metaCall.broadcastUserPosition(
+            params.userAddress ?? ContractMetaMethod.utils.getContractSignerAddress,
+            chainIds.map((value) => BN.from(value)),
+            this.addExtraParams(params)
+        );
+    }
+
+    async broadcastTotalSupply<T extends MetaMethodType>(
+        chainIds: ChainId[],
+        params: MetaMethodExtraParams<T>
+    ): VePendleMainchainMetaMethodReturnType<T, 'broadcastTotalSupply'> {
+        return this.contract.metaCall.broadcastTotalSupply(
+            chainIds.map((value) => BN.from(value)),
             this.addExtraParams(params)
         );
     }
