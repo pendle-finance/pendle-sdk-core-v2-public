@@ -1,6 +1,40 @@
-# pendle-sdk-core-v2
+# Pendle SDK v2
 
-## How to test
+## Installation
+
+Install the latest version of Pendke SDK via the following command:
+
+```sh
+yarn add @pendle/sdk-v2
+```
+
+or
+
+```sh
+npm install @pendle/sdk-v2
+```
+
+## Documentation
+
+- [Pendle documentation](https://docs.pendle.finance/home).
+- [Pendle SDK tutorial with Nodejs Notebook](https://github.com/pendle-finance/pendle-sdk-core-v2-docs).
+- [API reference](TODO). TODO
+
+## Development
+
+### Dependencies installation
+
+```sh
+yarn
+```
+
+### Building
+
+```sh
+yarn build
+```
+
+### Testing
 
 Clone [`.env.example`](.env.example) to a new `.env` file and edit it to match
 your environment.
@@ -9,7 +43,7 @@ To set up the right environment (in case the prerequisites are not being done,
 e.g. adding liquidity to pools), run all tests with the following script:
 
 ```sh
-yarn test:all
+yarn test:coverage
 ```
 
 Before running the test, you might want to funds your account with some test
@@ -22,7 +56,7 @@ yarn test:prepare
 By default, write function tests are disabled. To enable them, uncomment the
 `INCLUDE_WRITE` field in `.env`. Do note that this will involve real funds.
 
-### Notes
+#### Notes
 
 - Most of the test is to make sure that the SDK is working as expected (calling
 the correct functions, using the correct parameters, calculating the correct
@@ -33,14 +67,14 @@ number). SDK tests are not meant to test the actual functionality of the contrac
 with hardhat), so that you won't need real funds and it is faster and more stable
 to run test on a local RPC.
 
-### Limitations
+#### Limitations
 
 - Tests for SDK vePendle are currently not implemented.
 - All tests must run sequentially and not in parallel. Most of the tests require
   sending transactions, so running them in parallel will cause the transactions
   to fail due to nonce errors.
 
-## Packages release notes
+### Packages release notes
 There are two release branches `main` (for mainnet) and `main-fuji` (for fuji testnet).
 The developing branch is `develop`, so before publishing a new package, make sure
 to cherry-pick/merge the features from `develop` into the corresponding branch.
