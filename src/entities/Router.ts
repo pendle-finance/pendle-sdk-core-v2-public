@@ -278,14 +278,11 @@ export class Router extends PendleEntity {
         );
 
         const [results, errors] = await promiseAllWithErrors(processTokenCalls);
-        if (results.length === 0) {
+        const flattenResults = results.flat();
+        if (flattenResults.length === 0) {
             if (errors.length > 0) {
                 throw errors[0];
             }
-            return undefined;
-        }
-        const flattenResults = results.flat();
-        if (flattenResults.length === 0) {
             return undefined;
         }
         return flattenResults.reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
