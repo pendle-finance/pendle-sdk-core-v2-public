@@ -97,6 +97,7 @@ export const testConfig = (chainId: TestChainId) => ({
     yieldContractFactory: CONTRACT_ADDRESSES[chainId].CORE.YT_FACTORY,
     veAddress: CONTRACT_ADDRESSES[chainId].CORE.VE,
     votingController: CONTRACT_ADDRESSES[chainId].CORE.VOTING_CONTROLLER,
+    feeDistributer: CONTRACT_ADDRESSES[chainId].CORE.FEE_DISTRIBUTOR,
     pendle: CONTRACT_ADDRESSES[chainId].CORE.PENDLE,
     fundKeeper: CONTRACT_ADDRESSES[chainId].FUND_KEEPER,
     faucet: CONTRACT_ADDRESSES[chainId].FAUCET,

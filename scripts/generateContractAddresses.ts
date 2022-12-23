@@ -20,6 +20,7 @@ function transformData(data: any): ContractAddresses {
         ROUTER_STATIC: toAddress(data.routerStatic),
         VEPENDLE: toAddress(data.vePendle),
         VOTING_CONTROLLER: data.votingController != undefined? toAddress(data.votingController) : undefined,
+        FEE_DISTRIBUTOR: data.feeDistributor != undefined? toAddress(data.feeDistributor) : undefined,
     };
 }
 

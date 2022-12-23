@@ -10,3 +10,4 @@ export { abi as PendleYieldContractFactoryABI } from '@pendle/core-v2/build/arti
 export { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldToken.sol/PendleYieldToken.json';
 export { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/RouterStatic.sol/RouterStatic.json';
 export { abi as IApeStakingABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IApeStaking.sol/IApeStaking.json';
+export { abi as PendleFeeDistributorABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VeDistributor/PendleFeeDistributor.sol/PendleFeeDistributor.json';

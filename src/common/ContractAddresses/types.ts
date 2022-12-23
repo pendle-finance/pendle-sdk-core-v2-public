@@ -10,4 +10,5 @@ export type ContractAddresses = {
     PENDLE: Address;
     VEPENDLE: Address;
     VOTING_CONTROLLER?: Address;
+    FEE_DISTRIBUTOR?: Address;
 };

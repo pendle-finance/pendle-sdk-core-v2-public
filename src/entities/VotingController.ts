@@ -9,7 +9,7 @@ import {
     MetaMethodReturnType,
     ContractMethodNames,
 } from '../contracts';
-import { Address, BN, ethersConstants } from '../common';
+import { Address, BN, ethersConstants, toAddresses } from '../common';
 import { BigNumber } from 'bignumber.js';
 import { MarketEntity } from './MarketEntity';
 
@@ -84,5 +84,9 @@ export class VotingController extends PendleEntity {
             votes.map(({ weight }) => VotingController.scaleWeight(weight)),
             this.addExtraParams(params)
         );
+    }
+
+    async getAllActivePools(): Promise<Address[]> {
+        return this.contract.callStatic.getAllActivePools().then(toAddresses);
     }
 }

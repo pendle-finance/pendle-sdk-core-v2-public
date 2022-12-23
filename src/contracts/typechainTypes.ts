@@ -10,6 +10,7 @@ export type {
     PendleVotingControllerUpg,
     PendleYieldContractFactory,
     PendleYieldToken,
+    PendleFeeDistributor,
 } from '@pendle/core-v2/typechain-types';
 
 export type { IPRouterStatic } from '@pendle/core-v2/typechain-types/IPRouterStatic';
