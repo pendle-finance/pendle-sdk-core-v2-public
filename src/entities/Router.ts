@@ -202,6 +202,7 @@ export class Router extends PendleEntity {
      * @param tokenInAmount - to pair of token in address with its amount to test.
      * @param sy - the address of the SY token.
      * @param tokenMintSyList - the list of of token in of `sy`.
+     * @param kyberswapSlippage - the slippage for kyberswap, from [0, 0.2]
      * @param useBulkMode
      * @param fn the function to maximize
      * @returns
@@ -214,6 +215,7 @@ export class Router extends PendleEntity {
         tokenInAmount: RawTokenAmount<BigNumberish>,
         sy: Address,
         tokenMintSyList: Address[],
+        kyberswapSlippage: number,
         useBulkMode: UseBulkMode,
         /**
          * @param tokenMintSyAmount - the pair of token mint sy, with its amount traded from `tokenInAmount`
@@ -236,7 +238,11 @@ export class Router extends PendleEntity {
             tokenMintSyList,
             async ([afterKyberSwapSyncUp, afterBulkSellerSyncUp], tokenMintSy: Address, id: number) => {
                 try {
-                    const kybercallDataOrUndefined = await this.kyberHelper.makeCall(tokenInAmount, tokenMintSy);
+                    const kybercallDataOrUndefined = await this.kyberHelper.makeCall(
+                        tokenInAmount,
+                        tokenMintSy,
+                        kyberswapSlippage
+                    );
                     await afterKyberSwapSyncUp(id);
 
                     if (kybercallDataOrUndefined == undefined) {
@@ -327,7 +333,9 @@ export class Router extends PendleEntity {
                 });
                 const kybercallData = await this.kyberHelper.makeCall(
                     { token: tokenRedeemSy, amount: redeemedFromSyAmount },
-                    tokenOut
+                    tokenOut,
+                    // kyberswap slippage equal to our slippage
+                    slippage
                 );
                 if (kybercallData === undefined) {
                     return [];
@@ -403,6 +411,7 @@ export class Router extends PendleEntity {
             { token: tokenIn, amount: tokenDesired },
             sy.address,
             tokenMintSyList,
+            slippage,
             params.useBulk,
             ({ token, amount }, input) =>
                 this.routerStaticCall
@@ -526,6 +535,7 @@ export class Router extends PendleEntity {
             { token: tokenIn, amount: netTokenIn },
             sy.address,
             tokenMintSyList,
+            slippage,
             params.useBulk,
             ({ amount }, input) =>
                 this.routerStaticCall
@@ -853,6 +863,7 @@ export class Router extends PendleEntity {
             { token: tokenIn, amount: netTokenIn },
             sy.address,
             tokenMintSyList,
+            slippage,
             params.useBulk,
             ({ token, amount }, input) =>
                 this.routerStaticCall
@@ -923,6 +934,7 @@ export class Router extends PendleEntity {
             { token: tokenIn, amount: netTokenIn },
             syAddr,
             tokenMintSyList,
+            slippage,
             params.useBulk,
             ({ token, amount }, input) =>
                 syEntity
@@ -1003,6 +1015,7 @@ export class Router extends PendleEntity {
             { token: tokenIn, amount: netTokenIn },
             sy.address,
             tokenMintSyList,
+            slippage,
             params.useBulk,
             ({ token, amount }, input) =>
                 this.routerStaticCall
@@ -1283,6 +1296,7 @@ export class Router extends PendleEntity {
             { token: tokenIn, amount: netTokenIn },
             sy.address,
             tokenMintSyList,
+            slippage,
             params.useBulk,
             ({ token, amount }, input) =>
                 this.routerStaticCall

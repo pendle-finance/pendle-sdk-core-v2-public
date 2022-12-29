@@ -17,6 +17,7 @@ import {
     RawTokenAmount,
     If,
 } from '../common';
+import { PendleSdkError } from '../errors';
 
 // The type is only for documentation.
 
@@ -184,6 +185,7 @@ export class KyberHelper {
      *
      * @param input - the pair of the token address with the desired amount to trade.
      * @param output - the destination token address
+     * @param slippage - slippage, from [0, 0.2]
      * @returns
      * {@link KybercallData} is returned if there is a route to trade via Kyberswap.
      * If there is no route, `undefined` is returned.
@@ -191,10 +193,11 @@ export class KyberHelper {
      */
     async makeCall(
         { token, amount }: RawTokenAmount<BigNumberish>,
-        output: Address
+        output: Address,
+        slippage: number
     ): Promise<KybercallData | undefined> {
         if (!isKyberSupportedChain(this.chainId)) {
-            throw new Error(`Chain ${this.chainId} is not supported for kybercall.`);
+            throw new PendleSdkError(`Chain ${this.chainId} is not supported for kybercall.`);
         }
         // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
         if (isNativeToken(token)) token = NATIVE_ADDRESS_0xEE;
@@ -206,6 +209,8 @@ export class KyberHelper {
                 encodedSwapData: [],
                 routerAddress: NATIVE_ADDRESS_0x00,
             };
+
+        const slippageTolerance = Math.min(Math.trunc(10000 * slippage), 2000);
 
         // Using type here because Rest API doesn't have type
         const params: {
@@ -222,8 +227,7 @@ export class KyberHelper {
             tokenOut: output,
             amountIn: BN.from(amount).toString(),
             to: this.routerAddress,
-            // set the slippage to 20% since we already enforced the minimum output in our contract
-            slippageTolerance: 2_000,
+            slippageTolerance,
             useMeta: false,
             saveGas: '1',
             clientData: { source: 'Pendle' },
@@ -284,7 +288,12 @@ export class KyberHelper {
         const res = (async () => {
             const decimals = await createERC20(srcTokenAddress, { ...this.networkConnection, ...params }).decimals();
             const testAmount = BN.from(10).pow(decimals).mul(100);
-            const kybercallData = await this.makeCall({ token: srcTokenAddress, amount: testAmount }, dstTokenAddress);
+            const kybercallData = await this.makeCall(
+                { token: srcTokenAddress, amount: testAmount },
+                dstTokenAddress,
+                // default slippage is 20%
+                0.2
+            );
             const swappable = kybercallData != undefined;
             this.swappablePairs.set(key, { swappable, checkedAtTimestamp: Date.now() });
             return swappable;
