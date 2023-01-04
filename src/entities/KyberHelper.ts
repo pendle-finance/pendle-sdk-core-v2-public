@@ -221,6 +221,7 @@ export class KyberHelper {
             slippageTolerance: number;
             useMeta: boolean;
             saveGas: '0' | '1';
+            gasInclude: '0' | '1';
             clientData: { source: string };
         } = {
             tokenIn: token,
@@ -230,14 +231,23 @@ export class KyberHelper {
             slippageTolerance,
             useMeta: false,
             saveGas: '1',
+            gasInclude: '1',
             clientData: { source: 'Pendle' },
         };
 
+        const config = {
+            params,
+            headers: { 'Accept-Version': 'Latest' },
+            url: KYBER_API[this.chainId],
+            method: 'get',
+        };
+
+        // if (process.env.NODE_ENV !== 'production') {
+        //     console.log('Making request', axios.getUri(config));
+        // }
+
         try {
-            const { data }: { data: RawKybercallData } = await axios.get(KYBER_API[this.chainId], {
-                params,
-                headers: { 'Accept-Version': 'Latest' },
-            });
+            const { data }: { data: RawKybercallData } = await axios(config);
             if (!rawKybercallDataHasEncodedData(data)) {
                 return undefined;
             }
