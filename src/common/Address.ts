@@ -33,6 +33,16 @@ export function toAddresses(rawAddresses: string[]): Address[] {
 }
 
 /**
+ * Convert a raw address to {@link Address} or undefined.
+ * @returns
+ * - The converted address if the given string is not undefined.
+ * - undefined if the given string is undefined.
+ */
+export function toAddressOrUndefined(rawAddress: string | undefined): Address | undefined {
+    return rawAddress == undefined ? undefined : toAddress(rawAddress);
+}
+
+/**
  * Check if two given address are the same
  * @param address1
  * @param address2

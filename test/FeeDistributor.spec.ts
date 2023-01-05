@@ -1,4 +1,4 @@
-import { isMainchain } from '../src';
+import { getContractAddresses, isMainchain } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     describeWrite,
@@ -16,9 +16,9 @@ describeIf(isMainchain(ACTIVE_CHAIN_ID), 'FeeDistributor', () => {
         expect(feeDistributor).toBeInstanceOf(FeeDistributor);
     });
 
-    it.skip('#getContract', () => {
+    it('#getContract', () => {
         const contract = feeDistributor.contract;
-        expect(contract.address).toBe('TODO');
+        expect(contract.address).toBe(getContractAddresses(ACTIVE_CHAIN_ID).FEE_DISTRIBUTOR);
     });
 
     describeWrite(() => {
