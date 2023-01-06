@@ -186,6 +186,8 @@ export class KyberHelper {
      * @param input - the pair of the token address with the desired amount to trade.
      * @param output - the destination token address
      * @param slippage - slippage, from [0, 0.2]
+     * @param params - the additional parameters for kybercall.
+     * @param params.receiver - the receiver of the output token. If not specified, the router will be the receiver.
      * @returns
      * {@link KybercallData} is returned if there is a route to trade via Kyberswap.
      * If there is no route, `undefined` is returned.
@@ -194,7 +196,8 @@ export class KyberHelper {
     async makeCall(
         { token, amount }: RawTokenAmount<BigNumberish>,
         output: Address,
-        slippage: number
+        slippage: number,
+        params: { receiver?: Address } = {}
     ): Promise<KybercallData | undefined> {
         if (!isKyberSupportedChain(this.chainId)) {
             throw new PendleSdkError(`Chain ${this.chainId} is not supported for kybercall.`);
@@ -210,10 +213,12 @@ export class KyberHelper {
                 routerAddress: NATIVE_ADDRESS_0x00,
             };
 
+        const receiver = params.receiver ?? this.routerAddress;
+
         const slippageTolerance = Math.min(Math.trunc(10000 * slippage), 2000);
 
         // Using type here because Rest API doesn't have type
-        const params: {
+        const kyberCallParams: {
             tokenIn: Address;
             tokenOut: Address;
             amountIn: string;
@@ -227,7 +232,7 @@ export class KyberHelper {
             tokenIn: token,
             tokenOut: output,
             amountIn: BN.from(amount).toString(),
-            to: this.routerAddress,
+            to: receiver,
             slippageTolerance,
             useMeta: false,
             saveGas: '1',
@@ -236,7 +241,7 @@ export class KyberHelper {
         };
 
         const config = {
-            params,
+            params: kyberCallParams,
             headers: { 'Accept-Version': 'Latest' },
             url: KYBER_API[this.chainId],
             method: 'get',

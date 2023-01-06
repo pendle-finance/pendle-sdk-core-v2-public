@@ -994,14 +994,24 @@ describeWrite('Router', () => {
 
         // convert 1 sy
         const netSyIns = syDecimals.map((x) => decimalFactor(x));
+        const receiver = toAddress(currentConfig.userAddress);
 
-        const results = await router.sellSys(currentConfig.tokens.USDC, SLIPPAGE_TYPE2, { sys, netSyIns });
+        const results = await router.sellSys(
+            currentConfig.tokens.USDC,
+            SLIPPAGE_TYPE2,
+            { sys, netSyIns },
+            { receiver }
+        );
         const simplifiedResults = results.map((x) => ({
             kyberRouter: x.kyberRouter,
             tokenRedeemSy: x.tokenRedeemSy,
             minTokenOut: x.minTokenOut.toString(),
             bulk: x.bulk,
         }));
+
+        expect(
+            results.every((x) => x.kybercall.length == 0 || x.kybercall.toString().includes(receiver.replace('0x', '')))
+        ).toBeTruthy();
 
         console.log(simplifiedResults);
     });

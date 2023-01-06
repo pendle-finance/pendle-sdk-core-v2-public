@@ -304,6 +304,7 @@ export class Router extends PendleEntity {
      * @param useBulkMode
      * @param slippage
      * @param params.syEntity - the syEntity of the given token, to avoid recreating object.
+     * @param params.receiver - the receiver of the kybercall, default to router address.
      * @returns
      * - `netOut` - the amount of `tokenOut` to maximize.
      * - `output` - the {@link TokenOutput}, which is a type-safe version of {@link TokenOutputStruct}, and
@@ -320,7 +321,7 @@ export class Router extends PendleEntity {
         tokenRedeemSyList: Address[],
         useBulkMode: UseBulkMode,
         slippage: number,
-        params: { syEntity?: SyEntity } = {}
+        params: { syEntity?: SyEntity; receiver?: Address } = {}
     ): Promise<
         undefined | { netOut: BN; output: TokenOutput; kybercallData: KybercallData; redeemedFromSyAmount: BN }
     > {
@@ -336,7 +337,10 @@ export class Router extends PendleEntity {
                     { token: tokenRedeemSy, amount: redeemedFromSyAmount },
                     tokenOut,
                     // kyberswap slippage equal to our slippage
-                    slippage
+                    slippage,
+                    {
+                        receiver: params.receiver,
+                    }
                 );
                 if (kybercallData === undefined) {
                     return [];
@@ -1446,28 +1450,32 @@ export class Router extends PendleEntity {
     async sellSys(
         tokenOut: Address,
         slippage: number,
-        sysAndSyIns: { sys: Address[]; netSyIns: BigNumberish[] }
+        sysAndSyIns: { sys: Address[]; netSyIns: BigNumberish[] },
+        params?: { receiver?: Address }
     ): Promise<TokenOutput[]>;
     async sellSys(
         tokenOut: Address,
         slippage: number,
-        syTokenAmounts: RawTokenAmount<BigNumberish>[]
+        syTokenAmounts: RawTokenAmount<BigNumberish>[],
+        params?: { receiver?: Address }
     ): Promise<TokenOutput[]>;
     async sellSys(
         tokenOut: Address,
         slippage: number,
-        input: { sys: Address[]; netSyIns: BigNumberish[] } | RawTokenAmount<BigNumberish>[]
+        input: { sys: Address[]; netSyIns: BigNumberish[] } | RawTokenAmount<BigNumberish>[],
+        params: { receiver?: Address } = {}
     ): Promise<TokenOutput[]> {
         const syTokenAmounts = Array.isArray(input)
             ? input
             : toArrayOfStructures({ token: input.sys, amount: input.netSyIns });
-        return this.sellSysImpl(tokenOut, slippage, syTokenAmounts);
+        return this.sellSysImpl(tokenOut, slippage, syTokenAmounts, params);
     }
 
     private async sellSysImpl(
         tokenOut: Address,
         slippage: number,
-        syTokenAmounts: RawTokenAmount<BigNumberish>[]
+        syTokenAmounts: RawTokenAmount<BigNumberish>[],
+        params: { receiver?: Address } = {}
     ): Promise<TokenOutput[]> {
         const syAddresses = new Set(syTokenAmounts.map(({ token }) => token)).values();
         const syData = new Map(
@@ -1486,6 +1494,7 @@ export class Router extends PendleEntity {
                 const curSyData = syData.get(tokenAmount.token)!;
                 const res = await this.outputParams(tokenAmount, tokenOut, curSyData.outputTokens, true, slippage, {
                     syEntity: curSyData.syEntity,
+                    receiver: params.receiver,
                 });
                 if (res === undefined) {
                     throw NoRouteFoundError.action('sell sy', tokenAmount.token, tokenOut);
