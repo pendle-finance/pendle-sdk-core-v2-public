@@ -30,6 +30,7 @@ import {
     devLog,
     promiseAllWithErrors,
     mapPromisesToSyncUp,
+    toArrayOfStructures,
 } from '../common';
 import { calcSlippedDownAmount, calcSlippedUpAmount, calcSlippedDownAmountSqrt, PyIndex } from '../common/math';
 
@@ -1440,5 +1441,60 @@ export class Router extends PendleEntity {
             approxParam,
             { ...res, approxParam, ...params }
         );
+    }
+
+    async sellSys(
+        tokenOut: Address,
+        slippage: number,
+        sysAndSyIns: { sys: Address[]; netSyIns: BigNumberish[] }
+    ): Promise<TokenOutput[]>;
+    async sellSys(
+        tokenOut: Address,
+        slippage: number,
+        syTokenAmounts: RawTokenAmount<BigNumberish>[]
+    ): Promise<TokenOutput[]>;
+    async sellSys(
+        tokenOut: Address,
+        slippage: number,
+        input: { sys: Address[]; netSyIns: BigNumberish[] } | RawTokenAmount<BigNumberish>[]
+    ): Promise<TokenOutput[]> {
+        const syTokenAmounts = Array.isArray(input)
+            ? input
+            : toArrayOfStructures({ token: input.sys, amount: input.netSyIns });
+        return this.sellSysImpl(tokenOut, slippage, syTokenAmounts);
+    }
+
+    private async sellSysImpl(
+        tokenOut: Address,
+        slippage: number,
+        syTokenAmounts: RawTokenAmount<BigNumberish>[]
+    ): Promise<TokenOutput[]> {
+        const syAddresses = new Set(syTokenAmounts.map(({ token }) => token)).values();
+        const syData = new Map(
+            await Promise.all(
+                Array.from(syAddresses, async (addr) => {
+                    const syEntity = new SyEntity(addr, this.entityConfig);
+                    const outputTokens = await syEntity.getTokensOut();
+                    const result = [addr, { syEntity, outputTokens }] as const;
+                    return result;
+                })
+            )
+        );
+
+        const outputs = await Promise.all(
+            syTokenAmounts.map(async (tokenAmount) => {
+                const curSyData = syData.get(tokenAmount.token)!;
+                const res = await this.outputParams(tokenAmount, tokenOut, curSyData.outputTokens, true, slippage, {
+                    syEntity: curSyData.syEntity,
+                });
+                if (res === undefined) {
+                    throw NoRouteFoundError.action('sell sy', tokenAmount.token, tokenOut);
+                }
+
+                return res;
+            })
+        );
+
+        return outputs.map(({ output }) => output);
     }
 }

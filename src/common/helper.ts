@@ -270,3 +270,40 @@ export function mapPromisesToSyncUp<SyncUpCheckpointCount extends number, ArrayT
         }
     });
 }
+
+export type StructureOfArrays<StructureSlice extends {}> = { [key in keyof StructureSlice]: StructureSlice[key][] };
+export type ArrayOfStructures<Structure extends {}> = Structure[];
+
+export type ArrayOrStructure<T extends {}> = StructureOfArrays<T> | ArrayOfStructures<T>;
+
+export function toArrayOfStructures<T extends {}>(structureOfArrays: StructureOfArrays<T>): ArrayOfStructures<T> {
+    const keys = Object.keys(structureOfArrays) as Array<keyof T>;
+    if (keys.length === 0) return [];
+    const length = structureOfArrays[keys[0]].length;
+    const res: ArrayOfStructures<T> = Array.from({ length }, () => ({} as T));
+
+    for (const key of keys) {
+        const array = structureOfArrays[key];
+        if (array.length !== length) {
+            throw new Error('Structure of array has mismatch length.');
+        }
+        array.forEach((value, index) => (res[index][key] = value));
+    }
+
+    return res;
+}
+
+export function toStructureOfArray<T extends {}>(arrayOfStructures: ArrayOfStructures<T>): StructureOfArrays<T> {
+    const res: StructureOfArrays<T> = {} as any;
+
+    for (const elm of arrayOfStructures) {
+        for (const [key, value] of Object.entries(elm) as [keyof T, T[keyof T]][]) {
+            if (!(key in res)) {
+                res[key] = [];
+            }
+            res[key].push(value);
+        }
+    }
+
+    return res;
+}

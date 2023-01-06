@@ -1,4 +1,4 @@
-import { decimalFactor, MetaMethodReturnType, Router, SyEntity, MetaMethodData, Address } from '../src';
+import { decimalFactor, MetaMethodReturnType, Router, SyEntity, MetaMethodData, Address, toAddress } from '../src';
 import { currentConfig, describeWrite, networkConnectionWithChainId, BLOCK_CONFIRMATION, signer } from './util/testEnv';
 import {
     getBalance,
@@ -986,6 +986,24 @@ describeWrite('Router', () => {
             const netYtOut = balanceAfter.ytBalance.sub(balanceBefore.ytBalance);
             expect(netYtOut).toEqBN(readerData.netYtOut, DEFAULT_EPSILON);
         });
+    });
+
+    it('sellSys', async () => {
+        const sys = currentConfig.markets.map((x) => toAddress(x.SY));
+        const syDecimals = await Promise.all(sys.map((x) => getERC20Decimals(x)));
+
+        // convert 1 sy
+        const netSyIns = syDecimals.map((x) => decimalFactor(x));
+
+        const results = await router.sellSys(currentConfig.tokens.USDC, SLIPPAGE_TYPE2, { sys, netSyIns });
+        const simplifiedResults = results.map((x) => ({
+            kyberRouter: x.kyberRouter,
+            tokenRedeemSy: x.tokenRedeemSy,
+            minTokenOut: x.minTokenOut.toString(),
+            bulk: x.bulk,
+        }));
+
+        console.log(simplifiedResults);
     });
 
     // =============================HELPER FUNCTIONS====================================================
