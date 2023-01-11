@@ -3,6 +3,8 @@ import MAINNET_FRAX_MAR23_ADDRESSES from '@pendle/core-v2-mainnet/deployments/1-
 import MAINNET_LOOKS_MAR23_ADDRESSES from '@pendle/core-v2-mainnet/deployments/1-markets/LOOKS-STAKING-MARCH30.json';
 import MAINNET_STETH_MAR30_ADDRESSES from '@pendle/core-v2-mainnet/deployments/1-markets/STETH-MARCH30.json';
 import MAINNET_STETH_JUN29_ADDRESSES from '@pendle/core-v2-mainnet/deployments/1-markets/STETH-JUNE29.json';
+import MAINNET_APE_JUN29_ADDRESSES from '@pendle/core-v2-mainnet/deployments/1-markets/APE-JUNE-29.json';
+import MAINNET_RETH_DEC28_ADDRESSES from '@pendle/core-v2-mainnet/deployments/1-markets/BALANCER-LP-AURA-RETH-WETH-28DEC.json';
 
 import { DUMMY_ADDRESS } from '../constants';
 import { shallowToAddress } from './helper';
@@ -24,12 +26,16 @@ export const MAINNET_CONTRACT_ADDRESSES = shallowToAddress({
         MAINNET_LOOKS_MAR23_ADDRESSES,
         MAINNET_STETH_MAR30_ADDRESSES,
         MAINNET_STETH_JUN29_ADDRESSES,
+        MAINNET_APE_JUN29_ADDRESSES,
+        MAINNET_RETH_DEC28_ADDRESSES,
     ],
     MARKETS_BY_NAME: {
         MAINNET_FRAX_MAR23_ADDRESSES,
         MAINNET_LOOKS_MAR23_ADDRESSES,
         MAINNET_STETH_MAR30_ADDRESSES,
         MAINNET_STETH_JUN29_ADDRESSES,
+        MAINNET_APE_JUN29_ADDRESSES,
+        MAINNET_RETH_DEC28_ADDRESSES,
     },
     FUND_KEEPER: DUMMY_ADDRESS,
     FAUCET: DUMMY_ADDRESS,
