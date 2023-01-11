@@ -229,11 +229,6 @@ export class Router extends PendleEntity {
          */
         fn: (tokenMintSyAmount: RawTokenAmount<BigNumberish>, input: TokenInput) => Promise<Data>
     ): Promise<undefined | (Data & { input: TokenInput; kybercallData: KybercallData })> {
-        if (tokenMintSyList.includes(tokenInAmount.token)) {
-            // force routing through tokenInAmount.token
-            tokenMintSyList = [tokenInAmount.token];
-        }
-
         const processTokenCalls = mapPromisesToSyncUp(
             2,
             tokenMintSyList,
@@ -360,10 +355,6 @@ export class Router extends PendleEntity {
                 return [{ netOut, output, kybercallData, redeemedFromSyAmount }];
             });
         };
-        if (tokenRedeemSyList.includes(tokenOut)) {
-            const [result] = await processTokenRedeemSy(tokenOut);
-            return result;
-        }
         const results = (await Promise.all(tokenRedeemSyList.map(processTokenRedeemSy))).flat();
         if (results.length === 0) return undefined;
         return results.reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
