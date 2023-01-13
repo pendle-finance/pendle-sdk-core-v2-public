@@ -3,7 +3,7 @@
     "author": "Pendle Labs",
     "description": "SDK of Pendle Protocol.",
     "license": "MIT",
-    "version": "1.3.2-mainnet",
+    "version": "1.3.3-mainnet",
     "main": "dist/index.js",
     "typings": "dist/index.d.ts",
     "files": [
