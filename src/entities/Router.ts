@@ -1462,6 +1462,30 @@ export class Router extends PendleEntity {
         return this.sellSysImpl(tokenOut, slippage, syTokenAmounts, params);
     }
 
+    async sellTokens(
+        tokenOut: Address,
+        slippage: number,
+        tokensAndTokensIn: { tokens: Address[]; netTokenIns: BigNumberish[] },
+        params?: { receiver?: Address }
+    ): Promise<BytesLike[]>;
+    async sellTokens(
+        tokenOut: Address,
+        slippage: number,
+        tokenAmounts: RawTokenAmount<BigNumberish>[],
+        params?: { receiver?: Address }
+    ): Promise<BytesLike[]>;
+    async sellTokens(
+        tokenOut: Address,
+        slippage: number,
+        input: { tokens: Address[]; netTokenIns: BigNumberish[] } | RawTokenAmount<BigNumberish>[],
+        params: { receiver?: Address } = {}
+    ): Promise<BytesLike[]> {
+        const tokenAmounts = Array.isArray(input)
+            ? input
+            : toArrayOfStructures({ token: input.tokens, amount: input.netTokenIns });
+        return this.sellTokensImpl(tokenOut, slippage, tokenAmounts, params);
+    }
+
     private async sellSysImpl(
         tokenOut: Address,
         slippage: number,
@@ -1496,5 +1520,25 @@ export class Router extends PendleEntity {
         );
 
         return outputs.map(({ output }) => output);
+    }
+
+    private async sellTokensImpl(
+        tokenOut: Address,
+        slippage: number,
+        tokenAmounts: RawTokenAmount<BigNumberish>[],
+        params: { receiver?: Address } = {}
+    ): Promise<BytesLike[]> {
+        const kyberEncodedSwapData = await Promise.all(
+            tokenAmounts.map(async (tokenAmount) => {
+                const res = await this.kyberHelper.makeCall(tokenAmount, tokenOut, slippage, {
+                    receiver: params.receiver,
+                });
+                if (res === undefined) {
+                    throw NoRouteFoundError.action('sell token', tokenAmount.token, tokenOut);
+                }
+                return res.encodedSwapData;
+            })
+        );
+        return kyberEncodedSwapData;
     }
 }
