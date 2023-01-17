@@ -1,4 +1,4 @@
-import { Contract, BigNumber as BN } from 'ethers';
+import { Contract } from 'ethers';
 import { Multicall } from '../multicall';
 import {
     WrappedContract,
@@ -11,7 +11,7 @@ import {
     EthersContractMethod,
 } from './types';
 import { MulticallStaticParams } from './types';
-import { calcSlippedUpAmount } from '../common/math';
+import { BN, BigNumberish, bnMax, calcSlippedUpAmount } from '../common';
 
 export type ContractMetaMethodCallback = <
     T extends MetaMethodType,
@@ -30,7 +30,10 @@ export class ContractMetaMethod<
     M extends ContractMethodNames<C>,
     Data extends MetaMethodExtraParams<any>
 > {
-    static DEFAULT_GAS_LIMIT_BUFFERING_PERCENT = 10;
+    static calcBufferedGas(this: void, estimatedGasUsed: BN): BigNumberish {
+        return bnMax(calcSlippedUpAmount(estimatedGasUsed, 0.1), estimatedGasUsed.add(100_000));
+    }
+
     constructor(
         readonly contract: WrappedContract<C>,
         readonly methodName: M,
@@ -62,10 +65,9 @@ export class ContractMetaMethod<
         const data = this.addOverridesToData(dataOverrides);
         const gas = await (data.overrides?.gasLimit ??
             this.estimateGas({ ...dataOverrides, overrides: { ...dataOverrides?.overrides, gasLimit: undefined } }));
-        const bufferedGas = calcSlippedUpAmount(
-            BN.from(gas),
-            (data.gasLimitBufferingPercent ?? ContractMetaMethod.DEFAULT_GAS_LIMIT_BUFFERING_PERCENT) / 100
-        );
+
+        const calcBufferedGas = data.calcBufferedGas ?? ContractMetaMethod.calcBufferedGas;
+        const bufferedGas = calcBufferedGas(BN.from(gas));
 
         data.overrides = { ...data.overrides, gasLimit: bufferedGas };
 
