@@ -33,6 +33,7 @@ import {
     toArrayOfStructures,
 } from '../common';
 import { calcSlippedDownAmount, calcSlippedUpAmount, calcSlippedDownAmountSqrt, PyIndex } from '../common/math';
+import { BigNumber } from 'bignumber.js';
 
 export type TokenInput = {
     tokenIn: Address;
@@ -85,12 +86,13 @@ export type RouterMetaMethodReturnType<
 export class Router extends PendleEntity {
     static readonly MIN_AMOUNT = 0;
     static readonly MAX_AMOUNT = etherConstants.MaxUint256;
+    static readonly EPS = 1e-3;
     static readonly STATIC_APPROX_PARAMS = {
         guessMin: Router.MIN_AMOUNT,
         guessMax: Router.MAX_AMOUNT,
         guessOffchain: 0,
         maxIteration: 20,
-        eps: BN.from(10).pow(15),
+        eps: new BigNumber(Router.EPS).shiftedBy(18).toFixed(0),
     };
     readonly routerStatic: WrappedContract<RouterStatic>;
     readonly kyberHelper: KyberHelper;
@@ -178,22 +180,29 @@ export class Router extends PendleEntity {
         return new Router(getContractAddresses(config.chainId).ROUTER, config);
     }
 
-    static guessOutApproxParams(guessAmountOut: BN, slippage: number): ApproxParamsStruct {
+    static guessOutApproxParams(this: void, guessAmountOut: BN, slippage: number): ApproxParamsStruct {
         return {
             ...Router.STATIC_APPROX_PARAMS,
-            guessMin: calcSlippedDownAmount(guessAmountOut, 2 * slippage),
-            guessMax: calcSlippedUpAmount(guessAmountOut, 10 * slippage),
+            guessMin: calcSlippedDownAmount(guessAmountOut, 1 * slippage),
+            guessMax: calcSlippedUpAmount(guessAmountOut, 5 * slippage),
             guessOffchain: guessAmountOut,
+            maxIteration: Router.calcMaxIteration(slippage),
         };
     }
 
-    static guessInApproxParams(guessAmountIn: BN, slippage: number): ApproxParamsStruct {
+    static guessInApproxParams(this: void, guessAmountIn: BN, slippage: number): ApproxParamsStruct {
         return {
             ...Router.STATIC_APPROX_PARAMS,
-            guessMin: calcSlippedDownAmount(guessAmountIn, 10 * slippage),
-            guessMax: calcSlippedUpAmount(guessAmountIn, 2 * slippage),
-            guessOffchain: guessAmountIn,
+            guessMin: calcSlippedDownAmount(guessAmountIn, 5 * slippage),
+            guessMax: calcSlippedUpAmount(guessAmountIn, 1 * slippage),
+            guessOffchain: Router.calcMaxIteration(slippage),
         };
+    }
+
+    private static calcMaxIteration(slippage: number): number {
+        const x = (6 * slippage) / Router.EPS;
+        if (x <= 1) return 3;
+        return Math.ceil(Math.log2(x)) + 3;
     }
 
     /**
