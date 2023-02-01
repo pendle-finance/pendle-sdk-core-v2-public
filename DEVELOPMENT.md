@@ -2,6 +2,9 @@
 
 ## Dependencies installation
 
+Set the environment `PENDLE_SDK_V2_NPM_AUTH_TOKEN` to **your** npm access token.
+Then run
+
 ```sh
 yarn
 ```

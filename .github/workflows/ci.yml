@@ -1,20 +1,30 @@
 name: ci
 on: [push, pull_request]
 jobs:
+  
   lint:
     runs-on: ubuntu-latest
 
     env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-node@v3
-    - name: Set up npm
-      run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
-    - name: Install dependencies
-      run: yarn --frozen-lockfile # don't generate a lockfile and fail if an update is needed
-    - name: Lint with eslint
-      run: yarn eslint "{src,test}/**/*.{ts,js}"
+      
+    - name: Set yarn version to version 3.x
+      run: yarn set version 3.3.1
+        
+    - name: Set authentication token
+      run: 'yarn config set npmScopes.pendle.npmAuthToken "${NPM_AUTH_TOKEN}"'
+      
+    - name: Run install
+      run: yarn install --immutable
+          
+    - name: Lint 
+      run: yarn eslint "{src,test}/**/*.{ts,js}" --quiet
+        
     - name: Type checking
       run: yarn check-types
+
+

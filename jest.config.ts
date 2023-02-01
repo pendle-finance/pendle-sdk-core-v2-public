@@ -5,11 +5,6 @@
 export default {
     coveragePathIgnorePatterns: ['dist/', '/node_modules/', 'test/'],
     coverageProvider: 'v8',
-    globals: {
-        'ts-jest': {
-            tsconfig: 'tsconfig.json',
-        },
-    },
     moduleDirectories: ['node_modules'],
     moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json', 'node'],
     roots: ['test/'],
@@ -17,7 +12,9 @@ export default {
     testMatch: ['**/__test__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[tj]s?(x)'],
     testPathIgnorePatterns: ['node_modules/'],
     transform: {
-        '^.+\\.ts?$': 'ts-jest',
+        '^.+\\.ts?$': ['ts-jest', {
+            tsconfig: 'tsconfig.json',
+        }],
     },
     testTimeout: 100000,
 };
