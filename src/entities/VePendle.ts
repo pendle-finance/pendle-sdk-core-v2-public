@@ -141,7 +141,7 @@ export class VePendleMainchain extends VePendle {
         additionalRawAmountToLock: BigNumberish,
         newExpiry_s: BigNumberish,
         params?: MetaMethodExtraParams<T> & {
-            broadCastChainIds?: [];
+            broadcastChainIds?: [];
         }
     ): VePendleMainchainMetaMethodReturnType<T, 'increaseLockPosition'>;
 
@@ -149,7 +149,7 @@ export class VePendleMainchain extends VePendle {
         additionalRawAmountToLock: BigNumberish,
         newExpiry_s: BigNumberish,
         params: MetaMethodExtraParams<T> & {
-            broadCastChainIds: ChainId[];
+            broadcastChainIds: ChainId[];
         }
     ): VePendleMainchainMetaMethodReturnType<T, 'increaseLockPositionAndBroadcast'>;
 
@@ -159,7 +159,7 @@ export class VePendleMainchain extends VePendle {
      * @remarks
      * The `sender` will be the one who has his lock position increased.
      *
-     * If params.broadCastChainIds are specified and **non-empty**, the
+     * If params.broadcastChainIds are specified and **non-empty**, the
      * contract function `increaseLockPositionAndBroadcast` is called,
      * otherwise `increaseLockPosition` is called instead. Note that this also
      * affects the return type of the function, but the difference is minimal.
@@ -171,7 +171,7 @@ export class VePendleMainchain extends VePendle {
      * @param additionalRawAmountToLock
      * @param newExpiry_s
      * @param params - the additional parameters for **write** method.
-     * @param params.broadCastChainIds - if specify and **non-empty**, the lock
+     * @param params.broadcastChainIds - if specify and **non-empty**, the lock
      *      position will be broadcasted to the other chain, the ID of which are
      *      specified by the parameter.
      * @returns
