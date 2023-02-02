@@ -1,4 +1,12 @@
-import { ERC20Entity, VePendle, VePendleMainchain, isMainchain } from '../src';
+import {
+    CHAIN_ID_MAPPING,
+    ERC20Entity,
+    VePendle,
+    VePendleMainchain,
+    isMainchain,
+    isSameAddress,
+    toAddress,
+} from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -10,6 +18,7 @@ import {
 } from './util/testEnv';
 import { BigNumber as BN } from 'ethers';
 import { DEFAULT_EPSILON, INF } from './util/constants';
+import { TransactionReceipt } from '@ethersproject/abstract-provider';
 
 describeIf(isMainchain(ACTIVE_CHAIN_ID), 'VePendle', () => {
     const vePendle = new VePendleMainchain(currentConfig.veAddress, networkConnectionWithChainId);
@@ -28,6 +37,7 @@ describeIf(isMainchain(ACTIVE_CHAIN_ID), 'VePendle', () => {
         const pendle = new ERC20Entity(currentConfig.pendle, networkConnection);
         const signerAddress = networkConnection.signerAddress;
         const contract = vePendle.contract;
+        const sideChains = ACTIVE_CHAIN_ID == CHAIN_ID_MAPPING.ETHEREUM ? [] : [CHAIN_ID_MAPPING.MUMBAI];
 
         it('#increaseLockPosition', async () => {
             const pendleBalanceBefore = await pendle.balanceOf(signerAddress);
@@ -72,6 +82,40 @@ describeIf(isMainchain(ACTIVE_CHAIN_ID), 'VePendle', () => {
 
             expect(simulatedVePendleAmount).toEqBN(await vePendle.balanceOf(signerAddress), DEFAULT_EPSILON);
         });
+
+        it('#broadcastUserPosition', async () => {
+            if (sideChains.length == 0) return;
+            const tx = await vePendle.broadcastUserPosition(sideChains).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+            verifyBroadcastTx(tx);
+        });
+
+        it('#broadcastUserPosition with custom overrides', async () => {
+            if (sideChains.length == 0) return;
+            const tx = await vePendle
+                .broadcastUserPosition(sideChains, {
+                    overrides: {
+                        value: BN.from(10).pow(18),
+                    },
+                })
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+            verifyBroadcastTx(tx);
+        });
+
+        function verifyBroadcastTx(tx: TransactionReceipt) {
+            const filter = contract.filters.BroadcastUserPosition();
+            let broadcastEvents = tx.logs.filter((log) =>
+                isSameAddress(toAddress(log.topics[0]), toAddress(filter.topics![0] as string))
+            );
+
+            expect(broadcastEvents.length).toEqual(1);
+
+            const parsedEvent = contract.interface.parseLog(broadcastEvents[0]);
+
+            const broadcastedChainIds: BN[] = parsedEvent.args[1];
+            for (const i in broadcastedChainIds) {
+                expect(sideChains[i]).toEqBN(broadcastedChainIds[i]);
+            }
+        }
 
         // Can only test withdraw by advancing the time on a local fork
     });

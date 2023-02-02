@@ -15,7 +15,7 @@ import {
 } from '../contracts';
 import { BigNumber as BN, BigNumberish } from 'ethers';
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
-import { Address, getContractAddresses, ChainId, MainchainId, NetworkConnection } from '../common';
+import { Address, getContractAddresses, ChainId, MainchainId, NetworkConnection, calcSlippedUpAmount } from '../common';
 
 /**
  * Configuration for {@link VePendle}
@@ -83,6 +83,7 @@ export type VePendleMainchainConfig = VePendleConfig & {
 };
 
 export class VePendleMainchain extends VePendle {
+    static BROADCAST_FEE_BUFFER = 0.02; // 2%
     protected readonly routerStatic: WrappedContract<RouterStatic>;
     readonly chainId: ChainId;
 
@@ -186,14 +187,20 @@ export class VePendleMainchain extends VePendle {
         additionalRawAmountToLock: BigNumberish,
         newExpiry_s: BigNumberish,
         params: MetaMethodExtraParams<T> & {
-            broadCastChainIds?: ChainId[];
+            broadcastChainIds?: ChainId[];
         } = {}
     ): VePendleMainchainMetaMethodReturnType<T, 'increaseLockPosition' | 'increaseLockPositionAndBroadcast'> {
-        if (params.broadCastChainIds != undefined && params.broadCastChainIds.length > 0) {
+        if (params.broadcastChainIds != undefined && params.broadcastChainIds.length > 0) {
+            const chainIdBNs = params.broadcastChainIds.map((chainId) => BN.from(chainId));
+            const broadcastFee = await this.contract.multicallStatic.getBroadcastPositionFee(chainIdBNs);
+            if (!params.overrides) params.overrides = {};
+            params.overrides.value =
+                params.overrides.value ?? calcSlippedUpAmount(broadcastFee, VePendleMainchain.BROADCAST_FEE_BUFFER);
+
             return this.contract.metaCall.increaseLockPositionAndBroadcast(
                 additionalRawAmountToLock,
                 newExpiry_s,
-                params.broadCastChainIds.map((chainId) => BN.from(chainId)),
+                chainIdBNs,
                 this.addExtraParams(params)
             );
         }
@@ -208,11 +215,18 @@ export class VePendleMainchain extends VePendle {
         chainIds: ChainId[],
         params: MetaMethodExtraParams<T> & {
             userAddress?: Address;
-        }
+        } = {}
     ): VePendleMainchainMetaMethodReturnType<T, 'broadcastUserPosition'> {
+        const chainIdBNs = chainIds.map((chainId) => BN.from(chainId));
+        const broadcastFee = await this.contract.multicallStatic.getBroadcastPositionFee(chainIdBNs);
+
+        if (!params.overrides) params.overrides = {};
+        params.overrides.value =
+            params.overrides.value ?? calcSlippedUpAmount(broadcastFee, VePendleMainchain.BROADCAST_FEE_BUFFER);
+
         return this.contract.metaCall.broadcastUserPosition(
             params.userAddress ?? ContractMetaMethod.utils.getContractSignerAddress,
-            chainIds.map((value) => BN.from(value)),
+            chainIdBNs,
             this.addExtraParams(params)
         );
     }
