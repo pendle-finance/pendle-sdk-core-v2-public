@@ -195,7 +195,8 @@ export class Router extends PendleEntity {
             ...Router.STATIC_APPROX_PARAMS,
             guessMin: calcSlippedDownAmount(guessAmountIn, 5 * slippage),
             guessMax: calcSlippedUpAmount(guessAmountIn, 1 * slippage),
-            guessOffchain: Router.calcMaxIteration(slippage),
+            guessOffchain: guessAmountIn,
+            maxIteration: Router.calcMaxIteration(slippage),
         };
     }
 
