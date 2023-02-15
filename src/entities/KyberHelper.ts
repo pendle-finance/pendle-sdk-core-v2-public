@@ -1,8 +1,8 @@
-import type { BigNumberish, BytesLike } from 'ethers';
+import { BigNumberish, BytesLike, Contract } from 'ethers';
 import { BigNumber as BN } from 'ethers';
 import axios from 'axios';
 import { createERC20 } from './erc20';
-import { MulticallStaticParams } from '../contracts';
+import { MulticallStaticParams, IWETH, IWETH_ABI } from '../contracts';
 import {
     CHAIN_ID_MAPPING,
     ChainId,
@@ -213,6 +213,9 @@ export class KyberHelper {
                 routerAddress: NATIVE_ADDRESS_0x00,
             };
 
+        const patchedResult = this.patchETH_wETH({ token, amount }, output, slippage, params);
+        if (patchedResult) return patchedResult;
+
         const receiver = params.receiver ?? this.routerAddress;
 
         const slippageTolerance = Math.min(Math.trunc(10000 * slippage), 2000);
@@ -316,5 +319,33 @@ export class KyberHelper {
 
         this.swappablePairs.set(key, { pendingResult: res });
         return res;
+    }
+
+    /**
+     * TODO remove the below in the future.
+     * This is just a workaround for a particular case of KyberSwap that failed, which is swapping ETH <-> WETH.
+     */
+    private static readonly WETHAddress = toAddress('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
+    private static readonly WETH_ERC20 = new Contract(KyberHelper.WETHAddress, IWETH_ABI) as IWETH;
+    private async patchETH_wETH(
+        { token, amount }: RawTokenAmount<BigNumberish>,
+        output: Address,
+        _slippage: number,
+        _params: { receiver?: Address } = {}
+    ): Promise<KybercallData | undefined> {
+        if (isNativeToken(token) && isSameAddress(output, KyberHelper.WETHAddress)) {
+            return {
+                routerAddress: KyberHelper.WETHAddress,
+                outputAmount: amount,
+                encodedSwapData: (await KyberHelper.WETH_ERC20.populateTransaction.deposit()).data!,
+            };
+        }
+        if (isSameAddress(token, KyberHelper.WETHAddress) && isNativeToken(output)) {
+            return {
+                routerAddress: KyberHelper.WETHAddress,
+                outputAmount: amount,
+                encodedSwapData: (await KyberHelper.WETH_ERC20.populateTransaction.withdraw(0)).data!,
+            };
+        }
     }
 }

@@ -11,6 +11,7 @@ export type {
     PendleYieldContractFactory,
     PendleYieldToken,
     PendleFeeDistributor,
+    IWETH,
 } from '@pendle/core-v2/typechain-types';
 
 export type { IPRouterStatic } from '@pendle/core-v2/typechain-types/IPRouterStatic';

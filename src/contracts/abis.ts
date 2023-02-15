@@ -11,3 +11,4 @@ export { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/cont
 export { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/RouterStatic.sol/RouterStatic.json';
 export { abi as IApeStakingABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IApeStaking.sol/IApeStaking.json';
 export { abi as PendleFeeDistributorABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VeDistributor/PendleFeeDistributor.sol/PendleFeeDistributor.json';
+export { abi as IWETH_ABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IWETH.sol/IWETH.json';
