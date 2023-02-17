@@ -52,9 +52,9 @@ export function isSameAddress(address1: Address, address2: Address): boolean {
     return address1.toLowerCase() === address2.toLowerCase();
 }
 
-export const NATIVE_ADDRESS_0x00 = ethersConstants.AddressZero;
+export const NATIVE_ADDRESS_0x00 = toAddress(ethersConstants.AddressZero);
 
-export const NATIVE_ADDRESS_0xEE = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+export const NATIVE_ADDRESS_0xEE = toAddress('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee');
 
 /**
  * Union type of native tokens' address

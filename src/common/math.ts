@@ -29,12 +29,22 @@ export function calcSlippedUpAmount(theoreticalAmount: BN, slippage: number): BN
     return mulSmallNum(theoreticalAmount, 1 + slippage);
 }
 
-export function bnMax(a: BigNumberish, b: BigNumberish): BigNumberish {
-    return BN.from(a).gt(b) ? a : b;
+export function bnMax(a: BigNumberish, b: BigNumberish): BN {
+    a = BN.from(a);
+    b = BN.from(b);
+    return a.gt(b) ? a : b;
 }
 
-export function bnMin(a: BigNumberish, b: BigNumberish): BigNumberish {
-    return BN.from(a).lt(b) ? a : b;
+export function bnMin(a: BigNumberish, b: BigNumberish): BN {
+    a = BN.from(a);
+    b = BN.from(b);
+    return a.lt(b) ? a : b;
+}
+
+export function bnSafeDiv(a: BigNumberish, b: BigNumberish, fallback: BigNumberish = ethersConstants.Zero): BN {
+    a = BN.from(a);
+    b = BN.from(b);
+    return b.isZero() ? BN.from(fallback) : a.div(b);
 }
 
 /**

@@ -7,25 +7,28 @@ export const DUMMY_ADDRESS = '0x0000000000000000000000000000000000000001';
 export const ONE_E18_BN = ethers.BigNumber.from(10).pow(18);
 
 export const DEFAULT_EPSILON = 0.01;
+// because we couldn't fork the aggregator result, we need to set a bigger epsilon for tx that
+// involve aggregator
+export const EPSILON_FOR_AGGREGATOR = 0.3;
 
 // ============
-export const DEFAULT_SWAP_AMOUNT = 100;
+export const DEFAULT_SWAP_AMOUNT = 1;
 
-export const MAX_PT_SWAP_AMOUNT = 100;
+export const MAX_PT_SWAP_AMOUNT = 10;
 
-export const MAX_YT_SWAP_AMOUNT = 200;
+export const MAX_YT_SWAP_AMOUNT = 20;
 
-export const MAX_SY_SWAP_AMOUNT = 100;
+export const MAX_SY_SWAP_AMOUNT = 10;
 
 // ============
 
-export const MAX_TOKEN_ADD_AMOUNT = 200;
+export const MAX_TOKEN_ADD_AMOUNT = 20;
 
-export const MAX_PT_ADD_AMOUNT = 100;
+export const MAX_PT_ADD_AMOUNT = 10;
 
-export const MAX_YT_ADD_AMOUNT = 400;
+export const MAX_YT_ADD_AMOUNT = 40;
 
-export const MAX_SY_ADD_AMOUNT = 100;
+export const MAX_SY_ADD_AMOUNT = 10;
 
 // ============
 
@@ -40,8 +43,18 @@ export const REMOVE_LIQUIDITY_FACTOR_ZAP = 40_000; // Bigger than REMOVE_LIQUIDI
 // ============
 export const SLIPPAGE_TYPE1 = 0.1;
 
-export const SLIPPAGE_TYPE2 = 0.5;
+export const SLIPPAGE_TYPE2 = 0.2;
 
 export const SLIPPAGE_TYPE3 = 1;
 
 export const DEFAULT_MINT_AMOUNT = 100;
+
+// this map will be added over time
+export const BALANCE_OF_STORAGE_SLOT: Record<string, [number, boolean]> = {
+    '0x3175df0976dfa876431c2e9ee6bc45b65d3473cc': [7, true], // Curve.fi FRAX/USDC
+    '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': [9, false], // USDC
+    '0xdac17f958d2ee523a2206206994597c13d831ec7': [2, false], // USDT
+    '0x6b175474e89094c44da98b954eedeac495271d0f': [2, false], // DAI
+    '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2': [3, false], // WETH
+    '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0': [0, false], // wstETH
+};

@@ -307,3 +307,58 @@ export function toStructureOfArray<T extends {}>(arrayOfStructures: ArrayOfStruc
 
     return res;
 }
+
+/**
+ * Implementation for caching result of a function that accepts no arguments.
+ * @privateRemarks
+ * Rough test with usage in [this playground](https://www.typescriptlang.org/play?#code/AQMwrgdgxgLglgewsKAnApgQxugcggQVQHMBnAYUygAt0AeAFQD4AKAKGE5VqgGsAFVAgAO6VDACeALmAsEAIwBWMhgBpgwoaPESA0umnBSMVHAjFgAHyMSAtvIQAbAJTAAvE2AOnWCKo5cpOgwAGqYjmDoMnJKKuqaImKS+obGpuZWNvZO6gBu4ZEymBASrh7AuQhwACb+XMDEwWERUbIKysBqGlpJegYyaWYW1qR2Di7unsUS-q4A3gGcUEjGwPhEZJQ06O6yAPowmCTBRSXxPTopAyZDmaPZjurV6KRocMIwCKgygok6ACIvN4fL5lTwLer1ZYQVYgZBuYDPV6mEGoAB0+RaAG5FpC4CBZHD3G4EZBniAzOhqq4MDAwKgIDjcVCVjAUFRaCldgBlMZOFjcm7mFgJbTJAyuADUwAARHs9lAOegZc4cZCuEjgZ90ZjIrtwNB4EhZDBqHBSKdSsAIeq8QSWABCbZ8X5iiQsU3m9SK7YpZzzZm2+pBUIFdAes2kb1KlLqOFozDCYSOd2eqPAI7EMC2dAQGCkf1qoNcAC+gfVtPpyEaoZaEa97N9EqL6pLLchmpR2oxYbRPs5Bl2-fQKXbbbYuPWJAoSr7IgkzT1CJYSJglvUpAQ9KgrWmcYglrB1vLKFZwF4g4R8eHo5P+NkzoEF0kLE32-Q6gvpQDxcCTTDK4vDAn4GOoNaLuGb6oDuIHfu29Rlgh7aVgyayENOWy0DiZZsNCqxTpsSpDhg2B4OhhHbHQ0ysLiMSKOcfzila5Qis+fQSMAZjAO0zh1FwdEMW6sYVGGR4APJKOgsBouSlKur0AndIx7HqHMIktOoubZmImDyI4rQgOEQTACWvG0e0gm9H6kzcUoADaopWQYAC6bCqhOUCOJgpCkMABDHvUmC7AADO28ghUy9QAAIETO2y4jWBAsD+tppgmwCSgiACM8FcChyBpZgY4TtFsWYeguLeRI0ANMEABCyUBba+XAL8tjmugaIYJuji5OGzhoqauYsI15Q2r+LWSpKaXyLlnCmcVuKeUg-UyP542QnhbLhQiEDoAA7n5yVzV46UIoVJ3yGiO3ADNJ1lbOyzCAuAHyOoabqAQaIJJ8kiiGiiXuSeLWzbiZY4SwVXQKN4JLWeQW7QdR3uSyMI+GijgIMQLAypgAPBElzgqu2IBfLI+lsnAEWccAdDAAArFiGWSnAKXqnh6OY9jeOJclKO2njCOcYtqM9Z1XM4zz9XJcTuKk6g5PBDTCKhTTdOM8zrNNezKyc1jkP7ZgcBslLMANYWJ54zdcAi1wW1eLsePLXtx1w2j+kY-rMpXbzRP85w8uK5T1NU+rTNTVrG2i3r2M+wTfOXWdwtg27Yue9j3v42bMv+6AZMsBTyvAKrocM+HLNs5tusexLmCG8bp01ubuf1Fd1vFaZx1AA)
+ */
+
+export function createNoArgsCache<T>(
+    checkProperty: (obj: T, propertyKey: string | symbol) => boolean,
+    setValue: (obj: T, propertyKey: string | symbol, value: any) => void,
+    getValue: (obj: T, propertyKey: string | symbol) => any,
+    deleteValue: (obj: T, propertyKey: string | symbol) => any
+) {
+    const NoArgsCache = (_target: any, propertyKey: string | symbol, descriptor: PropertyDescriptor) => {
+        const fn = descriptor.value;
+        if (fn === undefined) return;
+
+        const cacheKey = Symbol(String(propertyKey) + '__cache');
+        descriptor.value = function (this: any) {
+            if (!checkProperty(this, cacheKey)) {
+                setValue(this, cacheKey, fn.apply(this, arguments));
+            }
+            return getValue(this, cacheKey);
+        };
+        descriptor.value.cacheKey = cacheKey;
+    };
+
+    NoArgsCache.copyValue = (dest: any, source: any, fn: any) => {
+        const key = fn.cacheKey;
+        if (checkProperty(source, key)) {
+            setValue(dest, key, getValue(source, key));
+        }
+    };
+
+    NoArgsCache.invalidate = (source: any, fn: any) => {
+        const key = fn.cacheKey;
+        deleteValue(source, key);
+    };
+    return NoArgsCache;
+}
+
+const CACHE_KEY = Symbol('CACHE_KEY');
+export const NoArgsCache = createNoArgsCache<any>(
+    (obj, propertyKey) => CACHE_KEY in obj && propertyKey in obj[CACHE_KEY],
+    (obj, propertyKey, value) => {
+        if (!(CACHE_KEY in obj)) {
+            Object.defineProperty(obj, CACHE_KEY, { value: {}, enumerable: false });
+        }
+        obj[CACHE_KEY][propertyKey] = value;
+    },
+    (obj, propertyKey) => obj[CACHE_KEY][propertyKey],
+    (obj, propertyKey) => {
+        if (CACHE_KEY in obj) delete obj[CACHE_KEY][propertyKey];
+    }
+);

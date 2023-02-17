@@ -1,87 +1,71 @@
-import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
+import { PendleEntity } from '../PendleEntity';
 import {
     RouterStatic,
     WrappedContract,
     MetaMethodType,
-    MetaMethodReturnType,
-    ContractMethodNames,
     ContractMetaMethod,
     MetaMethodExtraParams,
     mergeMetaMethodExtraParams as mergeParams,
     getRouterStatic,
-} from '../contracts';
-import type { ApproxParamsStruct, IPAllAction } from '@pendle/core-v2/typechain-types/IPAllAction';
+} from '../../contracts';
 import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
 import type { BigNumberish } from 'ethers';
-import { BigNumber as BN, constants as etherConstants, BytesLike } from 'ethers';
-import { MarketEntity } from './MarketEntity';
-import { SyEntity } from './SyEntity';
-import { YtEntity } from './YtEntity';
-import { NoRouteFoundError, PendleSdkError } from '../errors';
-import { KyberHelper, KybercallData, KyberState, KyberHelperCoreConfig } from './KyberHelper';
-import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
-import { getGlobalBulkSellerUsageStrategyGetter } from '../bulkSeller';
+import { BigNumber as BN, constants as etherConstants } from 'ethers';
+import { MarketEntity } from '../MarketEntity';
+import { SyEntity } from '../SyEntity';
+import { YtEntity } from '../YtEntity';
+import { NoRouteFoundError, PendleSdkError } from '../../errors';
+import { KyberHelper, KybercallData } from '../KyberHelper';
+import { BulkSellerUsageStrategy, getGlobalBulkSellerUsageStrategyGetter } from '../../bulkSeller';
 import {
     Address,
     getContractAddresses,
-    isNativeToken,
     ChainId,
     RawTokenAmount,
     devLog,
     promiseAllWithErrors,
-    mapPromisesToSyncUp,
     toArrayOfStructures,
-} from '../common';
-import { calcSlippedDownAmount, calcSlippedUpAmount, calcSlippedDownAmountSqrt, PyIndex } from '../common/math';
+    calcSlippedDownAmount,
+    calcSlippedUpAmount,
+    calcSlippedDownAmountSqrt,
+} from '../../common';
 import { BigNumber } from 'bignumber.js';
 
-export type TokenInput = {
-    tokenIn: Address;
-    netTokenIn: BigNumberish;
-    tokenMintSy: Address;
-    bulk: Address;
-    kyberRouter: Address;
-    kybercall: BytesLike;
-};
+import {
+    TokenInput,
+    TokenOutput,
+    RouterMetaMethodReturnType,
+    RouterMetaMethodExtraParams,
+    RouterConfig,
+    RouterState,
+    FixedRouterMetaMethodExtraParams,
+    ApproxParamsStruct,
+    IPAllAction,
+} from './types';
 
-export type TokenOutput = {
-    tokenOut: Address;
-    minTokenOut: BigNumberish;
-    tokenRedeemSy: Address;
-    bulk: Address;
-    kyberRouter: Address;
-    kybercall: BytesLike;
-};
+import { BaseRoute, RouteContext } from './route';
 
-export type RouterState = {
-    kyberHelper: KyberState;
-};
+import {
+    BaseZapInRoute,
+    AddLiquidityDualTokenAndPtRoute,
+    AddLiquiditySingleTokenRoute,
+    SwapExactTokenForPtRoute,
+    SwapExactTokenForYtRoute,
+    MintSyFromTokenRoute,
+    MintPyFromTokenRoute,
+} from './route/zapIn';
 
-export type RouterConfig = PendleEntityConfigOptionalAbi & {
-    chainId: ChainId;
-    kyberHelper?: KyberHelperCoreConfig;
-    bulkSellerUsage?: BulkSellerUsageStrategy;
-};
+import {
+    BaseZapOutRoute,
+    RemoveLiquidityDualTokenAndPtRoute,
+    RemoveLiquiditySingleTokenRoute,
+    RedeemSyToTokenRoute,
+    RedeemPyToTokenRoute,
+    SwapExactPtForTokenRoute,
+    SwapExactYtForTokenRoute,
+} from './route/zapOut';
 
-export type RouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtraParams<T> & {
-    receiver?: Address | typeof ContractMetaMethod.utils.getContractSignerAddress;
-    useBulk?: UseBulkMode;
-};
-
-type FixedRouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtraParams<T> & {
-    receiver: Address | typeof ContractMetaMethod.utils.getContractSignerAddress;
-    useBulk: UseBulkMode;
-    entityConfig: RouterConfig;
-
-    // this is a copy of this type, but used for the inner callStatic to calculate stuff
-    forCallStatic: Omit<FixedRouterMetaMethodExtraParams<T>, 'forCallStatic' | 'method'>;
-};
-
-export type RouterMetaMethodReturnType<
-    T extends MetaMethodType,
-    M extends ContractMethodNames<IPAllAction>,
-    Data extends {}
-> = MetaMethodReturnType<T, IPAllAction, M, Data & RouterMetaMethodExtraParams<T>>;
+import { GasFeeEstimator } from './GasFeeEstimator';
 
 export class Router extends PendleEntity {
     static readonly MIN_AMOUNT = 0;
@@ -94,16 +78,19 @@ export class Router extends PendleEntity {
         maxIteration: 20,
         eps: new BigNumber(Router.EPS).shiftedBy(18).toFixed(0),
     };
+
     readonly routerStatic: WrappedContract<RouterStatic>;
     readonly kyberHelper: KyberHelper;
     readonly bulkSellerUsage: BulkSellerUsageStrategy;
     readonly chainId: ChainId;
+    readonly gasFeeEstimator: GasFeeEstimator;
 
     constructor(readonly address: Address, config: RouterConfig) {
         super(address, { abi: IPAllActionABI, ...config });
         this.chainId = config.chainId;
         const { kyberHelper: kyberHelperCoreConfig } = { ...config };
         this.routerStatic = getRouterStatic(config);
+        this.gasFeeEstimator = config.gasFeeEstimator ?? new GasFeeEstimator(this.provider!);
 
         this.kyberHelper = new KyberHelper(address, {
             chainId: this.chainId,
@@ -112,6 +99,10 @@ export class Router extends PendleEntity {
         });
 
         this.bulkSellerUsage = config.bulkSellerUsage ?? getGlobalBulkSellerUsageStrategyGetter(this.routerStatic);
+    }
+
+    get provider() {
+        return this.networkConnection.provider ?? this.networkConnection.signer.provider;
     }
 
     get contract() {
@@ -146,6 +137,7 @@ export class Router extends PendleEntity {
             useBulk: 'auto',
             entityConfig: this.entityConfig,
             method: undefined,
+            aggregatorReceiver: this.address,
         } as const;
 
         const forCallStatic = {
@@ -167,6 +159,24 @@ export class Router extends PendleEntity {
         params: RouterMetaMethodExtraParams<T>
     ): FixedRouterMetaMethodExtraParams<T> {
         return mergeParams(this.getDefaultMetaMethodExtraParams(), params);
+    }
+
+    createRouteContext<T extends MetaMethodType, RouteType extends BaseRoute<T, RouteType>>({
+        params,
+        syEntity,
+        slippage,
+    }: {
+        readonly params: FixedRouterMetaMethodExtraParams<T>;
+        readonly syEntity: SyEntity;
+        readonly slippage: number;
+    }): RouteContext<T, RouteType> {
+        return new RouteContext({
+            router: this,
+            syEntity,
+            routerExtraParams: params,
+            aggregatorSlippage: slippage,
+            bulkBuffer: Router.BULK_BUFFER,
+        });
     }
 
     /**
@@ -206,90 +216,95 @@ export class Router extends PendleEntity {
         return Math.ceil(Math.log2(x)) + 3;
     }
 
-    /**
-     * Find the best route to convert `tokenInAmount.token` to a token from `tokenMintSyList` via KyberSwap,
-     * so that the result of `fn` is maximized.
-     *
-     * @param tokenInAmount - to pair of token in address with its amount to test.
-     * @param sy - the address of the SY token.
-     * @param tokenMintSyList - the list of of token in of `sy`.
-     * @param kyberswapSlippage - the slippage for kyberswap, from [0, 0.2]
-     * @param useBulkMode
-     * @param fn the function to maximize
-     * @returns
-     * Besides `Data` that is returned from `fn`, the {@link TokenInput} and the {@link KybercallData} is
-     * also returned.
-     *
-     * If there is no route at all, `undefined` is returned.
-     */
-    async inputParams<Data extends { netOut: BN }>(
-        tokenInAmount: RawTokenAmount<BigNumberish>,
-        sy: Address,
-        tokenMintSyList: Address[],
-        kyberswapSlippage: number,
-        useBulkMode: UseBulkMode,
-        /**
-         * @param tokenMintSyAmount - the pair of token mint sy, with its amount traded from `tokenInAmount`
-         * @param input - the {@link TokenInput} struct. It is the type-safe version of {@link TokenInputStruct},
-         *      and can be used to pass to some contract methods.
-         * @returns
-         * The result must have the `netOut` properties - the amount to maximized.
-         *
-         * It can also return more additional fields, and the fields are merged to the result of this function.
-         */
-        fn: (tokenMintSyAmount: RawTokenAmount<BigNumberish>, input: TokenInput) => Promise<Data>
-    ): Promise<undefined | (Data & { input: TokenInput; kybercallData: KybercallData })> {
-        const processTokenCalls = mapPromisesToSyncUp(
-            2,
-            tokenMintSyList,
-            async ([afterKyberSwapSyncUp, afterBulkSellerSyncUp], tokenMintSy: Address, id: number) => {
-                try {
-                    const kybercallDataOrUndefined = await this.kyberHelper.makeCall(
-                        tokenInAmount,
-                        tokenMintSy,
-                        kyberswapSlippage
-                    );
-                    await afterKyberSwapSyncUp(id);
+    // params for routing algorithm
+    static BULK_LIMIT = BN.from(10).pow(/* ETH decimals*/ 18).mul(5);
+    static BULK_BUFFER = 10 / 100;
 
-                    if (kybercallDataOrUndefined == undefined) {
-                        return [];
-                    }
-                    // force typing before the callback
-                    const kybercallData = kybercallDataOrUndefined;
-                    const kybercall = kybercallData.encodedSwapData;
+    async findBestZapInRoute<ZapInRoute extends BaseZapInRoute<MetaMethodType, object, ZapInRoute>>(
+        routes: ZapInRoute[]
+    ): Promise<ZapInRoute | undefined> {
+        const routesWithBulkSeller = await Promise.all(
+            routes.map(async (route) => {
+                if (!(await route.hasBulkSeller())) return [];
+                const routeWithBulkSeller = await this.tryZapInRouteWithBulkSeller(route);
+                return routeWithBulkSeller == undefined ? [] : [routeWithBulkSeller];
+            })
+        ).then((result) => result.flat());
+        routes = [...routes, ...routesWithBulkSeller];
 
-                    const bulkResult = await this.bulkSellerUsage.determineByToken(
-                        useBulkMode,
-                        { token: tokenMintSy, amount: kybercallData.outputAmount },
-                        sy
-                    );
+        // // syncup before use
+        // // TODO refactor mapPromisesToSyncUp
+        // await Promise.allSettled(
+        //     mapPromisesToSyncUp(1, routes, ([syncAfterAggregatorSwap], route: ZapInRoute, id: number) =>
+        //         route.preview(() => syncAfterAggregatorSwap(id))
+        //     )
+        // );
+        return this.findBestGenericRoute(routes);
+    }
 
-                    await afterBulkSellerSyncUp(id);
+    private async tryZapInRouteWithBulkSeller<ZapInRoute extends BaseZapInRoute<any, any, ZapInRoute>>(
+        route: ZapInRoute
+    ): Promise<ZapInRoute | undefined> {
+        const tradeValueInEth = await route.estimateSourceTokenAmountInEth();
+        if (tradeValueInEth == undefined) return undefined;
+        const isBelowLimit = tradeValueInEth.lt(Router.BULK_LIMIT);
+        const shouldRouteThroughBulkSeller = isBelowLimit;
+        if (shouldRouteThroughBulkSeller) {
+            // TODO implicitly specify to clone the route with more cache info.
+            // Right now the aggregatorResult is copied from route. The above
+            // already get the aggregator result and cached, so there should be
+            // no problem. In the future, we might want to directly specify
+            // that we want to get some info first before cloning.
+            return route.routeWithBulkSeller();
+        }
+    }
 
-                    return bulkResult.tryInvoke(async (bulkSellerAddress) => {
-                        const input: TokenInput = {
-                            tokenIn: tokenInAmount.token,
-                            netTokenIn: tokenInAmount.amount,
-                            tokenMintSy,
-                            kybercall,
-                            bulk: bulkSellerAddress,
-                            kyberRouter: kybercallData.routerAddress,
-                        };
+    async findBestZapOutRoute<ZapOutRoute extends BaseZapOutRoute<any, any, ZapOutRoute>>(
+        routes: ZapOutRoute[]
+    ): Promise<ZapOutRoute | undefined> {
+        const routesWithBulkSeller = await Promise.all(
+            routes.map(async (route) => {
+                if (!(await route.hasBulkSeller())) return [];
+                const routeWithBulkSeller = await this.tryZapOutRouteWithBulkSeller(route);
+                return routeWithBulkSeller == undefined ? [] : [routeWithBulkSeller];
+            })
+        ).then((result) => result.flat());
+        routes = [...routes, ...routesWithBulkSeller];
+        return this.findBestGenericRoute(routes);
+    }
 
-                        const data = await fn({ token: tokenMintSy, amount: kybercallData.outputAmount }, input);
-                        return [{ ...data, input, kybercallData }];
-                    });
-                } catch (e: any) {
-                    devLog('Router input params error: ', e);
-                    if (e instanceof PendleSdkError) {
-                        throw e;
-                    }
-                    return [];
+    private async tryZapOutRouteWithBulkSeller<ZapOutRoute extends BaseZapOutRoute<any, any, ZapOutRoute>>(
+        route: ZapOutRoute
+    ): Promise<ZapOutRoute | undefined> {
+        const tradeValueInEth = await route.estimateMaxOutAmoungAllRouteInEth();
+        if (tradeValueInEth == undefined) return;
+        const isBelowLimit = tradeValueInEth.lt(Router.BULK_LIMIT);
+        const shouldRouteThroughBulkSeller = isBelowLimit;
+        if (shouldRouteThroughBulkSeller) {
+            // TODO implicitly specify to clone the route with more cache info.
+            // Right now the aggregatorResult is copied from route. The above
+            // already get the aggregator result and cached, so there should be
+            // no problem. In the future, we might want to directly specify
+            // that we want to get some info first before cloning.
+            return route.routeWithBulkSeller();
+        }
+    }
+
+    async findBestGenericRoute<Route extends BaseRoute<any, Route>>(routes: Route[]): Promise<Route | undefined> {
+        const routesData = routes.map(async (route) => {
+            try {
+                const netOutInEth = await route.estimateActualReceivedInEth();
+                return netOutInEth ? [{ route, netOutInEth }] : [];
+            } catch (e: any) {
+                devLog('Router params error: ', e);
+                if (e instanceof PendleSdkError) {
+                    throw e;
                 }
+                return [];
             }
-        );
+        });
 
-        const [results, errors] = await promiseAllWithErrors(processTokenCalls);
+        const [results, errors] = await promiseAllWithErrors(routesData);
         const flattenResults = results.flat();
         if (flattenResults.length === 0) {
             if (errors.length > 0) {
@@ -297,77 +312,7 @@ export class Router extends PendleEntity {
             }
             return undefined;
         }
-        return flattenResults.reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
-    }
-
-    /**
-     * Find the best route to redeem from a SY token to a given token via KyberSwap,
-     * so that the amount received is maximized.
-     * @param syAmount - the pair of SY token address with the corresponding amount.
-     * @param tokenOut - the token to redeem to.
-     * @param tokenRedeemSyList - the list of token out of the given SY token.
-     * @param useBulkMode
-     * @param slippage
-     * @param params.syEntity - the syEntity of the given token, to avoid recreating object.
-     * @param params.receiver - the receiver of the kybercall, default to router address.
-     * @returns
-     * - `netOut` - the amount of `tokenOut` to maximize.
-     * - `output` - the {@link TokenOutput}, which is a type-safe version of {@link TokenOutputStruct}, and
-     * can be used to pass to contract methods.
-     * - `kybercallData` - the data returned from KyberSwap, contains the swapping route.
-     * - `redeemFromSyAmount` - the amount of the intermediate token (that is, of `output.tokenRedeemSy`)
-     * got from redeeming the given SY to that token.
-     *
-     * If no route exists, `undefined` is returned instead.
-     */
-    async outputParams(
-        syAmount: RawTokenAmount<BigNumberish>,
-        tokenOut: Address,
-        tokenRedeemSyList: Address[],
-        useBulkMode: UseBulkMode,
-        slippage: number,
-        params: { syEntity?: SyEntity; receiver?: Address } = {}
-    ): Promise<
-        undefined | { netOut: BN; output: TokenOutput; kybercallData: KybercallData; redeemedFromSyAmount: BN }
-    > {
-        const syEntity = params.syEntity ?? new SyEntity(syAmount.token, this.entityConfig);
-
-        const processTokenRedeemSy = async (tokenRedeemSy: Address) => {
-            const useBulkResult = await this.bulkSellerUsage.determineBySy(useBulkMode, syAmount, tokenRedeemSy);
-            return useBulkResult.tryInvoke(async (bulkSellerAddress) => {
-                const redeemedFromSyAmount = await syEntity.previewRedeem(tokenRedeemSy, syAmount.amount, {
-                    useBulk: { withAddress: bulkSellerAddress },
-                });
-                const kybercallData = await this.kyberHelper.makeCall(
-                    { token: tokenRedeemSy, amount: redeemedFromSyAmount },
-                    tokenOut,
-                    // kyberswap slippage equal to our slippage
-                    slippage,
-                    {
-                        receiver: params.receiver,
-                    }
-                );
-                if (kybercallData === undefined) {
-                    return [];
-                }
-
-                const netOut = BN.from(kybercallData.outputAmount);
-
-                const output: TokenOutput = {
-                    tokenOut,
-                    tokenRedeemSy,
-                    kybercall: kybercallData.encodedSwapData,
-                    minTokenOut: calcSlippedDownAmount(netOut, slippage),
-                    bulk: bulkSellerAddress,
-                    kyberRouter: kybercallData.routerAddress,
-                };
-
-                return [{ netOut, output, kybercallData, redeemedFromSyAmount }];
-            });
-        };
-        const results = (await Promise.all(tokenRedeemSyList.map(processTokenRedeemSy))).flat();
-        if (results.length === 0) return undefined;
-        return results.reduce((prev, cur) => (cur.netOut.gt(prev.netOut) ? cur : prev));
+        return flattenResults.reduce((a, b) => (a.netOutInEth.gt(b.netOutInEth) ? a : b)).route;
     }
 
     async addLiquidityDualSyAndPt<T extends MetaMethodType = 'send'>(
@@ -403,46 +348,40 @@ export class Router extends PendleEntity {
         ptDesired: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'addLiquidityDualTokenAndPt', { netLpOut: BN; netTokenUsed: BN; netPtUsed: BN }> {
+    ): RouterMetaMethodReturnType<
+        T,
+        'addLiquidityDualTokenAndPt',
+        {
+            netLpOut: BN;
+            netTokenUsed: BN;
+            netPtUsed: BN;
+            route: AddLiquidityDualTokenAndPtRoute<T>;
+        }
+    > {
         const params = this.addExtraParams(_params);
         if (typeof market === 'string') {
             market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
-        const sy = await market.syEntity(params.forCallStatic);
-        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
-        const overrides = { value: isNativeToken(tokenIn) ? tokenDesired : undefined };
-
-        const res = await this.inputParams(
-            { token: tokenIn, amount: tokenDesired },
-            sy.address,
-            tokenMintSyList,
+        const syEntity = await market.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<T, AddLiquidityDualTokenAndPtRoute<T>>({
+            params,
+            syEntity,
             slippage,
-            params.useBulk,
-            ({ token, amount }, input) =>
-                this.routerStaticCall
-                    .addLiquidityDualTokenAndPtStatic(
-                        marketAddr,
-                        token,
-                        amount,
-                        input.bulk,
-                        ptDesired,
-                        params.forCallStatic
-                    )
-                    .then((data) => ({ netOut: data.netLpOut, ...data }))
+        });
+        const tokenMintSyList = await routeContext.getTokensMintSy();
+        const routes = tokenMintSyList.map(
+            (tokenMintSy) =>
+                new AddLiquidityDualTokenAndPtRoute(marketAddr, tokenIn, tokenDesired, ptDesired, slippage, {
+                    context: routeContext,
+                    tokenMintSy,
+                })
         );
-        if (res === undefined) {
+        const bestRoute = await this.findBestZapInRoute(routes);
+        if (bestRoute === undefined) {
             throw NoRouteFoundError.action('add liquidity', tokenIn, marketAddr);
         }
-        const { netLpOut, input } = res;
-        return this.contract.metaCall.addLiquidityDualTokenAndPt(
-            params.receiver,
-            marketAddr,
-            input,
-            ptDesired,
-            calcSlippedDownAmountSqrt(netLpOut, slippage), // note: different slip down amount function
-            { ...res, ...mergeParams({ overrides }, params) }
-        );
+        return bestRoute.buildCall();
     }
 
     async addLiquiditySinglePt<T extends MetaMethodType>(
@@ -522,11 +461,15 @@ export class Router extends PendleEntity {
         {
             netLpOut: BN;
             netPtFromSwap: BN;
-            input: TokenInput;
             priceImpact: BN;
-            kybercallData: KybercallData;
             netSyFee: BN;
             exchangeRateAfter: BN;
+            route: AddLiquiditySingleTokenRoute<T>;
+
+            /** @deprecated Use route API instead */
+            kybercallData: KybercallData;
+            /** @deprecated Use route API instead */
+            input: TokenInput;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -534,42 +477,27 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
-        const sy = await market.syEntity(params.forCallStatic);
-        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
-
-        const res = await this.inputParams(
-            { token: tokenIn, amount: netTokenIn },
-            sy.address,
-            tokenMintSyList,
+        const syEntity = await market.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<T, AddLiquiditySingleTokenRoute<T>>({
+            params,
+            syEntity,
             slippage,
-            params.useBulk,
-            ({ amount }, input) =>
-                this.routerStaticCall
-                    .addLiquiditySingleBaseTokenStatic(
-                        marketAddr,
-                        input.tokenMintSy,
-                        amount,
-                        input.bulk,
-                        params.forCallStatic
-                    )
-                    .then((data) => ({ netOut: data.netLpOut, ...data }))
+        });
+        const tokenMintSyList = await routeContext.getTokensMintSy();
+
+        const routes = tokenMintSyList.map(
+            (tokenMintSy) =>
+                new AddLiquiditySingleTokenRoute(marketAddr, tokenIn, netTokenIn, slippage, {
+                    context: routeContext,
+                    tokenMintSy,
+                })
         );
-        if (res === undefined) {
+
+        const bestRoute = await this.findBestZapInRoute(routes);
+        if (bestRoute === undefined) {
             throw NoRouteFoundError.action('add liquidity', tokenIn, marketAddr);
         }
-        const { netLpOut, netPtFromSwap, input } = res;
-
-        const approxParam = Router.guessOutApproxParams(netPtFromSwap, slippage);
-        const overrides = { value: isNativeToken(input.tokenIn) ? input.netTokenIn : undefined };
-
-        return this.contract.metaCall.addLiquiditySingleToken(
-            params.receiver,
-            marketAddr,
-            calcSlippedDownAmountSqrt(netLpOut, slippage), // note: different slip down amount function
-            approxParam,
-            input,
-            { ...res, ...mergeParams({ overrides }, params) }
-        );
+        return bestRoute.buildCall();
     }
 
     async removeLiquidityDualSyAndPt<T extends MetaMethodType>(
@@ -606,11 +534,19 @@ export class Router extends PendleEntity {
         T,
         'removeLiquidityDualTokenAndPt',
         {
-            netTokenOut: BN;
             netPtOut: BN;
+            intermediateSyAmount: BN;
+            route: RemoveLiquidityDualTokenAndPtRoute<T>;
+
+            /** @deprecated use intermediateSyAmount or Route API instead */
             intermediateSy: BN;
+            /** @deprecated use Route API instead */
+            netTokenOut: BN;
+            /** @deprecated use Route API instead */
             output: TokenOutput;
+            /** @deprecated use Route API instead */
             kybercallData: KybercallData;
+            /** @deprecated use Route API instead */
             redeemedFromSyAmount: BN;
         }
     > {
@@ -620,37 +556,27 @@ export class Router extends PendleEntity {
         }
 
         const marketAddr = market.address;
-        const getSyPromise = market.syEntity(params.forCallStatic);
-
-        // TODO reduce RPC call
-        const [sy, tokenRedeemSy, { netSyOut: intermediateSy, netPtOut }] = await Promise.all([
-            getSyPromise,
-            getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
-            this.routerStaticCall.removeLiquidityDualSyAndPtStatic(marketAddr, lpToRemove, params.forCallStatic),
-        ]);
-
-        const res = await this.outputParams(
-            { token: sy.address, amount: intermediateSy },
-            tokenOut,
-            tokenRedeemSy,
-            params.useBulk,
+        const syEntity = await market.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<T, RemoveLiquidityDualTokenAndPtRoute<T>>({
+            params,
+            syEntity,
             slippage,
-            { syEntity: sy }
+        });
+        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
+
+        const routes = tokenRedeemSyList.map(
+            (tokenRedeemSy) =>
+                new RemoveLiquidityDualTokenAndPtRoute(marketAddr, lpToRemove, tokenOut, slippage, {
+                    context: routeContext,
+                    tokenRedeemSy,
+                })
         );
-        if (res === undefined) {
+
+        const bestRoute = await this.findBestZapOutRoute(routes);
+        if (bestRoute === undefined) {
             throw NoRouteFoundError.action('remove liquidity', marketAddr, tokenOut);
         }
-
-        const { netOut: netTokenOut, output } = res;
-        this.contract.removeLiquidityDualTokenAndPt;
-        return this.contract.metaCall.removeLiquidityDualTokenAndPt(
-            params.receiver,
-            marketAddr,
-            lpToRemove,
-            output,
-            calcSlippedDownAmount(netPtOut, slippage),
-            { ...res, ...params, intermediateSy, netTokenOut, netPtOut }
-        );
+        return bestRoute.buildCall();
     }
 
     async removeLiquiditySinglePt<T extends MetaMethodType>(
@@ -718,14 +644,22 @@ export class Router extends PendleEntity {
         T,
         'removeLiquiditySingleToken',
         {
-            netTokenOut: BN;
-            output: TokenOutput;
-            kybercallData: KybercallData;
             netSyFee: BN;
-            intermediateSy: BN;
             priceImpact: BN;
-            redeemedFromSyAmount: BN;
             exchangeRateAfter: BN;
+            intermediateSyAmount: BN;
+            route: RemoveLiquiditySingleTokenRoute<T>;
+
+            /** @deprecated use Route API instead */
+            netTokenOut: BN;
+            /** @deprecated use Route API instead */
+            output: TokenOutput;
+            /** @deprecated use Route API instead */
+            kybercallData: KybercallData;
+            /** @deprecated use intermediateSyAmount or Route API instead */
+            intermediateSy: BN;
+            /** @deprecated use Route API instead */
+            redeemedFromSyAmount: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -733,37 +667,25 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
-        const getSyPromise = market.syEntity(params.forCallStatic);
-        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact, exchangeRateAfter }] =
-            await Promise.all([
-                getSyPromise,
-                getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
-                this.routerStaticCall.removeLiquiditySingleSyStatic(marketAddr, lpToRemove, params.forCallStatic),
-            ]);
-
-        const res = await this.outputParams(
-            { token: sy.address, amount: intermediateSy },
-            tokenOut,
-            tokenRedeemSyList,
-            params.useBulk,
+        const syEntity = await market.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<T, RemoveLiquiditySingleTokenRoute<T>>({
+            params,
+            syEntity,
             slippage,
-            { syEntity: sy }
+        });
+        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
+        const routes = tokenRedeemSyList.map(
+            (tokenRedeemSy) =>
+                new RemoveLiquiditySingleTokenRoute(marketAddr, lpToRemove, tokenOut, slippage, {
+                    context: routeContext,
+                    tokenRedeemSy,
+                })
         );
-        if (res === undefined) {
+        const bestRoute = await this.findBestZapOutRoute(routes);
+        if (bestRoute === undefined) {
             throw NoRouteFoundError.action('zap out', marketAddr, tokenOut);
         }
-
-        const { netOut: netTokenOut, output } = res;
-
-        return this.contract.metaCall.removeLiquiditySingleToken(params.receiver, marketAddr, lpToRemove, output, {
-            ...res,
-            intermediateSy,
-            netSyFee,
-            netTokenOut,
-            priceImpact,
-            exchangeRateAfter,
-            ...params,
-        });
+        return bestRoute.buildCall();
     }
 
     async swapExactPtForSy<T extends MetaMethodType>(
@@ -848,11 +770,15 @@ export class Router extends PendleEntity {
         'swapExactTokenForPt',
         {
             netPtOut: BN;
-            input: TokenInput;
-            kybercallData: KybercallData;
             netSyFee: BN;
             priceImpact: BN;
             exchangeRateAfter: BN;
+            route: SwapExactTokenForPtRoute<T>;
+
+            /** @deprecated use Route API instead */
+            input: TokenInput;
+            /** @deprecated use Route API instead */
+            kybercallData: KybercallData;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -860,38 +786,23 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
-        const sy = await market.syEntity(params.forCallStatic);
-        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
-        const overrides = {
-            value: isNativeToken(tokenIn) ? netTokenIn : undefined,
-        };
-        const res = await this.inputParams(
-            { token: tokenIn, amount: netTokenIn },
-            sy.address,
-            tokenMintSyList,
-            slippage,
-            params.useBulk,
-            ({ token, amount }, input) =>
-                this.routerStaticCall
-                    .swapExactBaseTokenForPtStatic(marketAddr, token, amount, input.bulk, params.forCallStatic)
-                    .then((data) => ({ netOut: data.netPtOut, ...data }))
+        const syEntity = await market.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<T, SwapExactTokenForPtRoute<T>>({ params, syEntity, slippage });
+        const tokenMintSyList = await routeContext.getTokensMintSy();
+        const routes = tokenMintSyList.map(
+            (tokenMintSy) =>
+                new SwapExactTokenForPtRoute(marketAddr, tokenIn, netTokenIn, slippage, {
+                    context: routeContext,
+                    tokenMintSy,
+                })
         );
+        const bestRoute = await this.findBestZapInRoute(routes);
 
-        if (res === undefined) {
+        if (bestRoute === undefined) {
             const pt = await market.pt(params.forCallStatic);
             throw NoRouteFoundError.action('swap', tokenIn, pt);
         }
-
-        const { netOut: netPtOut, input } = res;
-
-        return this.contract.metaCall.swapExactTokenForPt(
-            params.receiver,
-            marketAddr,
-            calcSlippedDownAmount(netPtOut, slippage),
-            Router.guessOutApproxParams(netPtOut, slippage),
-            input,
-            { ...res, netPtOut, ...mergeParams({ overrides }, params) }
-        );
+        return bestRoute.buildCall();
     }
 
     async swapExactSyForPt<T extends MetaMethodType>(
@@ -927,7 +838,15 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'mintSyFromToken',
-        { netSyOut: BN; input: TokenInput; kybercallData: KybercallData }
+        {
+            netSyOut: BN;
+            route: MintSyFromTokenRoute<T>;
+
+            /** @deprecated use Route API instead */
+            input: TokenInput;
+            /** @deprecated use Route API instead */
+            kybercallData: KybercallData;
+        }
     > {
         const params = this.addExtraParams(_params);
         if (typeof sy === 'string') {
@@ -935,30 +854,20 @@ export class Router extends PendleEntity {
         }
         const syAddr = sy.address;
         const syEntity = sy; // force type here
-        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
-        const res = await this.inputParams(
-            { token: tokenIn, amount: netTokenIn },
-            syAddr,
-            tokenMintSyList,
-            slippage,
-            params.useBulk,
-            ({ token, amount }, input) =>
-                syEntity
-                    .previewDeposit(token, amount, { ...params.forCallStatic, useBulk: { withAddress: input.bulk } })
-                    .then((netOut) => ({ netOut }))
+        const routeContext = this.createRouteContext<T, MintSyFromTokenRoute<T>>({ params, syEntity, slippage });
+        const tokenMintSyList = await routeContext.getTokensMintSy();
+        const routes = tokenMintSyList.map(
+            (tokenMintSy) =>
+                new MintSyFromTokenRoute(syAddr, tokenIn, netTokenIn, slippage, {
+                    context: routeContext,
+                    tokenMintSy,
+                })
         );
-        if (res === undefined) {
+        const bestRoute = await this.findBestZapInRoute(routes);
+        if (bestRoute === undefined) {
             throw NoRouteFoundError.action('mint', tokenIn, syAddr);
         }
-        const { netOut: netSyOut, input } = res;
-
-        return this.contract.metaCall.mintSyFromToken(
-            params.receiver,
-            syAddr,
-            calcSlippedDownAmount(netSyOut, slippage),
-            input,
-            { ...res, netSyOut, ...params }
-        );
+        return bestRoute.buildCall();
     }
 
     async redeemSyToToken<T extends MetaMethodType>(
@@ -970,32 +879,32 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'redeemSyToToken',
-        { netTokenOut: BN; output: TokenOutput; kybercallData: KybercallData }
+        {
+            intermediateSyAmount: BN;
+            route: RedeemSyToTokenRoute<T>;
+
+            netTokenOut: BN;
+            output: TokenOutput;
+            kybercallData: KybercallData;
+        }
     > {
         const params = this.addExtraParams(_params);
-        if (typeof sy === 'string') {
-            sy = new SyEntity(sy, this.entityConfig);
-        }
-        const tokenRedeemSyList = await sy.getTokensOut(params.forCallStatic);
-        const res = await this.outputParams(
-            { token: sy.address, amount: netSyIn },
-            tokenOut,
-            tokenRedeemSyList,
-            params.useBulk,
-            slippage,
-            { syEntity: sy }
+        const syEntity = typeof sy === 'string' ? new SyEntity(sy, this.entityConfig) : sy;
+        const syAddr = syEntity.address;
+        const routeContext = this.createRouteContext<T, RedeemSyToTokenRoute<T>>({ params, syEntity, slippage });
+        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
+        const routes = tokenRedeemSyList.map(
+            (tokenRedeemSy) =>
+                new RedeemSyToTokenRoute(syAddr, BN.from(netSyIn), tokenOut, slippage, {
+                    context: routeContext,
+                    tokenRedeemSy,
+                })
         );
-        if (res === undefined) {
-            throw NoRouteFoundError.action('redeem', sy.address, tokenOut);
+        const bestRoute = await this.findBestZapOutRoute(routes);
+        if (bestRoute === undefined) {
+            throw NoRouteFoundError.action('redeem', syAddr, tokenOut);
         }
-
-        const { output, netOut: netTokenOut } = res;
-
-        return this.contract.metaCall.redeemSyToToken(params.receiver, sy.address, netSyIn, output, {
-            ...res,
-            netTokenOut,
-            ...params,
-        });
+        return bestRoute.buildCall();
     }
 
     async mintPyFromToken<T extends MetaMethodType>(
@@ -1007,39 +916,36 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'mintPyFromToken',
-        { netPyOut: BN; input: TokenInput; kybercallData: KybercallData }
+        {
+            netPyOut: BN;
+            route: MintPyFromTokenRoute<T>;
+
+            /** @deprecated use Route API instead */
+            input: TokenInput;
+            /** @deprecated use Route API instead */
+            kybercallData: KybercallData;
+        }
     > {
         const params = this.addExtraParams(_params);
         if (typeof yt === 'string') {
             yt = new YtEntity(yt, this.entityConfig);
         }
         const ytAddr = yt.address;
-        const sy = await yt.syEntity(params.forCallStatic);
-        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
-        const overrides = { value: isNativeToken(tokenIn) ? netTokenIn : undefined };
-        const res = await this.inputParams(
-            { token: tokenIn, amount: netTokenIn },
-            sy.address,
-            tokenMintSyList,
-            slippage,
-            params.useBulk,
-            ({ token, amount }, input) =>
-                this.routerStaticCall
-                    .mintPYFromBaseStatic(ytAddr, token, amount, input.bulk, params.forCallStatic)
-                    .then((netOut) => ({ netOut }))
+        const syEntity = await yt.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<T, MintPyFromTokenRoute<T>>({ params, syEntity, slippage });
+        const tokenMintSyList = await routeContext.getTokensMintSy();
+        const routes = tokenMintSyList.map(
+            (tokenMintSy) =>
+                new MintPyFromTokenRoute(ytAddr, tokenIn, netTokenIn, slippage, {
+                    context: routeContext,
+                    tokenMintSy,
+                })
         );
-        if (res === undefined) {
+        const bestRoute = await this.findBestZapInRoute(routes);
+        if (bestRoute === undefined) {
             throw NoRouteFoundError.action('mint', tokenIn, ytAddr);
         }
-        const { netOut: netPyOut, input } = res;
-
-        return this.contract.metaCall.mintPyFromToken(
-            params.receiver,
-            ytAddr,
-            calcSlippedDownAmount(netPyOut, slippage),
-            input,
-            { ...res, netPyOut, ...mergeParams({ overrides }, params) }
-        );
+        return bestRoute.buildCall();
     }
 
     async mintPyFromSy<T extends MetaMethodType>(
@@ -1069,37 +975,35 @@ export class Router extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'redeemPyToToken',
-        { netTokenOut: BN; kybercallData: KybercallData; output: TokenOutput }
+        {
+            intermediateSyAmount: BN;
+            pyIndex: BN;
+            route: RedeemPyToTokenRoute<T>;
+
+            netTokenOut: BN;
+            kybercallData: KybercallData;
+            output: TokenOutput;
+        }
     > {
         const params = this.addExtraParams(_params);
-        if (typeof yt === 'string') {
-            yt = new YtEntity(yt, this.entityConfig);
-        }
-        const ytAddr = yt.address;
-        const getSyPromise = yt.syEntity(params.forCallStatic);
-        const [sy, tokenRedeemSyList, pyIndex] = await Promise.all([
-            getSyPromise,
-            getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
-            yt.pyIndexCurrent(params.forCallStatic),
-        ]);
-        const res = await this.outputParams(
-            { token: sy.address, amount: new PyIndex(pyIndex).assetToSy(netPyIn) },
-            tokenOut,
-            tokenRedeemSyList,
-            params.useBulk,
-            slippage,
-            { syEntity: sy }
+        const ytEntity = typeof yt === 'string' ? new YtEntity(yt, this.entityConfig) : yt;
+        const ytAddr = ytEntity.address;
+        const syEntity = await ytEntity.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<T, RedeemPyToTokenRoute<T>>({ params, syEntity, slippage });
+        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
+
+        const routes = tokenRedeemSyList.map(
+            (tokenRedeemSy) =>
+                new RedeemPyToTokenRoute(ytEntity, BN.from(netPyIn), tokenOut, slippage, {
+                    context: routeContext,
+                    tokenRedeemSy,
+                })
         );
-        if (res === undefined) {
+        const bestRoute = await this.findBestZapOutRoute(routes);
+        if (bestRoute === undefined) {
             throw NoRouteFoundError.action('redeem', ytAddr, tokenOut);
         }
-        const { netOut: netTokenOut, output } = res;
-
-        return this.contract.metaCall.redeemPyToToken(params.receiver, ytAddr, netPyIn, output, {
-            ...res,
-            netTokenOut,
-            ...params,
-        });
+        return bestRoute.buildCall();
     }
 
     async redeemPyToSy<T extends MetaMethodType>(
@@ -1180,13 +1084,16 @@ export class Router extends PendleEntity {
         T,
         'swapExactPtForToken',
         {
+            intermediateSyAmount: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+            route: SwapExactPtForTokenRoute<T>;
+
+            intermediateSy: BN;
             netTokenOut: BN;
             output: TokenOutput;
             kybercallData: KybercallData;
-            netSyFee: BN;
-            intermediateSy: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1194,36 +1101,21 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
-        const getSyPromise = market.syEntity(params.forCallStatic);
-        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact, exchangeRateAfter }] =
-            await Promise.all([
-                getSyPromise,
-                getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
-                this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params.forCallStatic),
-            ]);
-        const res = await this.outputParams(
-            { token: sy.address, amount: intermediateSy },
-            tokenOut,
-            tokenRedeemSyList,
-            params.useBulk,
-            slippage,
-            { syEntity: sy }
+        const syEntity = await market.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<T, SwapExactPtForTokenRoute<T>>({ params, syEntity, slippage });
+        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
+        const routes = tokenRedeemSyList.map(
+            (tokenRedeemSy) =>
+                new SwapExactPtForTokenRoute(marketAddr, exactPtIn, tokenOut, slippage, {
+                    context: routeContext,
+                    tokenRedeemSy,
+                })
         );
-        if (res === undefined) {
+        const bestRoute = await this.findBestZapOutRoute(routes);
+        if (bestRoute === undefined) {
             throw NoRouteFoundError.action('swap', await market.pt(params.forCallStatic), tokenOut);
         }
-
-        const { output, netOut: netTokenOut } = res;
-
-        return this.contract.metaCall.swapExactPtForToken(params.receiver, marketAddr, exactPtIn, output, {
-            ...res,
-            netTokenOut,
-            intermediateSy,
-            netSyFee,
-            priceImpact,
-            exchangeRateAfter,
-            ...params,
-        });
+        return bestRoute.buildCall();
     }
 
     async swapExactYtForSy<T extends MetaMethodType>(
@@ -1283,11 +1175,15 @@ export class Router extends PendleEntity {
         'swapExactTokenForYt',
         {
             netYtOut: BN;
-            input: TokenInput;
-            kybercallData: KybercallData;
             netSyFee: BN;
             priceImpact: BN;
             exchangeRateAfter: BN;
+            route: SwapExactTokenForYtRoute<T>;
+
+            /** @deprecated use Route API instead */
+            input: TokenInput;
+            /** @deprecated use Route API instead */
+            kybercallData: KybercallData;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1295,36 +1191,23 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
-        const sy = await market.syEntity(params.forCallStatic);
-        const tokenMintSyList = await sy.getTokensIn(params.forCallStatic);
-        const overrides = { value: isNativeToken(tokenIn) ? netTokenIn : undefined };
-        const res = await this.inputParams(
-            { token: tokenIn, amount: netTokenIn },
-            sy.address,
-            tokenMintSyList,
-            slippage,
-            params.useBulk,
-            ({ token, amount }, input) =>
-                this.routerStaticCall
-                    .swapExactBaseTokenForYtStatic(marketAddr, token, amount, input.bulk, params.forCallStatic)
-                    .then((data) => ({ netOut: data.netYtOut, ...data }))
+        const syEntity = await market.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<T, SwapExactTokenForYtRoute<T>>({ params, syEntity, slippage });
+        const tokenMintSyList = await routeContext.getTokensMintSy();
+        const routes = tokenMintSyList.map(
+            (tokenMintSy) =>
+                new SwapExactTokenForYtRoute(marketAddr, tokenIn, netTokenIn, slippage, {
+                    context: routeContext,
+                    tokenMintSy,
+                })
         );
-        if (res === undefined) {
+        const bestRoute = await this.findBestZapInRoute(routes);
+        if (bestRoute === undefined) {
             // TODO: One additional call to get the yt address, does it worth it?
             let yt = await market.ptEntity().then((pt) => pt.yt(params.forCallStatic));
             throw NoRouteFoundError.action('swap', tokenIn, yt);
         }
-
-        const { netOut: netYtOut, input } = res;
-
-        return this.contract.metaCall.swapExactTokenForYt(
-            params.receiver,
-            marketAddr,
-            calcSlippedDownAmount(netYtOut, slippage),
-            Router.guessOutApproxParams(netYtOut, slippage),
-            input,
-            { ...res, netYtOut, ...mergeParams({ overrides }, params) }
-        );
+        return bestRoute.buildCall();
     }
 
     async swapExactYtForToken<T extends MetaMethodType>(
@@ -1337,13 +1220,16 @@ export class Router extends PendleEntity {
         T,
         'swapExactYtForToken',
         {
+            intermediateSyAmount: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+            route: SwapExactYtForTokenRoute<T>;
+
             netTokenOut: BN;
+            intermediateSy: BN;
             output: TokenOutput;
             kybercallData: KybercallData;
             netSyFee: BN;
-            intermediateSy: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1351,37 +1237,23 @@ export class Router extends PendleEntity {
             market = new MarketEntity(market, this.entityConfig);
         }
         const marketAddr = market.address;
-        const getSyPromise = market.syEntity(params.forCallStatic);
-        const [sy, tokenRedeemSyList, { netSyOut: intermediateSy, netSyFee, priceImpact, exchangeRateAfter }] =
-            await Promise.all([
-                getSyPromise,
-                getSyPromise.then((sy) => sy.getTokensOut(params.forCallStatic)),
-                this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params.forCallStatic),
-            ]);
-        const res = await this.outputParams(
-            { token: sy.address, amount: intermediateSy },
-            tokenOut,
-            tokenRedeemSyList,
-            params.useBulk,
-            slippage,
-            { syEntity: sy }
+        const syEntity = await market.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<T, SwapExactYtForTokenRoute<T>>({ params, syEntity, slippage });
+        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
+        const routes = tokenRedeemSyList.map(
+            (tokenRedeemSy) =>
+                new SwapExactYtForTokenRoute(marketAddr, exactYtIn, tokenOut, slippage, {
+                    context: routeContext,
+                    tokenRedeemSy,
+                })
         );
-        if (res === undefined) {
+        const bestRoute = await this.findBestZapOutRoute(routes);
+        if (bestRoute === undefined) {
             // TODO: One additional call to get the yt address, does it worth it?
             let yt = await market.ptEntity().then((pt) => pt.yt(params.forCallStatic));
             throw NoRouteFoundError.action('swap', yt, tokenOut);
         }
-
-        const { netOut: netTokenOut, output } = res;
-        return this.contract.metaCall.swapExactYtForToken(params.receiver, marketAddr, exactYtIn, output, {
-            ...res,
-            netTokenOut,
-            intermediateSy,
-            netSyFee,
-            priceImpact,
-            exchangeRateAfter,
-            ...params,
-        });
+        return bestRoute.buildCall();
     }
 
     async swapExactYtForPt<T extends MetaMethodType>(
@@ -1502,34 +1374,15 @@ export class Router extends PendleEntity {
         syTokenAmounts: RawTokenAmount<BigNumberish>[],
         params: { receiver?: Address } = {}
     ): Promise<TokenOutput[]> {
-        const syAddresses = new Set(syTokenAmounts.map(({ token }) => token)).values();
-        const syData = new Map(
-            await Promise.all(
-                Array.from(syAddresses, async (addr) => {
-                    const syEntity = new SyEntity(addr, this.entityConfig);
-                    const outputTokens = await syEntity.getTokensOut();
-                    const result = [addr, { syEntity, outputTokens }] as const;
-                    return result;
-                })
-            )
-        );
-
-        const outputs = await Promise.all(
-            syTokenAmounts.map(async (tokenAmount) => {
-                const curSyData = syData.get(tokenAmount.token)!;
-                const res = await this.outputParams(tokenAmount, tokenOut, curSyData.outputTokens, true, slippage, {
-                    syEntity: curSyData.syEntity,
-                    receiver: params.receiver,
+        return await Promise.all(
+            syTokenAmounts.map(async ({ token, amount }) => {
+                const res = await this.redeemSyToToken(token, amount, tokenOut, slippage, {
+                    aggregatorReceiver: params.receiver,
+                    method: 'meta-method',
                 });
-                if (res === undefined) {
-                    throw NoRouteFoundError.action('sell sy', tokenAmount.token, tokenOut);
-                }
-
-                return res;
+                return (await res.data.route.buildTokenOutput())!;
             })
         );
-
-        return outputs.map(({ output }) => output);
     }
 
     private async sellTokensImpl(

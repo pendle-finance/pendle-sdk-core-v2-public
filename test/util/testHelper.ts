@@ -1,5 +1,5 @@
 import { PendleERC20 } from '@pendle/core-v2/typechain-types';
-import { BigNumber as BN, BigNumberish } from 'ethers';
+import { BigNumber as BN, BigNumberish, Signer, ethers } from 'ethers';
 import { ERC20Entity, Address, MarketEntity, WrappedContract, bnMin, Multicall, isNativeToken } from '../../src';
 import { INF } from './constants';
 import {
@@ -14,6 +14,8 @@ import { inspect } from 'util';
 type EntitiesMapType = {
     [entity: Address]: WrappedContract<PendleERC20>;
 };
+
+const TOKEN_NAME_CACHE: Map<string, string> = new Map();
 
 const ERC20_CREATE_HANDLER = {
     get: function (target: EntitiesMapType, address: Address) {
@@ -63,8 +65,11 @@ export async function approveInfHelper(token: Address, user: Address) {
     await approveHelper(token, user, INF);
 }
 
-export async function transferHelper(token: Address, user: Address, amount: BN) {
-    await ERC20_ENTITIES[token].transfer(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+export async function transferHelper(token: Address, user: Address, amount: BN, signer?: Signer) {
+    await ERC20_ENTITIES[token]
+        .connect(signer ?? networkConnection.signer)
+        .transfer(user, amount)
+        .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 }
 
 export function bnMinAsBn(a: BN, b: BN): BN {
@@ -75,7 +80,14 @@ export async function getERC20Name(token: Address): Promise<string> {
     if (isNativeToken(token)) {
         return 'Native';
     }
-    return ERC20_ENTITIES[token].name();
+
+    if (TOKEN_NAME_CACHE.has(token)) {
+        return TOKEN_NAME_CACHE.get(token)!;
+    }
+
+    const name = await ERC20_ENTITIES[token].name();
+    TOKEN_NAME_CACHE.set(token, name);
+    return name;
 }
 
 export async function getERC20Decimals(token: Address): Promise<number> {
@@ -127,4 +139,30 @@ export function describeWithMulticall(fn: (multicall: Multicall | undefined) => 
 export function itWhen(condition: boolean) {
     if (!condition) return it.skip;
     return it;
+}
+
+export async function setERC20Balance(address: string, user: string, value: BN, slot: number, reverse = false) {
+    const order = reverse ? [slot, user] : [user, slot];
+    const index = ethers.utils.solidityKeccak256(['uint256', 'uint256'], order);
+    await networkConnection.provider.send('hardhat_setStorageAt', [
+        address,
+        index,
+        ethers.utils.hexZeroPad(value.toHexString(), 32),
+    ]);
+}
+
+export async function setPendleERC20Balance(market: string, user: string, value: BN) {
+    return setERC20Balance(market, user, value, 0);
+}
+
+export async function increaseNativeBalance(userAddress: string) {
+    await networkConnection.provider.send('hardhat_setBalance', [
+        userAddress,
+        // 100 ETH
+        ethers.utils.hexStripZeros(BN.from(10).pow(20).toHexString()),
+    ]);
+}
+
+export async function getUserBalances(userAddress: Address, tokens: Address[]): Promise<BN[]> {
+    return Promise.all(tokens.map((token) => getBalance(token, userAddress)));
 }

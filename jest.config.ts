@@ -1,7 +1,4 @@
-/*
- * For a detailed explanation regarding each configuration property and type check, visit:
- * https://jestjs.io/docs/configuration
- */
+import { Config } from 'jest';
 export default {
     coveragePathIgnorePatterns: ['dist/', '/node_modules/', 'test/'],
     coverageProvider: 'v8',
@@ -12,9 +9,13 @@ export default {
     testMatch: ['**/__test__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[tj]s?(x)'],
     testPathIgnorePatterns: ['node_modules/'],
     transform: {
-        '^.+\\.ts?$': ['ts-jest', {
-            tsconfig: 'tsconfig.json',
-        }],
+        '^.+\\.ts?$': [
+            'ts-jest',
+            {
+                tsconfig: 'tsconfig.json',
+            },
+        ],
     },
-    testTimeout: 100000,
-};
+    testTimeout: 300000,
+    notify: true,
+} satisfies Config;

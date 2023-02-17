@@ -9,6 +9,10 @@ import {
     approveHelper,
     getERC20Name,
     bnMinAsBn,
+    setPendleERC20Balance,
+    increaseNativeBalance,
+    setERC20Balance,
+    getUserBalances,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import { IPAllAction } from '@pendle/core-v2/typechain-types';
@@ -27,6 +31,7 @@ import {
     MAX_PT_ADD_AMOUNT,
     MAX_TOKEN_ADD_AMOUNT,
     MAX_SY_ADD_AMOUNT,
+    BALANCE_OF_STORAGE_SLOT,
 } from './util/constants';
 
 type BalanceSnapshot = {
@@ -53,7 +58,7 @@ describeWrite('Router', () => {
     const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
     const ytAddress = currentConfig.market.YT;
-    const rawTokenAddress = currentConfig.tokenToSwap;
+    const rawTokenAddress = currentConfig.tokens.USDT;
     const sySdk = new SyEntity(syAddress, networkConnectionWithChainId);
 
     let syDecimals: number;
@@ -64,7 +69,22 @@ describeWrite('Router', () => {
     let zeroApprovalSnapshotId = '';
 
     beforeAll(async () => {
-        // TODO: prepare balances to test, like sy, pt, yt, lp
+        // prepare balances
+        const balance = BN.from(10).pow(18).mul(1_000);
+        const tokens = [syAddress, ptAddress, ytAddress, marketAddress];
+        await Promise.all(tokens.map((token) => setPendleERC20Balance(token, signerAddress, balance)));
+        setERC20Balance(currentConfig.tokens.USDT, signerAddress, balance, 9);
+        await increaseNativeBalance(signerAddress);
+
+        const tokensIn = await sySdk.getTokensIn();
+        for (const token of tokensIn) {
+            const slotInfo = BALANCE_OF_STORAGE_SLOT[token];
+            if (!slotInfo) {
+                continue;
+            }
+            setERC20Balance(token, signerAddress, balance, slotInfo[0], slotInfo[1]);
+        }
+
         // Approve router
         const toBeApproved = [
             syAddress,
@@ -140,8 +160,7 @@ describeWrite('Router', () => {
             );
 
             if (syAdd.eq(0) || ptAdd.eq(0)) {
-                console.warn('skip test because syAdd or ptAdd is 0');
-                return;
+                throw new Error('skip test because syAdd or ptAdd is 0');
             }
 
             const lpBalanceBefore = await getBalance(marketAddress, signerAddress);
@@ -174,8 +193,11 @@ describeWrite('Router', () => {
                 );
 
                 if (tokenAddAmount.eq(0) || ptAdd.eq(0)) {
-                    console.warn(`[${await getERC20Name(token)}] Skip test because tokenAddAmount or ptAdd is 0`);
-                    continue;
+                    throw new Error(
+                        `[${
+                            (await getERC20Name(token)) + ' ' + token
+                        }] Skip test because tokenAddAmount is ${tokenAddAmount.toString()} or ptAdd is ${ptAdd.toString()}`
+                    );
                 }
 
                 const lpBalanceBefore = await getBalance(marketAddress, signerAddress);
@@ -208,10 +230,9 @@ describeWrite('Router', () => {
                 await getBalance(ptAddress, signerAddress)
             );
             if (ptAdd.eq(0)) {
-                console.warn('skip test because ptAdd is 0');
-                return;
+                throw new Error('skip test because ptAdd is 0');
             }
-            const [lpBalanceBefore, ptBalanceBefore] = await getBalanceSnapshot([marketAddress, ptAddress]);
+            const [lpBalanceBefore, ptBalanceBefore] = await getUserBalances(signerAddress, [marketAddress, ptAddress]);
 
             const readerData = await sendTxWithInfApproval(
                 () =>
@@ -221,7 +242,7 @@ describeWrite('Router', () => {
                 [ptAddress]
             );
 
-            const [lpBalanceAfter, ptBalanceAfter] = await getBalanceSnapshot([marketAddress, ptAddress]);
+            const [lpBalanceAfter, ptBalanceAfter] = await getUserBalances(signerAddress, [marketAddress, ptAddress]);
 
             expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
             expect(ptBalanceBefore.sub(ptBalanceAfter)).toEqBN(ptAdd, DEFAULT_EPSILON);
@@ -233,10 +254,9 @@ describeWrite('Router', () => {
                 await getBalance(syAddress, signerAddress)
             );
             if (syAdd.eq(0)) {
-                console.warn('skip test because syAdd is 0');
-                return;
+                throw new Error('skip test because syAdd is 0');
             }
-            const [lpBalanceBefore, syBalanceBefore] = await getBalanceSnapshot([marketAddress, syAddress]);
+            const [lpBalanceBefore, syBalanceBefore] = await getUserBalances(signerAddress, [marketAddress, syAddress]);
 
             const readerData = await sendTxWithInfApproval(
                 () =>
@@ -246,9 +266,9 @@ describeWrite('Router', () => {
                 [syAddress]
             );
 
-            if (readerData === undefined) return;
+            if (readerData === undefined) throw new Error('readerData is undefined');
 
-            const [lpBalanceAfter, syBalanceAfter] = await getBalanceSnapshot([marketAddress, syAddress]);
+            const [lpBalanceAfter, syBalanceAfter] = await getUserBalances(signerAddress, [marketAddress, syAddress]);
             expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
             expect(syBalanceBefore.sub(syBalanceAfter)).toEqBN(syAdd, DEFAULT_EPSILON);
         });
@@ -262,10 +282,14 @@ describeWrite('Router', () => {
                 );
 
                 if (tokenAddAmount.eq(0)) {
-                    console.warn(`[${await getERC20Name(token)}] Skip test because tokenAddAmount is 0`);
-                    return;
+                    throw new Error(
+                        `[${(await getERC20Name(token)) + ' ' + token}}] Skip test because tokenAddAmount is 0`
+                    );
                 }
-                const [lpBalanceBefore, tokenBalanceBefore] = await getBalanceSnapshot([marketAddress, token]);
+                const [lpBalanceBefore, tokenBalanceBefore] = await getUserBalances(signerAddress, [
+                    marketAddress,
+                    token,
+                ]);
 
                 const readerData = await sendTxWithInfApproval(
                     () =>
@@ -281,13 +305,16 @@ describeWrite('Router', () => {
                     [token]
                 );
 
-                const [lpBalanceAfter, tokenBalanceAfter] = await getBalanceSnapshot([marketAddress, token]);
+                const [lpBalanceAfter, tokenBalanceAfter] = await getUserBalances(signerAddress, [
+                    marketAddress,
+                    token,
+                ]);
                 expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
                 expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount, DEFAULT_EPSILON);
             }
 
             it('raw token', async () => {
-                await checkAddLiquiditySingleToken(currentConfig.tokens.USDT);
+                await checkAddLiquiditySingleToken(rawTokenAddress);
             });
 
             it('tokens in sy', async () => {
@@ -303,10 +330,9 @@ describeWrite('Router', () => {
             const liquidityRemove = (await getBalance(marketAddress, signerAddress)).div(REMOVE_LIQUIDITY_FACTOR);
 
             if (liquidityRemove.eq(0)) {
-                console.warn('skip test because liquidityRemove is 0');
-                return;
+                throw new Error('skip test because liquidityRemove is 0');
             }
-            const [lpBalanceBefore, syBalanceBefore, ptBalanceBefore] = await getBalanceSnapshot([
+            const [lpBalanceBefore, syBalanceBefore, ptBalanceBefore] = await getUserBalances(signerAddress, [
                 marketAddress,
                 syAddress,
                 ptAddress,
@@ -320,7 +346,7 @@ describeWrite('Router', () => {
                 [marketAddress]
             );
 
-            const [lpBalanceAfter, syBalanceAfter, ptBalanceAfter] = await getBalanceSnapshot([
+            const [lpBalanceAfter, syBalanceAfter, ptBalanceAfter] = await getUserBalances(signerAddress, [
                 marketAddress,
                 syAddress,
                 ptAddress,
@@ -340,10 +366,11 @@ describeWrite('Router', () => {
                     REMOVE_LIQUIDITY_FACTOR_ZAP
                 );
                 if (liquidityRemove.eq(0)) {
-                    console.warn(`[${await getERC20Name(token)}] Skip test because liquidityRemove is 0`);
-                    return; // return here since the liquidity will not changed in this for loop
+                    throw new Error(
+                        `[${(await getERC20Name(token)) + ' ' + token}}] Skip test because liquidityRemove is 0`
+                    );
                 }
-                const [lpBalanceBefore, tokenBalanceBefore, ptBalanceBefore] = await getBalanceSnapshot([
+                const [lpBalanceBefore, tokenBalanceBefore, ptBalanceBefore] = await getUserBalances(signerAddress, [
                     marketAddress,
                     token,
                     ptAddress,
@@ -363,7 +390,7 @@ describeWrite('Router', () => {
                     [marketAddress]
                 );
 
-                const [lpBalanceAfter, tokenBalanceAfter, ptBalanceAfter] = await getBalanceSnapshot([
+                const [lpBalanceAfter, tokenBalanceAfter, ptBalanceAfter] = await getUserBalances(signerAddress, [
                     marketAddress,
                     token,
                     ptAddress,
@@ -382,10 +409,9 @@ describeWrite('Router', () => {
         it('#removeLiquiditySinglePt', async () => {
             const liquidityRemove = (await getBalance(marketAddress, signerAddress)).div(REMOVE_LIQUIDITY_FACTOR_ZAP);
             if (liquidityRemove.eq(0)) {
-                console.warn('skip test because liquidityRemove is 0');
-                return;
+                throw new Error('skip test because liquidityRemove is 0');
             }
-            const [lpBalanceBefore, ptBalanceBefore] = await getBalanceSnapshot([marketAddress, ptAddress]);
+            const [lpBalanceBefore, ptBalanceBefore] = await getUserBalances(signerAddress, [marketAddress, ptAddress]);
 
             const readerData = await sendTxWithInfApproval(
                 () =>
@@ -395,7 +421,7 @@ describeWrite('Router', () => {
                 [marketAddress]
             );
 
-            const [lpBalanceAfter, ptBalanceAfter] = await getBalanceSnapshot([marketAddress, ptAddress]);
+            const [lpBalanceAfter, ptBalanceAfter] = await getUserBalances(signerAddress, [marketAddress, ptAddress]);
 
             // lp balance reduced amount equals to liquidity removed
             expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove, DEFAULT_EPSILON);
@@ -406,9 +432,9 @@ describeWrite('Router', () => {
         it('#removeLiquiditySingleSy', async () => {
             const liquidityRemove = (await getBalance(marketAddress, signerAddress)).div(REMOVE_LIQUIDITY_FACTOR_ZAP);
             if (liquidityRemove.eq(0)) {
-                console.warn('skip test because liquidityRemove is 0');
+                throw new Error('skip test because liquidityRemove is 0');
             }
-            const [lpBalanceBefore, syBalanceBefore] = await getBalanceSnapshot([marketAddress, syAddress]);
+            const [lpBalanceBefore, syBalanceBefore] = await getUserBalances(signerAddress, [marketAddress, syAddress]);
 
             const readerData = await sendTxWithInfApproval(
                 () =>
@@ -418,7 +444,7 @@ describeWrite('Router', () => {
                 [marketAddress]
             );
 
-            const [lpBalanceAfter, syBalanceAfter] = await getBalanceSnapshot([marketAddress, syAddress]);
+            const [lpBalanceAfter, syBalanceAfter] = await getUserBalances(signerAddress, [marketAddress, syAddress]);
             // lp balance reduced amount equals to liquidity removed
             expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove, DEFAULT_EPSILON);
 
@@ -431,10 +457,14 @@ describeWrite('Router', () => {
                     REMOVE_LIQUIDITY_FACTOR_ZAP
                 );
                 if (liquidityRemove.eq(0)) {
-                    console.warn(`[${await getERC20Name(token)}] Skip test because liquidityRemove is 0`);
-                    return;
+                    throw new Error(
+                        `[${(await getERC20Name(token)) + ' ' + token}}] Skip test because liquidityRemove is 0`
+                    );
                 }
-                const [lpBalanceBefore, tokenBalanceBefore] = await getBalanceSnapshot([marketAddress, token]);
+                const [lpBalanceBefore, tokenBalanceBefore] = await getUserBalances(signerAddress, [
+                    marketAddress,
+                    token,
+                ]);
 
                 const readerData = await sendTxWithInfApproval(
                     () =>
@@ -450,7 +480,10 @@ describeWrite('Router', () => {
                     [marketAddress]
                 );
 
-                const [lpBalanceAfter, tokenBalanceAfter] = await getBalanceSnapshot([marketAddress, token]);
+                const [lpBalanceAfter, tokenBalanceAfter] = await getUserBalances(signerAddress, [
+                    marketAddress,
+                    token,
+                ]);
                 // lp balance reduced amount equals to liquidity removed
                 expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove, DEFAULT_EPSILON);
 
@@ -476,8 +509,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const ptInAmount = getPtSwapAmount(balanceBefore, true);
             if (ptInAmount.eq(0)) {
-                console.warn('skip test because ptInAmount is 0');
-                return;
+                throw new Error('skip test because ptInAmount is 0');
             }
 
             const readerResult = await sendTxWithInfApproval(
@@ -498,8 +530,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectSyOut = getSySwapAmount(balanceBefore, false).div(100);
             if (expectSyOut.eq(0)) {
-                console.warn('skip test because expectSyOut is 0');
-                return;
+                throw new Error('skip test because expectSyOut is 0');
             }
 
             const callback = () =>
@@ -511,10 +542,9 @@ describeWrite('Router', () => {
 
             const readerData = await sendTxWithInfApproval(callback, [ptAddress], skipTxCheck);
             if (skipTxCheck(readerData)) {
-                console.warn(
+                throw new Error(
                     `skip test because netPtIn (${readerData.netPtIn}) > ptBalance (${balanceBefore.ptBalance})`
                 );
-                return;
             }
 
             const balanceAfter = await getSwapBalanceSnapshot();
@@ -531,8 +561,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectPtOut = getPtSwapAmount(balanceBefore, false);
             if (expectPtOut.eq(0)) {
-                console.warn('skip test because expectPtOut is 0');
-                return;
+                throw new Error('skip test because expectPtOut is 0');
             }
 
             const callback = () =>
@@ -545,10 +574,9 @@ describeWrite('Router', () => {
             const readerResult = await sendTxWithInfApproval(callback, [syAddress], skipTxCheck);
 
             if (skipTxCheck(readerResult)) {
-                console.warn(
+                throw new Error(
                     `skip test because netSyIn (${readerResult.netSyIn}) > syBalance (${balanceBefore.syBalance})`
                 );
-                return;
             }
 
             const balanceAfter = await getSwapBalanceSnapshot();
@@ -565,8 +593,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectSyIn = getSySwapAmount(balanceBefore, true);
             if (expectSyIn.eq(0)) {
-                console.warn('skip test because expectSyIn is 0');
-                return;
+                throw new Error('skip test because expectSyIn is 0');
             }
 
             const readerResult = await sendTxWithInfApproval(
@@ -593,8 +620,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectSyIn = getSySwapAmount(balanceBefore, true);
             if (expectSyIn.eq(0)) {
-                console.warn('skip test because expectSyIn is 0');
-                return;
+                throw new Error('skip test because expectSyIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -620,8 +646,7 @@ describeWrite('Router', () => {
             // to avoid approx fail
             const expectSyOut = getSySwapAmount(balanceBefore, false).div(10);
             if (expectSyOut.eq(0)) {
-                console.warn('skip test because expectSyOut is 0');
-                return;
+                throw new Error('skip test because expectSyOut is 0');
             }
 
             const callback = () =>
@@ -633,10 +658,9 @@ describeWrite('Router', () => {
 
             const readerData = await sendTxWithInfApproval(callback, [ytAddress], skipTxCheck);
             if (skipTxCheck(readerData)) {
-                console.warn(
+                throw new Error(
                     `skip test because netYtIn (${readerData.netYtIn}) > ytBalance (${balanceBefore.ytBalance})`
                 );
-                return;
             }
 
             const balanceAfter = await getSwapBalanceSnapshot();
@@ -651,8 +675,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectYtOut = getYtSwapAmount(balanceBefore, false);
             if (expectYtOut.eq(0)) {
-                console.warn('skip test because expectYtOut is 0');
-                return;
+                throw new Error('skip test because expectYtOut is 0');
             }
 
             const callback = () =>
@@ -665,10 +688,9 @@ describeWrite('Router', () => {
             const readerData = await sendTxWithInfApproval(callback, [syAddress], skipTxCheck);
 
             if (skipTxCheck(readerData)) {
-                console.warn(
+                throw new Error(
                     `skip test because netSyIn (${readerData.netSyIn}) > syBalance (${balanceBefore.syBalance})`
                 );
-                return;
             }
 
             const balanceAfter = await getSwapBalanceSnapshot();
@@ -683,8 +705,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectYtIn = getYtSwapAmount(balanceBefore, true);
             if (expectYtIn.eq(0)) {
-                console.warn('skip test because expectYtIn is 0');
-                return;
+                throw new Error('skip test because expectYtIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -710,8 +731,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectRawTokenIn = getTokenSwapAmount(balanceBefore, true);
             if (expectRawTokenIn.eq(0)) {
-                console.warn('skip test because expectRawTokenIn is 0');
-                return;
+                throw new Error('skip test because expectRawTokenIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -740,8 +760,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectPtIn = getPtSwapAmount(balanceBefore, true);
             if (expectPtIn.eq(0)) {
-                console.warn('skip test because expectPtIn is 0');
-                return;
+                throw new Error('skip test because expectPtIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -770,8 +789,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectRawTokenIn = getTokenSwapAmount(balanceBefore, true);
             if (expectRawTokenIn.eq(0)) {
-                console.warn('skip test because expectRawTokenIn is 0');
-                return;
+                throw new Error('skip test because expectRawTokenIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -799,8 +817,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectYtIn = getYtSwapAmount(balanceBefore, true);
             if (expectYtIn.eq(0)) {
-                console.warn('skip test because expectYtIn is 0');
-                return;
+                throw new Error('skip test because expectYtIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -837,8 +854,7 @@ describeWrite('Router', () => {
                 balanceBefore.tokenBalance
             );
             if (expectRawTokenIn.eq(0)) {
-                console.warn('skip test because expectRawTokenIn is 0');
-                return;
+                throw new Error('skip test because expectRawTokenIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -863,8 +879,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectPyIn = getPyRedeemAmount(balanceBefore);
             if (expectPyIn.eq(0)) {
-                console.warn('skip test because expectPyIn is 0');
-                return;
+                throw new Error('skip test because expectPyIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -893,8 +908,7 @@ describeWrite('Router', () => {
                 balanceBefore.tokenBalance
             );
             if (expectRawTokenIn.eq(0)) {
-                console.warn('skip test because expectRawTokenIn is 0');
-                return;
+                throw new Error('skip test because expectRawTokenIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -917,8 +931,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectSyIn = getSyRedeemAmount(balanceBefore);
             if (expectSyIn.eq(0)) {
-                console.warn('skip test because expectSyIn is 0');
-                return;
+                throw new Error('skip test because expectSyIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -943,8 +956,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectYtIn = getYtSwapAmount(balanceBefore, true);
             if (expectYtIn.eq(0)) {
-                console.warn('skip test because expectYtIn is 0');
-                return;
+                throw new Error('skip test because expectYtIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -967,8 +979,7 @@ describeWrite('Router', () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectPtIn = getPtSwapAmount(balanceBefore, true);
             if (expectPtIn.eq(0)) {
-                console.warn('skip test because expectPtIn is 0');
-                return;
+                throw new Error('skip test because expectPtIn is 0');
             }
 
             const readerData = await sendTxWithInfApproval(
@@ -1013,7 +1024,7 @@ describeWrite('Router', () => {
             results.every((x) => x.kybercall.length == 0 || x.kybercall.toString().includes(receiver.replace('0x', '')))
         ).toBeTruthy();
 
-        console.log(simplifiedResults);
+        // console.log(simplifiedResults);
     });
 
     // =============================HELPER FUNCTIONS====================================================
@@ -1037,10 +1048,6 @@ describeWrite('Router', () => {
             marketPtBalance,
             marketSyBalance,
         };
-    }
-
-    async function getBalanceSnapshot(tokens: Address[]): Promise<BN[]> {
-        return Promise.all(tokens.map((token) => getBalance(token, signerAddress)));
     }
 
     function getSySwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean): BN {
