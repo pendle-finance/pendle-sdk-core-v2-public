@@ -3,7 +3,7 @@
     "author": "Pendle Labs",
     "description": "SDK of Pendle Protocol.",
     "license": "MIT",
-    "version": "1.6.0-mainnet",
+    "version": "1.6.1-mainnet",
     "main": "dist/index.js",
     "typings": "dist/index.d.ts",
     "files": [
@@ -41,7 +41,8 @@
         "@pendle/core-v2": "^1.4.0-mainnet",
         "axios": "^0.27.2",
         "bignumber.js": "^9.1.0",
-        "ethers": "^5.7.1"
+        "ethers": "^5.7.1",
+        "tslib": "^2.5.0"
     },
     "devDependencies": {
         "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@1.4.0-mainnet",
@@ -63,7 +64,6 @@
         "ts-jest": "^29.0.5",
         "ts-node": "^10.9.1",
         "tsdx": "^0.14.1",
-        "tslib": "^2.5.0",
         "typedoc": "^0.23.21",
         "typescript": "^4.9.5"
     },

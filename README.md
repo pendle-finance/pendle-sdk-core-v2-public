@@ -6,16 +6,16 @@
 
 ## Installation
 
-Install the **exact `1.6.0-mainnet` version** of Pendle SDK via the following command:
+Install the **exact `1.6.1-mainnet` version** of Pendle SDK via the following command:
 
 ```sh
-yarn add "@pendle/sdk-v2@1.6.0-mainnet"
+yarn add "@pendle/sdk-v2@1.6.1-mainnet"
 ```
 
 or
 
 ```sh
-npm install "@pendle/sdk-v2@1.6.0-mainnet"
+npm install "@pendle/sdk-v2@1.6.1-mainnet"
 ```
 
 ## Documentation
