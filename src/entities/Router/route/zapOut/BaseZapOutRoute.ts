@@ -145,7 +145,7 @@ export abstract class BaseZapOutRoute<
             { token: this.tokenRedeemSy, amount: tokenRedeemSyAmount },
             this.targetToken,
             this.context.aggregatorSlippage,
-            { receiver: this.routerExtraParams.aggregatorReceiver, forceGetAmountInUsd: true }
+            { receiver: this.routerExtraParams.aggregatorReceiver }
         );
     }
 

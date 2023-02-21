@@ -125,7 +125,7 @@ export abstract class BaseZapInRoute<
             this.sourceTokenAmount,
             this.tokenMintSy,
             this.context.aggregatorSlippage,
-            { receiver: this.routerExtraParams.aggregatorReceiver, forceGetAmountInUsd: true }
+            { receiver: this.routerExtraParams.aggregatorReceiver }
         );
     }
 

@@ -209,10 +209,7 @@ export class KyberHelper {
         { token, amount }: RawTokenAmount<BigNumberish>,
         output: Address,
         slippage: number,
-        {
-            receiver = this.routerAddress,
-            forceGetAmountInUsd = false,
-        }: { receiver?: Address; forceGetAmountInUsd?: boolean } = {}
+        { receiver = this.routerAddress }: { receiver?: Address } = {}
     ): Promise<KybercallData | undefined> {
         if (!isKyberSupportedChain(this.chainId)) {
             throw new PendleSdkError(`Chain ${this.chainId} is not supported for kybercall.`);
@@ -222,35 +219,7 @@ export class KyberHelper {
         if (isNativeToken(output)) output = NATIVE_ADDRESS_0xEE;
 
         if (isSameAddress(token, output)) {
-            let amountInUsd: number | undefined;
-            let amountOutUsd: number | undefined;
-
-            if (forceGetAmountInUsd) {
-                if (!(this.chainId in HARDCODE_USDC_FOR_CHAIN)) {
-                    throw new PendleSdkError(
-                        `Can not get amount in USD for swapping ${token} to itself on chain ${this.chainId}`
-                    );
-                }
-                const usdc = HARDCODE_USDC_FOR_CHAIN[this.chainId];
-                if (isSameAddress(token, usdc)) {
-                    amountInUsd = amountOutUsd = BN.from(amount).div(BN.from(10).pow(USDC_DECIMALS)).toNumber();
-                } else {
-                    const tempResult = await this.makeCall({ token, amount }, usdc, slippage, {
-                        receiver,
-                        forceGetAmountInUsd,
-                    });
-                    if (tempResult === undefined) {
-                        throw new PendleSdkError(
-                            `Can not get amount in USD for swapping ${token} to itself on chain ${this.chainId}`
-                        );
-                    }
-                    ({ amountInUsd, amountOutUsd } = tempResult);
-                }
-            }
-
             const result = {
-                amountInUsd,
-                amountOutUsd,
                 outputAmount: amount,
                 encodedSwapData: [],
                 routerAddress: NATIVE_ADDRESS_0x00,
@@ -260,7 +229,6 @@ export class KyberHelper {
         }
         const patchedResult = await this.patchETH_wETH({ token, amount }, output, slippage, {
             receiver,
-            forceGetAmountInUsd,
         });
         if (patchedResult) return patchedResult;
 
@@ -377,7 +345,7 @@ export class KyberHelper {
         { token, amount }: RawTokenAmount<BigNumberish>,
         output: Address,
         _slippage: number,
-        _params: { receiver?: Address; forceGetAmountInUsd?: boolean } = {}
+        _params: { receiver?: Address } = {}
     ): Promise<KybercallData | undefined> {
         if (isNativeToken(token) && isSameAddress(output, KyberHelper.WETHAddress)) {
             return {
