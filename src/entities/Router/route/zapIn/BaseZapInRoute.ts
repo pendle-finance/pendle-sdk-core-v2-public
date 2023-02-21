@@ -52,7 +52,7 @@ export abstract class BaseZapInRoute<
             this.context.getMaxOutAmongAllRoutes(),
             this.estimateSourceTokenAmountInEth(),
         ]);
-        if (curNetOut === undefined || maxNetOut === undefined || sourceTokenAmountInEth === undefined) {
+        if (curNetOut === undefined || maxNetOut === undefined) {
             return undefined;
         }
 
@@ -64,15 +64,21 @@ export abstract class BaseZapInRoute<
         return bnSafeDiv(curNetOut.mul(sourceTokenAmountInEth), maxNetOut);
     }
 
+    /**
+     * Estimate the amount of source token in term of ETH
+     *
+     * @remarks
+     * If the source token is not swappable to ETH, it will return 0.
+     */
     @RouteContext.NoArgsSharedCache
-    async estimateSourceTokenAmountInEth(): Promise<BN | undefined> {
+    async estimateSourceTokenAmountInEth(): Promise<BN> {
         const DUMMY_SLIPPAGE = 0.2 / 100;
         const result = await this.aggregatorHelper.makeCall(
             this.sourceTokenAmount,
             NATIVE_ADDRESS_0xEE,
             DUMMY_SLIPPAGE
         );
-        return result ? BN.from(result.outputAmount) : undefined;
+        return result ? BN.from(result.outputAmount) : BN.from(0);
     }
 
     protected override async getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined> {

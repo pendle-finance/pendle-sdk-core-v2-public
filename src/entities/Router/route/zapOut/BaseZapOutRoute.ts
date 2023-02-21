@@ -95,6 +95,12 @@ export abstract class BaseZapOutRoute<
         return bnSafeDiv(curNetOut.mul(maxNetOutInEth), maxNetOut);
     }
 
+    /**
+     * Estimate the max out amount among all routes in term of ETH.
+     *
+     * @remarks
+     * If the token is not swappable to ETH, this function will return `0`.
+     */
     @RouteContext.NoArgsSharedCache
     async estimateMaxOutAmoungAllRouteInEth(): Promise<BN | undefined> {
         const maxOut = await this.context.getMaxOutAmongAllRoutes();
@@ -106,7 +112,7 @@ export abstract class BaseZapOutRoute<
             NATIVE_ADDRESS_0xEE,
             DUMMY_SLIPPAGE
         );
-        return aggregatorResult == undefined ? undefined : BN.from(aggregatorResult.outputAmount);
+        return aggregatorResult == undefined ? BN.from(0) : BN.from(aggregatorResult.outputAmount);
     }
 
     @RouteContext.NoArgsSharedCache

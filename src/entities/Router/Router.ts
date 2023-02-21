@@ -48,7 +48,6 @@ export class Router extends BaseRouter {
         route: ZapInRoute
     ): Promise<ZapInRoute | undefined> {
         const tradeValueInEth = await route.estimateSourceTokenAmountInEth();
-        if (tradeValueInEth == undefined) return undefined;
         const isBelowLimit = tradeValueInEth.lt(BaseRouter.BULK_LIMIT);
         const shouldRouteThroughBulkSeller = isBelowLimit;
         if (shouldRouteThroughBulkSeller) {
