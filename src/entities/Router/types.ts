@@ -38,7 +38,7 @@ export type RouterState = {
     kyberHelper: KyberState;
 };
 
-export type RouterConfig = PendleEntityConfigOptionalAbi & {
+export type BaseRouterConfig = PendleEntityConfigOptionalAbi & {
     chainId: ChainId;
     kyberHelper?: KyberHelperCoreConfig;
     bulkSellerUsage?: BulkSellerUsageStrategy;
@@ -60,7 +60,7 @@ export type RouterMetaMethodReturnType<
 export type FixedRouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtraParams<T> & {
     receiver: Address | typeof ContractMetaMethod.utils.getContractSignerAddress;
     useBulk: UseBulkMode;
-    entityConfig: RouterConfig;
+    entityConfig: BaseRouterConfig;
     aggregatorReceiver: Address;
 
     // this is a copy of this type, but used for the inner callStatic to calculate stuff

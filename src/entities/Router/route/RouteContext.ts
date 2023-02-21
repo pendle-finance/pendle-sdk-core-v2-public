@@ -1,4 +1,4 @@
-import { Router } from '../Router';
+import { BaseRouter } from '../BaseRouter';
 import { BN, Address, toAddress, ethersConstants, NoArgsCache, createNoArgsCache, bnMax } from '../../../common';
 import { createERC20 } from '../../erc20';
 import { SyEntity } from '../../SyEntity';
@@ -7,7 +7,7 @@ import { MetaMethodType } from '../../../contracts';
 import { BaseRoute } from './BaseRoute';
 
 export type RouteContextConfig<T extends MetaMethodType> = {
-    readonly router: Router;
+    readonly router: BaseRouter;
     readonly syEntity: SyEntity;
     readonly routerExtraParams: FixedRouterMetaMethodExtraParams<T>;
     readonly aggregatorSlippage: number;
@@ -15,7 +15,7 @@ export type RouteContextConfig<T extends MetaMethodType> = {
 };
 
 export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<T, any>> {
-    readonly router: Router;
+    readonly router: BaseRouter;
     readonly syEntity: SyEntity;
     readonly routerExtraParams: FixedRouterMetaMethodExtraParams<T>;
     readonly aggregatorSlippage: number;
@@ -83,11 +83,11 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
     }
 
     guessOutApproxParams(this: void, guessAmountOut: BN, slippage: number): ApproxParamsStruct {
-        return Router.guessInApproxParams(guessAmountOut, slippage);
+        return BaseRouter.guessInApproxParams(guessAmountOut, slippage);
     }
 
     guessInApproxParams(this: void, guessAmountIn: BN, slippage: number): ApproxParamsStruct {
-        return Router.guessOutApproxParams(guessAmountIn, slippage);
+        return BaseRouter.guessOutApproxParams(guessAmountIn, slippage);
     }
 
     /**
