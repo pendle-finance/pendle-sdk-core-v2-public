@@ -15,10 +15,16 @@ import {
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
 import { ERC20Entity, ERC20EntityConfig } from './erc20';
-import { BulkSellerUsageStrategy, UseBulkMode } from '../bulkSeller';
-import { Address, toAddress, isNativeToken, ChainId, RawTokenAmount, createTokenAmount } from '../common';
+import {
+    Address,
+    toAddress,
+    isNativeToken,
+    ChainId,
+    RawTokenAmount,
+    createTokenAmount,
+    NATIVE_ADDRESS_0x00,
+} from '../common';
 import { calcSlippedDownAmount } from '../common/math';
-import { getGlobalBulkSellerUsageStrategyGetter } from '../bulkSeller/defaultStrategy';
 
 export type UserSyInfo = {
     balance: BN;
@@ -30,7 +36,6 @@ export type UserSyInfo = {
  */
 export type SyEntityConfig = ERC20EntityConfig & {
     chainId: ChainId;
-    bulkSellerUsage?: BulkSellerUsageStrategy;
 };
 
 export type SyEntityMetaMethodReturnType<
@@ -44,14 +49,12 @@ export type SyEntityMetaMethodReturnType<
  */
 export class SyEntity extends ERC20Entity {
     protected readonly routerStatic: WrappedContract<RouterStatic>;
-    readonly bulkSellerUsage: BulkSellerUsageStrategy;
     readonly chainId: ChainId;
 
     constructor(readonly address: Address, config: SyEntityConfig) {
         super(address, { abi: SYBaseABI, ...config });
         this.chainId = config.chainId;
         this.routerStatic = getRouterStatic(config);
-        this.bulkSellerUsage = config.bulkSellerUsage ?? getGlobalBulkSellerUsageStrategyGetter(this.routerStatic);
     }
 
     get contract() {
@@ -63,7 +66,6 @@ export class SyEntity extends ERC20Entity {
             ...this.networkConnection,
             chainId: this.chainId,
             multicall: this.multicall,
-            bulkSellerUsage: this.bulkSellerUsage,
         };
     }
 
@@ -100,8 +102,8 @@ export class SyEntity extends ERC20Entity {
     ): SyEntityMetaMethodReturnType<T, 'deposit', { amountSyOut: BN }> {
         const amountSyOut = await this.previewDeposit(baseAssetIn, amountBaseToPull, {
             ...params,
-            useBulk: false, // hmm what to do with useBulk in this case?
         });
+        // TODO deposit with bulk seller?
         return this.contract.metaCall.deposit(
             params?.receiver ?? ContractMetaMethod.utils.getContractSignerAddress,
             baseAssetIn,
@@ -150,7 +152,8 @@ export class SyEntity extends ERC20Entity {
         }
     ): SyEntityMetaMethodReturnType<T, 'redeem', { amountBaseOut: BN }> {
         const burnFromInternalBalance = params?.burnFromInternalBalance ?? false;
-        const amountBaseOut = await this.previewRedeem(baseAssetOut, amountSyToPull, { ...params, useBulk: false });
+        const amountBaseOut = await this.previewRedeem(baseAssetOut, amountSyToPull, { ...params });
+        // TODO redeem with bulk seller
         return this.contract.metaCall.redeem(
             params?.receiver ?? ContractMetaMethod.utils.getContractSignerAddress,
             amountSyToPull,
@@ -208,30 +211,24 @@ export class SyEntity extends ERC20Entity {
      * @param tokenOut
      * @param amountSharesToRedeem
      * @param params - the additional parameters for read method.
-     * @param params.useBulk - specify whether to use bulk seller.
+     * @param params.bulk - specify bulk seller address. Default is {@link NATIVE_ADDRESS_0x00}
+     *          (for not using bulk seller)
      * @returns the redeemed raw amount of `tokenOut`
      */
     async previewRedeem(
         tokenOut: Address,
         amountSharesToRedeem: BigNumberish,
-        params?: MulticallStaticParams & {
-            useBulk?: UseBulkMode;
-        }
+        params: MulticallStaticParams & {
+            bulk?: Address;
+        } = {}
     ): Promise<BN> {
-        const useBulk = params?.useBulk ?? 'auto';
-        const useBulkResult = await this.bulkSellerUsage.determineBySy(
-            useBulk,
-            { token: this.address, amount: amountSharesToRedeem },
-            tokenOut
-        );
-        return useBulkResult.tryInvoke((bulkSellerAddress) =>
-            this.routerStatic.multicallStatic.previewRedeemStatic(
-                this.address,
-                tokenOut,
-                amountSharesToRedeem,
-                bulkSellerAddress,
-                params
-            )
+        const { bulk = NATIVE_ADDRESS_0x00 } = params;
+        return this.routerStatic.multicallStatic.previewRedeemStatic(
+            this.address,
+            tokenOut,
+            amountSharesToRedeem,
+            bulk,
+            params
         );
     }
 
@@ -240,30 +237,24 @@ export class SyEntity extends ERC20Entity {
      * @param tokenIn
      * @param amountTokenToDeposit
      * @param params - the additional parameters for read method.
-     * @param params.useBulk - specify whether to use bulk seller.
+     * @param params.bulk - specify bulk seller address. Default is {@link NATIVE_ADDRESS_0x00} (for not using
+     *  bulk seller).
      * @returns the deposited raw amount of SY
      */
     async previewDeposit(
         tokenIn: Address,
         amountTokenToDeposit: BigNumberish,
-        params?: MulticallStaticParams & {
-            useBulk?: UseBulkMode;
-        }
+        params: MulticallStaticParams & {
+            bulk?: Address;
+        } = {}
     ): Promise<BN> {
-        const useBulk = params?.useBulk ?? 'auto';
-        const useBulkResult = await this.bulkSellerUsage.determineByToken(
-            useBulk,
-            { token: tokenIn, amount: amountTokenToDeposit },
-            this.address
-        );
-        return useBulkResult.tryInvoke((bulkSellerAddress) =>
-            this.routerStatic.multicallStatic.previewDepositStatic(
-                this.address,
-                tokenIn,
-                amountTokenToDeposit,
-                bulkSellerAddress,
-                params
-            )
+        const { bulk = NATIVE_ADDRESS_0x00 } = params;
+        return this.routerStatic.multicallStatic.previewDepositStatic(
+            this.address,
+            tokenIn,
+            amountTokenToDeposit,
+            bulk,
+            params
         );
     }
 }

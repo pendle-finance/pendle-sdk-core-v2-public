@@ -131,7 +131,7 @@ export abstract class BaseZapInRoute<
             this.sourceTokenAmount,
             this.tokenMintSy,
             this.context.aggregatorSlippage,
-            { receiver: this.routerExtraParams.aggregatorReceiver }
+            { aggregatorReceiver: this.routerExtraParams.aggregatorReceiver }
         );
     }
 
@@ -141,26 +141,27 @@ export abstract class BaseZapInRoute<
         if (aggregatorResult === undefined) {
             return undefined;
         }
+        const pendleSwap = this.router.getPendleSwapAddress();
         const input: TokenInput = {
             tokenIn: this.sourceTokenAmount.token,
             netTokenIn: this.sourceTokenAmount.amount,
             tokenMintSy: this.tokenMintSy,
-            kybercall: aggregatorResult.encodedSwapData,
             bulk,
-            kyberRouter: aggregatorResult.routerAddress,
+            pendleSwap,
+            swapData: aggregatorResult.createSwapData({ needScale: false }),
         };
         return input;
     }
 
     /**
      * @return
-     * - {@link ethersConstants.MaxUint256} if result if {@link this.getAggregatorResult} is `undefined`.
+     * - {@link ethersConstants.Zero} if result if {@link this.getAggregatorResult} is `undefined`.
      * - `outputAmount` of {@link this.getAggregatorResult}() otherwise.
      *
-     * {@link ethersConstants.MaxUint256} is returned instead of `undefined` to have less
+     * {@link ethersConstants.Zero} is returned instead of `undefined` to have less
      * code dealing with type assertion.
      */
     async getTokenMintSyAmount(): Promise<BigNumberish> {
-        return (await this.getAggregatorResult())?.outputAmount ?? ethersConstants.MaxUint256;
+        return (await this.getAggregatorResult())?.outputAmount ?? ethersConstants.Zero;
     }
 }

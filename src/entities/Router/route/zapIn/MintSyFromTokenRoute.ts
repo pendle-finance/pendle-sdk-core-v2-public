@@ -1,16 +1,10 @@
 import { BaseZapInRoute, BaseZapInRouteConfig } from './BaseZapInRoute';
-import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams, TokenInput } from '../../types';
+import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, calcSlippedDownAmount, isNativeToken } from '../../../../common';
-import { KybercallData } from '../../../KyberHelper';
 
 export type MintSyFromTokenRouteData = {
     netSyOut: BN;
-
-    /** @deprecated use Route API instead */
-    input: TokenInput;
-    /** @deprecated use Route API instead */
-    kybercallData: KybercallData;
 };
 
 export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
@@ -58,15 +52,9 @@ export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
         const netSyOut = await this.context.syEntity.previewDeposit(
             this.tokenMintSy,
             await this.getTokenMintSyAmount(),
-            { ...this.routerExtraParams.forCallStatic, useBulk: { withAddress: input.bulk } }
+            { ...this.routerExtraParams.forCallStatic, bulk: input.bulk }
         );
-        return {
-            netSyOut,
-
-            // TODO remove these as deprecated
-            input,
-            kybercallData: (await this.getAggregatorResult())!,
-        };
+        return { netSyOut };
     }
 
     protected override async getGasUsedImplement(): Promise<BN | undefined> {

@@ -103,7 +103,7 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
     }
 
     get aggregatorHelper() {
-        return this.router.kyberHelper;
+        return this.router.aggregatorHelper;
     }
 
     @NoArgsCache

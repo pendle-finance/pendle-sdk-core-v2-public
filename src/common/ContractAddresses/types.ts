@@ -9,6 +9,8 @@ export type ContractAddresses = {
     ROUTER_STATIC: Address;
     PENDLE: Address;
     VEPENDLE: Address;
+    WRAPPED_NATIVE: Address;
     VOTING_CONTROLLER?: Address;
     FEE_DISTRIBUTOR?: Address;
+    PENDLE_SWAP?: Address;
 };

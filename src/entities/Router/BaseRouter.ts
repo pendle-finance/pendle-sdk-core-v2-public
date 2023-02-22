@@ -15,10 +15,11 @@ import { MarketEntity } from '../MarketEntity';
 import { SyEntity } from '../SyEntity';
 import { YtEntity } from '../YtEntity';
 import { NoRouteFoundError } from '../../errors';
-import { KyberHelper, KybercallData } from '../KyberHelper';
-import { BulkSellerUsageStrategy, getGlobalBulkSellerUsageStrategyGetter } from '../../bulkSeller';
+import { AggregatorHelper } from './aggregatorHelper';
 import {
+    NATIVE_ADDRESS_0x00,
     Address,
+    getContractAddresses,
     ChainId,
     RawTokenAmount,
     toArrayOfStructures,
@@ -29,15 +30,14 @@ import {
 import { BigNumber } from 'bignumber.js';
 
 import {
-    TokenInput,
     TokenOutput,
     RouterMetaMethodReturnType,
     RouterMetaMethodExtraParams,
     BaseRouterConfig,
-    RouterState,
     FixedRouterMetaMethodExtraParams,
     ApproxParamsStruct,
     IPAllAction,
+    SwapData,
 } from './types';
 
 import { BaseRoute, RouteContext } from './route';
@@ -77,25 +77,16 @@ export abstract class BaseRouter extends PendleEntity {
     };
 
     readonly routerStatic: WrappedContract<RouterStatic>;
-    readonly kyberHelper: KyberHelper;
-    readonly bulkSellerUsage: BulkSellerUsageStrategy;
+    readonly aggregatorHelper: AggregatorHelper;
     readonly chainId: ChainId;
     readonly gasFeeEstimator: GasFeeEstimator;
 
     constructor(readonly address: Address, config: BaseRouterConfig) {
         super(address, { abi: IPAllActionABI, ...config });
         this.chainId = config.chainId;
-        const { kyberHelper: kyberHelperCoreConfig } = { ...config };
+        this.aggregatorHelper = config.aggregatorHelper;
         this.routerStatic = getRouterStatic(config);
         this.gasFeeEstimator = config.gasFeeEstimator ?? new GasFeeEstimator(this.provider!);
-
-        this.kyberHelper = new KyberHelper(address, {
-            chainId: this.chainId,
-            ...this.networkConnection,
-            ...kyberHelperCoreConfig,
-        });
-
-        this.bulkSellerUsage = config.bulkSellerUsage ?? getGlobalBulkSellerUsageStrategyGetter(this.routerStatic);
     }
 
     abstract findBestZapInRoute<ZapInRoute extends BaseZapInRoute<MetaMethodType, object, ZapInRoute>>(
@@ -114,21 +105,19 @@ export abstract class BaseRouter extends PendleEntity {
     }
 
     override get entityConfig(): BaseRouterConfig {
-        return { ...super.entityConfig, chainId: this.chainId, bulkSellerUsage: this.bulkSellerUsage };
+        return { ...super.entityConfig, chainId: this.chainId, aggregatorHelper: this.aggregatorHelper };
     }
 
     protected get routerStaticCall() {
         return this.routerStatic.multicallStatic;
     }
 
-    get state(): RouterState {
-        return {
-            kyberHelper: this.kyberHelper.state,
-        };
-    }
-
-    set state(value: RouterState) {
-        this.kyberHelper.state = value.kyberHelper;
+    /**
+     * @return {@link NATIVE_ADDRESS_0x00} if there is no PENDLE_SWAP address for {@link chainId}.
+     * The pendleSwap contract address is returned otherwise.
+     */
+    getPendleSwapAddress(): Address {
+        return getContractAddresses(this.chainId).PENDLE_SWAP ?? NATIVE_ADDRESS_0x00;
     }
 
     getDefaultMetaMethodExtraParams<T extends MetaMethodType>(): FixedRouterMetaMethodExtraParams<T> {
@@ -363,11 +352,6 @@ export abstract class BaseRouter extends PendleEntity {
             netSyFee: BN;
             exchangeRateAfter: BN;
             route: AddLiquiditySingleTokenRoute<T>;
-
-            /** @deprecated Use route API instead */
-            kybercallData: KybercallData;
-            /** @deprecated Use route API instead */
-            input: TokenInput;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -435,17 +419,6 @@ export abstract class BaseRouter extends PendleEntity {
             netPtOut: BN;
             intermediateSyAmount: BN;
             route: RemoveLiquidityDualTokenAndPtRoute<T>;
-
-            /** @deprecated use intermediateSyAmount or Route API instead */
-            intermediateSy: BN;
-            /** @deprecated use Route API instead */
-            netTokenOut: BN;
-            /** @deprecated use Route API instead */
-            output: TokenOutput;
-            /** @deprecated use Route API instead */
-            kybercallData: KybercallData;
-            /** @deprecated use Route API instead */
-            redeemedFromSyAmount: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -547,17 +520,6 @@ export abstract class BaseRouter extends PendleEntity {
             exchangeRateAfter: BN;
             intermediateSyAmount: BN;
             route: RemoveLiquiditySingleTokenRoute<T>;
-
-            /** @deprecated use Route API instead */
-            netTokenOut: BN;
-            /** @deprecated use Route API instead */
-            output: TokenOutput;
-            /** @deprecated use Route API instead */
-            kybercallData: KybercallData;
-            /** @deprecated use intermediateSyAmount or Route API instead */
-            intermediateSy: BN;
-            /** @deprecated use Route API instead */
-            redeemedFromSyAmount: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -672,11 +634,6 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: BN;
             exchangeRateAfter: BN;
             route: SwapExactTokenForPtRoute<T>;
-
-            /** @deprecated use Route API instead */
-            input: TokenInput;
-            /** @deprecated use Route API instead */
-            kybercallData: KybercallData;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -739,11 +696,6 @@ export abstract class BaseRouter extends PendleEntity {
         {
             netSyOut: BN;
             route: MintSyFromTokenRoute<T>;
-
-            /** @deprecated use Route API instead */
-            input: TokenInput;
-            /** @deprecated use Route API instead */
-            kybercallData: KybercallData;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -780,10 +732,6 @@ export abstract class BaseRouter extends PendleEntity {
         {
             intermediateSyAmount: BN;
             route: RedeemSyToTokenRoute<T>;
-
-            netTokenOut: BN;
-            output: TokenOutput;
-            kybercallData: KybercallData;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -817,11 +765,6 @@ export abstract class BaseRouter extends PendleEntity {
         {
             netPyOut: BN;
             route: MintPyFromTokenRoute<T>;
-
-            /** @deprecated use Route API instead */
-            input: TokenInput;
-            /** @deprecated use Route API instead */
-            kybercallData: KybercallData;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -877,10 +820,6 @@ export abstract class BaseRouter extends PendleEntity {
             intermediateSyAmount: BN;
             pyIndex: BN;
             route: RedeemPyToTokenRoute<T>;
-
-            netTokenOut: BN;
-            kybercallData: KybercallData;
-            output: TokenOutput;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -987,11 +926,6 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: BN;
             exchangeRateAfter: BN;
             route: SwapExactPtForTokenRoute<T>;
-
-            intermediateSy: BN;
-            netTokenOut: BN;
-            output: TokenOutput;
-            kybercallData: KybercallData;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1077,11 +1011,6 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: BN;
             exchangeRateAfter: BN;
             route: SwapExactTokenForYtRoute<T>;
-
-            /** @deprecated use Route API instead */
-            input: TokenInput;
-            /** @deprecated use Route API instead */
-            kybercallData: KybercallData;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1119,15 +1048,10 @@ export abstract class BaseRouter extends PendleEntity {
         'swapExactYtForToken',
         {
             intermediateSyAmount: BN;
+            netSyFee: BN;
             priceImpact: BN;
             exchangeRateAfter: BN;
             route: SwapExactYtForTokenRoute<T>;
-
-            netTokenOut: BN;
-            intermediateSy: BN;
-            output: TokenOutput;
-            kybercallData: KybercallData;
-            netSyFee: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1247,19 +1171,19 @@ export abstract class BaseRouter extends PendleEntity {
         slippage: number,
         tokensAndTokensIn: { tokens: Address[]; netTokenIns: BigNumberish[] },
         params?: { receiver?: Address }
-    ): Promise<KybercallData[]>;
+    ): Promise<SwapData[]>;
     async sellTokens(
         tokenOut: Address,
         slippage: number,
         tokenAmounts: RawTokenAmount<BigNumberish>[],
         params?: { receiver?: Address }
-    ): Promise<KybercallData[]>;
+    ): Promise<SwapData[]>;
     async sellTokens(
         tokenOut: Address,
         slippage: number,
         input: { tokens: Address[]; netTokenIns: BigNumberish[] } | RawTokenAmount<BigNumberish>[],
         params: { receiver?: Address } = {}
-    ): Promise<KybercallData[]> {
+    ): Promise<SwapData[]> {
         const tokenAmounts = Array.isArray(input)
             ? input
             : toArrayOfStructures({ token: input.tokens, amount: input.netTokenIns });
@@ -1288,18 +1212,18 @@ export abstract class BaseRouter extends PendleEntity {
         slippage: number,
         tokenAmounts: RawTokenAmount<BigNumberish>[],
         params: { receiver?: Address } = {}
-    ): Promise<KybercallData[]> {
-        const kybercallData = await Promise.all(
+    ): Promise<SwapData[]> {
+        const swapData = await Promise.all(
             tokenAmounts.map(async (tokenAmount) => {
-                const res = await this.kyberHelper.makeCall(tokenAmount, tokenOut, slippage, {
-                    receiver: params.receiver,
+                const res = await this.aggregatorHelper.makeCall(tokenAmount, tokenOut, slippage, {
+                    aggregatorReceiver: params.receiver,
                 });
                 if (res === undefined) {
                     throw NoRouteFoundError.action('sell token', tokenAmount.token, tokenOut);
                 }
-                return res;
+                return res.createSwapData({ needScale: true });
             })
         );
-        return kybercallData;
+        return swapData;
     }
 }

@@ -1,16 +1,10 @@
 import { BaseZapInRoute, BaseZapInRouteConfig } from './BaseZapInRoute';
-import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams, TokenInput } from '../../types';
+import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, calcSlippedDownAmount, isNativeToken } from '../../../../common';
-import { KybercallData } from '../../../KyberHelper';
 
 export type MintPyFromTokenRouteData = {
     netPyOut: BN;
-
-    /** @deprecated use Route API instead */
-    input: TokenInput;
-    /** @deprecated use Route API instead */
-    kybercallData: KybercallData;
 };
 
 export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
@@ -58,13 +52,7 @@ export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
             input.bulk,
             this.routerExtraParams.forCallStatic
         );
-        return {
-            netPyOut,
-
-            // TODO remove these as deprecated
-            input,
-            kybercallData: (await this.getAggregatorResult())!,
-        };
+        return { netPyOut };
     }
 
     protected override async getGasUsedImplement(): Promise<BN | undefined> {

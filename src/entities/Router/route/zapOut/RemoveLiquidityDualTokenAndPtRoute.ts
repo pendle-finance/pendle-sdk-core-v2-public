@@ -2,8 +2,6 @@ import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, BaseZapOutRouteConfig
 import { MetaMethodType } from '../../../../contracts';
 import { BN, Address, BigNumberish, calcSlippedDownAmount } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
-import { TokenOutput } from '../../types';
-import { KybercallData } from '../../../KyberHelper';
 
 export type RemoveLiquidityDualTokenAndPtRouteIntermediateData = BaseZapOutRouteIntermediateData & {
     netPtOut: BN;
@@ -57,17 +55,6 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
         'removeLiquidityDualTokenAndPt',
         RemoveLiquidityDualTokenAndPtRouteIntermediateData & {
             route: RemoveLiquidityDualTokenAndPtRoute<T>;
-
-            /** @deprecated use Route API instead */
-            netTokenOut: BN;
-            /** @deprecated use Route API instead */
-            output: TokenOutput;
-            /** @deprecated use Route API instead */
-            kybercallData: KybercallData;
-            /** @deprecated use Route API instead */
-            redeemedFromSyAmount: BN;
-            /** @deprecated use intermediateSyAmount or Route API instead */
-            intermediateSy: BN;
         }
     > {
         const res = await this.buildGenericCall(

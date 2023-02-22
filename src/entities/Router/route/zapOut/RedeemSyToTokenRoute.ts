@@ -2,8 +2,6 @@ import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, BaseZapOutRouteConfig
 import { MetaMethodType } from '../../../../contracts';
 import { BN, Address } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
-import { TokenOutput } from '../../types';
-import { KybercallData } from '../../../KyberHelper';
 
 export type RedeemSyToTokenRouteIntermediateData = BaseZapOutRouteIntermediateData;
 
@@ -47,13 +45,6 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         'redeemSyToToken',
         RedeemSyToTokenRouteIntermediateData & {
             route: RedeemSyToTokenRoute<T>;
-
-            /** @deprecated use Route API instead */
-            netTokenOut: BN;
-            /** @deprecated use Route API instead */
-            output: TokenOutput;
-            /** @deprecated use Route API instead */
-            kybercallData: KybercallData;
         }
     > {
         const res = await this.buildGenericCall(

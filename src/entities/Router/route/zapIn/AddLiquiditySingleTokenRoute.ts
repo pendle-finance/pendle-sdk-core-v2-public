@@ -1,8 +1,7 @@
 import { BaseZapInRoute, BaseZapInRouteConfig } from './BaseZapInRoute';
-import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams, TokenInput } from '../../types';
+import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmountSqrt } from '../../../../common';
-import { KybercallData } from '../../../KyberHelper';
 
 export type AddLiquiditySingleTokenRouteData = {
     netLpOut: BN;
@@ -10,15 +9,6 @@ export type AddLiquiditySingleTokenRouteData = {
     priceImpact: BN;
     netSyFee: BN;
     exchangeRateAfter: BN;
-
-    /**
-     * @deprecated use Route API instead
-     */
-    input: TokenInput;
-    /**
-     * @deprecated use Route API instead
-     */
-    kybercallData: KybercallData;
 };
 
 export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
@@ -66,13 +56,7 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
             input.bulk,
             this.routerExtraParams.forCallStatic
         );
-        return {
-            ...data,
-
-            // TODO remove these as deprecated
-            input,
-            kybercallData: (await this.getAggregatorResult())!,
-        };
+        return data;
     }
 
     protected override async getGasUsedImplement(): Promise<BN | undefined> {

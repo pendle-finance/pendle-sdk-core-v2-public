@@ -4,3 +4,4 @@ export * from './BasicRouter';
 export * from './Router';
 export * from './GasFeeEstimator';
 export * from './route';
+export * from './aggregatorHelper';

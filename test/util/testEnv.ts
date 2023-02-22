@@ -1,7 +1,7 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
 import { Wallet } from 'ethers';
-import { CHAIN_ID_MAPPING, Multicall, toAddress } from '../../src';
+import { CHAIN_ID_MAPPING, Multicall, toAddress, KyberSwapAggregatorHelper, BaseRouterConfig } from '../../src';
 import './bigNumberMatcher';
 
 import { evm_revert, evm_snapshot } from './testHelper';
@@ -88,32 +88,43 @@ export const networkConnectionWithChainId = {
     chainId: ACTIVE_CHAIN_ID,
 };
 
-export const testConfig = (chainId: TestChainId) => ({
-    chainId,
-    deployer: CONTRACT_ADDRESSES[chainId].CORE.DEPLOYER,
-    marketFactory: CONTRACT_ADDRESSES[chainId].CORE.MARKET_FACTORY,
-    router: CONTRACT_ADDRESSES[chainId].CORE.ROUTER,
-    routerStatic: CONTRACT_ADDRESSES[chainId].CORE.ROUTER_STATIC,
-    yieldContractFactory: CONTRACT_ADDRESSES[chainId].CORE.YT_FACTORY,
-    veAddress: CONTRACT_ADDRESSES[chainId].CORE.VE,
-    votingController: CONTRACT_ADDRESSES[chainId].CORE.VOTING_CONTROLLER,
-    feeDistributer: CONTRACT_ADDRESSES[chainId].CORE.FEE_DISTRIBUTOR,
-    pendle: CONTRACT_ADDRESSES[chainId].CORE.PENDLE,
-    fundKeeper: CONTRACT_ADDRESSES[chainId].FUND_KEEPER,
-    faucet: CONTRACT_ADDRESSES[chainId].FAUCET,
-    tokens: CONTRACT_ADDRESSES[chainId].TOKENS,
-    markets: CONTRACT_ADDRESSES[chainId].MARKETS,
-
-    market: MARKET_TO_TEST[chainId],
-    marketAddress: MARKET_TO_TEST[chainId].market,
-    // choose the token to test for swap from raw token -> py
-    tokenToSwap: CONTRACT_ADDRESSES[chainId].TOKENS.USDT,
-
-    userAddress: signerAddress,
-    multicall: new Multicall({
+export const testConfig = (chainId: TestChainId) => {
+    const contractAddresses = CONTRACT_ADDRESSES[chainId];
+    const router = contractAddresses.CORE.ROUTER;
+    const aggregatorHelper = new KyberSwapAggregatorHelper(router, networkConnectionWithChainId);
+    const routerConfig: BaseRouterConfig = {
+        ...networkConnectionWithChainId,
+        aggregatorHelper,
+    };
+    return {
         chainId,
-        provider: networkConnection.provider,
-    }),
-});
+        deployer: contractAddresses.CORE.DEPLOYER,
+        marketFactory: contractAddresses.CORE.MARKET_FACTORY,
+        router,
+        routerStatic: contractAddresses.CORE.ROUTER_STATIC,
+        yieldContractFactory: contractAddresses.CORE.YT_FACTORY,
+        veAddress: contractAddresses.CORE.VE,
+        votingController: contractAddresses.CORE.VOTING_CONTROLLER,
+        feeDistributer: contractAddresses.CORE.FEE_DISTRIBUTOR,
+        pendle: contractAddresses.CORE.PENDLE,
+        fundKeeper: contractAddresses.FUND_KEEPER,
+        faucet: contractAddresses.FAUCET,
+        tokens: contractAddresses.TOKENS,
+        markets: contractAddresses.MARKETS,
+
+        market: MARKET_TO_TEST[chainId],
+        marketAddress: MARKET_TO_TEST[chainId].market,
+        // choose the token to test for swap from raw token -> py
+        tokenToSwap: contractAddresses.TOKENS.USDT,
+
+        userAddress: signerAddress,
+        multicall: new Multicall({
+            chainId,
+            provider: networkConnection.provider,
+        }),
+        aggregatorHelper,
+        routerConfig,
+    };
+};
 
 export const currentConfig = testConfig(ACTIVE_CHAIN_ID);

@@ -72,7 +72,7 @@ export async function transferHelper(token: Address, user: Address, amount: BN, 
         .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 }
 
-export function bnMinAsBn(a: BN, b: BN): BN {
+export function bnMinAsBn(a: BigNumberish, b: BigNumberish): BN {
     return BN.from(bnMin(a, b));
 }
 
@@ -158,8 +158,12 @@ export async function setPendleERC20Balance(market: string, user: string, value:
 export async function increaseNativeBalance(userAddress: string) {
     await networkConnection.provider.send('hardhat_setBalance', [
         userAddress,
-        // 100 ETH
-        ethers.utils.hexStripZeros(BN.from(10).pow(20).toHexString()),
+        // 1e6 ETH
+        ethers.utils.hexStripZeros(
+            BN.from(10)
+                .pow(18 + 6)
+                .toHexString()
+        ),
     ]);
 }
 

@@ -2,8 +2,6 @@ import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, BaseZapOutRouteConfig
 import { MetaMethodType } from '../../../../contracts';
 import { BN, Address, BigNumberish } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
-import { TokenOutput } from '../../types';
-import { KybercallData } from '../../../KyberHelper';
 
 export type SwapExactYtForTokenRouteIntermediateData = BaseZapOutRouteIntermediateData & {
     netSyFee: BN;
@@ -63,14 +61,6 @@ export class SwapExactYtForTokenRoute<T extends MetaMethodType> extends BaseZapO
         'swapExactYtForToken',
         SwapExactYtForTokenRouteIntermediateData & {
             route: SwapExactYtForTokenRoute<T>;
-            /** @deprecated use Route API instead */
-            netTokenOut: BN;
-            /** @deprecated use Route API instead */
-            output: TokenOutput;
-            /** @deprecated use Route API instead */
-            kybercallData: KybercallData;
-            /** @deprecated use intermediateSyAmount or Route API instead */
-            intermediateSy: BN;
         }
     > {
         const res = await this.buildGenericCall(

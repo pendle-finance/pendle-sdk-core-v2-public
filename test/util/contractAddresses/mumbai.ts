@@ -1,6 +1,8 @@
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2-testnet/deployments/80001-core.json';
 import MUMBAI_QIUSDC_FEB04_ADDRESSES from '@pendle/core-v2-testnet/deployments/80001-markets/USDC-FEB-4TH.json';
 import MUMBAI_QIWETH_FEB04_ADDRESSES from '@pendle/core-v2-testnet/deployments/80001-markets/WETH-FEB-4TH.json';
+import MUMBAI_QIUSDC_DEC08_ADDRESSES from '@pendle/core-v2-testnet/deployments/80001-markets/USDC-DEC-8TH.json';
+import MUMBAI_GLP_DEC08_ADDRESSES from '@pendle/core-v2-testnet/deployments/80001-markets/GLP-DEC-8TH.json';
 
 import MUMBAI_TEST_ENV from '@pendle/core-v2-testnet/deployments/80001-testenv.json';
 
@@ -19,10 +21,17 @@ export const MUMBAI_TESTNET_CONTRACT_ADDRESSES = shallowToAddress({
         FEE_DISTRIBUTOR: DUMMY_ADDRESS,
         PENDLE: MUMBAI_CORE_ADDRESSES.PENDLE,
     },
-    MARKETS: [MUMBAI_QIUSDC_FEB04_ADDRESSES, MUMBAI_QIWETH_FEB04_ADDRESSES],
+    MARKETS: [
+        MUMBAI_QIUSDC_FEB04_ADDRESSES,
+        MUMBAI_QIWETH_FEB04_ADDRESSES,
+        MUMBAI_QIUSDC_DEC08_ADDRESSES,
+        MUMBAI_GLP_DEC08_ADDRESSES,
+    ],
     MARKETS_BY_NAME: {
         MUMBAI_QIUSDC_FEB04_ADDRESSES,
         MUMBAI_QIWETH_FEB04_ADDRESSES,
+        MUMBAI_QIUSDC_DEC08_ADDRESSES,
+        MUMBAI_GLP_DEC08_ADDRESSES,
     },
     FUND_KEEPER: MUMBAI_TEST_ENV.tokens.fundKeeper,
     FAUCET: MUMBAI_TEST_ENV.tokens.faucet,

@@ -1,6 +1,8 @@
 import ETHEREUM_CORE_ADDRESSES from '@pendle/core-v2-mainnet/deployments/1-core.json';
+import ARBITRUM_CORE_ADDRESSES from '@pendle/core-v2-mainnet/deployments/42161-core.json';
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-core.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2-testnet/deployments/80001-core.json';
+
 import { toAddress, toAddressOrUndefined } from '../src/common';
 import { ContractAddresses } from '../src/common/ContractAddresses';
 import { writeTsThenFormat } from './writeTsThenFormat';
@@ -15,7 +17,7 @@ import { ContractAddresses } from './types';
 
 function transformData(data: any): ContractAddresses {
     // small hack here because 2 packages have different interfaces for fee distributor
-    const feeDistributor = (data.feeDistributor ?? data.feedistributor);
+    const feeDistributor = data.feeDistributor ?? data.feedistributor;
     return {
         PENDLE: toAddress(data.PENDLE),
         ROUTER: toAddress(data.router),
@@ -23,6 +25,8 @@ function transformData(data: any): ContractAddresses {
         VEPENDLE: toAddress(data.vePendle),
         VOTING_CONTROLLER: toAddressOrUndefined(data.votingController),
         FEE_DISTRIBUTOR: toAddressOrUndefined(feeDistributor),
+        PENDLE_SWAP: toAddressOrUndefined(data.pendleSwap),
+        WRAPPED_NATIVE: toAddress(data.network.wrappedNative),
     };
 }
 
@@ -41,5 +45,6 @@ function genData(varName: string, data: any) {
 genData('ETHEREUM_CORE_ADDRESSES', ETHEREUM_CORE_ADDRESSES);
 genData('FUJI_CORE_ADDRESSES', FUJI_CORE_ADDRESSES);
 genData('MUMBAI_CORE_ADDRESSES', MUMBAI_CORE_ADDRESSES);
+genData('ARBITRUM_CORE_ADDRESSES', ARBITRUM_CORE_ADDRESSES);
 
 writeTsThenFormat(FILENAME, lines.join('\n'));

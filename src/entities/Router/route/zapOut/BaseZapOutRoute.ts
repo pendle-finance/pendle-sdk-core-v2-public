@@ -107,7 +107,7 @@ export abstract class BaseZapOutRoute<
         const targetToken = this.targetToken;
         if (maxOut == undefined || targetToken === undefined) return undefined;
         const DUMMY_SLIPPAGE = 0.2 / 100;
-        const aggregatorResult = await this.router.kyberHelper.makeCall(
+        const aggregatorResult = await this.router.aggregatorHelper.makeCall(
             { token: targetToken, amount: maxOut },
             NATIVE_ADDRESS_0xEE,
             DUMMY_SLIPPAGE
@@ -126,18 +126,18 @@ export abstract class BaseZapOutRoute<
 
     /**
      * @return
-     * - {@link ethersConstants.MaxUint256} if result if {@link this.previewIntermediateSy} is `undefined`.
+     * - {@link ethersConstants.Zero} if result if {@link this.previewIntermediateSy} is `undefined`.
      * - redeemed amount from {@link syEntity} with amount from {@link previewIntermediateSy} otherwise.
      *
-     * {@link ethersConstants.MaxUint256} is returned instead of `undefined` to have less
+     * {@link ethersConstants.Zero} is returned instead of `undefined` to have less
      * code dealing with type assertion.
      */
     @NoArgsCache
     async getTokenRedeemSyAmount(): Promise<BN> {
         const [intermediateSyAmount, bulk] = await Promise.all([this.getIntermediateSyAmount(), this.getUsedBulk()]);
-        if (intermediateSyAmount === undefined) return ethersConstants.MaxUint256;
+        if (intermediateSyAmount === undefined) return ethersConstants.Zero;
         return this.syEntity.previewRedeem(this.tokenRedeemSy, intermediateSyAmount, {
-            useBulk: { withAddress: bulk },
+            bulk,
         });
     }
 
@@ -151,7 +151,7 @@ export abstract class BaseZapOutRoute<
             { token: this.tokenRedeemSy, amount: tokenRedeemSyAmount },
             this.targetToken,
             this.context.aggregatorSlippage,
-            { receiver: this.routerExtraParams.aggregatorReceiver }
+            { aggregatorReceiver: this.routerExtraParams.aggregatorReceiver }
         );
     }
 
@@ -161,13 +161,14 @@ export abstract class BaseZapOutRoute<
         if (aggregatorResult === undefined) {
             return undefined;
         }
+        const pendleSwap = this.router.getPendleSwapAddress();
         const output: TokenOutput = {
             tokenOut: this.targetToken,
             minTokenOut: calcSlippedDownAmount((await this.getNetOut())!, this.slippage),
             tokenRedeemSy: this.tokenRedeemSy,
-            kybercall: aggregatorResult.encodedSwapData,
             bulk,
-            kyberRouter: aggregatorResult.routerAddress,
+            pendleSwap,
+            swapData: aggregatorResult.createSwapData({ needScale: true }),
         };
         return output;
     }

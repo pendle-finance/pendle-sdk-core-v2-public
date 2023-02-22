@@ -1,19 +1,13 @@
 import { BaseZapInRoute, BaseZapInRouteConfig } from './BaseZapInRoute';
-import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams, TokenInput } from '../../types';
+import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmount } from '../../../../common';
-import { KybercallData } from '../../../KyberHelper';
 
 export type SwapExactTokenForPtRouteData = {
     netPtOut: BN;
     netSyFee: BN;
     priceImpact: BN;
     exchangeRateAfter: BN;
-
-    /** @deprecated use Route API instead */
-    input: TokenInput;
-    /** @deprecated use Route API instead */
-    kybercallData: KybercallData;
 };
 
 export class SwapExactTokenForPtRoute<T extends MetaMethodType> extends BaseZapInRoute<
@@ -61,13 +55,7 @@ export class SwapExactTokenForPtRoute<T extends MetaMethodType> extends BaseZapI
             input.bulk,
             this.routerExtraParams.forCallStatic
         );
-        return {
-            ...data,
-
-            // TODO remove these as deprecated
-            input,
-            kybercallData: (await this.getAggregatorResult())!,
-        };
+        return data;
     }
 
     protected override async getGasUsedImplement(): Promise<BN | undefined> {

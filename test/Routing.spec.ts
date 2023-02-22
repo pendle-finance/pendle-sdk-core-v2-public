@@ -4,7 +4,6 @@ import { BigNumber as BN, ethers, providers } from 'ethers';
 import {
     Address,
     BulkSellerABI,
-    KyberHelper,
     NATIVE_ADDRESS_0x00,
     Router,
     createContractObject,
@@ -55,7 +54,7 @@ const { TOKENS_TO_TEST, MARKETS_TO_TEST, ETH_AMOUNTS_TO_TEST } =
 
 // get token price by swap 1 ETH for token by kyber swap
 async function getTokenPriceEth(address: Address): Promise<BigNumber> {
-    const kyber = new KyberHelper(NATIVE_ADDRESS_0x00, networkConnectionWithChainId);
+    const kyber = currentConfig.aggregatorHelper;
     const tokenDecimals = await getERC20Decimals(address);
     const ethDecimals = 18;
     const amount = decimalFactor(ethDecimals);
@@ -110,7 +109,7 @@ class ConstantGasFeeEstimator extends GasFeeEstimator {
 
 describeWrite('Routing', () => {
     const router = Router.getRouter({
-        ...networkConnectionWithChainId,
+        ...currentConfig.routerConfig,
         gasFeeEstimator: new ConstantGasFeeEstimator(
             BN.from(10).pow(/* gwei decimal = */ 9).mul(25),
             networkConnectionWithChainId.provider

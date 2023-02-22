@@ -46,7 +46,7 @@ async function main() {
     const syAddress = currentConfig.market.SY;
     const ptAddress = currentConfig.market.PT;
 
-    const router = new Router(routerAddress, networkConnectionWithChainId);
+    const router = new Router(routerAddress, currentConfig.routerConfig);
     // fund native token if using hardhat
 
     if (USE_HARDHAT_RPC) {
