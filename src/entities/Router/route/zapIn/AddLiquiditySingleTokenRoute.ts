@@ -91,7 +91,7 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
         const [previewResult, input] = await Promise.all([this.preview(), this.buildTokenInput()]);
         if (!previewResult || !input) return undefined;
         const overrides = { value: isNativeToken(this.tokenIn) ? this.netTokenIn : undefined };
-        const approxParam = this.context.guessOutApproxParams(previewResult.netPtFromSwap, this.slippage);
+        const approxParam = this.context.getApproxParamsToPullPt(previewResult.netPtFromSwap, this.slippage);
         const minLpOut = calcSlippedDownAmountSqrt(previewResult.netLpOut, this.slippage);
         return this.router.contract.metaCall.addLiquiditySingleToken(
             params.receiver,

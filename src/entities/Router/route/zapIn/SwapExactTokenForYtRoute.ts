@@ -89,7 +89,7 @@ export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapI
         if (!input || !previewResult) return undefined;
         const overrides = { value: isNativeToken(this.tokenIn) ? this.netTokenIn : undefined };
         const minLpOut = calcSlippedDownAmount(previewResult.netYtOut, this.slippage);
-        const approxParam = this.context.guessOutApproxParams(previewResult.netYtOut, this.slippage);
+        const approxParam = this.context.getApproxParamsToPullPt(previewResult.netYtOut, this.slippage);
 
         return this.router.contract.metaCall.swapExactTokenForYt(
             params.receiver,

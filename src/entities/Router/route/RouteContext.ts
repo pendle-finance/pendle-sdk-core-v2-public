@@ -82,12 +82,12 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
         return routeOut.reduce(bnMax);
     }
 
-    guessOutApproxParams(this: void, guessAmountOut: BN, slippage: number): ApproxParamsStruct {
-        return BaseRouter.guessInApproxParams(guessAmountOut, slippage);
+    getApproxParamsToPullPt(guessAmountOut: BN, slippage: number): ApproxParamsStruct {
+        return this.router.getApproxParamsToPullPt(guessAmountOut, slippage);
     }
 
-    guessInApproxParams(this: void, guessAmountIn: BN, slippage: number): ApproxParamsStruct {
-        return BaseRouter.guessOutApproxParams(guessAmountIn, slippage);
+    getApproxParamsToPushPt(guessAmountIn: BN, slippage: number): ApproxParamsStruct {
+        return this.router.getApproxParamsToPushPt(guessAmountIn, slippage);
     }
 
     /**
