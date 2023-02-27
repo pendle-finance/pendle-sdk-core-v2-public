@@ -7,6 +7,7 @@ import { BaseRoute, BaseZapInRoute, BaseZapOutRoute } from './route';
 import { BaseRouter } from './BaseRouter';
 import { BaseRouterConfig } from './types';
 import { getContractAddresses } from '../../common';
+import { KyberSwapAggregatorHelper } from './aggregatorHelper';
 
 export type RouterConfig = BaseRouterConfig;
 
@@ -20,6 +21,21 @@ export class Router extends BaseRouter {
      */
     static getRouter(config: RouterConfig): BaseRouter {
         return new Router(getContractAddresses(config.chainId).ROUTER, config);
+    }
+
+    static getRouterWithKyberAggregator(config: Omit<RouterConfig, 'aggregatorHelper'>): BaseRouter {
+        const routerAddress = getContractAddresses(config.chainId).ROUTER;
+        const provider = (config.provider ?? config.signer?.provider)!;
+        const aggregatorHelper = new KyberSwapAggregatorHelper(routerAddress, {
+            chainId: config.chainId,
+            provider: provider,
+        });
+        return new Router(routerAddress, {
+            ...config,
+            provider: provider,
+            signer: config.signer,
+            aggregatorHelper: aggregatorHelper,
+        });
     }
 
     override async findBestZapInRoute<ZapInRoute extends BaseZapInRoute<MetaMethodType, object, ZapInRoute>>(

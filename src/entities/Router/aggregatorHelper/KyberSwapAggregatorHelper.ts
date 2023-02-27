@@ -24,16 +24,19 @@ import {
     createETH_WETHAggregatorResult,
 } from './AggregatorHelper';
 
-export type KyberAPIParams = {
+export type KyberAPIParamsOverrides = {
+    saveGas?: '0' | '1';
+    gasInclude?: '0' | '1';
+    useMeta?: boolean;
+    clientData?: { source: string };
+};
+
+export type KyberAPIParams = KyberAPIParamsOverrides & {
     tokenIn: Address;
     tokenOut: Address;
     amountIn: string;
     to: Address;
     slippageTolerance: number;
-    useMeta: boolean;
-    saveGas: '0' | '1';
-    gasInclude: '0' | '1';
-    clientData: { source: string };
 };
 
 const KYBER_API = {
@@ -50,6 +53,7 @@ function isKyberSupportedChain(chainId: ChainId): chainId is keyof typeof KYBER_
 
 export type KyberHelperConfig = NetworkConnection & {
     chainId: ChainId;
+    apiParamsOverrides?: Partial<KyberAPIParamsOverrides>;
 };
 
 type RawKybercallData<HasEncodedData extends boolean = boolean> = {
@@ -105,6 +109,7 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
     readonly chainId: ChainId;
     readonly networkConnection: NetworkConnection;
     readonly routerAddress: Address;
+    readonly apiParamsOverrides?: KyberAPIParamsOverrides;
 
     /**
      * @param routerAddress the address of the router (that is, the address that can be passed to {@link Router})
@@ -114,6 +119,7 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
         this.routerAddress = routerAddress;
         this.networkConnection = copyNetworkConnection(config);
         this.chainId = config.chainId;
+        this.apiParamsOverrides = config.apiParamsOverrides;
     }
 
     /**
@@ -170,6 +176,12 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
             gasInclude: '1',
             clientData: { source: 'Pendle' },
         };
+        // TODO move to helper
+        for (const [key, value] of Object.entries(this.getApiParamsOverrides())) {
+            if (value == undefined) continue;
+            // TODO typesafe
+            kyberAPIParams[key as keyof KyberAPIParamsOverrides] = value as any;
+        }
 
         const config = {
             params: kyberAPIParams,
@@ -194,6 +206,14 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
         } catch {
             return undefined;
         }
+    }
+
+    private getApiParamsOverrides(): KyberAPIParamsOverrides {
+        if (this.apiParamsOverrides) return this.apiParamsOverrides;
+        if (this.chainId === CHAIN_ID_MAPPING.ARBITRUM) {
+            return { saveGas: '0', gasInclude: '1' };
+        }
+        return {};
     }
 
     private async patchETH_wETH(
