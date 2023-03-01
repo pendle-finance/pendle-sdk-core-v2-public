@@ -1,5 +1,5 @@
 import { BigNumberish, BytesLike, BigNumber as BN } from 'ethers';
-import axios from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import {
     CHAIN_ID_MAPPING,
     ChainId,
@@ -54,6 +54,7 @@ function isKyberSupportedChain(chainId: ChainId): chainId is keyof typeof KYBER_
 export type KyberHelperConfig = NetworkConnection & {
     chainId: ChainId;
     apiParamsOverrides?: Partial<KyberAPIParamsOverrides>;
+    axios?: AxiosInstance;
 };
 
 type RawKybercallData<HasEncodedData extends boolean = boolean> = {
@@ -110,6 +111,7 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
     readonly networkConnection: NetworkConnection;
     readonly routerAddress: Address;
     readonly apiParamsOverrides?: KyberAPIParamsOverrides;
+    readonly axios: AxiosInstance;
 
     /**
      * @param routerAddress the address of the router (that is, the address that can be passed to {@link Router})
@@ -120,6 +122,7 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
         this.networkConnection = copyNetworkConnection(config);
         this.chainId = config.chainId;
         this.apiParamsOverrides = config.apiParamsOverrides;
+        this.axios = config.axios ?? axios;
     }
 
     /**
@@ -183,7 +186,7 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
             kyberAPIParams[key as keyof KyberAPIParamsOverrides] = value as any;
         }
 
-        const config = {
+        const config: AxiosRequestConfig = {
             params: kyberAPIParams,
             headers: { 'Accept-Version': 'Latest' },
             url: KYBER_API[this.chainId],
@@ -191,11 +194,11 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
         };
 
         // if (process.env.NODE_ENV !== 'production') {
-        //     console.log('Making request', axios.getUri(config));
+        //     console.log('Making request', this.axios.getUri(config));
         // }
 
         try {
-            const { data }: { data: RawKybercallData } = await axios(config);
+            const { data }: { data: RawKybercallData } = await this.axios.request(config);
             if (!rawKybercallDataHasEncodedData(data)) {
                 return undefined;
             }
