@@ -144,6 +144,7 @@ export function wrapContractObject<C extends Contract>(
         interface: contract.interface,
         functionFragmentsMapping,
         functions: wrapFunctions(contract.functions),
+        populateTransaction: contract.populateTransaction,
         callStatic: wrapFunctions(contract.callStatic),
         estimateGas: wrapFunctions(contract.estimateGas, wrapEstimateGasFunction),
         filters: contract.filters,

@@ -22,6 +22,7 @@ export interface BaseWrappedContract<C extends Contract = Contract> extends Wrap
     attach(addressOrName: string): this;
 
     readonly functions: C['functions'];
+    readonly populateTransaction: C['populateTransaction'];
     readonly callStatic: C['callStatic'];
     readonly estimateGas: C['estimateGas'];
     readonly filters: C['filters'];

@@ -1,4 +1,14 @@
-import { decimalFactor, MetaMethodReturnType, Router, SyEntity, MetaMethodData, Address, toAddress } from '../src';
+import {
+    decimalFactor,
+    MetaMethodReturnType,
+    Router,
+    SyEntity,
+    MetaMethodData,
+    Address,
+    toAddress,
+    MarketEntity,
+    NATIVE_ADDRESS_0xEE,
+} from '../src';
 import { currentConfig, describeWrite, networkConnectionWithChainId, BLOCK_CONFIRMATION, signer } from './util/testEnv';
 import {
     getBalance,
@@ -54,6 +64,7 @@ describeWrite('Router', () => {
     const ytAddress = currentConfig.market.YT;
     const rawTokenAddress = currentConfig.tokens.USDC;
     const sySdk = new SyEntity(syAddress, networkConnectionWithChainId);
+    const marketEntity = new MarketEntity(marketAddress, networkConnectionWithChainId);
 
     let syDecimals: number;
     let ptDecimals: number;
@@ -145,6 +156,19 @@ describeWrite('Router', () => {
     });
 
     describeWrite('Overall write functions', () => {
+        it('#redeemDueInterestAndRewards', async () => {
+            const rewardTokens = await marketEntity.getRewardTokens();
+            const balancesBefore = await getUserBalances(signerAddress, rewardTokens);
+            // because we set our LP balance by editing storage slot, we need to trigger a
+            // transfer so that the contract will calculate the rewards correctly
+            await marketEntity.transfer(NATIVE_ADDRESS_0xEE, '0');
+            await router.redeemDueInterestAndRewards({
+                markets: [currentConfig.marketAddress],
+            });
+            const balancesAfter = await getUserBalances(signerAddress, rewardTokens);
+            expect(balancesAfter.some((balance, i) => balance.gt(balancesBefore[i]))).toBeTruthy();
+        });
+
         it('#addLiquidityDualSyAndPt', async () => {
             const syAdd = bnMinAsBn(
                 decimalFactor(syDecimals).mul(MAX_SY_ADD_AMOUNT),
@@ -1009,6 +1033,50 @@ describeWrite('Router', () => {
 
             const netYtOut = balanceAfter.ytBalance.sub(balanceBefore.ytBalance);
             expect(netYtOut).toEqBN(readerData.netYtOut, DEFAULT_EPSILON);
+        });
+    });
+
+    describeWrite('Bundler', async () => {
+        it('#mintPyFromSy and redeem market reward', async () => {
+            const bundler = router.createTransactionBundler();
+            const rewardTokens = await marketEntity.getRewardTokens();
+            const rewardBalancesBefore = await getUserBalances(signerAddress, rewardTokens);
+            const syBalanceBefore = await getBalance(syAddress, signerAddress);
+            const mintSyAmount = decimalFactor(syDecimals);
+            await approveInfHelper(syAddress, router.address);
+            await marketEntity.transfer(NATIVE_ADDRESS_0xEE, '0');
+
+            bundler
+                .addContractMetaMethod(
+                    await router.mintPyFromSy(currentConfig.market.YT, mintSyAmount, SLIPPAGE_TYPE2, {
+                        method: 'meta-method',
+                    })
+                )
+                .addContractMetaMethod(
+                    await router.redeemDueInterestAndRewards(
+                        {
+                            markets: [currentConfig.marketAddress],
+                        },
+                        {
+                            method: 'meta-method',
+                        }
+                    )
+                );
+
+            const metaMethod = await bundler.execute({ method: 'meta-method' });
+            const callStaticData = await metaMethod.callStatic();
+            for (const { success } of callStaticData) {
+                expect(success).toBeTruthy();
+                // TODO: check return data?
+            }
+
+            await metaMethod.send();
+
+            const syBalanceAfter = await getBalance(syAddress, signerAddress);
+            expect(syBalanceAfter).toEqBN(syBalanceBefore.sub(mintSyAmount));
+
+            const rewardBalancesAfter = await getUserBalances(signerAddress, rewardTokens);
+            expect(rewardBalancesAfter.some((balance, i) => balance.gt(rewardBalancesBefore[i]))).toBeTruthy();
         });
     });
 

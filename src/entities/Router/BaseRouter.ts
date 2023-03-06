@@ -63,6 +63,7 @@ import {
 } from './route/zapOut';
 
 import { GasFeeEstimator } from './GasFeeEstimator';
+import { RouterTransactionBundler } from './RouterTransactionBundler';
 
 export abstract class BaseRouter extends PendleEntity {
     static readonly MIN_AMOUNT = 0;
@@ -1140,6 +1141,32 @@ export abstract class BaseRouter extends PendleEntity {
             approxParam,
             { ...res, approxParam, ...params }
         );
+    }
+
+    async redeemDueInterestAndRewards<T extends MetaMethodType>(
+        redeemingSources: {
+            sys?: (Address | SyEntity)[];
+            yts?: (Address | YtEntity)[];
+            markets?: (Address | MarketEntity)[];
+        },
+        _params: RouterMetaMethodExtraParams<T> = {}
+    ): RouterMetaMethodReturnType<T, 'redeemDueInterestAndRewards', {}> {
+        const params = this.addExtraParams(_params);
+        const sys = redeemingSources.sys?.map(BaseRouter.extractAddress) ?? [];
+        const yts = redeemingSources.yts?.map(BaseRouter.extractAddress) ?? [];
+        const markets = redeemingSources.markets?.map(BaseRouter.extractAddress) ?? [];
+        return this.contract.metaCall.redeemDueInterestAndRewards(params.receiver, sys, yts, markets, params);
+    }
+
+    /**
+     * @see {@link RouterTransactionBundler}
+     */
+    createTransactionBundler(): RouterTransactionBundler {
+        return new RouterTransactionBundler(this);
+    }
+
+    protected static extractAddress(addressOrEntity: Address | { address: Address }): Address {
+        return typeof addressOrEntity === 'string' ? addressOrEntity : addressOrEntity.address;
     }
 
     async sellSys(

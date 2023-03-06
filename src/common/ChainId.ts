@@ -10,7 +10,7 @@ export const CHAIN_ID_MAPPING = {
  * Union of Pendle SDK's supported chain id type.
  * @see CHAIN_ID_MAPPING
  */
-export type ChainId = typeof CHAIN_ID_MAPPING[keyof typeof CHAIN_ID_MAPPING];
+export type ChainId = (typeof CHAIN_ID_MAPPING)[keyof typeof CHAIN_ID_MAPPING];
 
 export type MainchainId = typeof CHAIN_ID_MAPPING.ETHEREUM | typeof CHAIN_ID_MAPPING.FUJI;
 

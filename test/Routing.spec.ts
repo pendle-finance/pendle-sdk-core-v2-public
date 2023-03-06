@@ -176,7 +176,7 @@ describeWrite('Routing', () => {
 
     let testId = 0;
     async function testcase(
-        market: typeof MARKETS_TO_TEST[number],
+        market: (typeof MARKETS_TO_TEST)[number],
         token: Address,
         ethAmount: number,
         tokenAmountToTest: BN

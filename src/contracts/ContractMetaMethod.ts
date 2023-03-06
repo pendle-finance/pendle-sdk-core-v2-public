@@ -11,7 +11,7 @@ import {
     EthersContractMethod,
 } from './types';
 import { MulticallStaticParams } from './types';
-import { BN, BigNumberish, bnMax, calcSlippedUpAmount } from '../common';
+import { BN, BigNumberish, bnMax, calcSlippedUpAmount, Address, toAddress } from '../common';
 
 export type ContractMetaMethodCallback = <
     T extends MetaMethodType,
@@ -24,6 +24,10 @@ export type ContractMetaMethodCallback = <
     data: Data,
     contractMetaMethod: ContractMetaMethod<C, MethodName, Data>
 ) => MetaMethodReturnType<T, C, MethodName, Data>;
+
+export type ContractMetaMethodUtilFunction<Data, C extends Contract = Contract> = (
+    contractMetaMethod: ContractMetaMethod<C, any, any>
+) => Data;
 
 export class ContractMetaMethod<
     C extends Contract,
@@ -119,10 +123,26 @@ export class ContractMetaMethod<
         );
     }
 
-    static utils = {
-        getContractSignerAddress<C extends Contract>(contractMetaMethod: ContractMetaMethod<C, any, {}>) {
-            return contractMetaMethod.contract.signer.getAddress();
-        },
+    populateTransaction(
+        dataOverrides?: MetaMethodExtraParams
+    ): MetaMethodReturnType<'populateTransaction', C, M, Data> {
+        return this.callback(
+            'populateTransaction',
+            this.contract.populateTransaction[this.methodName as string] as EthersContractMethod<
+                C,
+                'populateTransaction',
+                M
+            >,
+            this.addOverridesToData(dataOverrides),
+            this
+        );
+    }
+
+    static utils: {
+        getContractSignerAddress: ContractMetaMethodUtilFunction<Promise<Address>>;
+    } = {
+        getContractSignerAddress: (contractMetaMethod) =>
+            contractMetaMethod.contract.signer.getAddress().then(toAddress),
     };
 }
 
@@ -143,5 +163,6 @@ export function callMetaMethod<
     if (method === 'callStatic') return metaMethod.callStatic() as any;
     if (method === 'estimateGas') return metaMethod.estimateGas() as any;
     if (method === 'multicallStatic') return metaMethod.multicallStatic() as any;
+    if (method === 'populateTransaction') return metaMethod.populateTransaction() as any;
     return metaMethod.send() as any;
 }

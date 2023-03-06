@@ -6,19 +6,26 @@ export type Provider = providers.Provider;
 export { ORIGINAL_CONTRACT } from './WrappedContract';
 export type { Signer } from 'ethers';
 
-export type EthersContractMetaClass = 'functions' | 'callStatic' | 'estimateGas';
-export type MetaMethodType = 'send' | 'callStatic' | 'estimateGas' | 'meta-method' | 'multicallStatic';
+export type EthersContractMetaClass = 'functions' | 'callStatic' | 'estimateGas' | 'populateTransaction';
+export type MetaMethodType =
+    | 'send'
+    | 'callStatic'
+    | 'estimateGas'
+    | 'meta-method'
+    | 'multicallStatic'
+    | 'populateTransaction';
 
 export const MetaMethodTypeToEthersMetaClassMapping = {
     send: 'functions',
     callStatic: 'callStatic',
     estimateGas: 'estimateGas',
     multicallStatic: 'callStatic',
+    populateTransaction: 'populateTransaction',
     'meta-method': undefined,
 } as const;
 
 export type MetaMethodTypeToEthersMetaClass<T extends MetaMethodType> = NonNullable<
-    typeof MetaMethodTypeToEthersMetaClassMapping[T]
+    (typeof MetaMethodTypeToEthersMetaClassMapping)[T]
 >;
 
 export type EthersContractMethod<
