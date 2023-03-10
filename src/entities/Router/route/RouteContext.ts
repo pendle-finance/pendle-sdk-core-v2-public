@@ -11,7 +11,6 @@ export type RouteContextConfig<T extends MetaMethodType> = {
     readonly syEntity: SyEntity;
     readonly routerExtraParams: FixedRouterMetaMethodExtraParams<T>;
     readonly aggregatorSlippage: number;
-    readonly bulkBuffer: number;
 };
 
 export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<T, any>> {
@@ -19,7 +18,6 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
     readonly syEntity: SyEntity;
     readonly routerExtraParams: FixedRouterMetaMethodExtraParams<T>;
     readonly aggregatorSlippage: number;
-    readonly bulkBuffer: number;
     readonly routes: RouteType[] = [];
     private readonly sharedCacheData = new Map();
 
@@ -36,7 +34,6 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
             syEntity: this.syEntity,
             routerExtraParams: this.routerExtraParams,
             aggregatorSlippage: this.aggregatorSlippage,
-            bulkBuffer: this.bulkBuffer,
         } = params);
     }
 
@@ -88,6 +85,10 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
 
     getApproxParamsToPushPt(guessAmountIn: BN, slippage: number): ApproxParamsStruct {
         return this.router.getApproxParamsToPushPt(guessAmountIn, slippage);
+    }
+
+    getBulkBuffer() {
+        return this.router.getBulkBuffer();
     }
 
     /**

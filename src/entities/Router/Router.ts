@@ -64,7 +64,7 @@ export class Router extends BaseRouter {
         route: ZapInRoute
     ): Promise<ZapInRoute | undefined> {
         const tradeValueInEth = await route.estimateSourceTokenAmountInEth();
-        const isBelowLimit = tradeValueInEth.lt(BaseRouter.BULK_LIMIT);
+        const isBelowLimit = tradeValueInEth.lt(this.getBulkLimit());
         const shouldRouteThroughBulkSeller = isBelowLimit;
         if (shouldRouteThroughBulkSeller) {
             // TODO implicitly specify to clone the route with more cache info.
@@ -95,7 +95,7 @@ export class Router extends BaseRouter {
     ): Promise<ZapOutRoute | undefined> {
         const tradeValueInEth = await route.estimateMaxOutAmoungAllRouteInEth();
         if (tradeValueInEth == undefined) return;
-        const isBelowLimit = tradeValueInEth.lt(BaseRouter.BULK_LIMIT);
+        const isBelowLimit = tradeValueInEth.lt(this.getBulkLimit());
         const shouldRouteThroughBulkSeller = isBelowLimit;
         if (shouldRouteThroughBulkSeller) {
             // TODO implicitly specify to clone the route with more cache info.

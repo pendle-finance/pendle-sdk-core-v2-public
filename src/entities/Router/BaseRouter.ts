@@ -10,7 +10,7 @@ import {
 } from '../../contracts';
 import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
 import type { BigNumberish } from 'ethers';
-import { BigNumber as BN, constants as etherConstants } from 'ethers';
+import { BigNumber as BN, constants as etherConstants, ethers } from 'ethers';
 import { MarketEntity } from '../MarketEntity';
 import { SyEntity } from '../SyEntity';
 import { YtEntity } from '../YtEntity';
@@ -169,7 +169,6 @@ export abstract class BaseRouter extends PendleEntity {
             syEntity,
             routerExtraParams: params,
             aggregatorSlippage: slippage,
-            bulkBuffer: BaseRouter.BULK_BUFFER,
         });
     }
 
@@ -199,9 +198,14 @@ export abstract class BaseRouter extends PendleEntity {
         return Math.ceil(Math.log2(x)) + 3;
     }
 
-    // params for routing algorithm
-    static BULK_LIMIT = BN.from(10).pow(/* ETH decimals*/ 18).mul(5);
-    static BULK_BUFFER = 10 / 100;
+    // bulk seller parameters for routing algorithm
+    getBulkLimit(): BN {
+        return ethers.utils.parseEther('10');
+    }
+
+    getBulkBuffer(): number {
+        return 10 / 100;
+    }
 
     async addLiquidityDualSyAndPt<T extends MetaMethodType = 'send'>(
         market: Address | MarketEntity,

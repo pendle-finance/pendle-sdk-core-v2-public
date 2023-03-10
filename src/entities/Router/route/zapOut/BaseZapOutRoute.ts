@@ -60,7 +60,7 @@ export abstract class BaseZapOutRoute<
         }
         return {
             netTokenIn: BN.from(0),
-            netSyIn: calcSlippedUpAmount(BN.from(previewData.intermediateSyAmount), this.context.bulkBuffer),
+            netSyIn: calcSlippedUpAmount(BN.from(previewData.intermediateSyAmount), this.context.getBulkBuffer()),
         };
     }
 

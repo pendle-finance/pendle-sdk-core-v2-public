@@ -87,7 +87,7 @@ export abstract class BaseZapInRoute<
             return undefined;
         }
         return {
-            netTokenIn: calcSlippedUpAmount(BN.from(aggregatorResult.outputAmount), this.context.bulkBuffer),
+            netTokenIn: calcSlippedUpAmount(BN.from(aggregatorResult.outputAmount), this.context.getBulkBuffer()),
             netSyIn: BN.from(0),
         };
     }
