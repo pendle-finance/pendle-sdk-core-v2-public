@@ -1,4 +1,4 @@
-import { ERC20Entity } from '../src';
+import { ERC20Entity, ContractMetaMethod } from '../src';
 import { BLOCK_CONFIRMATION, currentConfig, describeWrite, networkConnection } from './util/testEnv';
 import { evm_revert, evm_snapshot } from './util/testHelper';
 import { DUMMY_ADDRESS } from './util/constants';
@@ -90,5 +90,25 @@ describeWrite('Contract Helpers', () => {
         await expect(() => sendPendleMetaCall.callStatic({ overrides: { from: DUMMY_ADDRESS } })).rejects.toThrow(
             'ERC20: transfer amount exceeds balance'
         );
+    });
+
+    describe('#extractParams', () => {
+        it('with normal params', async () => {
+            const params = await metaCall.extractParams();
+            // console.log(params);
+            expect(params[0]).toEqual(DUMMY_ADDRESS);
+            expect(params[1]).toEqual(approveAmount);
+        });
+
+        it('with getter utils', async () => {
+            const metaMethod = await pendle.contract.metaCall.approve(
+                ContractMetaMethod.utils.getContractSignerAddress,
+                approveAmount,
+                { method: 'meta-method' }
+            );
+            const params = await metaMethod.connect(networkConnection.signer).extractParams();
+            expect(params[0]).toEqual(networkConnection.signerAddress);
+            expect(params[1]).toEqual(approveAmount);
+        });
     });
 });

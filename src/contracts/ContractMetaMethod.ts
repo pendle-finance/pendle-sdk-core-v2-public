@@ -138,6 +138,15 @@ export class ContractMetaMethod<
         );
     }
 
+    extractParams(dataOverrides?: MetaMethodExtraParams): MetaMethodReturnType<'extractParams', C, M, Data> {
+        return this.callback(
+            'extractParams',
+            ((...args: any[]) => args) as any,
+            this.addOverridesToData(dataOverrides),
+            this
+        );
+    }
+
     static utils: {
         getContractSignerAddress: ContractMetaMethodUtilFunction<Promise<Address>>;
     } = {
@@ -164,5 +173,6 @@ export function callMetaMethod<
     if (method === 'estimateGas') return metaMethod.estimateGas() as any;
     if (method === 'multicallStatic') return metaMethod.multicallStatic() as any;
     if (method === 'populateTransaction') return metaMethod.populateTransaction() as any;
+    if (method === 'extractParams') return metaMethod.extractParams() as any;
     return metaMethod.send() as any;
 }

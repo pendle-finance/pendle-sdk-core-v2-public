@@ -13,7 +13,8 @@ export type MetaMethodType =
     | 'estimateGas'
     | 'meta-method'
     | 'multicallStatic'
-    | 'populateTransaction';
+    | 'populateTransaction'
+    | 'extractParams';
 
 export const MetaMethodTypeToEthersMetaClassMapping = {
     send: 'functions',
@@ -21,6 +22,7 @@ export const MetaMethodTypeToEthersMetaClassMapping = {
     estimateGas: 'estimateGas',
     multicallStatic: 'callStatic',
     populateTransaction: 'populateTransaction',
+    extractParams: undefined,
     'meta-method': undefined,
 } as const;
 
@@ -50,6 +52,14 @@ export type BaseCallStaticContractMethod<C extends ContractLike, MethodName exte
 > extends (...params: [...infer Body, any?]) => infer R
     ? (...params: Body) => R
     : never;
+
+// Note that overrides are also included
+export type ContractMethodParams<C extends ContractLike, MethodName extends ContractMethodNames<C>> = Parameters<
+    GetField<
+        C['callStatic'], // functions instead of 'callStatic' for more comprehensive 'overrides'
+        MethodName
+    >
+>;
 
 export type BaseCallStaticContractMethods<C extends ContractLike> = {
     [MethodName in ContractMethodNames<C>]: BaseCallStaticContractMethod<C, MethodName>;

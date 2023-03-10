@@ -1,5 +1,5 @@
 import { Contract } from 'ethers';
-import { ContractMethodNames, MetaMethodType, EthersContractMethod } from './helper';
+import { ContractMethodNames, MetaMethodType, EthersContractMethod, ContractMethodParams } from './helper';
 import { ContractMetaMethod } from '../ContractMetaMethod';
 import { SyncReturnType, ConcatTuple, BN, BigNumberish } from '../../common';
 import { MulticallStaticParams } from './MulticallStaticMethod';
@@ -97,6 +97,8 @@ export type MetaMethodReturnType<
           SyncReturnType<EthersContractMethod<C, 'send', MethodName>>
         : T extends 'meta-method'
         ? ContractMetaMethod<C, MethodName, Data>
+        : T extends 'extractParams'
+        ? ContractMethodParams<C, MethodName>
         : SyncReturnType<EthersContractMethod<C, T, MethodName>>
 >;
 
