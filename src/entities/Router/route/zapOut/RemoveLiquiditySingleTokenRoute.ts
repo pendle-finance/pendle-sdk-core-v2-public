@@ -36,6 +36,10 @@ export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends B
         });
     }
 
+    protected override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+        return this.checkUserApproval(signerAddress, { token: this.market, amount: this.lpToRemove });
+    }
+
     protected override async previewIntermediateSyImpl(): Promise<
         RemoveLiquiditySingleTokenRouteIntermediateData | undefined
     > {

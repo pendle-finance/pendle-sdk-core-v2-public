@@ -34,6 +34,10 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
         });
     }
 
+    protected override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+        return this.checkUserApproval(signerAddress, { token: this.market, amount: this.lpToRemove });
+    }
+
     protected override async previewIntermediateSyImpl(): Promise<
         RemoveLiquidityDualTokenAndPtRouteIntermediateData | undefined
     > {

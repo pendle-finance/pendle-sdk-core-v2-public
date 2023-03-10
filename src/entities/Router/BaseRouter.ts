@@ -937,13 +937,14 @@ export abstract class BaseRouter extends PendleEntity {
         if (typeof market === 'string') {
             market = new MarketEntity(market, this.entityConfig);
         }
-        const marketAddr = market.address;
+        // Type safe
+        const marketEntity = market;
         const syEntity = await market.syEntity(params.forCallStatic);
         const routeContext = this.createRouteContext<T, SwapExactPtForTokenRoute<T>>({ params, syEntity, slippage });
         const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
         const routes = tokenRedeemSyList.map(
             (tokenRedeemSy) =>
-                new SwapExactPtForTokenRoute(marketAddr, exactPtIn, tokenOut, slippage, {
+                new SwapExactPtForTokenRoute(marketEntity, exactPtIn, tokenOut, slippage, {
                     context: routeContext,
                     tokenRedeemSy,
                 })
@@ -1063,13 +1064,13 @@ export abstract class BaseRouter extends PendleEntity {
         if (typeof market === 'string') {
             market = new MarketEntity(market, this.entityConfig);
         }
-        const marketAddr = market.address;
+        const marketEntity = market; // type safe
         const syEntity = await market.syEntity(params.forCallStatic);
         const routeContext = this.createRouteContext<T, SwapExactYtForTokenRoute<T>>({ params, syEntity, slippage });
         const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
         const routes = tokenRedeemSyList.map(
             (tokenRedeemSy) =>
-                new SwapExactYtForTokenRoute(marketAddr, exactYtIn, tokenOut, slippage, {
+                new SwapExactYtForTokenRoute(marketEntity, exactYtIn, tokenOut, slippage, {
                     context: routeContext,
                     tokenRedeemSy,
                 })

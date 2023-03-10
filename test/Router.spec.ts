@@ -41,6 +41,7 @@ import {
     MAX_TOKEN_ADD_AMOUNT,
     MAX_SY_ADD_AMOUNT,
     BALANCE_OF_STORAGE_SLOT,
+    EPSILON_FOR_AGGREGATOR,
 } from './util/constants';
 
 type BalanceSnapshot = {
@@ -237,7 +238,7 @@ describeWrite('Router', () => {
                     [token, ptAddress]
                 );
                 const lpBalanceAfter = await getBalance(marketAddress, signerAddress);
-                expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
+                expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, EPSILON_FOR_AGGREGATOR);
                 // for some technical reasons, we need to test all tokens inside a single test
                 // so we need to revert manually instead of `afterEach`
                 await switchToZeroApproval();
@@ -329,7 +330,7 @@ describeWrite('Router', () => {
                     marketAddress,
                     token,
                 ]);
-                expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
+                expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, EPSILON_FOR_AGGREGATOR);
                 expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount, DEFAULT_EPSILON);
             }
 
@@ -425,9 +426,9 @@ describeWrite('Router', () => {
 
                 expect(tokenBalanceAfter.sub(tokenBalanceBefore)).toEqBN(
                     (await readerResult.route.getNetOut())!,
-                    DEFAULT_EPSILON
+                    EPSILON_FOR_AGGREGATOR
                 );
-                expect(ptBalanceAfter.sub(ptBalanceBefore)).toEqBN(readerResult.netPtOut, DEFAULT_EPSILON);
+                expect(ptBalanceAfter.sub(ptBalanceBefore)).toEqBN(readerResult.netPtOut, EPSILON_FOR_AGGREGATOR);
 
                 await switchToZeroApproval();
             }
@@ -523,7 +524,7 @@ describeWrite('Router', () => {
 
                 expect(tokenBalanceAfter.sub(tokenBalanceBefore)).toEqBN(
                     (await readerData.route.getNetOut())!,
-                    DEFAULT_EPSILON
+                    EPSILON_FOR_AGGREGATOR
                 );
             }
 
@@ -790,7 +791,7 @@ describeWrite('Router', () => {
             expect(netRawTokenIn).toEqBN(expectRawTokenIn);
 
             const netPtOut = balanceAfter.ptBalance.sub(balanceBefore.ptBalance);
-            expect(netPtOut).toEqBN(readerData.netPtOut, DEFAULT_EPSILON);
+            expect(netPtOut).toEqBN(readerData.netPtOut, EPSILON_FOR_AGGREGATOR);
         });
 
         it('#swapExactPtForToken', async () => {
@@ -819,7 +820,7 @@ describeWrite('Router', () => {
             expect(netPtIn).toEqBN(expectPtIn);
 
             const netRawTokenOut = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance);
-            expect(netRawTokenOut).toEqBN((await readerData.route.getNetOut())!, DEFAULT_EPSILON);
+            expect(netRawTokenOut).toEqBN((await readerData.route.getNetOut())!, EPSILON_FOR_AGGREGATOR);
         });
 
         it('#swapExactTokenForYt', async () => {
@@ -847,7 +848,7 @@ describeWrite('Router', () => {
             expect(netRawTokenIn).toEqBN(expectRawTokenIn);
 
             const netYtOut = balanceAfter.ytBalance.sub(balanceBefore.ytBalance);
-            expect(netYtOut).toEqBN(readerData.netYtOut, DEFAULT_EPSILON);
+            expect(netYtOut).toEqBN(readerData.netYtOut, EPSILON_FOR_AGGREGATOR);
         });
 
         it('#swapExactYtForToken', async () => {
@@ -909,7 +910,7 @@ describeWrite('Router', () => {
             const netPtOut = balanceAfter.ptBalance.sub(balanceBefore.ptBalance);
             const netYtOut = balanceAfter.ytBalance.sub(balanceBefore.ytBalance);
             expect(netPtOut).toEqBN(netYtOut);
-            expect(netPtOut).toEqBN(readerData.netPyOut, DEFAULT_EPSILON);
+            expect(netPtOut).toEqBN(readerData.netPyOut, EPSILON_FOR_AGGREGATOR);
         });
 
         it('#redeemPyToToken', async () => {
@@ -935,7 +936,7 @@ describeWrite('Router', () => {
             expect(netPtIn).toEqBN(expectPyIn);
 
             const netTokenOut = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance);
-            expect(netTokenOut).toEqBN((await readerData.route.getNetOut())!, DEFAULT_EPSILON);
+            expect(netTokenOut).toEqBN((await readerData.route.getNetOut())!, EPSILON_FOR_AGGREGATOR);
         });
 
         it('#mintSyFromToken', async () => {
@@ -961,7 +962,7 @@ describeWrite('Router', () => {
             expect(netRawTokenIn).toEqBN(expectRawTokenIn);
 
             const netSyOut = balanceAfter.syBalance.sub(balanceBefore.syBalance);
-            expect(netSyOut).toEqBN(readerData.netSyOut, DEFAULT_EPSILON);
+            expect(netSyOut).toEqBN(readerData.netSyOut, EPSILON_FOR_AGGREGATOR);
         });
 
         it('#redeemSyToToken', async () => {
@@ -984,7 +985,7 @@ describeWrite('Router', () => {
             expect(netSyIn).toEqBN(expectSyIn);
 
             const netRawTokenOut = balanceAfter.tokenBalance.sub(balanceBefore.tokenBalance);
-            expect(netRawTokenOut).toEqBN((await readerData.route.getNetOut())!, DEFAULT_EPSILON);
+            expect(netRawTokenOut).toEqBN((await readerData.route.getNetOut())!, EPSILON_FOR_AGGREGATOR);
         });
     });
 

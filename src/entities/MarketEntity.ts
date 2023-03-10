@@ -13,6 +13,7 @@ import {
 import { ERC20EntityConfig, ERC20Entity } from './erc20';
 import { SyEntity, SyEntityConfig } from './SyEntity';
 import { PtEntity, PtEntityConfig } from './PtEntity';
+import { YtEntity, YtEntityConfig } from './YtEntity';
 import {
     Address,
     toAddress,
@@ -185,6 +186,19 @@ export class MarketEntity extends ERC20Entity {
         return this.PT(params);
     }
 
+    async YT(params?: MulticallStaticParams): Promise<Address> {
+        // TODO await for router static v2
+        const ptEntity = await this.ptEntity();
+        return ptEntity.YT();
+    }
+
+    /**
+     * Alias for {@link MarketEntity#YT}
+     */
+    async yt(params?: MulticallStaticParams): Promise<Address> {
+        return this.YT(params);
+    }
+
     get entityConfig(): MarketEntityConfig {
         return { ...super.entityConfig, chainId: this.chainId };
     }
@@ -213,6 +227,19 @@ export class MarketEntity extends ERC20Entity {
     async ptEntity(params?: MulticallStaticParams & { entityConfig?: PtEntityConfig }) {
         const ptAddr = await this.PT(params);
         return new PtEntity(ptAddr, params?.entityConfig ?? this.entityConfig);
+    }
+
+    /**
+     * Get the entity of the PT token, correspond to this market.
+     *
+     * @param params - the additional parameters for read method.
+     * @param params.entityConfig - the additional config for the PT token.
+     * @returns
+     */
+    // Consideration: more efficient result caching?
+    async ytEntity(params?: MulticallStaticParams & { entityConfig?: YtEntityConfig }) {
+        const ytAddr = await this.YT(params);
+        return new YtEntity(ytAddr, params?.entityConfig ?? this.entityConfig);
     }
 
     /**

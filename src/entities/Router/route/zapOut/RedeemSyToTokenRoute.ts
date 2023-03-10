@@ -32,6 +32,10 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         });
     }
 
+    protected override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+        return this.checkUserApproval(signerAddress, { token: this.sy, amount: this.netSyIn });
+    }
+
     protected override async previewIntermediateSyImpl(): Promise<RedeemSyToTokenRouteIntermediateData | undefined> {
         return { intermediateSyAmount: this.netSyIn };
     }

@@ -37,6 +37,15 @@ export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         });
     }
 
+    protected override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+        const pt = await this.ytEntity.pt();
+        const [ytApproved, ptApproved] = await Promise.all([
+            this.checkUserApproval(signerAddress, { token: this.ytEntity.address, amount: this.netPyIn }),
+            this.checkUserApproval(signerAddress, { token: pt, amount: this.netPyIn }),
+        ]);
+        return ytApproved && ptApproved;
+    }
+
     protected override async previewIntermediateSyImpl(): Promise<RedeemPyToTokenRouteIntermediateData | undefined> {
         const pyIndex = await this.ytEntity.pyIndexCurrent(this.routerExtraParams.forCallStatic);
         const intermediateSyAmount = new PyIndex(pyIndex).assetToSy(this.netPyIn);

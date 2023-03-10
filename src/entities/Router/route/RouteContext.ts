@@ -1,6 +1,5 @@
 import { BaseRouter } from '../BaseRouter';
 import { BN, Address, toAddress, ethersConstants, NoArgsCache, createNoArgsCache, bnMax } from '../../../common';
-import { createERC20 } from '../../erc20';
 import { SyEntity } from '../../SyEntity';
 import { FixedRouterMetaMethodExtraParams, ApproxParamsStruct } from '../types';
 import { MetaMethodType } from '../../../contracts';
@@ -40,12 +39,6 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
     addRoute(route: RouteType) {
         this.routes.push(route);
         NoArgsCache.invalidate(this, RouteContext.prototype.getMaxOutAmongAllRoutes);
-    }
-
-    // TODO cache
-    // This function is **unused** for now.
-    async getAllowance(userAddress: Address, token: Address): Promise<BN> {
-        return createERC20(token, this.router.entityConfig).allowance(userAddress, this.router.address);
     }
 
     @NoArgsCache

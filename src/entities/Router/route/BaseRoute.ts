@@ -7,9 +7,12 @@ import {
     isSameAddress,
     NoArgsCache,
     ethersConstants,
+    RawTokenAmount,
+    BigNumberish,
 } from '../../../common';
 import { MetaMethodType } from '../../../contracts';
 import { GasEstimationError } from '../../../errors';
+import { createERC20 } from '../../erc20';
 
 export type BaseRouteConfig<T extends MetaMethodType, SelfType extends BaseRoute<T, any>> = {
     readonly context: RouteContext<T, SelfType>;
@@ -66,10 +69,17 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
     abstract estimateNetOutInEth(): Promise<BN | undefined>;
     protected abstract getGasUsedImplement(): Promise<BN | undefined>;
     protected abstract getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined>;
+    protected abstract signerHasApprovedImplement(signerAddress: Address): Promise<boolean>;
+
+    @RouteContext.NoArgsSharedCache
+    async signerHasApproved(): Promise<boolean> {
+        const signerAddress = await this.context.getSignerAddress();
+        return !!signerAddress && this.signerHasApprovedImplement(signerAddress);
+    }
 
     @NoArgsCache
     async getGasUsed(): Promise<BN> {
-        if (!this.router.networkConnection.signer) {
+        if (!(await this.signerHasApproved())) {
             return ethersConstants.MaxUint256;
         }
         try {
@@ -153,5 +163,16 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
 
         if (netOutInEth == undefined || gasUsed == undefined) return undefined;
         return netOutInEth.sub(gasUsed.mul(gasFee));
+    }
+
+    protected async checkUserApproval(
+        userAddress: Address,
+        { token, amount }: RawTokenAmount<BigNumberish>
+    ): Promise<boolean> {
+        const allowance = await createERC20(token, this.router.entityConfig).allowance(
+            userAddress,
+            this.router.address
+        );
+        return allowance.gte(amount);
     }
 }

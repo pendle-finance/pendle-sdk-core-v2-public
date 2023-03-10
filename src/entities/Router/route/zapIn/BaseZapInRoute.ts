@@ -46,6 +46,10 @@ export abstract class BaseZapInRoute<
     abstract readonly sourceTokenAmount: RawTokenAmount<BigNumberish>;
     protected abstract previewWithRouterStatic(): Promise<Data | undefined>;
 
+    protected override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+        return this.checkUserApproval(signerAddress, this.sourceTokenAmount);
+    }
+
     override async estimateNetOutInEth(): Promise<BN | undefined> {
         const [curNetOut, maxNetOut, sourceTokenAmountInEth] = await Promise.all([
             this.getNetOut(),

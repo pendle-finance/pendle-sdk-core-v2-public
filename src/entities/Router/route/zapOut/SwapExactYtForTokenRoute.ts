@@ -2,6 +2,7 @@ import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, BaseZapOutRouteConfig
 import { MetaMethodType } from '../../../../contracts';
 import { BN, Address, BigNumberish } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
+import { MarketEntity } from '../../../MarketEntity';
 
 export type SwapExactYtForTokenRouteIntermediateData = BaseZapOutRouteIntermediateData & {
     netSyFee: BN;
@@ -15,7 +16,7 @@ export class SwapExactYtForTokenRoute<T extends MetaMethodType> extends BaseZapO
     SwapExactYtForTokenRoute<T>
 > {
     constructor(
-        readonly market: Address,
+        readonly market: MarketEntity,
         readonly exactYtIn: BigNumberish,
         readonly tokenOut: Address,
         readonly slippage: number,
@@ -36,6 +37,11 @@ export class SwapExactYtForTokenRoute<T extends MetaMethodType> extends BaseZapO
         });
     }
 
+    protected override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+        const yt = await this.market.yt();
+        return this.checkUserApproval(signerAddress, { token: yt, amount: this.exactYtIn });
+    }
+
     protected override async previewIntermediateSyImpl(): Promise<
         SwapExactYtForTokenRouteIntermediateData | undefined
     > {
@@ -45,7 +51,7 @@ export class SwapExactYtForTokenRoute<T extends MetaMethodType> extends BaseZapO
             priceImpact,
             exchangeRateAfter,
         } = await this.routerStaticCall.swapExactYtForSyStatic(
-            this.market,
+            this.market.address,
             this.exactYtIn,
             this.routerExtraParams.forCallStatic
         );
@@ -82,10 +88,16 @@ export class SwapExactYtForTokenRoute<T extends MetaMethodType> extends BaseZapO
     ) {
         const [output, intermediateResult] = await Promise.all([this.buildTokenOutput(), this.previewIntermediateSy()]);
         if (!output || !intermediateResult) return;
-        return this.router.contract.metaCall.swapExactYtForToken(params.receiver, this.market, this.exactYtIn, output, {
-            ...data,
-            ...params,
-            ...intermediateResult,
-        });
+        return this.router.contract.metaCall.swapExactYtForToken(
+            params.receiver,
+            this.market.address,
+            this.exactYtIn,
+            output,
+            {
+                ...data,
+                ...params,
+                ...intermediateResult,
+            }
+        );
     }
 }
