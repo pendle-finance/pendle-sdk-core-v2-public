@@ -1,9 +1,9 @@
-import { BaseZapInRoute, BaseZapInRouteConfig } from './BaseZapInRoute';
+import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
-import { Address, BigNumberish, BN, calcSlippedDownAmount, isNativeToken } from '../../../../common';
+import { Address, BigNumberish, BN, calcSlippedDownAmount, isNativeToken, ethersConstants } from '../../../../common';
 
-export type MintPyFromTokenRouteData = {
+export type MintPyFromTokenRouteData = BaseZapInRouteData & {
     netPyOut: BN;
 };
 
@@ -45,14 +45,14 @@ export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
             return undefined;
         }
 
-        const netPyOut = await this.routerStaticCall.mintPYFromBaseStatic(
+        const netPyOut = await this.routerStaticCall.mintPyFromTokenStatic(
             this.yt,
             this.tokenMintSy,
             await this.getTokenMintSyAmount(),
             input.bulk,
             this.routerExtraParams.forCallStatic
         );
-        return { netPyOut };
+        return { netPyOut, intermediateSyAmount: ethersConstants.Zero };
     }
 
     protected override async getGasUsedImplement(): Promise<BN | undefined> {

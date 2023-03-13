@@ -21,9 +21,13 @@ export type BaseZapInRouteConfig<
     readonly tokenMintSy: Address;
 };
 
+export type BaseZapInRouteData = {
+    intermediateSyAmount: BN;
+};
+
 export abstract class BaseZapInRoute<
     T extends MetaMethodType,
-    Data,
+    Data extends BaseZapInRouteData,
     SelfType extends BaseZapInRoute<T, Data, SelfType>
 > extends BaseRoute<T, SelfType> {
     readonly tokenMintSy: Address;
@@ -127,6 +131,11 @@ export abstract class BaseZapInRoute<
         await syncAfterAggregatorCall();
         const res = await this.previewWithRouterStatic();
         return res;
+    }
+
+    async getIntermediateSyAmount(): Promise<BN | undefined> {
+        const data = await this.preview();
+        return data?.intermediateSyAmount;
     }
 
     @NoArgsCache

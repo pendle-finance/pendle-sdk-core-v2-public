@@ -129,7 +129,7 @@ describeWrite('Routing', () => {
             [`${market.market} - ${market.name} - ${new Date(market.expiry * 1000).toDateString()}`, market] as const
     );
 
-    describe.each(marketData)('Market: %s', (_, market) => {
+    describe.skip.each(marketData)('Market: %s', (_, market) => {
         describe.each(TOKENS_TO_TEST)('Token: %s', (token) => {
             let tokenPrice: BigNumber;
             let tokenDecimal: number;

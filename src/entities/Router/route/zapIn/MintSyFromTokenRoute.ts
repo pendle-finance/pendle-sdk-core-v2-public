@@ -1,9 +1,9 @@
-import { BaseZapInRoute, BaseZapInRouteConfig } from './BaseZapInRoute';
+import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, calcSlippedDownAmount, isNativeToken } from '../../../../common';
 
-export type MintSyFromTokenRouteData = {
+export type MintSyFromTokenRouteData = BaseZapInRouteData & {
     netSyOut: BN;
 };
 
@@ -54,7 +54,7 @@ export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
             await this.getTokenMintSyAmount(),
             { ...this.routerExtraParams.forCallStatic, bulk: input.bulk }
         );
-        return { netSyOut };
+        return { netSyOut, intermediateSyAmount: netSyOut };
     }
 
     protected override async getGasUsedImplement(): Promise<BN | undefined> {

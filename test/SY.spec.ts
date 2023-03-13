@@ -58,9 +58,9 @@ describe(SyEntity, () => {
                 Multicall.wrap(sy.contract, multicall).callStatic.getRewardTokens().then(toAddresses),
                 Multicall.wrap(sy.contract, multicall).callStatic.accruedRewards(currentConfig.deployer),
             ]);
-            expect(userInfo.balance).toBeGteBN(0);
+            expect(userInfo.syBalance.amount).toBeGteBN(0);
             for (let i = 0; i < rewardTokens.length; i++) {
-                const { token, amount } = userInfo.rewards[i];
+                const { token, amount } = userInfo.unclaimedRewards[i];
                 expect(token).toBe(rewardTokens[i]);
                 expect(amount).toEqBN(rewardAmounts[i]);
             }

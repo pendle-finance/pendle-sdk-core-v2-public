@@ -1,7 +1,7 @@
 import { MetaMethodType } from '../../contracts';
 import { isSameAddress } from '../../common';
 
-import { BaseZapInRoute, BaseZapOutRoute } from './route';
+import { BaseZapInRoute, BaseZapOutRoute, BaseZapInRouteData, BaseZapOutRouteIntermediateData } from './route';
 
 import { BaseRouter } from './BaseRouter';
 import { BaseRouterConfig } from './types';
@@ -29,18 +29,18 @@ export class BasicRouter extends BaseRouter {
     /**
      * @returns the route having tokenMintSy equals its source token.
      */
-    override async findBestZapInRoute<ZapInRoute extends BaseZapInRoute<MetaMethodType, object, ZapInRoute>>(
-        routes: ZapInRoute[]
-    ): Promise<ZapInRoute | undefined> {
+    override async findBestZapInRoute<
+        ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>
+    >(routes: ZapInRoute[]): Promise<ZapInRoute | undefined> {
         return routes.filter((route) => isSameAddress(route.sourceTokenAmount.token, route.tokenMintSy))[0];
     }
 
     /**
      * @returns the route having tokenRedeemSy equals its target token.
      */
-    override async findBestZapOutRoute<ZapOutRoute extends BaseZapOutRoute<any, any, ZapOutRoute>>(
-        routes: ZapOutRoute[]
-    ): Promise<ZapOutRoute | undefined> {
+    override async findBestZapOutRoute<
+        ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
+    >(routes: ZapOutRoute[]): Promise<ZapOutRoute | undefined> {
         return routes.filter((route) => isSameAddress(route.targetToken, route.tokenRedeemSy))[0];
     }
 }

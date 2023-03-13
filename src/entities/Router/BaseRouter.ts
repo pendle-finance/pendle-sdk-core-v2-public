@@ -1,6 +1,6 @@
 import { PendleEntity } from '../PendleEntity';
 import {
-    RouterStatic,
+    IPRouterStatic,
     WrappedContract,
     MetaMethodType,
     ContractMetaMethod,
@@ -44,8 +44,10 @@ import { BaseRoute, RouteContext } from './route';
 
 import {
     BaseZapInRoute,
+    BaseZapInRouteData,
     AddLiquidityDualTokenAndPtRoute,
     AddLiquiditySingleTokenRoute,
+    AddLiquiditySingleTokenKeepYtRoute,
     SwapExactTokenForPtRoute,
     SwapExactTokenForYtRoute,
     MintSyFromTokenRoute,
@@ -54,6 +56,7 @@ import {
 
 import {
     BaseZapOutRoute,
+    BaseZapOutRouteIntermediateData,
     RemoveLiquidityDualTokenAndPtRoute,
     RemoveLiquiditySingleTokenRoute,
     RedeemSyToTokenRoute,
@@ -77,7 +80,7 @@ export abstract class BaseRouter extends PendleEntity {
         eps: new BigNumber(BaseRouter.EPS).shiftedBy(18).toFixed(0),
     };
 
-    readonly routerStatic: WrappedContract<RouterStatic>;
+    readonly routerStatic: WrappedContract<IPRouterStatic>;
     readonly aggregatorHelper: AggregatorHelper;
     readonly chainId: ChainId;
     readonly gasFeeEstimator: GasFeeEstimator;
@@ -90,12 +93,12 @@ export abstract class BaseRouter extends PendleEntity {
         this.gasFeeEstimator = config.gasFeeEstimator ?? new GasFeeEstimator(this.provider!);
     }
 
-    abstract findBestZapInRoute<ZapInRoute extends BaseZapInRoute<MetaMethodType, object, ZapInRoute>>(
+    abstract findBestZapInRoute<ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>>(
         routes: ZapInRoute[]
     ): Promise<ZapInRoute | undefined>;
-    abstract findBestZapOutRoute<ZapOutRoute extends BaseZapOutRoute<any, any, ZapOutRoute>>(
-        routes: ZapOutRoute[]
-    ): Promise<ZapOutRoute | undefined>;
+    abstract findBestZapOutRoute<
+        ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
+    >(routes: ZapOutRoute[]): Promise<ZapOutRoute | undefined>;
 
     get provider() {
         return this.networkConnection.provider ?? this.networkConnection.signer.provider;
@@ -341,6 +344,40 @@ export abstract class BaseRouter extends PendleEntity {
         );
     }
 
+    async addLiquiditySingleSyKeepYt<T extends MetaMethodType>(
+        market: Address | MarketEntity,
+        netSyIn: BigNumberish,
+        slippage: number,
+        _params: RouterMetaMethodExtraParams<T> = {}
+    ): RouterMetaMethodReturnType<
+        T,
+        'addLiquiditySingleSyKeepYt',
+        {
+            netLpOut: BN;
+            netYtOut: BN;
+            netSyToPY: BN;
+        }
+    > {
+        const params = this.addExtraParams(_params);
+        const marketAddr = typeof market === 'string' ? market : market.address;
+        const res = await this.routerStaticCall.addLiquiditySingleSyKeepYtStatic(
+            marketAddr,
+            netSyIn,
+            params.forCallStatic
+        );
+        const { netLpOut, netYtOut } = res;
+
+        return this.contract.metaCall.addLiquiditySingleSyKeepYt(
+            params.receiver,
+            marketAddr,
+            netSyIn,
+            // note: different slip down amount function
+            calcSlippedDownAmountSqrt(netLpOut, slippage),
+            calcSlippedDownAmountSqrt(netYtOut, slippage),
+            { ...res, ...params }
+        );
+    }
+
     async addLiquiditySingleToken<T extends MetaMethodType>(
         market: Address | MarketEntity,
         tokenIn: Address,
@@ -375,6 +412,51 @@ export abstract class BaseRouter extends PendleEntity {
         const routes = tokenMintSyList.map(
             (tokenMintSy) =>
                 new AddLiquiditySingleTokenRoute(marketAddr, tokenIn, netTokenIn, slippage, {
+                    context: routeContext,
+                    tokenMintSy,
+                })
+        );
+
+        const bestRoute = await this.findBestZapInRoute(routes);
+        if (bestRoute === undefined) {
+            throw NoRouteFoundError.action('add liquidity', tokenIn, marketAddr);
+        }
+        return bestRoute.buildCall();
+    }
+
+    async addLiquiditySingleTokenKeepYt<T extends MetaMethodType>(
+        market: Address | MarketEntity,
+        tokenIn: Address,
+        netTokenIn: BigNumberish,
+        slippage: number,
+        _params: RouterMetaMethodExtraParams<T> = {}
+    ): RouterMetaMethodReturnType<
+        T,
+        'addLiquiditySingleTokenKeepYt',
+        {
+            netLpOut: BN;
+            netYtOut: BN;
+            netSyMinted: BN;
+            netSyToPY: BN;
+            route: AddLiquiditySingleTokenKeepYtRoute<T>;
+        }
+    > {
+        const params = this.addExtraParams(_params);
+        if (typeof market === 'string') {
+            market = new MarketEntity(market, this.entityConfig);
+        }
+        const marketAddr = market.address;
+        const syEntity = await market.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<T, AddLiquiditySingleTokenKeepYtRoute<T>>({
+            params,
+            syEntity,
+            slippage,
+        });
+        const tokenMintSyList = await routeContext.getTokensMintSy();
+
+        const routes = tokenMintSyList.map(
+            (tokenMintSy) =>
+                new AddLiquiditySingleTokenKeepYtRoute(marketAddr, tokenIn, netTokenIn, slippage, {
                     context: routeContext,
                     tokenMintSy,
                 })
@@ -799,10 +881,10 @@ export abstract class BaseRouter extends PendleEntity {
         amountSyToMint: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ) {
+    ): RouterMetaMethodReturnType<T, 'mintPyFromSy', { netPyOut: BN }> {
         const params = this.addExtraParams(_params);
         const ytAddr = typeof yt === 'string' ? yt : yt.address;
-        const netPyOut = await this.routerStaticCall.mintPYFromSyStatic(ytAddr, amountSyToMint);
+        const netPyOut = await this.routerStaticCall.mintPyFromSyStatic(ytAddr, amountSyToMint);
         return this.contract.metaCall.mintPyFromSy(
             params.receiver,
             ytAddr,
@@ -853,10 +935,10 @@ export abstract class BaseRouter extends PendleEntity {
         amountPyToRedeem: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T>
-    ) {
+    ): RouterMetaMethodReturnType<T, 'redeemPyToSy', { netSyOut: BN }> {
         const params = this.addExtraParams(_params);
         const ytAddr = typeof yt === 'string' ? yt : yt.address;
-        const netSyOut = await this.routerStaticCall.redeemPYToSyStatic(ytAddr, amountPyToRedeem);
+        const netSyOut = await this.routerStaticCall.redeemPyToSyStatic(ytAddr, amountPyToRedeem);
         return this.contract.metaCall.redeemPyToSy(
             params.receiver,
             ytAddr,

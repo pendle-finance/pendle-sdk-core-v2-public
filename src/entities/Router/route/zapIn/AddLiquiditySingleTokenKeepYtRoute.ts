@@ -3,68 +3,61 @@ import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '..
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmountSqrt } from '../../../../common';
 
-export type AddLiquidityDualTokenAndPtRouteData = BaseZapInRouteData & {
+export type AddLiquiditySingleTokenKeepYtRouteData = BaseZapInRouteData & {
     netLpOut: BN;
-    netTokenUsed: BN;
-    netPtUsed: BN;
+    netYtOut: BN;
+    netSyMinted: BN;
+    netSyToPY: BN;
 };
 
-export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends BaseZapInRoute<
+export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extends BaseZapInRoute<
     T,
-    AddLiquidityDualTokenAndPtRouteData,
-    AddLiquidityDualTokenAndPtRoute<T>
+    AddLiquiditySingleTokenKeepYtRouteData,
+    AddLiquiditySingleTokenKeepYtRoute<T>
 > {
     constructor(
         readonly market: Address,
         readonly tokenIn: Address,
-        readonly tokenDesired: BigNumberish,
-        readonly ptDesired: BigNumberish,
+        readonly netTokenIn: BigNumberish,
         readonly slippage: number,
-        params: BaseZapInRouteConfig<T, AddLiquidityDualTokenAndPtRoute<T>>
+        params: BaseZapInRouteConfig<T, AddLiquiditySingleTokenKeepYtRoute<T>>
     ) {
         super(params);
     }
 
     override get sourceTokenAmount() {
-        return { token: this.tokenIn, amount: this.tokenDesired };
+        return { token: this.tokenIn, amount: this.netTokenIn };
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): AddLiquidityDualTokenAndPtRoute<T> {
-        return new AddLiquidityDualTokenAndPtRoute(
-            this.market,
-            this.tokenIn,
-            this.tokenDesired,
-            this.ptDesired,
-            this.slippage,
-            {
-                context: this.context,
-                tokenMintSy: this.tokenMintSy,
-                withBulkSeller,
-                cloneFrom: this,
-            }
-        );
+    override routeWithBulkSeller(withBulkSeller: boolean = true): AddLiquiditySingleTokenKeepYtRoute<T> {
+        return new AddLiquiditySingleTokenKeepYtRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
+            context: this.context,
+            tokenMintSy: this.tokenMintSy,
+            withBulkSeller,
+            cloneFrom: this,
+        });
     }
 
     override async getNetOut(syncAfterAggregatorCall?: () => Promise<void>): Promise<BN | undefined> {
         return (await this.preview(syncAfterAggregatorCall))?.netLpOut;
     }
 
-    protected override async previewWithRouterStatic(): Promise<AddLiquidityDualTokenAndPtRouteData | undefined> {
+    protected override async previewWithRouterStatic(): Promise<AddLiquiditySingleTokenKeepYtRouteData | undefined> {
         const input = await this.buildTokenInput();
         if (!input) {
             return undefined;
         }
-        const data = await this.routerStaticCall.addLiquidityDualTokenAndPtStatic(
+
+        const data = await this.routerStaticCall.addLiquiditySingleTokenKeepYtStatic(
             this.market,
             this.tokenMintSy,
             await this.getTokenMintSyAmount(),
             input.bulk,
-            this.ptDesired,
             this.routerExtraParams.forCallStatic
         );
         return {
             ...data,
-            intermediateSyAmount: data.netSyDesired,
+            intermediateSyAmount: data.netSyMinted,
         };
     }
 
@@ -74,9 +67,9 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
 
     async buildCall(): RouterMetaMethodReturnType<
         T,
-        'addLiquidityDualTokenAndPt',
-        AddLiquidityDualTokenAndPtRouteData & {
-            route: AddLiquidityDualTokenAndPtRoute<T>;
+        'addLiquiditySingleTokenKeepYt',
+        AddLiquiditySingleTokenKeepYtRouteData & {
+            route: AddLiquiditySingleTokenKeepYtRoute<T>;
         }
     > {
         const previewResult = (await this.preview())!;
@@ -92,21 +85,23 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
      *
      * The type binder somehow still work fine, so for now we can let tsc do
      * the typing for us.
+     *
      */
     protected async buildGenericCall<Data extends {}, MT extends MetaMethodType>(
         data: Data,
         params: FixedRouterMetaMethodExtraParams<MT>
     ) {
-        const [input, previewResult] = await Promise.all([this.buildTokenInput(), this.preview()]);
-        if (!input || !previewResult) return undefined;
-        const overrides = { value: isNativeToken(this.tokenIn) ? this.tokenDesired : undefined };
+        const [previewResult, input] = await Promise.all([this.preview(), this.buildTokenInput()]);
+        if (!previewResult || !input) return undefined;
+        const overrides = { value: isNativeToken(this.tokenIn) ? this.netTokenIn : undefined };
         const minLpOut = calcSlippedDownAmountSqrt(previewResult.netLpOut, this.slippage);
-        return this.router.contract.metaCall.addLiquidityDualTokenAndPt(
-            this.routerExtraParams.receiver,
+        const minYtOut = calcSlippedDownAmountSqrt(previewResult.netYtOut, this.slippage);
+        return this.router.contract.metaCall.addLiquiditySingleTokenKeepYt(
+            params.receiver,
             this.market,
-            input,
-            this.ptDesired,
             minLpOut,
+            minYtOut,
+            input,
             { ...data, ...mergeMetaMethodExtraParams({ overrides }, params) }
         );
     }

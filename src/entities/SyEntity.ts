@@ -1,5 +1,5 @@
 import {
-    RouterStatic,
+    IPRouterStatic,
     SYBase,
     SYBaseABI,
     WrappedContract,
@@ -27,8 +27,8 @@ import {
 import { calcSlippedDownAmount } from '../common/math';
 
 export type UserSyInfo = {
-    balance: BN;
-    rewards: RawTokenAmount[];
+    syBalance: RawTokenAmount;
+    unclaimedRewards: RawTokenAmount[];
 };
 
 /**
@@ -48,7 +48,7 @@ export type SyEntityMetaMethodReturnType<
  * This class represent a Standardized Yield (SY) token.
  */
 export class SyEntity extends ERC20Entity {
-    protected readonly routerStatic: WrappedContract<RouterStatic>;
+    protected readonly routerStatic: WrappedContract<IPRouterStatic>;
     readonly chainId: ChainId;
 
     constructor(readonly address: Address, config: SyEntityConfig) {
@@ -171,8 +171,12 @@ export class SyEntity extends ERC20Entity {
      * @returns
      */
     async userInfo(user: Address, params?: MulticallStaticParams): Promise<UserSyInfo> {
-        const { balance, rewards } = await this.routerStatic.multicallStatic.getUserSYInfo(this.address, user, params);
-        return { balance, rewards: rewards.map(createTokenAmount) };
+        const { syBalance, unclaimedRewards } = await this.routerStatic.multicallStatic.getUserSYInfo(
+            this.address,
+            user,
+            params
+        );
+        return { syBalance: createTokenAmount(syBalance), unclaimedRewards: unclaimedRewards.map(createTokenAmount) };
     }
 
     /**
@@ -223,7 +227,7 @@ export class SyEntity extends ERC20Entity {
         } = {}
     ): Promise<BN> {
         const { bulk = NATIVE_ADDRESS_0x00 } = params;
-        return this.routerStatic.multicallStatic.previewRedeemStatic(
+        return this.routerStatic.multicallStatic.redeemSyToTokenStatic(
             this.address,
             tokenOut,
             amountSharesToRedeem,
@@ -249,7 +253,7 @@ export class SyEntity extends ERC20Entity {
         } = {}
     ): Promise<BN> {
         const { bulk = NATIVE_ADDRESS_0x00 } = params;
-        return this.routerStatic.multicallStatic.previewDepositStatic(
+        return this.routerStatic.multicallStatic.mintSyFromTokenStatic(
             this.address,
             tokenIn,
             amountTokenToDeposit,

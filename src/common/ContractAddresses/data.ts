@@ -1,10 +1,11 @@
 // This file is generated via `yarn generateContractAddresses`
+// Generated at Mon, 13 Mar 2023 04:33:58 GMT
 import { ContractAddresses } from './types';
 
 export const ETHEREUM_CORE_ADDRESSES: ContractAddresses = {
     PENDLE: '0x808507121b80c02388fad14726482e061b8da827',
     ROUTER: '0x0000000001e4ef00d069e71d6ba041b0a16f7ea0',
-    ROUTER_STATIC: '0xcf45b92cd0b0859fc42a767faac2354909f937e9',
+    ROUTER_STATIC: '0x263833d47ea3fa4a30f269323aba6a107f9eb14c',
     VEPENDLE: '0x4f30a9d41b80ecc5b94306ab4364951ae3170210',
     VOTING_CONTROLLER: '0x44087e105137a5095c008aab6a6530182821f2f0',
     FEE_DISTRIBUTOR: '0xd7b34a6fdcb2a7ced2115ff7f5fdd72aa6aa4de2',
@@ -14,7 +15,7 @@ export const ETHEREUM_CORE_ADDRESSES: ContractAddresses = {
 export const FUJI_CORE_ADDRESSES: ContractAddresses = {
     PENDLE: '0xb7609dec1c926204c3b67345cbcd54bc4aa7a940',
     ROUTER: '0xfc0f1237961a6eceacac86ad407e181ecd5e673c',
-    ROUTER_STATIC: '0xbf98d54d05907f3f576602e8be7feaf8891c787f',
+    ROUTER_STATIC: '0x483b13d42f3d72db7c449461289299c095143a05',
     VEPENDLE: '0xb20e3c268c993bc3c9bc1c1cc5d7491f2268cd91',
     VOTING_CONTROLLER: '0x40ea97a7e9a4a0520229d1bbdf4d82e36b1a5475',
     FEE_DISTRIBUTOR: '0x40160f3439317bcd0ec8eb09545dd6a30771a7b6',
@@ -24,7 +25,7 @@ export const FUJI_CORE_ADDRESSES: ContractAddresses = {
 export const MUMBAI_CORE_ADDRESSES: ContractAddresses = {
     PENDLE: '0xa6dc67ff3b241dedec6af907ff24bb5cfc3eeeaf',
     ROUTER: '0x53fe536228e70cfb2e8c6fa38d344a57be797237',
-    ROUTER_STATIC: '0xc7f8f9f1dde1104664b6fc8f33e49b169c12f41e',
+    ROUTER_STATIC: '0xeaf504badda9b6ba16e7bb4f3bdcaddae0468fe6',
     VEPENDLE: '0xc0bc61112d9fd7ba5809047a86ec245593ba0e1e',
     PENDLE_SWAP: '0xfee829cf47c28b8d81cd9035a05320a51595db42',
     WRAPPED_NATIVE: '0x9c3c9283d3e44854697cd22d3faa240cfb032889',
@@ -32,7 +33,7 @@ export const MUMBAI_CORE_ADDRESSES: ContractAddresses = {
 export const ARBITRUM_CORE_ADDRESSES: ContractAddresses = {
     PENDLE: '0x0c880f6761f1af8d9aa9c466984b80dab9a8c9e8',
     ROUTER: '0x0000000001e4ef00d069e71d6ba041b0a16f7ea0',
-    ROUTER_STATIC: '0x4106fc9811a792130502bb3a5b693894cca7bd8e',
+    ROUTER_STATIC: '0xadb09f65bd90d19e3148d9ccb693f3161c6db3e8',
     VEPENDLE: '0x3209e9412cca80b18338f2a56ada59c484c39644',
     PENDLE_SWAP: '0x0e669e08bd717d7f9c9de158636bd8561295fbb5',
     WRAPPED_NATIVE: '0x82af49447d8a07e3bd95bd0d56f35241523fbab1',

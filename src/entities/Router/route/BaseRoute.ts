@@ -126,9 +126,7 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
         if (tokenAmountForBulkTrade === undefined) {
             return { bulk: NATIVE_ADDRESS_0x00, totalToken: ethersConstants.Zero, totalSy: ethersConstants.Zero };
         }
-        const { bulk, totalToken, totalSy } = await this.router.routerStatic.multicallStatic[
-            'getBulkSellerInfo(address,address,uint256,uint256)'
-        ](
+        const { bulk, totalToken, totalSy } = await this.router.routerStatic.multicallStatic.getBulkSellerInfo(
             this.tokenBulk,
             this.syEntity.address,
             tokenAmountForBulkTrade.netTokenIn,

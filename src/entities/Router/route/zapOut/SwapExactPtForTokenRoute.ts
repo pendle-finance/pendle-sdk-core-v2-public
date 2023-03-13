@@ -1,6 +1,6 @@
 import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, BaseZapOutRouteConfig } from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
-import { BN, Address, BigNumberish } from '../../../../common';
+import { BN, Address, BigNumberish, NATIVE_ADDRESS_0x00 } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MarketEntity } from '../../../MarketEntity';
 
@@ -46,13 +46,15 @@ export class SwapExactPtForTokenRoute<T extends MetaMethodType> extends BaseZapO
         SwapExactPtForTokenRouteIntermediateData | undefined
     > {
         const {
-            netSyOut: intermediateSyAmount,
+            netSyToRedeem: intermediateSyAmount,
             netSyFee,
             priceImpact,
             exchangeRateAfter,
-        } = await this.routerStaticCall.swapExactPtForSyStatic(
+        } = await this.routerStaticCall.swapExactPtForTokenStatic(
             this.market.address,
             this.exactPtIn,
+            this.tokenRedeemSy,
+            NATIVE_ADDRESS_0x00,
             this.routerExtraParams.forCallStatic
         );
         return { intermediateSyAmount, netSyFee, priceImpact, exchangeRateAfter };

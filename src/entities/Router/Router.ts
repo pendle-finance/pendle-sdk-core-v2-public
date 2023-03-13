@@ -2,7 +2,13 @@ import { MetaMethodType } from '../../contracts';
 import { PendleSdkError } from '../../errors';
 import { devLog, promiseAllWithErrors } from '../../common';
 
-import { BaseRoute, BaseZapInRoute, BaseZapOutRoute } from './route';
+import {
+    BaseRoute,
+    BaseZapInRoute,
+    BaseZapOutRoute,
+    BaseZapInRouteData,
+    BaseZapOutRouteIntermediateData,
+} from './route';
 
 import { BaseRouter } from './BaseRouter';
 import { BaseRouterConfig } from './types';
@@ -38,9 +44,9 @@ export class Router extends BaseRouter {
         });
     }
 
-    override async findBestZapInRoute<ZapInRoute extends BaseZapInRoute<MetaMethodType, object, ZapInRoute>>(
-        routes: ZapInRoute[]
-    ): Promise<ZapInRoute | undefined> {
+    override async findBestZapInRoute<
+        ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>
+    >(routes: ZapInRoute[]): Promise<ZapInRoute | undefined> {
         const routesWithBulkSeller = await Promise.all(
             routes.map(async (route) => {
                 if (!(await route.hasBulkSeller())) return [];
@@ -60,9 +66,9 @@ export class Router extends BaseRouter {
         return this.findBestGenericRoute(routes);
     }
 
-    private async tryZapInRouteWithBulkSeller<ZapInRoute extends BaseZapInRoute<any, any, ZapInRoute>>(
-        route: ZapInRoute
-    ): Promise<ZapInRoute | undefined> {
+    private async tryZapInRouteWithBulkSeller<
+        ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>
+    >(route: ZapInRoute): Promise<ZapInRoute | undefined> {
         const tradeValueInEth = await route.estimateSourceTokenAmountInEth();
         const isBelowLimit = tradeValueInEth.lt(this.getBulkLimit());
         const shouldRouteThroughBulkSeller = isBelowLimit;
@@ -76,9 +82,9 @@ export class Router extends BaseRouter {
         }
     }
 
-    override async findBestZapOutRoute<ZapOutRoute extends BaseZapOutRoute<any, any, ZapOutRoute>>(
-        routes: ZapOutRoute[]
-    ): Promise<ZapOutRoute | undefined> {
+    override async findBestZapOutRoute<
+        ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
+    >(routes: ZapOutRoute[]): Promise<ZapOutRoute | undefined> {
         const routesWithBulkSeller = await Promise.all(
             routes.map(async (route) => {
                 if (!(await route.hasBulkSeller())) return [];
@@ -90,9 +96,9 @@ export class Router extends BaseRouter {
         return this.findBestGenericRoute(routes);
     }
 
-    private async tryZapOutRouteWithBulkSeller<ZapOutRoute extends BaseZapOutRoute<any, any, ZapOutRoute>>(
-        route: ZapOutRoute
-    ): Promise<ZapOutRoute | undefined> {
+    private async tryZapOutRouteWithBulkSeller<
+        ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
+    >(route: ZapOutRoute): Promise<ZapOutRoute | undefined> {
         const tradeValueInEth = await route.estimateMaxOutAmoungAllRouteInEth();
         if (tradeValueInEth == undefined) return;
         const isBelowLimit = tradeValueInEth.lt(this.getBulkLimit());

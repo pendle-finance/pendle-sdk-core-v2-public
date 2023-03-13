@@ -1,6 +1,6 @@
 import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, BaseZapOutRouteConfig } from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
-import { BN, Address, BigNumberish, calcSlippedDownAmount } from '../../../../common';
+import { BN, Address, BigNumberish, calcSlippedDownAmount, NATIVE_ADDRESS_0x00 } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 
 export type RemoveLiquidityDualTokenAndPtRouteIntermediateData = BaseZapOutRouteIntermediateData & {
@@ -41,10 +41,12 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
     protected override async previewIntermediateSyImpl(): Promise<
         RemoveLiquidityDualTokenAndPtRouteIntermediateData | undefined
     > {
-        const { netSyOut: intermediateSyAmount, netPtOut } =
-            await this.routerStaticCall.removeLiquidityDualSyAndPtStatic(
+        const { netSyToRedeem: intermediateSyAmount, netPtOut } =
+            await this.routerStaticCall.removeLiquidityDualTokenAndPtStatic(
                 this.market,
                 this.lpToRemove,
+                this.tokenRedeemSy,
+                NATIVE_ADDRESS_0x00,
                 this.routerExtraParams.forCallStatic
             );
         return { intermediateSyAmount, netPtOut };

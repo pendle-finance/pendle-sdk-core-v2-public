@@ -1,9 +1,9 @@
-import { BaseZapInRoute, BaseZapInRouteConfig } from './BaseZapInRoute';
+import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmountSqrt } from '../../../../common';
 
-export type AddLiquiditySingleTokenRouteData = {
+export type AddLiquiditySingleTokenRouteData = BaseZapInRouteData & {
     netLpOut: BN;
     netPtFromSwap: BN;
     priceImpact: BN;
@@ -49,14 +49,17 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
             return undefined;
         }
 
-        const data = await this.routerStaticCall.addLiquiditySingleBaseTokenStatic(
+        const data = await this.routerStaticCall.addLiquiditySingleTokenStatic(
             this.market,
             this.tokenMintSy,
             await this.getTokenMintSyAmount(),
             input.bulk,
             this.routerExtraParams.forCallStatic
         );
-        return data;
+        return {
+            ...data,
+            intermediateSyAmount: data.netSyMinted,
+        };
     }
 
     protected override async getGasUsedImplement(): Promise<BN | undefined> {

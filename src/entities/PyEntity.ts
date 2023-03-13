@@ -1,20 +1,17 @@
 import {
-    RouterStatic,
+    IPRouterStatic,
+    IPActionInfoStatic,
     WrappedContract,
     MulticallStaticParams,
     getRouterStatic,
-    PendleYieldTokenABI,
 } from '../contracts';
 import { BigNumber as BN } from 'ethers';
 import { ERC20Entity, ERC20EntityConfig } from './erc20';
-import { Address, toAddress, RawTokenAmount, createTokenAmount, ChainId } from '../common';
-import { YtEntity } from './YtEntity';
+import { Address, RawTokenAmount, createTokenAmount, ChainId } from '../common';
 
 export type UserPyInfo = {
-    yt: Address;
-    ytBalance: BN;
-    pt: Address;
-    ptBalance: BN;
+    ytBalance: RawTokenAmount;
+    ptBalance: RawTokenAmount;
     unclaimedInterest: RawTokenAmount;
     unclaimedRewards: RawTokenAmount[];
 };
@@ -47,7 +44,7 @@ export type PyEntityConfig = ERC20EntityConfig & {
  * base ABI for both PT and YT. This should be done in the subclasses.
  */
 export abstract class PyEntity extends ERC20Entity {
-    protected readonly routerStatic: WrappedContract<RouterStatic>;
+    protected readonly routerStatic: WrappedContract<IPRouterStatic>;
     readonly chainId: ChainId;
 
     constructor(readonly address: Address, config: PyEntityConfig) {
@@ -67,78 +64,28 @@ export abstract class PyEntity extends ERC20Entity {
      * @returns
      */
     async userInfo(user: Address, params?: MulticallStaticParams): Promise<UserPyInfo> {
-        const { yt } = await this.routerStatic.multicallStatic.getPY(this.address, params);
-        const ytEntity = new YtEntity(toAddress(yt), {
-            ...this.entityConfig,
-            abi: PendleYieldTokenABI,
-        });
-
-        const [userPyCurrentInfo, simulateInterestAndRewards, rewardTokens] = await Promise.all([
-            this.routerStatic.multicallStatic.getUserPYInfo(this.address, user, params),
-            ytEntity.contract.multicallStatic.redeemDueInterestAndRewards(user, true, true, params),
-            ytEntity.getRewardTokens(params),
-        ]);
-
-        const unclaimedRewards: RouterStatic.TokenAmountStructOutput[] = rewardTokens.map((token, i) => {
-            return Object.assign([token, simulateInterestAndRewards.rewardsOut[i]] as [string, BN], {
-                token,
-                amount: simulateInterestAndRewards.rewardsOut[i],
-            });
-        });
-
-        return PyEntity.toUserPyInfo({
-            ...userPyCurrentInfo,
-            unclaimedInterest: {
-                ...userPyCurrentInfo.unclaimedInterest,
-                amount: simulateInterestAndRewards.interestOut,
-                [1]: simulateInterestAndRewards.interestOut,
-            },
-            unclaimedRewards,
-        });
+        const pyInfo = await this.routerStatic.multicallStatic.getUserPYInfo(this.address, user, params);
+        return PyEntity.toUserPyInfo(pyInfo);
     }
 
     /**
-     * Convert {@link RouterStatic.UserPYInfoStructOutput} to {@link UserPyInfo}.
+     * Convert {@link IPRouterStatic.UserPYInfoStructOutput} to {@link UserPyInfo}.
      * @remarks
      * Both structures have the same shape, but the return type has a stricter type.
      * @param userPyInfoStructOutput
      * @returns
      */
     static toUserPyInfo({
-        yt,
         ytBalance,
-        pt,
         ptBalance,
         unclaimedRewards,
         unclaimedInterest,
-    }: RouterStatic.UserPYInfoStructOutput): UserPyInfo {
+    }: IPActionInfoStatic.UserPYInfoStructOutput): UserPyInfo {
         return {
-            yt: toAddress(yt),
-            pt: toAddress(pt),
-            ytBalance: ytBalance,
-            ptBalance: ptBalance,
+            ytBalance: createTokenAmount(ytBalance),
+            ptBalance: createTokenAmount(ptBalance),
             unclaimedInterest: createTokenAmount(unclaimedInterest),
             unclaimedRewards: unclaimedRewards.map(createTokenAmount),
-        };
-    }
-
-    /**
-     * Get the overall information of the current PY token.
-     * @param params - the additional parameters for read method.
-     * @returns
-     */
-    async getInfo(params?: MulticallStaticParams): Promise<PyInfo> {
-        const { exchangeRate, totalSupply, rewardIndexes } = await this.routerStatic.multicallStatic.getPYInfo(
-            this.address,
-            params
-        );
-        return {
-            exchangeRate,
-            totalSupply,
-            rewardIndexes: rewardIndexes.map(({ rewardToken, index }) => ({
-                rewardToken: toAddress(rewardToken),
-                index,
-            })),
         };
     }
 }

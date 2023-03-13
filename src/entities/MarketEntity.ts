@@ -1,6 +1,7 @@
 import {
     PendleMarket,
-    RouterStatic,
+    IPRouterStatic,
+    IPActionInfoStatic,
     PendleMarketABI,
     WrappedContract,
     MetaMethodType,
@@ -39,10 +40,11 @@ export type MarketState = {
 
 export type MarketInfo = {
     pt: Address;
+    yt: Address;
     sy: Address;
-    state: MarketState;
+    marketExchangeRateExcludeFee: BN;
     impliedYield: BN;
-    exchangeRate: BN;
+    state: MarketState;
 };
 
 export type AssetAmount = {
@@ -52,11 +54,10 @@ export type AssetAmount = {
 };
 
 export type UserMarketInfo = {
-    market: Address;
-    lpBalance: BN;
+    lpBalance: RawTokenAmount;
     ptBalance: RawTokenAmount;
     syBalance: RawTokenAmount;
-    assetBalance: AssetAmount;
+    unclaimedRewards: RawTokenAmount[];
 };
 
 export type MarketEntityMetaMethodReturnType<
@@ -70,15 +71,16 @@ export type MarketEntityMetaMethodReturnType<
  */
 export type MarketEntityConfig = ERC20EntityConfig & {
     /**
-     * The chainId. Used to get the {@link RouterStatic} for additional computation.
+     * The chainId. Used to get the {@link IPRouterStatic} for additional computation.
      */
     readonly chainId: ChainId;
 };
 
 export class MarketEntity extends ERC20Entity {
-    protected readonly routerStatic: WrappedContract<RouterStatic>;
+    protected readonly routerStatic: WrappedContract<IPRouterStatic>;
     protected _ptAddress: Address | undefined;
     protected _syAddress: Address | undefined;
+    protected _ytAddress: Address | undefined;
     readonly chainId: ChainId;
 
     constructor(readonly address: Address, config: MarketEntityConfig) {
@@ -102,13 +104,15 @@ export class MarketEntity extends ERC20Entity {
      * @returns
      */
     async getMarketInfo(params?: MulticallStaticParams): Promise<MarketInfo> {
-        const res = await this.routerStatic.multicallStatic.getMarketInfo(this.address, params);
+        const res = await this.routerStatic.multicallStatic.getMarketState(this.address, params);
         this._ptAddress = toAddress(res.pt);
         this._syAddress = toAddress(res.sy);
+        this._ytAddress = toAddress(res.yt);
         return {
             ...res,
             pt: this._ptAddress,
             sy: this._syAddress,
+            yt: this._ytAddress,
             state: { ...res.state, treasury: toAddress(res.state.treasury) },
         };
     }
@@ -126,27 +130,21 @@ export class MarketEntity extends ERC20Entity {
     }
 
     /**
-     * Convert {@link RouterStatic.UserMarketInfoStructOutput} to {@link UserMarketInfo}.
+     * Convert {@link IPRouterStatic.UserMarketInfoStructOutput} to {@link UserMarketInfo}.
      * @remarks
      * Both structures have the same shape, but the return type has a stricter type.
      */
     static toUserMarketInfo({
-        market,
         lpBalance,
         ptBalance,
         syBalance,
-        assetBalance,
-    }: RouterStatic.UserMarketInfoStructOutput): UserMarketInfo {
+        unclaimedRewards,
+    }: IPActionInfoStatic.UserMarketInfoStructOutput): UserMarketInfo {
         return {
-            market: toAddress(market),
-            lpBalance: BN.from(lpBalance),
+            lpBalance: createTokenAmount(lpBalance),
             ptBalance: createTokenAmount(ptBalance),
             syBalance: createTokenAmount(syBalance),
-            assetBalance: {
-                assetType: assetBalance.assetType,
-                assetAddress: toAddress(assetBalance.assetAddress),
-                amount: assetBalance.amount,
-            },
+            unclaimedRewards: unclaimedRewards.map(createTokenAmount),
         };
     }
 
@@ -187,9 +185,7 @@ export class MarketEntity extends ERC20Entity {
     }
 
     async YT(params?: MulticallStaticParams): Promise<Address> {
-        // TODO await for router static v2
-        const ptEntity = await this.ptEntity();
-        return ptEntity.YT();
+        return this._ytAddress ?? this.getMarketInfo(params).then(({ yt }) => yt);
     }
 
     /**

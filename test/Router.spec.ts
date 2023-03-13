@@ -266,7 +266,7 @@ describeWrite('Router', () => {
             const [lpBalanceAfter, ptBalanceAfter] = await getUserBalances(signerAddress, [marketAddress, ptAddress]);
 
             expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
-            expect(ptBalanceBefore.sub(ptBalanceAfter)).toEqBN(ptAdd, DEFAULT_EPSILON);
+            expect(ptBalanceBefore.sub(ptBalanceAfter)).toEqBN(ptAdd);
         });
 
         it('#addLiquiditySingleSy', async () => {
@@ -291,7 +291,41 @@ describeWrite('Router', () => {
 
             const [lpBalanceAfter, syBalanceAfter] = await getUserBalances(signerAddress, [marketAddress, syAddress]);
             expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
-            expect(syBalanceBefore.sub(syBalanceAfter)).toEqBN(syAdd, DEFAULT_EPSILON);
+            expect(syBalanceBefore.sub(syBalanceAfter)).toEqBN(syAdd);
+        });
+
+        it('#addLiquiditySingleSyKeepYt', async () => {
+            const syAdd = bnMinAsBn(
+                decimalFactor(syDecimals).mul(MAX_SY_ADD_AMOUNT),
+                await getBalance(syAddress, signerAddress)
+            );
+            if (syAdd.eq(0)) {
+                throw new Error('skip test because syAdd is 0');
+            }
+            const [lpBalanceBefore, syBalanceBefore, ytBalanceBefore] = await getUserBalances(signerAddress, [
+                marketAddress,
+                syAddress,
+                ytAddress,
+            ]);
+
+            const readerData = await sendTxWithInfApproval(
+                () =>
+                    router.addLiquiditySingleSyKeepYt(currentConfig.marketAddress, syAdd, SLIPPAGE_TYPE2, {
+                        method: 'meta-method',
+                    }),
+                [syAddress]
+            );
+
+            if (readerData === undefined) throw new Error('readerData is undefined');
+
+            const [lpBalanceAfter, syBalanceAfter, ytBalanceAfter] = await getUserBalances(signerAddress, [
+                marketAddress,
+                syAddress,
+                ytAddress,
+            ]);
+            expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
+            expect(ytBalanceAfter.sub(ytBalanceBefore)).toEqBN(readerData.netYtOut, DEFAULT_EPSILON);
+            expect(syBalanceBefore.sub(syBalanceAfter)).toEqBN(syAdd);
         });
 
         describeWrite('#addLiquiditySingleToken', () => {
@@ -331,7 +365,7 @@ describeWrite('Router', () => {
                     token,
                 ]);
                 expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, EPSILON_FOR_AGGREGATOR);
-                expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount, DEFAULT_EPSILON);
+                expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount);
             }
 
             it('raw token', async () => {
@@ -342,6 +376,63 @@ describeWrite('Router', () => {
                 const tokensIn = await sySdk.getTokensIn();
                 for (const token of tokensIn) {
                     await checkAddLiquiditySingleToken(token);
+                    await switchToZeroApproval();
+                }
+            });
+        });
+
+        describeWrite('#addLiquiditySingleTokenKeepYt', () => {
+            async function checkAddLiquiditySingleTokenKeepYt(token: Address) {
+                const tokenDecimals = await getERC20Decimals(token);
+                const tokenAddAmount = bnMinAsBn(
+                    decimalFactor(tokenDecimals).mul(MAX_TOKEN_ADD_AMOUNT),
+                    await getBalance(token, signerAddress)
+                );
+
+                if (tokenAddAmount.eq(0)) {
+                    throw new Error(
+                        `[${(await getERC20Name(token)) + ' ' + token}}] Skip test because tokenAddAmount is 0`
+                    );
+                }
+
+                const [lpBalanceBefore, tokenBalanceBefore, ytBalanceBefore] = await getUserBalances(signerAddress, [
+                    marketAddress,
+                    token,
+                    ytAddress,
+                ]);
+
+                const readerData = await sendTxWithInfApproval(
+                    () =>
+                        router.addLiquiditySingleTokenKeepYt(
+                            currentConfig.marketAddress,
+                            token,
+                            tokenAddAmount,
+                            SLIPPAGE_TYPE2,
+                            {
+                                method: 'meta-method',
+                            }
+                        ),
+                    [token]
+                );
+
+                const [lpBalanceAfter, tokenBalanceAfter, ytBalanceAfter] = await getUserBalances(signerAddress, [
+                    marketAddress,
+                    token,
+                    ytAddress,
+                ]);
+                expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
+                expect(ytBalanceAfter.sub(ytBalanceBefore)).toEqBN(readerData.netYtOut, DEFAULT_EPSILON);
+                expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount);
+            }
+
+            it('raw token', async () => {
+                await checkAddLiquiditySingleTokenKeepYt(rawTokenAddress);
+            });
+
+            it('tokens in sy', async () => {
+                const tokensIn = await sySdk.getTokensIn();
+                for (const token of tokensIn) {
+                    await checkAddLiquiditySingleTokenKeepYt(token);
                     await switchToZeroApproval();
                 }
             });
@@ -377,7 +468,7 @@ describeWrite('Router', () => {
             ]);
 
             // lp balance reduced amount equals to liquidity removed
-            expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove, DEFAULT_EPSILON);
+            expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
 
             expect(syBalanceAfter.sub(syBalanceBefore)).toEqBN(readerResult.netSyOut, DEFAULT_EPSILON);
             expect(ptBalanceAfter.sub(ptBalanceBefore)).toEqBN(readerResult.netPtOut, DEFAULT_EPSILON);
@@ -422,7 +513,7 @@ describeWrite('Router', () => {
                 ]);
 
                 // lp balance reduced amount equals to liquidity removed
-                expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove, DEFAULT_EPSILON);
+                expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
 
                 expect(tokenBalanceAfter.sub(tokenBalanceBefore)).toEqBN(
                     (await readerResult.route.getNetOut())!,
@@ -455,7 +546,7 @@ describeWrite('Router', () => {
             const [lpBalanceAfter, ptBalanceAfter] = await getUserBalances(signerAddress, [marketAddress, ptAddress]);
 
             // lp balance reduced amount equals to liquidity removed
-            expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove, DEFAULT_EPSILON);
+            expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
 
             expect(ptBalanceAfter.sub(ptBalanceBefore)).toEqBN(readerData.netPtOut, DEFAULT_EPSILON);
         });
@@ -480,7 +571,7 @@ describeWrite('Router', () => {
 
             const [lpBalanceAfter, syBalanceAfter] = await getUserBalances(signerAddress, [marketAddress, syAddress]);
             // lp balance reduced amount equals to liquidity removed
-            expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove, DEFAULT_EPSILON);
+            expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
 
             expect(syBalanceAfter.sub(syBalanceBefore)).toEqBN(readerData.netSyOut, DEFAULT_EPSILON);
         });
@@ -520,7 +611,7 @@ describeWrite('Router', () => {
                     token,
                 ]);
                 // lp balance reduced amount equals to liquidity removed
-                expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove, DEFAULT_EPSILON);
+                expect(lpBalanceBefore.sub(lpBalanceAfter)).toEqBN(liquidityRemove);
 
                 expect(tokenBalanceAfter.sub(tokenBalanceBefore)).toEqBN(
                     (await readerData.route.getNetOut())!,

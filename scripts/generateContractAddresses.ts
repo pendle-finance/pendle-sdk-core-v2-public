@@ -12,6 +12,7 @@ const lines = [];
 
 lines.push(`
 // This file is generated via \`yarn generateContractAddresses\`
+// Generated at ${new Date().toUTCString()}
 import { ContractAddresses } from './types';
 `);
 

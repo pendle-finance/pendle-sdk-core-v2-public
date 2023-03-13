@@ -2427,23 +2427,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pendle/core-v2-mainnet@npm:@pendle/core-v2@2.0.1-mainnet, @pendle/core-v2@npm:2.0.1-mainnet":
-  version: 2.0.1-mainnet
-  resolution: "@pendle/core-v2@npm:2.0.1-mainnet"
+"@pendle/core-v2-mainnet@npm:@pendle/core-v2@2.2.0-mainnet, @pendle/core-v2@npm:2.2.0-mainnet":
+  version: 2.2.0-mainnet
+  resolution: "@pendle/core-v2@npm:2.2.0-mainnet"
   dependencies:
     "@openzeppelin/contracts": 4.7.3
     "@openzeppelin/contracts-upgradeable": 4.7.3
-  checksum: a5bd11bf379f8f339cc5333fef319f546cd7dc764b11eaa80cb212244e7661350d49a77e7c438a7ee08bd24933d3a4d2f89f39ebec062c7140d5a5ebacf55949
+  checksum: ca86194867b7de418f035d139638a61e272b43f48f510c2c731d4980e9f684795998391f943f68969469f21bb3297119a5c1e28783d96c041c1b8be8195b7790
   languageName: node
   linkType: hard
 
-"@pendle/core-v2-testnet@npm:@pendle/core-v2@1.1.0-testnet":
-  version: 1.1.0-testnet
-  resolution: "@pendle/core-v2@npm:1.1.0-testnet"
+"@pendle/core-v2-testnet@npm:@pendle/core-v2@1.2.1-testnet":
+  version: 1.2.1-testnet
+  resolution: "@pendle/core-v2@npm:1.2.1-testnet"
   dependencies:
     "@openzeppelin/contracts": 4.7.3
     "@openzeppelin/contracts-upgradeable": 4.7.3
-  checksum: 95dad19ca59753062f43a522c704967a9388fa4bb4535e0dd0cb24657437cde4a0c8fa3312d349e90f4f937c70db691fe15edbf1e31f7365d554f1cb121b1d4f
+  checksum: 5698f49019f34449fdb77d3d3329a12282d9a7b8287f8b1da87c0bdb3f3484ada903a1c26cac96d9434d2bc249b0255c7b1587eb6837e0e9afb5c77e1b229715
   languageName: node
   linkType: hard
 
@@ -2451,9 +2451,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@pendle/sdk-v2@workspace:."
   dependencies:
-    "@pendle/core-v2": 2.0.1-mainnet
-    "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.0.1-mainnet"
-    "@pendle/core-v2-testnet": "npm:@pendle/core-v2@1.1.0-testnet"
+    "@pendle/core-v2": 2.2.0-mainnet
+    "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.2.0-mainnet"
+    "@pendle/core-v2-testnet": "npm:@pendle/core-v2@1.2.1-testnet"
     "@size-limit/preset-small-lib": ^8.1.0
     "@types/jest": ^29.4.0
     "@types/node-notifier": ^8.0.2

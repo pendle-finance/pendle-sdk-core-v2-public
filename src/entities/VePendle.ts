@@ -1,5 +1,5 @@
 import {
-    RouterStatic,
+    IPRouterStatic,
     VotingEscrowTokenBase,
     VotingEscrowPendleMainchain,
     VotingEscrowTokenBaseABI,
@@ -84,7 +84,7 @@ export type VePendleMainchainConfig = VePendleConfig & {
 
 export class VePendleMainchain extends VePendle {
     static BROADCAST_FEE_BUFFER = 0.02; // 2%
-    protected readonly routerStatic: WrappedContract<RouterStatic>;
+    protected readonly routerStatic: WrappedContract<IPRouterStatic>;
     readonly chainId: ChainId;
 
     constructor(readonly address: Address, config: VePendleMainchainConfig) {

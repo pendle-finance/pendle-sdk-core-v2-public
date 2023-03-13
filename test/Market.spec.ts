@@ -1,12 +1,4 @@
-import {
-    MarketEntity,
-    SyEntity,
-    Multicall,
-    toAddress,
-    getRouterStatic,
-    decimalFactor,
-    NATIVE_ADDRESS_0x00,
-} from '../src';
+import { MarketEntity, SyEntity, Multicall, toAddress, getRouterStatic, NATIVE_ADDRESS_0x00 } from '../src';
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
@@ -50,16 +42,20 @@ describe(MarketEntity, () => {
         });
 
         it('#marketInfo', async () => {
-            const [marketInfo, exchangeRate] = await Promise.all([
+            const [marketInfo, marketInfoFromCallStatic] = await Promise.all([
                 market.getMarketInfo({ multicall }),
-                Multicall.wrap(routerStatic, multicall).callStatic.getExchangeRate(market.address),
+                Multicall.wrap(routerStatic, multicall).callStatic.getMarketState(market.address),
             ]);
 
             expect(marketInfo.pt).toBe(currentMarket.PT);
             expect(marketInfo.sy).toBe(currentMarket.SY);
+            expect(marketInfo.yt).toBe(currentMarket.YT);
 
             const eps = multicall ? 0 : 0.01; // if !multicall, requests might be in different block
-            expect(marketInfo.exchangeRate).toEqBN(exchangeRate, eps);
+            expect(marketInfo.marketExchangeRateExcludeFee).toEqBN(
+                marketInfoFromCallStatic.marketExchangeRateExcludeFee,
+                eps
+            );
         });
 
         it('#userMarketInfo', async () => {
@@ -72,12 +68,11 @@ describe(MarketEntity, () => {
             ]);
 
             // Verify addresses
-            expect(userMarketInfo.market).toBe(currentConfig.marketAddress);
             expect(userMarketInfo.ptBalance.token).toBe(currentMarket.PT);
             expect(userMarketInfo.syBalance.token).toBe(currentMarket.SY);
 
             // Verify lp balance
-            expect(userMarketInfo.lpBalance).toEqBN(userBalance);
+            expect(userMarketInfo.lpBalance.amount).toEqBN(userBalance);
             expect(userMarketInfo.ptBalance.amount).toEqBN(
                 userBalance.mul(marketInfo.state.totalPt).div(marketInfo.state.totalLp)
             );
@@ -85,12 +80,7 @@ describe(MarketEntity, () => {
                 userBalance.mul(marketInfo.state.totalSy).div(marketInfo.state.totalLp)
             );
 
-            // Verify underlying balance
-            expect(userMarketInfo.assetBalance.assetType).toBe(syInfo.assetType);
-            expect(userMarketInfo.assetBalance.assetAddress).toBe(toAddress(syInfo.assetAddress));
-            expect(userMarketInfo.assetBalance.amount).toEqBN(
-                userMarketInfo.syBalance.amount.mul(syExchangeRate).div(decimalFactor(18))
-            );
+            // TODO verify unclaimedRewards
         });
 
         it('#getSY and #getPT', async () => {
