@@ -63,9 +63,13 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
     async getMaxOutAmongAllRoutes(): Promise<BN | undefined> {
         const routeOut = await Promise.all(
             this.routes.map(async (route) => {
-                if (route.withBulkSeller) return [];
-                const result = await route.getNetOut();
-                return result != undefined ? [result] : [];
+                try {
+                    if (route.withBulkSeller) return [];
+                    const result = await route.getNetOut();
+                    return result != undefined ? [result] : [];
+                } catch {
+                    return [];
+                }
             })
         ).then((results) => results.flat());
         if (routeOut.length === 0) return undefined;
