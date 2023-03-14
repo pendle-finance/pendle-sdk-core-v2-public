@@ -1,6 +1,6 @@
 import { Contract } from 'ethers';
 import { ContractMethodNames, MetaMethodType, EthersContractMethod, ContractMethodParams } from './helper';
-import { ContractMetaMethod } from '../ContractMetaMethod';
+import { type ContractMetaMethod } from '../ContractMetaMethod';
 import { SyncReturnType, ConcatTuple, BN, BigNumberish } from '../../common';
 import { MulticallStaticParams } from './MulticallStaticMethod';
 
@@ -32,9 +32,18 @@ export type MetaMethodParams<
     ? [...MetaMethodParams<Body, C, MethodName, Data>, MetaMethodParam<Last, C, MethodName, Data>]
     : [];
 
+export type CalcBufferedGasFunction = <
+    C extends Contract,
+    M extends ContractMethodNames<C>,
+    Data extends MetaMethodExtraParams<any>
+>(
+    estimatedGasUsed: BN,
+    context: ContractMetaMethod<C, M, Data>
+) => BigNumberish | Promise<BigNumberish>;
+
 export type MetaMethodExtraParams<T extends MetaMethodType = 'send'> = MulticallStaticParams & {
     method?: T;
-    calcBufferedGas?: (estimatedGasUsed: BN) => BigNumberish;
+    calcBufferedGas?: CalcBufferedGasFunction;
 };
 
 /**
