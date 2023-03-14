@@ -3,7 +3,7 @@
     "author": "Pendle Labs",
     "description": "SDK of Pendle Protocol.",
     "license": "MIT",
-    "version": "2.1.0-mainnet",
+    "version": "2.1.1-mainnet",
     "main": "dist/index.js",
     "typings": "dist/index.d.ts",
     "files": [
@@ -35,7 +35,8 @@
         "clean": "rm -rf dist/",
         "generateContractErrors": "yarn ts-node scripts/generatePendleContractErrorMessageHandler.ts",
         "generateContractAddresses": "yarn ts-node scripts/generateContractAddresses.ts",
-        "generate-docs": "yarn typedoc --out docs src/index.ts"
+        "generate-docs": "yarn typedoc --out docs src/index.ts",
+        "release": "yarn npm publish --tag nightly"
     },
     "dependencies": {
         "@pendle/core-v2": "2.2.0-mainnet",
