@@ -53,6 +53,7 @@ import {
     MintSyFromTokenRoute,
     MintPyFromTokenRoute,
 } from './route/zapIn';
+import * as zapInRoutes from './route/zapIn';
 
 import {
     BaseZapOutRoute,
@@ -64,6 +65,7 @@ import {
     SwapExactPtForTokenRoute,
     SwapExactYtForTokenRoute,
 } from './route/zapOut';
+import * as zapOutRoutes from './route/zapOut';
 
 import { GasFeeEstimator } from './GasFeeEstimator';
 import { RouterTransactionBundler } from './RouterTransactionBundler';
@@ -246,10 +248,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'addLiquidityDualTokenAndPt',
-        {
-            netLpOut: BN;
-            netTokenUsed: BN;
-            netPtUsed: BN;
+        zapInRoutes.AddLiquidityDualTokenAndPtRouteData & {
             route: AddLiquidityDualTokenAndPtRoute<T>;
         }
     > {
@@ -293,6 +292,7 @@ export abstract class BaseRouter extends PendleEntity {
             netSyFee: BN;
             priceImpact: BN;
             exchangeRateAfter: BN;
+            netSyFromSwap: BN;
             approxParam: ApproxParamsStruct;
         }
     > {
@@ -325,6 +325,7 @@ export abstract class BaseRouter extends PendleEntity {
             netSyFee: BN;
             priceImpact: BN;
             exchangeRateAfter: BN;
+            netSyToSwap: BN;
             approxParam: ApproxParamsStruct;
         }
     > {
@@ -387,12 +388,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'addLiquiditySingleToken',
-        {
-            netLpOut: BN;
-            netPtFromSwap: BN;
-            priceImpact: BN;
-            netSyFee: BN;
-            exchangeRateAfter: BN;
+        zapInRoutes.AddLiquiditySingleTokenRouteData & {
             route: AddLiquiditySingleTokenRoute<T>;
         }
     > {
@@ -433,11 +429,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'addLiquiditySingleTokenKeepYt',
-        {
-            netLpOut: BN;
-            netYtOut: BN;
-            netSyMinted: BN;
-            netSyToPY: BN;
+        zapInRoutes.AddLiquiditySingleTokenKeepYtRouteData & {
             route: AddLiquiditySingleTokenKeepYtRoute<T>;
         }
     > {
@@ -502,9 +494,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'removeLiquidityDualTokenAndPt',
-        {
-            netPtOut: BN;
-            intermediateSyAmount: BN;
+        zapOutRoutes.RemoveLiquidityDualTokenAndPtRouteIntermediateData & {
             route: RemoveLiquidityDualTokenAndPtRoute<T>;
         }
     > {
@@ -545,7 +535,15 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'removeLiquiditySinglePt',
-        { netPtOut: BN; netPtFromSwap: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+        {
+            netPtOut: BN;
+            netPtFromSwap: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+            netSyFromBurn: BN;
+            netPtFromBurn: BN;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -573,7 +571,15 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'removeLiquiditySingleSy',
-        { netSyOut: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+        {
+            netSyOut: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+            netSyFromBurn: BN;
+            netPtFromBurn: BN;
+            netSyFromSwap: BN;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -601,11 +607,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'removeLiquiditySingleToken',
-        {
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
-            intermediateSyAmount: BN;
+        zapOutRoutes.RemoveLiquiditySingleTokenRouteIntermediateData & {
             route: RemoveLiquiditySingleTokenRoute<T>;
         }
     > {
@@ -643,7 +645,12 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactPtForSy',
-        { netSyOut: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+        {
+            netSyOut: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -666,7 +673,13 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapPtForExactSy',
-        { netPtIn: BN; netSyFee: BN; approxParam: ApproxParamsStruct; priceImpact: BN; exchangeRateAfter: BN }
+        {
+            netPtIn: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+            approxParam: ApproxParamsStruct;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -691,7 +704,12 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapSyForExactPt',
-        { netSyIn: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+        {
+            netSyIn: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -715,11 +733,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactTokenForPt',
-        {
-            netPtOut: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
+        zapInRoutes.SwapExactTokenForPtRouteData & {
             route: SwapExactTokenForPtRoute<T>;
         }
     > {
@@ -755,7 +769,12 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactSyForPt',
-        { netPtOut: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+        {
+            netPtOut: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -780,8 +799,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'mintSyFromToken',
-        {
-            netSyOut: BN;
+        zapInRoutes.MintSyFromTokenRouteData & {
             route: MintSyFromTokenRoute<T>;
         }
     > {
@@ -816,8 +834,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'redeemSyToToken',
-        {
-            intermediateSyAmount: BN;
+        zapOutRoutes.RedeemSyToTokenRouteIntermediateData & {
             route: RedeemSyToTokenRoute<T>;
         }
     > {
@@ -849,8 +866,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'mintPyFromToken',
-        {
-            netPyOut: BN;
+        zapInRoutes.MintPyFromTokenRouteData & {
             route: MintPyFromTokenRoute<T>;
         }
     > {
@@ -903,9 +919,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'redeemPyToToken',
-        {
-            intermediateSyAmount: BN;
-            pyIndex: BN;
+        zapOutRoutes.RedeemPyToTokenRouteIntermediateData & {
             route: RedeemPyToTokenRoute<T>;
         }
     > {
@@ -956,7 +970,13 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactSyForYt',
-        { netYtOut: BN; netSyFee: BN; approxParam: ApproxParamsStruct; priceImpact: BN; exchangeRateAfter: BN }
+        {
+            netYtOut: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+            approxParam: ApproxParamsStruct;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -981,7 +1001,13 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapYtForExactSy',
-        { netYtIn: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN; approxParam: ApproxParamsStruct }
+        {
+            netYtIn: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+            approxParam: ApproxParamsStruct;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -1007,11 +1033,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactPtForToken',
-        {
-            intermediateSyAmount: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
+        zapOutRoutes.SwapExactPtForTokenRouteIntermediateData & {
             route: SwapExactPtForTokenRoute<T>;
         }
     > {
@@ -1046,7 +1068,15 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactYtForSy',
-        { netSyOut: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+        {
+            netSyOut: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+            netSyOwedInt: BN;
+            netPYToRepaySyOwedInt: BN;
+            netPYToRedeemSyOutInt: BN;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -1069,7 +1099,14 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapSyForExactYt',
-        { netSyIn: BN; netSyFee: BN; priceImpact: BN; exchangeRateAfter: BN }
+        {
+            netSyIn: BN;
+            netSyFee: BN;
+            priceImpact: BN;
+            exchangeRateAfter: BN;
+            netSyReceivedInt: BN;
+            totalSyNeedInt: BN;
+        }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
@@ -1093,11 +1130,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactTokenForYt',
-        {
-            netYtOut: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
+        zapInRoutes.SwapExactTokenForYtRouteData & {
             route: SwapExactTokenForYtRoute<T>;
         }
     > {
@@ -1134,11 +1167,7 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactYtForToken',
-        {
-            intermediateSyAmount: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
+        zapOutRoutes.SwapExactYtForTokenRouteIntermediateData & {
             route: SwapExactYtForTokenRoute<T>;
         }
     > {

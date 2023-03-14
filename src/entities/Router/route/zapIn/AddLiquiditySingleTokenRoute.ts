@@ -6,9 +6,11 @@ import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmountSqrt } f
 export type AddLiquiditySingleTokenRouteData = BaseZapInRouteData & {
     netLpOut: BN;
     netPtFromSwap: BN;
-    priceImpact: BN;
     netSyFee: BN;
+    priceImpact: BN;
     exchangeRateAfter: BN;
+    netSyMinted: BN;
+    netSyToSwap: BN;
 };
 
 export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<

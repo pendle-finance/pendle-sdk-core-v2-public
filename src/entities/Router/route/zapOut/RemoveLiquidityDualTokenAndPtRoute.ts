@@ -5,6 +5,8 @@ import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '..
 
 export type RemoveLiquidityDualTokenAndPtRouteIntermediateData = BaseZapOutRouteIntermediateData & {
     netPtOut: BN;
+    netTokenOut: BN;
+    netSyToRedeem: BN;
 };
 
 export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends BaseZapOutRoute<
@@ -41,15 +43,14 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
     protected override async previewIntermediateSyImpl(): Promise<
         RemoveLiquidityDualTokenAndPtRouteIntermediateData | undefined
     > {
-        const { netSyToRedeem: intermediateSyAmount, netPtOut } =
-            await this.routerStaticCall.removeLiquidityDualTokenAndPtStatic(
-                this.market,
-                this.lpToRemove,
-                this.tokenRedeemSy,
-                NATIVE_ADDRESS_0x00,
-                this.routerExtraParams.forCallStatic
-            );
-        return { intermediateSyAmount, netPtOut };
+        const data = await this.routerStaticCall.removeLiquidityDualTokenAndPtStatic(
+            this.market,
+            this.lpToRemove,
+            this.tokenRedeemSy,
+            NATIVE_ADDRESS_0x00,
+            this.routerExtraParams.forCallStatic
+        );
+        return { ...data, intermediateSyAmount: data.netSyToRedeem };
     }
 
     protected override async getGasUsedImplement(): Promise<BN | undefined> {

@@ -7,6 +7,8 @@ export type AddLiquidityDualTokenAndPtRouteData = BaseZapInRouteData & {
     netLpOut: BN;
     netTokenUsed: BN;
     netPtUsed: BN;
+    netSyUsed: BN;
+    netSyDesired: BN;
 };
 
 export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends BaseZapInRoute<

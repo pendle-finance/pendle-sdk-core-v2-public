@@ -4,9 +4,14 @@ import { BN, Address, BigNumberish, NATIVE_ADDRESS_0x00 } from '../../../../comm
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 
 export type RemoveLiquiditySingleTokenRouteIntermediateData = BaseZapOutRouteIntermediateData & {
+    netTokenOut: BN;
     netSyFee: BN;
     priceImpact: BN;
     exchangeRateAfter: BN;
+    netSyOut: BN;
+    netSyFromBurn: BN;
+    netPtFromBurn: BN;
+    netSyFromSwap: BN;
 };
 
 export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends BaseZapOutRoute<
@@ -43,19 +48,14 @@ export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends B
     protected override async previewIntermediateSyImpl(): Promise<
         RemoveLiquiditySingleTokenRouteIntermediateData | undefined
     > {
-        const {
-            netSyOut: intermediateSyAmount,
-            netSyFee,
-            priceImpact,
-            exchangeRateAfter,
-        } = await this.routerStaticCall.removeLiquiditySingleTokenStatic(
+        const data = await this.routerStaticCall.removeLiquiditySingleTokenStatic(
             this.market,
             this.lpToRemove,
             this.tokenRedeemSy,
             NATIVE_ADDRESS_0x00,
             this.routerExtraParams.forCallStatic
         );
-        return { intermediateSyAmount, netSyFee, priceImpact, exchangeRateAfter };
+        return { ...data, intermediateSyAmount: data.netSyOut };
     }
 
     protected override async getGasUsedImplement(): Promise<BN | undefined> {

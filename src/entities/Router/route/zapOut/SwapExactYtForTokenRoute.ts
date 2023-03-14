@@ -5,9 +5,14 @@ import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '..
 import { MarketEntity } from '../../../MarketEntity';
 
 export type SwapExactYtForTokenRouteIntermediateData = BaseZapOutRouteIntermediateData & {
+    netTokenOut: BN;
     netSyFee: BN;
     priceImpact: BN;
     exchangeRateAfter: BN;
+    netSyOut: BN;
+    netSyOwedInt: BN;
+    netPYToRepaySyOwedInt: BN;
+    netPYToRedeemSyOutInt: BN;
 };
 
 export class SwapExactYtForTokenRoute<T extends MetaMethodType> extends BaseZapOutRoute<
@@ -45,19 +50,14 @@ export class SwapExactYtForTokenRoute<T extends MetaMethodType> extends BaseZapO
     protected override async previewIntermediateSyImpl(): Promise<
         SwapExactYtForTokenRouteIntermediateData | undefined
     > {
-        const {
-            netSyOut: intermediateSyAmount,
-            netSyFee,
-            priceImpact,
-            exchangeRateAfter,
-        } = await this.routerStaticCall.swapExactYtForTokenStatic(
+        const data = await this.routerStaticCall.swapExactYtForTokenStatic(
             this.market.address,
             this.exactYtIn,
             this.tokenRedeemSy,
             NATIVE_ADDRESS_0x00,
             this.routerExtraParams.forCallStatic
         );
-        return { intermediateSyAmount, netSyFee, priceImpact, exchangeRateAfter };
+        return { ...data, intermediateSyAmount: data.netSyOut };
     }
 
     protected override async getGasUsedImplement(): Promise<BN | undefined> {

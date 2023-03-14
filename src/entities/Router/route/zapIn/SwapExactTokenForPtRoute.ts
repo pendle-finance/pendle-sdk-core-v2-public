@@ -5,6 +5,7 @@ import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmount } from 
 
 export type SwapExactTokenForPtRouteData = BaseZapInRouteData & {
     netPtOut: BN;
+    netSyMinted: BN;
     netSyFee: BN;
     priceImpact: BN;
     exchangeRateAfter: BN;
