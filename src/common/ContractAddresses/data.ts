@@ -1,5 +1,5 @@
 // This file is generated via `yarn generateContractAddresses`
-// Generated at Mon, 13 Mar 2023 04:33:58 GMT
+// Generated at Wed, 15 Mar 2023 08:04:26 GMT
 import { ContractAddresses } from './types';
 
 export const ETHEREUM_CORE_ADDRESSES: ContractAddresses = {
@@ -35,6 +35,6 @@ export const ARBITRUM_CORE_ADDRESSES: ContractAddresses = {
     ROUTER: '0x0000000001e4ef00d069e71d6ba041b0a16f7ea0',
     ROUTER_STATIC: '0xadb09f65bd90d19e3148d9ccb693f3161c6db3e8',
     VEPENDLE: '0x3209e9412cca80b18338f2a56ada59c484c39644',
-    PENDLE_SWAP: '0x0e669e08bd717d7f9c9de158636bd8561295fbb5',
+    PENDLE_SWAP: '0xda78d46c4133ea548386e64eaca26fc456f71d2d',
     WRAPPED_NATIVE: '0x82af49447d8a07e3bd95bd0d56f35241523fbab1',
 };

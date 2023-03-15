@@ -170,3 +170,13 @@ export async function increaseNativeBalance(userAddress: string) {
 export async function getUserBalances(userAddress: Address, tokens: Address[]): Promise<BN[]> {
     return Promise.all(tokens.map((token) => getBalance(token, userAddress)));
 }
+
+const registerCustomInspection = (BigNumber: any) => {
+    const inspectCustomSymbol = Symbol.for('nodejs.util.inspect.custom');
+
+    BigNumber.prototype[inspectCustomSymbol] = function () {
+        return `BigNumber { value: "${this.toString()}" }`;
+    };
+};
+
+registerCustomInspection(BN);

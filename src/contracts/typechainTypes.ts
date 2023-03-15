@@ -1,7 +1,6 @@
 export type {
     PendleERC20,
     PendleMarket,
-    RouterStatic,
     PendleMarketFactory,
     PendlePrincipalToken,
     SYBase,
