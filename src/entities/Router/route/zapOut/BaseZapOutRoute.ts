@@ -161,14 +161,15 @@ export abstract class BaseZapOutRoute<
         if (aggregatorResult === undefined) {
             return undefined;
         }
-        const pendleSwap = this.router.getPendleSwapAddress();
+        const swapData = aggregatorResult.createSwapData({ needScale: true });
+        const pendleSwap = this.router.getPendleSwapAddress(swapData.swapType);
         const output: TokenOutput = {
             tokenOut: this.targetToken,
             minTokenOut: calcSlippedDownAmount((await this.getNetOut())!, this.slippage),
             tokenRedeemSy: this.tokenRedeemSy,
             bulk,
             pendleSwap,
-            swapData: aggregatorResult.createSwapData({ needScale: true }),
+            swapData,
         };
         return output;
     }

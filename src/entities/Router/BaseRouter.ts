@@ -15,7 +15,7 @@ import { MarketEntity } from '../MarketEntity';
 import { SyEntity } from '../SyEntity';
 import { YtEntity } from '../YtEntity';
 import { NoRouteFoundError } from '../../errors';
-import { AggregatorHelper } from './aggregatorHelper';
+import { AggregatorHelper, SwapType } from './aggregatorHelper';
 import {
     NATIVE_ADDRESS_0x00,
     Address,
@@ -119,10 +119,19 @@ export abstract class BaseRouter extends PendleEntity {
     }
 
     /**
-     * @return {@link NATIVE_ADDRESS_0x00} if there is no PENDLE_SWAP address for {@link chainId}.
+     * Get pendleSwap address for a given swapType and chainId
+     * @param swapType the swapType of the action
+     *
+     * @return {@link NATIVE_ADDRESS_0x00} if:
+     *  - there is no PENDLE_SWAP address for {@link chainId}.
+     *  - or the swapType is not KYBERSWAP or ONE_INCH
+     *
      * The pendleSwap contract address is returned otherwise.
      */
-    getPendleSwapAddress(): Address {
+    getPendleSwapAddress(swapType: SwapType): Address {
+        if (swapType !== SwapType.KYBERSWAP && swapType !== SwapType.ONE_INCH) {
+            return NATIVE_ADDRESS_0x00;
+        }
         return getContractAddresses(this.chainId).PENDLE_SWAP ?? NATIVE_ADDRESS_0x00;
     }
 

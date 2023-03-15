@@ -154,14 +154,15 @@ export abstract class BaseZapInRoute<
         if (aggregatorResult === undefined) {
             return undefined;
         }
-        const pendleSwap = this.router.getPendleSwapAddress();
+        const swapData = aggregatorResult.createSwapData({ needScale: false });
+        const pendleSwap = this.router.getPendleSwapAddress(swapData.swapType);
         const input: TokenInput = {
             tokenIn: this.sourceTokenAmount.token,
             netTokenIn: this.sourceTokenAmount.amount,
             tokenMintSy: this.tokenMintSy,
             bulk,
             pendleSwap,
-            swapData: aggregatorResult.createSwapData({ needScale: false }),
+            swapData,
         };
         return input;
     }
