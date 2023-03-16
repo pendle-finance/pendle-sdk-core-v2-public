@@ -69,8 +69,13 @@ export class Router extends BaseRouter {
     private async tryZapInRouteWithBulkSeller<
         ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>
     >(route: ZapInRoute): Promise<ZapInRoute | undefined> {
+        const bulkLimit = this.getBulkLimit();
+        if (bulkLimit.eq(BaseRouter.BULK_SELLER_NO_LIMIT)) {
+            return route.routeWithBulkSeller();
+        }
+
         const tradeValueInEth = await route.estimateSourceTokenAmountInEth();
-        const isBelowLimit = tradeValueInEth.lt(this.getBulkLimit());
+        const isBelowLimit = tradeValueInEth.lt(bulkLimit);
         const shouldRouteThroughBulkSeller = isBelowLimit;
         if (shouldRouteThroughBulkSeller) {
             // TODO implicitly specify to clone the route with more cache info.
@@ -99,9 +104,14 @@ export class Router extends BaseRouter {
     private async tryZapOutRouteWithBulkSeller<
         ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
     >(route: ZapOutRoute): Promise<ZapOutRoute | undefined> {
+        const bulkLimit = this.getBulkLimit();
+        if (bulkLimit.eq(BaseRouter.BULK_SELLER_NO_LIMIT)) {
+            return route.routeWithBulkSeller();
+        }
+
         const tradeValueInEth = await route.estimateMaxOutAmoungAllRouteInEth();
         if (tradeValueInEth == undefined) return;
-        const isBelowLimit = tradeValueInEth.lt(this.getBulkLimit());
+        const isBelowLimit = tradeValueInEth.lt(bulkLimit);
         const shouldRouteThroughBulkSeller = isBelowLimit;
         if (shouldRouteThroughBulkSeller) {
             // TODO implicitly specify to clone the route with more cache info.
