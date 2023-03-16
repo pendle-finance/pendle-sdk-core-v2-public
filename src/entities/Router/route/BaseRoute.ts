@@ -47,7 +47,7 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
         ({ context: this.context, withBulkSeller: this.withBulkSeller = false } = params);
         if (params.cloneFrom != undefined) {
             NoArgsCache.copyValue(this, params.cloneFrom, BaseRoute.prototype.getBulkSellerInfo);
-            NoArgsCache.copyValue(this, params.cloneFrom, BaseRoute.prototype.getGasUsed);
+            NoArgsCache.copyValue(this, params.cloneFrom, BaseRoute.prototype.getGasUsedUnwrapped);
         }
         this.addSelfToContext();
     }
@@ -77,19 +77,42 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
         return !!signerAddress && this.signerHasApprovedImplement(signerAddress);
     }
 
-    @NoArgsCache
+    /**
+     * Estimate gas used for the route.
+     * @remarks
+     * This method will call {@link BaseRoute#getGasUsedUnwrapped}. If gas estimation can not be done
+     * (that is, when {@link BaseRoute#getGasUsedUnwrapped} returns `undefined`, or {@link GasEstimationError}
+     * is thrown), {@link ethersConstants.MaxUint256} will be returned, so the
+     * routing algorithm can still work correctly.
+     *
+     * @return
+     *  - {@link ethersConstants.MaxUint256} if gas estimation can not be done.
+     *  - The estimated gas used will be returned otherwise.
+     */
     async getGasUsed(): Promise<BN> {
-        if (!(await this.signerHasApproved())) {
-            return ethersConstants.MaxUint256;
-        }
         try {
-            return (await this.getGasUsedImplement()) ?? ethersConstants.MaxUint256;
+            return (await this.getGasUsedUnwrapped()) ?? ethersConstants.MaxUint256;
         } catch (e: any) {
             if (e instanceof GasEstimationError) {
                 return ethersConstants.MaxUint256;
             }
             throw e;
         }
+    }
+
+    /**
+     * Estimate gas used for the route.
+     * @remarks
+     * Unlike {@link BaseRoute#getGasUsed}, this method does not handle the case where the
+     * gas estimation can not be done. Useful to get more infomation of the gas estimation process
+     * (such as getting the error).
+     */
+    @NoArgsCache
+    async getGasUsedUnwrapped(): Promise<BN | undefined> {
+        if (!(await this.signerHasApproved())) {
+            return undefined;
+        }
+        return this.getGasUsedImplement();
     }
 
     get router() {
