@@ -3,7 +3,7 @@
     "author": "Pendle Labs",
     "description": "SDK of Pendle Protocol.",
     "license": "MIT",
-    "version": "2.1.4-mainnet",
+    "version": "2.1.6-mainnet",
     "main": "dist/index.js",
     "typings": "dist/index.d.ts",
     "files": [
@@ -39,14 +39,14 @@
         "release": "yarn npm publish --tag nightly"
     },
     "dependencies": {
-        "@pendle/core-v2": "2.3.1-mainnet",
+        "@pendle/core-v2": "2.3.2-mainnet",
         "axios": "^0.27.2",
         "bignumber.js": "^9.1.0",
         "ethers": "^5.7.1",
         "tslib": "^2.5.0"
     },
     "devDependencies": {
-        "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.3.1-mainnet",
+        "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.3.2-mainnet",
         "@pendle/core-v2-testnet": "npm:@pendle/core-v2@1.2.1-testnet",
         "@size-limit/preset-small-lib": "^8.1.0",
         "@types/jest": "^29.4.0",
