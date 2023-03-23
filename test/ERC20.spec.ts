@@ -19,7 +19,10 @@ describe('ERC20Like', () => {
         ...networkConnection,
         multicall: currentConfig.multicall,
     });
-    const nativeToken = createERC20(NATIVE_ADDRESS_0x00, networkConnection);
+    const nativeToken = createERC20(NATIVE_ADDRESS_0x00, {
+        ...networkConnection,
+        chainId: currentConfig.chainId,
+    });
     const tokens: Record<string, ERC20Like> = {
         usdc,
         usdcWithMulticall,
