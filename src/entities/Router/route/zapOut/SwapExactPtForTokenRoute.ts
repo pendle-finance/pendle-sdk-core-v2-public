@@ -39,7 +39,7 @@ export class SwapExactPtForTokenRoute<T extends MetaMethodType> extends BaseZapO
         });
     }
 
-    protected override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+    override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         const pt = await this.market.pt();
         return this.checkUserApproval(signerAddress, { token: pt, amount: this.exactPtIn });
     }
@@ -57,7 +57,7 @@ export class SwapExactPtForTokenRoute<T extends MetaMethodType> extends BaseZapO
         return { ...data, intermediateSyAmount: data.netSyToRedeem };
     }
 
-    protected override async getGasUsedImplement(): Promise<BN | undefined> {
+    override async getGasUsedImplement(): Promise<BN | undefined> {
         return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 

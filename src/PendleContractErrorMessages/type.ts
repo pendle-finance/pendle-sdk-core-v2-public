@@ -109,6 +109,7 @@ export type PendleContractErrorMessageHandler = {
     SYQiTokenMintFailed: (errCode: BN) => string;
     SYQiTokenRedeemFailed: (errCode: BN) => string;
     SYQiTokenRedeemRewardsFailed: (rewardAccruedType0: BN, rewardAccruedType1: BN) => string;
+    SYStargateRedeemCapExceeded: (amountLpDesired: BN, amountLpRedeemable: BN) => string;
     SYZeroDeposit: () => string;
     SYZeroRedeem: () => string;
     UnsupportedSelector: (aggregatorType: BN, selector: BytesLike) => string;

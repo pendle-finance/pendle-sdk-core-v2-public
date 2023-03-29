@@ -8,6 +8,7 @@ import {
     BaseZapOutRoute,
     BaseZapInRouteData,
     BaseZapOutRouteIntermediateData,
+    BaseLiquidityMigrationFixTokenRedeemSyRoute,
 } from './route';
 
 import { BaseRouter } from './BaseRouter';
@@ -121,6 +122,29 @@ export class Router extends BaseRouter {
             // that we want to get some info first before cloning.
             return route.routeWithBulkSeller();
         }
+    }
+
+    override async findBestLiquidityMigrationRoute<
+        LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any, any>
+    >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute | undefined> {
+        if (routes.length === 0) return undefined;
+        // Determine if we should use remove liquidity route with bulkseller.
+        // Note that all route should have the same removeLiquidityRoute
+        const optimalRemoveLiquidityRoute = await this.findBestZapOutRoute([routes[0].removeLiquidityRoute]);
+        if (!optimalRemoveLiquidityRoute) {
+            return undefined;
+        }
+        routes = routes.map((route) => route.withRemoveLiquidityRoute(optimalRemoveLiquidityRoute));
+
+        const routesWithBulkSellerForAddLiq = await Promise.all(
+            routes.map(async (route) => {
+                if (!(await route.addLiquidityHasBulkSeller())) return [];
+                return [route.addLiquidityRouteWithBulkSeller()];
+            })
+        ).then((res) => res.flat());
+
+        routes = [...routes, ...routesWithBulkSellerForAddLiq];
+        return this.findBestGenericRoute(routes);
     }
 
     async findBestGenericRoute<Route extends BaseRoute<any, Route>>(routes: Route[]): Promise<Route | undefined> {

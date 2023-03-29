@@ -2,6 +2,7 @@ import FUJI_CORE_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-core.
 import APE_MARCH30_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-markets/APE-30-MARCH.json';
 import USDC_FEB02_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-markets/USDC-FEB-2ND.json';
 import USDC_FEB04_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-markets/USDC-FEB-4TH.json';
+import USDC_MAR28_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-markets/USDC-MAR-28TH.json';
 import WETH_FEB02_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-markets/WETH-FEB-2ND.json';
 import WETH_FEB04_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-markets/WETH-FEB-4TH.json';
 import USDC_FEB02_2024_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-markets/USDC-FEB-2ND-2024.json';
@@ -26,6 +27,7 @@ export const FUJI_TESTNET_CONTRACT_ADDRESSES = shallowToAddress({
         APE_MARCH30_ADDRESSES,
         USDC_FEB02_ADDRESSES,
         USDC_FEB04_ADDRESSES,
+        USDC_MAR28_ADDRESSES,
         WETH_FEB02_ADDRESSES,
         WETH_FEB04_ADDRESSES,
         USDC_FEB02_2024_ADDRESSES,
@@ -34,6 +36,7 @@ export const FUJI_TESTNET_CONTRACT_ADDRESSES = shallowToAddress({
         APE_MARCH30_ADDRESSES,
         USDC_FEB02_ADDRESSES,
         USDC_FEB04_ADDRESSES,
+        USDC_MAR28_ADDRESSES,
         WETH_FEB02_ADDRESSES,
         WETH_FEB04_ADDRESSES,
         USDC_FEB02_2024_ADDRESSES,

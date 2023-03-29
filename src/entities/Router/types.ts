@@ -4,6 +4,7 @@ import {
     ContractMethodNames,
     ContractMetaMethod,
     MetaMethodExtraParams,
+    typechain,
 } from '../../contracts';
 import { Address, BigNumberish, ChainId } from '../../common';
 import { BytesLike } from 'ethers';
@@ -14,6 +15,7 @@ import type { IPAllAction } from '@pendle/core-v2/typechain-types/IPAllAction';
 import { AggregatorHelper } from './aggregatorHelper';
 
 export type { ApproxParamsStruct, IPAllAction } from '@pendle/core-v2/typechain-types/IPAllAction';
+import * as tsEssentials from 'ts-essentials';
 
 /**
  * Reflecting [`AGGREGATOR`](https://github.com/pendle-finance/pendle-core-v2/blob/c6f6000a6f682a2bff41b7a7cce78e36fb497e8e/contracts/router/swap-aggregator/ISwapAggregator.sol#L10) type.
@@ -75,6 +77,19 @@ export type RouterMetaMethodReturnType<
     M extends ContractMethodNames<IPAllAction>,
     Data extends {}
 > = MetaMethodReturnType<T, IPAllAction, M, Data & RouterMetaMethodExtraParams<T>>;
+
+export type RouterHelperMetaMethodReturnType<
+    T extends MetaMethodType,
+    M extends ContractMethodNames<typechain.PendleRouterHelper>,
+    Data extends {}
+> = MetaMethodReturnType<T, typechain.PendleRouterHelper, M, Data & RouterMetaMethodExtraParams<T>>;
+
+export type MetaMethodForRouterMethod<Method extends tsEssentials.AnyFunction> =
+    ReturnType<Method> extends RouterMetaMethodReturnType<any, infer M, infer Data>
+        ? Awaited<RouterMetaMethodReturnType<'meta-method', M, Data>>
+        : ReturnType<Method> extends RouterHelperMetaMethodReturnType<any, infer M, infer Data>
+        ? Awaited<RouterHelperMetaMethodReturnType<'meta-method', M, Data>>
+        : never;
 
 export type FixedRouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtraParams<T> & {
     receiver: Address | typeof ContractMetaMethod.utils.getContractSignerAddress;

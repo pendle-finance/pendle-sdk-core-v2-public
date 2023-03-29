@@ -345,6 +345,15 @@ export function createNoArgsCache<T>(
         const key = fn.cacheKey;
         deleteValue(source, key);
     };
+
+    NoArgsCache.checkProperty = (obj: any, fn: any) => {
+        const key = fn.cacheKey;
+        return checkProperty(obj, key);
+    };
+    NoArgsCache.getValue = (obj: any, fn: any) => {
+        const key = fn.cacheKey;
+        return getValue(obj, key);
+    };
     return NoArgsCache;
 }
 

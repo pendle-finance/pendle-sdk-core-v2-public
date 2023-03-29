@@ -13,3 +13,4 @@ export { abi as IApeStakingABI } from '@pendle/core-v2/build/artifacts/contracts
 export { abi as PendleFeeDistributorABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VeDistributor/PendleFeeDistributor.sol/PendleFeeDistributor.json';
 export { abi as IWETH_ABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IWETH.sol/IWETH.json';
 export { abi as BulkSellerABI } from '@pendle/core-v2/build/artifacts/contracts/core/BulkSeller/BulkSeller.sol/BulkSeller.json';
+export { abi as PendleRouterHelperABI } from '@pendle/core-v2/build/artifacts/contracts/router/PendleRouterHelper.sol/PendleRouterHelper.json';

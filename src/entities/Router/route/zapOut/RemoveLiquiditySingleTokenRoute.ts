@@ -14,17 +14,16 @@ export type RemoveLiquiditySingleTokenRouteIntermediateData = BaseZapOutRouteInt
     netSyFromSwap: BN;
 };
 
-export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends BaseZapOutRoute<
-    T,
-    RemoveLiquiditySingleTokenRouteIntermediateData,
-    RemoveLiquiditySingleTokenRoute<T>
-> {
+export class _RemoveLiquiditySingleTokenRoute<
+    T extends MetaMethodType,
+    SelfType extends _RemoveLiquiditySingleTokenRoute<T, SelfType>
+> extends BaseZapOutRoute<T, RemoveLiquiditySingleTokenRouteIntermediateData, SelfType> {
     constructor(
         readonly market: Address,
         readonly lpToRemove: BigNumberish,
         readonly tokenOut: Address,
         readonly slippage: number,
-        params: BaseZapOutRouteConfig<T, RemoveLiquiditySingleTokenRoute<T>>
+        params: BaseZapOutRouteConfig<T, SelfType>
     ) {
         super(params);
     }
@@ -33,15 +32,15 @@ export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends B
         return this.tokenOut;
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): RemoveLiquiditySingleTokenRoute<T> {
-        return new RemoveLiquiditySingleTokenRoute(this.market, this.lpToRemove, this.tokenOut, this.slippage, {
+    override routeWithBulkSeller(withBulkSeller: boolean = true): SelfType {
+        return new _RemoveLiquiditySingleTokenRoute(this.market, this.lpToRemove, this.tokenOut, this.slippage, {
             context: this.context,
             tokenRedeemSy: this.tokenRedeemSy,
             withBulkSeller,
-        });
+        }) as SelfType;
     }
 
-    protected override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+    override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         return this.checkUserApproval(signerAddress, { token: this.market, amount: this.lpToRemove });
     }
 
@@ -58,7 +57,7 @@ export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends B
         return { ...data, intermediateSyAmount: data.netSyOut };
     }
 
-    protected override async getGasUsedImplement(): Promise<BN | undefined> {
+    override async getGasUsedImplement(): Promise<BN | undefined> {
         return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 
@@ -66,7 +65,7 @@ export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends B
         T,
         'removeLiquiditySingleToken',
         RemoveLiquiditySingleTokenRouteIntermediateData & {
-            route: RemoveLiquiditySingleTokenRoute<T>;
+            route: SelfType;
         }
     > {
         const res = await this.buildGenericCall(
@@ -76,7 +75,7 @@ export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends B
                 kybercallData: (await this.getAggregatorResult())!,
                 redeemedFromSyAmount: (await this.getTokenRedeemSyAmount())!,
                 intermediateSy: (await this.getIntermediateSyAmount())!,
-                route: this,
+                route: this as unknown as SelfType,
             },
             this.routerExtraParams
         );
@@ -98,3 +97,8 @@ export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends B
         );
     }
 }
+
+export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends _RemoveLiquiditySingleTokenRoute<
+    T,
+    RemoveLiquiditySingleTokenRoute<T>
+> {}

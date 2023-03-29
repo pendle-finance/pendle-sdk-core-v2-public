@@ -1,6 +1,6 @@
 import {
     decimalFactor,
-    MetaMethodReturnType,
+    ContractMetaMethod,
     Router,
     SyEntity,
     MetaMethodData,
@@ -8,8 +8,18 @@ import {
     toAddress,
     MarketEntity,
     NATIVE_ADDRESS_0xEE,
+    isSameAddress,
+    getContractAddresses,
+    isNativeToken,
 } from '../src';
-import { currentConfig, describeWrite, networkConnectionWithChainId, BLOCK_CONFIRMATION, signer } from './util/testEnv';
+import {
+    currentConfig,
+    describeWrite,
+    networkConnectionWithChainId,
+    BLOCK_CONFIRMATION,
+    signer,
+    ACTIVE_CHAIN_ID,
+} from './util/testEnv';
 import {
     getBalance,
     evm_snapshot,
@@ -23,9 +33,10 @@ import {
     increaseNativeBalance,
     setERC20Balance,
     getUserBalances,
+    transferHelper,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
-import { IPAllAction } from '@pendle/core-v2/typechain-types';
+import { IPAllAction, PendleRouterHelper } from '@pendle/core-v2/typechain-types';
 import {
     DEFAULT_EPSILON,
     REDEEM_FACTOR,
@@ -43,6 +54,7 @@ import {
     BALANCE_OF_STORAGE_SLOT,
     EPSILON_FOR_AGGREGATOR,
 } from './util/constants';
+import { AsyncOrSync } from 'ts-essentials';
 
 type BalanceSnapshot = {
     ptBalance: BN;
@@ -53,7 +65,9 @@ type BalanceSnapshot = {
     marketSyBalance: BN;
 };
 
-type MetaMethodCallback = () => MetaMethodReturnType<'meta-method', IPAllAction, any, any>;
+type MetaMethodCallback = () =>
+    | AsyncOrSync<ContractMetaMethod<IPAllAction, any, any>>
+    | AsyncOrSync<ContractMetaMethod<PendleRouterHelper, any, any>>;
 type SkipTxCheckCallback<T extends MetaMethodCallback> = (readerData: MetaMethodData<T>) => boolean;
 
 describeWrite('Router', () => {
@@ -129,6 +143,7 @@ describeWrite('Router', () => {
     async function batchInfApprove(tokens: Address[]) {
         for (const token of tokens) {
             await approveInfHelper(token, router.address);
+            await approveInfHelper(token, router.getRouterHelper().address);
         }
     }
 
@@ -401,29 +416,37 @@ describeWrite('Router', () => {
                     ytAddress,
                 ]);
 
-                const readerData = await sendTxWithInfApproval(
-                    () =>
-                        router.addLiquiditySingleTokenKeepYt(
-                            currentConfig.marketAddress,
-                            token,
-                            tokenAddAmount,
-                            SLIPPAGE_TYPE2,
-                            {
-                                method: 'meta-method',
-                            }
-                        ),
-                    [token]
+                const metaCall = await router.addLiquiditySingleTokenKeepYt(
+                    currentConfig.marketAddress,
+                    token,
+                    tokenAddAmount,
+                    SLIPPAGE_TYPE2,
+                    {
+                        method: 'meta-method',
+                    }
                 );
-
+                const readerData = await sendTxWithInfApproval(
+                    () => metaCall,
+                    [token, getContractAddresses(currentConfig.chainId).WRAPPED_NATIVE]
+                );
                 const [lpBalanceAfter, tokenBalanceAfter, ytBalanceAfter] = await getUserBalances(signerAddress, [
                     marketAddress,
                     token,
                     ytAddress,
                 ]);
-                expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
-                expect(ytBalanceAfter.sub(ytBalanceBefore)).toEqBN(readerData.netYtOut, DEFAULT_EPSILON);
-                expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount);
+                const actualLpOut = lpBalanceAfter.sub(lpBalanceBefore);
+                const actualYtOut = ytBalanceAfter.sub(ytBalanceBefore);
+                expect(actualLpOut).toEqBN(readerData.netLpOut, EPSILON_FOR_AGGREGATOR);
+                expect(actualYtOut).toEqBN(readerData.netYtOut, EPSILON_FOR_AGGREGATOR);
+                // Todo: include gas check
+                if (!isNativeToken(token)) {
+                    expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount);
+                }
             }
+
+            it('native token', async () => {
+                await checkAddLiquiditySingleTokenKeepYt(NATIVE_ADDRESS_0xEE);
+            });
 
             it('raw token', async () => {
                 await checkAddLiquiditySingleTokenKeepYt(rawTokenAddress);
@@ -1172,6 +1195,207 @@ describeWrite('Router', () => {
         });
     });
 
+    describeWrite('migrate liquidity', () => {
+        function findMarketsWithSameSy() {
+            const markets = currentConfig.markets;
+            const syAddresses = markets.map((x) => toAddress(x.SY));
+            for (let i = 0; i < markets.length; i++) {
+                for (let j = i + 1; j < markets.length; j++) {
+                    if (isSameAddress(syAddresses[i], syAddresses[j])) {
+                        return [markets[i], markets[j]];
+                    }
+                }
+            }
+            throw new Error('no markets with same sy');
+        }
+
+        function findMarketsWithDifferentSy() {
+            const markets = currentConfig.markets;
+            const syAddresses = markets.map((x) => toAddress(x.SY));
+            for (let i = 0; i < markets.length; i++) {
+                // for down to find latest market
+                for (let j = markets.length - 1; j > i; j--) {
+                    if (!isSameAddress(syAddresses[i], syAddresses[j])) {
+                        return [markets[i], markets[j]];
+                    }
+                }
+            }
+            throw new Error('no markets with different sy');
+        }
+
+        const sameSyMarkets = findMarketsWithSameSy();
+        const differentSyMarkets = findMarketsWithDifferentSy();
+
+        const tests = {
+            'same sy normal': {
+                getMarkets: () => sameSyMarkets,
+                sameSy: true,
+                keepYt: false,
+                redeemRewards: false,
+            },
+            'same sy keep yt': {
+                getMarkets: () => sameSyMarkets,
+                sameSy: true,
+                keepYt: true,
+                redeemRewards: false,
+            },
+            'different sy normal': {
+                getMarkets: () => differentSyMarkets,
+                sameSy: false,
+                keepYt: false,
+                redeemRewards: false,
+            },
+            'different sy keep yt': {
+                getMarkets: () => differentSyMarkets,
+                sameSy: false,
+                keepYt: true,
+                redeemRewards: false,
+            },
+            'same sy normal claim rewards': {
+                getMarkets: () => sameSyMarkets,
+                sameSy: true,
+                keepYt: false,
+                redeemRewards: true,
+            },
+            'same sy keep yt claim rewards': {
+                getMarkets: () => sameSyMarkets,
+                sameSy: true,
+                keepYt: true,
+                redeemRewards: true,
+            },
+            'different sy normal claim rewards': {
+                getMarkets: () => differentSyMarkets,
+                sameSy: false,
+                keepYt: false,
+                redeemRewards: true,
+            },
+            'different sy keep yt claim rewards': {
+                getMarkets: () => differentSyMarkets,
+                sameSy: false,
+                keepYt: true,
+                redeemRewards: true,
+            },
+        };
+
+        it.each(Object.entries(tests))('%s', async (_, { getMarkets, sameSy, keepYt, redeemRewards }) => {
+            const [srcMarket, dstMarket] = getMarkets();
+            const [srcMarketAddress, dstMarketAddress] = [srcMarket.market, dstMarket.market];
+            const rewardTokens = await getRewardTokens(srcMarket);
+            await setPendleERC20Balance(srcMarketAddress, signerAddress, decimalFactor(18));
+            // ping the transfer to update the market rewards
+            await transferHelper(srcMarketAddress, NATIVE_ADDRESS_0xEE, BN.from(0));
+
+            const balanceBefore = await getUserBalances(signerAddress, [
+                srcMarketAddress,
+                dstMarketAddress,
+                dstMarket.YT,
+            ]);
+            const lpToRemoveAmount = bnMinAsBn(decimalFactor(18), balanceBefore[0]);
+            const rewardBalancesBefore = await getUserBalances(signerAddress, rewardTokens);
+            await approveInfHelper(srcMarketAddress, router.getRouterHelper().address);
+            await approveInfHelper(srcMarketAddress, router.address);
+
+            let getMetaCall = async () => {
+                if (sameSy) {
+                    if (keepYt) {
+                        return router.migrateLiquidityViaSharedSyKeepYt(
+                            srcMarketAddress,
+                            lpToRemoveAmount,
+                            dstMarketAddress,
+                            SLIPPAGE_TYPE2,
+                            {
+                                method: 'meta-method',
+                                redeemRewards,
+                            }
+                        );
+                    } else {
+                        return router.migrateLiquidityViaSharedSy(
+                            srcMarketAddress,
+                            lpToRemoveAmount,
+                            dstMarketAddress,
+                            SLIPPAGE_TYPE2,
+                            {
+                                method: 'meta-method',
+                                redeemRewards,
+                            }
+                        );
+                    }
+                } else {
+                    const syEntity = new SyEntity(srcMarket.SY, networkConnectionWithChainId);
+                    const tokensOut = await syEntity.getTokensOut();
+                    const preferredTokens = [currentConfig.tokens.USDC, currentConfig.tokens.WETH];
+                    const tokenRedeemSy = tokensOut.find((x) => preferredTokens.includes(x)) ?? tokensOut[0];
+                    if (keepYt) {
+                        return router.migrateLiquidityViaTokenRedeemSyKeepYt(
+                            srcMarketAddress,
+                            lpToRemoveAmount,
+                            dstMarketAddress,
+                            tokenRedeemSy,
+                            SLIPPAGE_TYPE2,
+                            {
+                                method: 'meta-method',
+                                redeemRewards,
+                            }
+                        );
+                    } else {
+                        return router.migrateLiquidityViaTokenRedeemSy(
+                            srcMarketAddress,
+                            lpToRemoveAmount,
+                            dstMarketAddress,
+                            tokenRedeemSy,
+                            SLIPPAGE_TYPE2,
+                            {
+                                method: 'meta-method',
+                                redeemRewards,
+                            }
+                        );
+                    }
+                }
+            };
+
+            const metaCall = await getMetaCall();
+            await metaCall
+                .connect(signer)
+                .send()
+                .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+
+            const readerData = metaCall.data;
+            const balanceAfter = await getUserBalances(signerAddress, [
+                srcMarketAddress,
+                dstMarketAddress,
+                dstMarket.YT,
+            ]);
+            const addLiquidityMetaMethod =
+                'addLiquidityRoute' in readerData
+                    ? await readerData.addLiquidityRoute.buildCall()
+                    : readerData.addLiquidityMetaMethod;
+
+            expect(balanceBefore[0].sub(balanceAfter[0])).toEqBN(lpToRemoveAmount);
+            expect(balanceAfter[1].sub(balanceBefore[1])).toEqBN(
+                addLiquidityMetaMethod.data.netLpOut,
+                EPSILON_FOR_AGGREGATOR
+            );
+
+            if (keepYt) {
+                const netYtOut =
+                    'netYtOut' in addLiquidityMetaMethod.data ? addLiquidityMetaMethod.data.netYtOut : BN.from(-1);
+                expect(balanceAfter[2].sub(balanceBefore[2])).toEqBN(netYtOut, EPSILON_FOR_AGGREGATOR);
+            } else {
+                expect(balanceAfter[2].sub(balanceBefore[2])).toEqBN(0);
+            }
+
+            const rewardBalancesAfter = await getUserBalances(signerAddress, rewardTokens);
+            if (redeemRewards) {
+                expect(rewardBalancesAfter.some((balance, i) => balance.gt(rewardBalancesBefore[i]))).toBeTruthy();
+            } else {
+                expect(rewardBalancesAfter.every((balance, i) => balance.eq(rewardBalancesBefore[i]))).toBeTruthy();
+            }
+
+            // const callData = await metaCall.extractParams();
+            // console.log(callData);
+        });
+    });
+
     it.skip('#sellSys', async () => {
         const sys = currentConfig.markets.map((x) => toAddress(x.SY));
         const syDecimals = await Promise.all(sys.map((x) => getERC20Decimals(x)));
@@ -1205,6 +1429,12 @@ describeWrite('Router', () => {
     });
 
     // =============================HELPER FUNCTIONS====================================================
+    async function getRewardTokens(market: { SY: Address }): Promise<Address[]> {
+        const syEntity = new SyEntity(market.SY, networkConnectionWithChainId);
+        const rewardTokens = await syEntity.getRewardTokens();
+        return [...rewardTokens, getContractAddresses(ACTIVE_CHAIN_ID).PENDLE].map(toAddress);
+    }
+
     /**
      * Helper function to get balance snapshot of the market
      */

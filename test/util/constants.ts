@@ -9,7 +9,7 @@ export const ONE_E18_BN = ethers.BigNumber.from(10).pow(18);
 export const DEFAULT_EPSILON = 0.01;
 // because we couldn't fork the aggregator result, we need to set a bigger epsilon for tx that
 // involve aggregator
-export const EPSILON_FOR_AGGREGATOR = 0.3;
+export const EPSILON_FOR_AGGREGATOR = 0.1;
 
 // ============
 export const DEFAULT_SWAP_AMOUNT = 1;

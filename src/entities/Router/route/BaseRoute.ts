@@ -67,9 +67,9 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
     abstract routeWithBulkSeller(withBulkSeller?: boolean): SelfType;
     abstract getNetOut(): Promise<BN | undefined>;
     abstract estimateNetOutInEth(): Promise<BN | undefined>;
-    protected abstract getGasUsedImplement(): Promise<BN | undefined>;
-    protected abstract getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined>;
-    protected abstract signerHasApprovedImplement(signerAddress: Address): Promise<boolean>;
+    abstract getGasUsedImplement(): Promise<BN | undefined>;
+    abstract getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined>;
+    abstract signerHasApprovedImplement(signerAddress: Address): Promise<boolean>;
 
     @RouteContext.NoArgsSharedCache
     async signerHasApproved(): Promise<boolean> {

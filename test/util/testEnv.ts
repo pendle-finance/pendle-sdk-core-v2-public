@@ -1,7 +1,15 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import { config } from 'dotenv';
-import { Wallet } from 'ethers';
-import { CHAIN_ID_MAPPING, Multicall, toAddress, KyberSwapAggregatorHelper, BaseRouterConfig } from '../../src';
+import { Wallet, providers } from 'ethers';
+import {
+    CHAIN_ID_MAPPING,
+    Multicall,
+    toAddress,
+    KyberSwapAggregatorHelper,
+    BaseRouterConfig,
+    GasFeeEstimator,
+    BN,
+} from '../../src';
 import './bigNumberMatcher';
 
 import { evm_revert, evm_snapshot } from './testHelper';
@@ -88,6 +96,16 @@ export const networkConnectionWithChainId = {
     chainId: ACTIVE_CHAIN_ID,
 };
 
+class ConstantGasFeeEstimator extends GasFeeEstimator {
+    constructor(readonly constGasFee: BN, readonly provider: providers.Provider) {
+        super(provider);
+    }
+
+    override async getGasFee(): Promise<BN> {
+        return this.constGasFee;
+    }
+}
+
 export const testConfig = (chainId: TestChainId) => {
     const contractAddresses = CONTRACT_ADDRESSES[chainId];
     const router = contractAddresses.CORE.ROUTER;
@@ -95,6 +113,10 @@ export const testConfig = (chainId: TestChainId) => {
     const routerConfig: BaseRouterConfig = {
         ...networkConnectionWithChainId,
         aggregatorHelper,
+        gasFeeEstimator: new ConstantGasFeeEstimator(
+            BN.from(10).pow(/* gwei decimal = */ 9).mul(25),
+            networkConnectionWithChainId.provider
+        ),
     };
     return {
         chainId,

@@ -36,7 +36,7 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
         });
     }
 
-    protected override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+    override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         return this.checkUserApproval(signerAddress, { token: this.market, amount: this.lpToRemove });
     }
 
@@ -53,7 +53,7 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
         return { ...data, intermediateSyAmount: data.netSyToRedeem };
     }
 
-    protected override async getGasUsedImplement(): Promise<BN | undefined> {
+    override async getGasUsedImplement(): Promise<BN | undefined> {
         return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 

@@ -28,6 +28,7 @@ function transformData(data: any): ContractAddresses {
         FEE_DISTRIBUTOR: toAddressOrUndefined(feeDistributor),
         PENDLE_SWAP: toAddressOrUndefined(data.pendleSwap),
         WRAPPED_NATIVE: toAddress(data.network.wrappedNative),
+        ROUTER_HELPER: toAddress(data.routerHelper),
     };
 }
 

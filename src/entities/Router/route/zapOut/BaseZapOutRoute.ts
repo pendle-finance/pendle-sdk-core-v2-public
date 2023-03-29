@@ -53,7 +53,7 @@ export abstract class BaseZapOutRoute<
 
     protected abstract previewIntermediateSyImpl(): Promise<IntermediateSyData | undefined>;
 
-    protected override async getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined> {
+    override async getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined> {
         const previewData = await this.previewIntermediateSy();
         if (previewData == undefined) {
             return undefined;

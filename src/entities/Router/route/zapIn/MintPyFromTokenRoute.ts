@@ -55,7 +55,7 @@ export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
         return { netPyOut, intermediateSyAmount: ethersConstants.Zero };
     }
 
-    protected override async getGasUsedImplement(): Promise<BN | undefined> {
+    override async getGasUsedImplement(): Promise<BN | undefined> {
         return await this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 

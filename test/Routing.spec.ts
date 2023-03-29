@@ -1,6 +1,6 @@
 import { BulkSeller } from '@pendle/core-v2/typechain-types';
 import BigNumber from 'bignumber.js';
-import { BigNumber as BN, ethers, providers } from 'ethers';
+import { BigNumber as BN, ethers } from 'ethers';
 import {
     Address,
     BulkSellerABI,
@@ -13,7 +13,6 @@ import {
 } from '../src';
 
 // TODO export classes
-import { GasFeeEstimator } from '../src/entities/Router/GasFeeEstimator';
 import {
     BALANCE_OF_STORAGE_SLOT,
     DEFAULT_EPSILON,
@@ -97,24 +96,8 @@ const zapOutData = new CsvWriter([
     'selected',
 ] as const);
 
-class ConstantGasFeeEstimator extends GasFeeEstimator {
-    constructor(readonly constGasFee: BN, readonly provider: providers.Provider) {
-        super(provider);
-    }
-
-    override async getGasFee(): Promise<BN> {
-        return this.constGasFee;
-    }
-}
-
 describeWrite('Routing', () => {
-    const router = Router.getRouter({
-        ...currentConfig.routerConfig,
-        gasFeeEstimator: new ConstantGasFeeEstimator(
-            BN.from(10).pow(/* gwei decimal = */ 9).mul(25),
-            networkConnectionWithChainId.provider
-        ),
-    });
+    const router = Router.getRouter(currentConfig.routerConfig);
     const signerAddress = networkConnectionWithChainId.signerAddress;
 
     afterAll(async () => {

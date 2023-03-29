@@ -40,7 +40,7 @@ export abstract class BaseZapInRoute<
             // Can we somehow automate this?
             NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.getAggregatorResult);
 
-            if (this.routeWithBulkSeller === other.routeWithBulkSeller) {
+            if (this.withBulkSeller === other.withBulkSeller) {
                 NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.preview);
                 NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.buildTokenInput);
             }
@@ -50,7 +50,7 @@ export abstract class BaseZapInRoute<
     abstract readonly sourceTokenAmount: RawTokenAmount<BigNumberish>;
     protected abstract previewWithRouterStatic(): Promise<Data | undefined>;
 
-    protected override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+    override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         return this.checkUserApproval(signerAddress, this.sourceTokenAmount);
     }
 
@@ -89,7 +89,7 @@ export abstract class BaseZapInRoute<
         return result ? BN.from(result.outputAmount) : BN.from(0);
     }
 
-    protected override async getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined> {
+    override async getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined> {
         const aggregatorResult = await this.getAggregatorResult();
         if (!aggregatorResult) {
             return undefined;

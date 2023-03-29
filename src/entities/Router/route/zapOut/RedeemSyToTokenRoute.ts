@@ -32,7 +32,7 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         });
     }
 
-    protected override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+    override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         return this.checkUserApproval(signerAddress, { token: this.sy, amount: this.netSyIn });
     }
 
@@ -40,7 +40,7 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         return { intermediateSyAmount: this.netSyIn };
     }
 
-    protected override async getGasUsedImplement(): Promise<BN | undefined> {
+    override async getGasUsedImplement(): Promise<BN | undefined> {
         return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 

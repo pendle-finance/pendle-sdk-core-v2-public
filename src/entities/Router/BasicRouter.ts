@@ -1,7 +1,13 @@
 import { MetaMethodType } from '../../contracts';
 import { isSameAddress } from '../../common';
 
-import { BaseZapInRoute, BaseZapOutRoute, BaseZapInRouteData, BaseZapOutRouteIntermediateData } from './route';
+import {
+    BaseZapInRoute,
+    BaseZapOutRoute,
+    BaseZapInRouteData,
+    BaseZapOutRouteIntermediateData,
+    BaseLiquidityMigrationFixTokenRedeemSyRoute,
+} from './route';
 
 import { BaseRouter } from './BaseRouter';
 import { BaseRouterConfig } from './types';
@@ -42,5 +48,14 @@ export class BasicRouter extends BaseRouter {
         ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
     >(routes: ZapOutRoute[]): Promise<ZapOutRoute | undefined> {
         return routes.filter((route) => isSameAddress(route.targetToken, route.tokenRedeemSy))[0];
+    }
+
+    /**
+     * @returns the route that does not use aggregator
+     */
+    override async findBestLiquidityMigrationRoute<
+        LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any, any>
+    >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute | undefined> {
+        return routes.filter((route) => isSameAddress(route.tokenRedeemSy, route.tokenMintSy))[0];
     }
 }

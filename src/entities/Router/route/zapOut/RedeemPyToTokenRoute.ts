@@ -37,7 +37,7 @@ export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         });
     }
 
-    protected override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+    override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         const pt = await this.ytEntity.pt();
         const [ytApproved, ptApproved] = await Promise.all([
             this.checkUserApproval(signerAddress, { token: this.ytEntity.address, amount: this.netPyIn }),
@@ -52,7 +52,7 @@ export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         return { intermediateSyAmount, pyIndex };
     }
 
-    protected override async getGasUsedImplement(): Promise<BN | undefined> {
+    override async getGasUsedImplement(): Promise<BN | undefined> {
         return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 

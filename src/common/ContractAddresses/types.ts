@@ -13,4 +13,5 @@ export type ContractAddresses = {
     VOTING_CONTROLLER?: Address;
     FEE_DISTRIBUTOR?: Address;
     PENDLE_SWAP?: Address;
+    ROUTER_HELPER: Address;
 };

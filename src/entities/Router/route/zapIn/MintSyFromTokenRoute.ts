@@ -57,7 +57,7 @@ export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
         return { netSyOut, intermediateSyAmount: netSyOut };
     }
 
-    protected override async getGasUsedImplement(): Promise<BN | undefined> {
+    override async getGasUsedImplement(): Promise<BN | undefined> {
         return await this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 

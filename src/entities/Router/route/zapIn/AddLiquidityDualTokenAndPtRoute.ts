@@ -70,7 +70,7 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
         };
     }
 
-    protected override async getGasUsedImplement(): Promise<BN | undefined> {
+    override async getGasUsedImplement(): Promise<BN | undefined> {
         return await this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 

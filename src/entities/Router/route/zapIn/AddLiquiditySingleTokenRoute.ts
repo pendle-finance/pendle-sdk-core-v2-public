@@ -13,6 +13,11 @@ export type AddLiquiditySingleTokenRouteData = BaseZapInRouteData & {
     netSyToSwap: BN;
 };
 
+export type AddLiquiditySingleTokenRouteConfig<T extends MetaMethodType> = BaseZapInRouteConfig<
+    T,
+    AddLiquiditySingleTokenRoute<T>
+>;
+
 export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
     T,
     AddLiquiditySingleTokenRouteData,
@@ -23,7 +28,7 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
         readonly tokenIn: Address,
         readonly netTokenIn: BigNumberish,
         readonly slippage: number,
-        params: BaseZapInRouteConfig<T, AddLiquiditySingleTokenRoute<T>>
+        params: AddLiquiditySingleTokenRouteConfig<T>
     ) {
         super(params);
     }
@@ -64,7 +69,7 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
         };
     }
 
-    protected override async getGasUsedImplement(): Promise<BN | undefined> {
+    override async getGasUsedImplement(): Promise<BN | undefined> {
         return await this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 
@@ -93,11 +98,14 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
         data: Data,
         params: FixedRouterMetaMethodExtraParams<MT>
     ) {
-        const [previewResult, input] = await Promise.all([this.preview(), this.buildTokenInput()]);
-        if (!previewResult || !input) return undefined;
+        const [previewResult, approxParam, minLpOut, input] = await Promise.all([
+            this.preview(),
+            this.getApproxParam(),
+            this.getMinLpOut(),
+            this.buildTokenInput(),
+        ]);
+        if (!previewResult || !approxParam || !minLpOut || !input) return undefined;
         const overrides = { value: isNativeToken(this.tokenIn) ? this.netTokenIn : undefined };
-        const approxParam = this.context.getApproxParamsToPullPt(previewResult.netPtFromSwap, this.slippage);
-        const minLpOut = calcSlippedDownAmountSqrt(previewResult.netLpOut, this.slippage);
         return this.router.contract.metaCall.addLiquiditySingleToken(
             params.receiver,
             this.market,
@@ -106,5 +114,17 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
             input,
             { ...data, ...mergeMetaMethodExtraParams({ overrides }, params) }
         );
+    }
+
+    async getApproxParam() {
+        const previewResult = await this.preview();
+        if (!previewResult) return undefined;
+        return this.context.getApproxParamsToPullPt(previewResult.netPtFromSwap, this.slippage);
+    }
+
+    async getMinLpOut() {
+        const previewResult = await this.preview();
+        if (!previewResult) return undefined;
+        return calcSlippedDownAmountSqrt(previewResult.netLpOut, this.slippage);
     }
 }

@@ -50,6 +50,51 @@ export class ContractMetaMethod<
         readonly data: Data
     ) {}
 
+    withData<NewData extends MetaMethodExtraParams<any>>(newData: NewData): ContractMetaMethod<C, M, NewData> {
+        return new ContractMetaMethod(this.contract, this.methodName, this.callback, newData);
+    }
+
+    attachExtraData<ExtraData extends object>(extraData: ExtraData): ContractMetaMethod<C, M, Data & ExtraData> {
+        return this.withData({ ...this.data, ...extraData });
+    }
+
+    static attachExtraData<
+        T extends MetaMethodType,
+        C extends Contract,
+        MethodName extends ContractMethodNames<C>,
+        Data extends MetaMethodExtraParams<T>,
+        ExtraData extends object
+    >(
+        obj: Awaited<MetaMethodReturnType<T, C, MethodName, Data>>,
+        extraData: ExtraData
+    ): Awaited<MetaMethodReturnType<T, C, MethodName, Data & ExtraData>> {
+        if (obj instanceof ContractMetaMethod) {
+            return obj.attachExtraData(extraData);
+        }
+        return obj as any;
+    }
+
+    /**
+     * @remarks
+     * This function tries to keeps the `obj` of type `MetaMethodReturnType` as
+     * generic as possible. If a variable of type `MetaMethodReturnType` is
+     * being _awaited_, the _generic_ type will be _collapsed_, hence the type
+     * checking might failed.
+     */
+    static async attachExtraDataAsync<
+        T extends MetaMethodType,
+        C extends Contract,
+        MethodName extends ContractMethodNames<C>,
+        Data extends MetaMethodExtraParams<T>,
+        ExtraData extends object
+    >(
+        obj: MetaMethodReturnType<T, C, MethodName, Data>,
+        extraData: ExtraData
+    ): MetaMethodReturnType<T, C, MethodName, Data & ExtraData> {
+        const res = await obj;
+        return this.attachExtraData(res, extraData);
+    }
+
     private addOverridesToData(dataOverrides?: MetaMethodExtraParams): Data {
         return {
             ...this.data,
