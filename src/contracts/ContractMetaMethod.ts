@@ -155,7 +155,7 @@ export class ContractMetaMethod<
         // TODO make this some how use the same logic as contract.multicallStatic
         const callback = ((...args: any[]) => {
             const argCount = this.contract.functionFragmentsMapping[this.methodName].inputs.length;
-            let overrides = (args.length === argCount + 1 ? args.pop() : undefined) ?? {};
+            const overrides = (args.length === argCount + 1 ? args.pop() : undefined) ?? {};
             return Multicall.wrap(this.contract, multicall).callStatic[this.methodName as string](
                 ...(args as any),
                 overrides

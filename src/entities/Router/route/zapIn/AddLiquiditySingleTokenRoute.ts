@@ -37,7 +37,7 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
         return { token: this.tokenIn, amount: this.netTokenIn };
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): AddLiquiditySingleTokenRoute<T> {
+    override routeWithBulkSeller(withBulkSeller = true): AddLiquiditySingleTokenRoute<T> {
         return new AddLiquiditySingleTokenRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
             context: this.context,
             tokenMintSy: this.tokenMintSy,
@@ -94,7 +94,7 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
      * The type binder somehow still work fine, so for now we can let tsc do
      * the typing for us.
      */
-    protected async buildGenericCall<Data extends {}, MT extends MetaMethodType>(
+    protected async buildGenericCall<Data extends object, MT extends MetaMethodType>(
         data: Data,
         params: FixedRouterMetaMethodExtraParams<MT>
     ) {

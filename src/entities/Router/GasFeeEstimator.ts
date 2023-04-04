@@ -4,7 +4,7 @@ import { BN, ethersConstants } from '../../common';
 export class GasFeeEstimator {
     static readonly DEFAULT_CACHE_TIMEOUT_ms = 10 * 1000;
 
-    private lastUpdatedTimestamp_ms: number = 0;
+    private lastUpdatedTimestamp_ms = 0;
     private cacheGasFee: Promise<BN> = Promise.resolve(ethersConstants.Zero);
 
     constructor(

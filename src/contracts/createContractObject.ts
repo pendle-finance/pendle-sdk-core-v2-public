@@ -17,8 +17,8 @@ import { Fragment, FunctionFragment } from 'ethers/lib/utils';
 type Provider = providers.Provider;
 
 export function wrapFunction<T>(fn: ContractFunction<T>): ContractFunction<T> {
-    return async function (this: any) {
-        return fn.apply(this, arguments as unknown as any[]).catch((e) => {
+    return async function (this: object, ...params: any[]) {
+        return fn.apply(this, params).catch((e) => {
             const err = EthersJsError.handleEthersJsError(e);
             throw err;
         });
@@ -26,8 +26,8 @@ export function wrapFunction<T>(fn: ContractFunction<T>): ContractFunction<T> {
 }
 
 export function wrapEstimateGasFunction(fn: ContractFunction<BN>): ContractFunction<BN> {
-    return async function (this: any) {
-        return fn.apply(this, arguments as unknown as any[]).catch((e) => {
+    return async function (this: object, ...params: any[]) {
+        return fn.apply(this, params).catch((e) => {
             // TODO wrap inside another error.
             const err = EthersJsError.handleEthersJsError(e);
             throw new GasEstimationError(err);
@@ -148,7 +148,7 @@ export function wrapContractObject<C extends Contract>(
         callStatic: wrapFunctions(contract.callStatic),
         estimateGas: wrapFunctions(contract.estimateGas, wrapEstimateGasFunction),
         filters: contract.filters,
-        queryFilter: contract.queryFilter,
+        queryFilter: contract.queryFilter.bind(contract),
         multicallStatic,
         metaCall,
         connect(signerOrProvider: string | Signer | Provider) {

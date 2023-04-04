@@ -26,7 +26,7 @@ export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
         return { token: this.tokenIn, amount: this.netTokenIn };
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): MintPyFromTokenRoute<T> {
+    override routeWithBulkSeller(withBulkSeller = true): MintPyFromTokenRoute<T> {
         return new MintPyFromTokenRoute(this.yt, this.tokenIn, this.netTokenIn, this.slippage, {
             context: this.context,
             tokenMintSy: this.tokenMintSy,
@@ -78,7 +78,7 @@ export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
      * The type binder somehow still work fine, so for now we can let tsc do
      * the typing for us.
      */
-    protected async buildGenericCall<Data extends {}, MT extends MetaMethodType>(
+    protected async buildGenericCall<Data extends object, MT extends MetaMethodType>(
         data: Data,
         params: FixedRouterMetaMethodExtraParams<MT>
     ) {

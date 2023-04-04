@@ -1,5 +1,5 @@
-name: ci
-on: [push, pull_request]
+name: Lint and typecheck
+on: [push]
 jobs:
   
   lint:
@@ -22,9 +22,9 @@ jobs:
       run: yarn install --immutable
           
     - name: Lint 
-      run: yarn eslint "{src,test}/**/*.{ts,js}" --quiet
+      run: yarn lint:nofix
         
     - name: Type checking
-      run: yarn check-types
+      run: yarn typecheck
 
 

@@ -67,9 +67,10 @@ export function describeIf(condition: boolean, ...params: [fn: () => void] | [na
 
 export const BLOCK_CONFIRMATION = USE_HARDHAT_RPC ? 1 : parseInt(process.env.BLOCK_CONFIRMATION ?? '1');
 
+const INFURA_PROJECT_ID = process.env.INFURA_PROJECT_ID ?? '<please specify INFURA_PROJECT_ID in .env>';
+
 const providerUrls = {
-    [CHAIN_ID_MAPPING.ETHEREUM]: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
-    [CHAIN_ID_MAPPING.AVALANCHE]: 'https://api.avax.network/ext/bc/C/rpc',
+    [CHAIN_ID_MAPPING.ETHEREUM]: `https://mainnet.infura.io/v3/${INFURA_PROJECT_ID}`,
     [CHAIN_ID_MAPPING.FUJI]: 'https://api.avax-test.network/ext/bc/C/rpc',
     [CHAIN_ID_MAPPING.MUMBAI]: 'https://matic-mumbai.chainstacklabs.com',
     [LOCAL_CHAIN_ID]: 'http://127.0.0.1:8545',

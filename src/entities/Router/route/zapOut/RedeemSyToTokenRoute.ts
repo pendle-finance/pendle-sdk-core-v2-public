@@ -24,7 +24,7 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         return this.tokenOut;
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): RedeemSyToTokenRoute<T> {
+    override routeWithBulkSeller(withBulkSeller = true): RedeemSyToTokenRoute<T> {
         return new RedeemSyToTokenRoute(this.sy, this.netSyIn, this.tokenOut, this.slippage, {
             context: this.context,
             tokenRedeemSy: this.tokenRedeemSy,
@@ -37,7 +37,7 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
     }
 
     protected override async previewIntermediateSyImpl(): Promise<RedeemSyToTokenRouteIntermediateData | undefined> {
-        return { intermediateSyAmount: this.netSyIn };
+        return Promise.resolve({ intermediateSyAmount: this.netSyIn });
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {

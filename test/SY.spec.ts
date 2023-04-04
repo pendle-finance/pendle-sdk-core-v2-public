@@ -32,14 +32,16 @@ describe(SyEntity, () => {
         syDecimals = await getERC20Decimals(syAddress);
 
         const tokensIn = await sy.getTokensIn();
-        for (const token of tokensIn) {
-            const slotInfo = BALANCE_OF_STORAGE_SLOT[token];
-            if (!slotInfo) {
-                console.log(`No balanceOf slot info for ${await getERC20Name(token)} ${token}`);
-                continue;
-            }
-            setERC20Balance(token, signerAddress, balance, ...slotInfo);
-        }
+        await Promise.all(
+            tokensIn.map(async (token) => {
+                const slotInfo = BALANCE_OF_STORAGE_SLOT[token];
+                if (!slotInfo) {
+                    console.log(`No balanceOf slot info for ${await getERC20Name(token)} ${token}`);
+                    return;
+                }
+                return setERC20Balance(token, signerAddress, balance, ...slotInfo);
+            })
+        );
     });
 
     it('#constructor', () => {

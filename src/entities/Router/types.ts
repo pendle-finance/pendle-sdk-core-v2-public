@@ -75,13 +75,13 @@ export type RouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodEx
 export type RouterMetaMethodReturnType<
     T extends MetaMethodType,
     M extends ContractMethodNames<IPAllAction>,
-    Data extends {}
+    Data extends object = object
 > = MetaMethodReturnType<T, IPAllAction, M, Data & RouterMetaMethodExtraParams<T>>;
 
 export type RouterHelperMetaMethodReturnType<
     T extends MetaMethodType,
     M extends ContractMethodNames<typechain.PendleRouterHelper>,
-    Data extends {}
+    Data extends object
 > = MetaMethodReturnType<T, typechain.PendleRouterHelper, M, Data & RouterMetaMethodExtraParams<T>>;
 
 export type MetaMethodForRouterMethod<Method extends tsEssentials.AnyFunction> =

@@ -63,7 +63,7 @@ export type UserMarketInfo = {
 export type MarketEntityMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<PendleMarket>,
-    ExtraData extends {}
+    ExtraData extends object = object
 > = MetaMethodReturnType<T, PendleMarket, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 /**
@@ -134,12 +134,10 @@ export class MarketEntity extends ERC20Entity {
      * @remarks
      * Both structures have the same shape, but the return type has a stricter type.
      */
-    static toUserMarketInfo({
-        lpBalance,
-        ptBalance,
-        syBalance,
-        unclaimedRewards,
-    }: IPActionInfoStatic.UserMarketInfoStructOutput): UserMarketInfo {
+    static toUserMarketInfo(
+        this: void,
+        { lpBalance, ptBalance, syBalance, unclaimedRewards }: IPActionInfoStatic.UserMarketInfoStructOutput
+    ): UserMarketInfo {
         return {
             lpBalance: createTokenAmount(lpBalance),
             ptBalance: createTokenAmount(ptBalance),
@@ -268,7 +266,7 @@ export class MarketEntity extends ERC20Entity {
     async redeemRewards<T extends MetaMethodType>(
         userAddress: Address,
         params: MetaMethodExtraParams<T> = {}
-    ): MarketEntityMetaMethodReturnType<T, 'redeemRewards', {}> {
+    ): MarketEntityMetaMethodReturnType<T, 'redeemRewards'> {
         return this.contract.metaCall.redeemRewards(userAddress, this.addExtraParams(params));
     }
 

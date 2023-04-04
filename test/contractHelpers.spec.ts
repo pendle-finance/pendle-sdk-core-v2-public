@@ -11,7 +11,7 @@ describeWrite('Contract Helpers', () => {
     const approveAmount = 69;
 
     let localSnapshotId = '';
-    let metaCallPromise = pendle.approve(DUMMY_ADDRESS, approveAmount, {
+    const metaCallPromise = pendle.approve(DUMMY_ADDRESS, approveAmount, {
         method: 'meta-method',
     });
 
@@ -88,7 +88,7 @@ describeWrite('Contract Helpers', () => {
         });
 
         await expect(() => sendPendleMetaCall.callStatic({ overrides: { from: DUMMY_ADDRESS } })).rejects.toThrow(
-            'ERC20: transfer amount exceeds balance'
+            'TRANSFER_EXCEED_BALANCE'
         );
     });
 

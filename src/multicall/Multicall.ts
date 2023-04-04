@@ -5,16 +5,15 @@ import { Contract, CallOverrides } from 'ethers';
 import { FunctionFragment, Interface } from 'ethers/lib/utils';
 import { abi as MulticallABI } from './Multicall2.json';
 import { EthersJsError, PendleSdkError } from '../errors';
-import { Address, ChainId, CHAIN_ID_MAPPING, RemoveLastOptionalParam, AddParams } from '../common';
+import { Address, toAddress, ChainId, CHAIN_ID_MAPPING, RemoveLastOptionalParam, AddParams } from '../common';
 import { ContractLike } from '../contracts/types';
 import { getInnerContract } from '../contracts/helper';
 
 export const MULTICALL_ADDRESSES: Record<ChainId, Address> = {
-    [CHAIN_ID_MAPPING.ETHEREUM]: '0x5ba1e12693dc8f9c48aad8770482f4739beed696',
-    [CHAIN_ID_MAPPING.AVALANCHE]: '0x11b8399bc71e8b67a0f7cca2663612af1ca38536',
-    [CHAIN_ID_MAPPING.FUJI]: '0x07e46d95cc98f0d7493d679e89e396ea99020185',
-    [CHAIN_ID_MAPPING.MUMBAI]: '0x7De28d05a0781122565F3b49aA60331ced983a19',
-    [CHAIN_ID_MAPPING.ARBITRUM]: '0xcA11bde05977b3631167028862bE2a173976CA11',
+    [CHAIN_ID_MAPPING.ETHEREUM]: toAddress('0x5ba1e12693dc8f9c48aad8770482f4739beed696'),
+    [CHAIN_ID_MAPPING.FUJI]: toAddress('0x07e46d95cc98f0d7493d679e89e396ea99020185'),
+    [CHAIN_ID_MAPPING.MUMBAI]: toAddress('0x7De28d05a0781122565F3b49aA60331ced983a19'),
+    [CHAIN_ID_MAPPING.ARBITRUM]: toAddress('0xcA11bde05977b3631167028862bE2a173976CA11'),
 } as const;
 
 /**
@@ -77,7 +76,7 @@ export class Multicall {
         if (overrides === undefined) {
             return true;
         }
-        for (const key in Object.keys(overrides)) {
+        for (const key of Object.keys(overrides)) {
             if (key !== 'blockTag' && (overrides as any)[key] != undefined) {
                 return false;
             }
@@ -116,7 +115,7 @@ export class Multicall {
             callData: TRANSFORMER.encodeFunctionData(call.fragment, call.params),
         }));
 
-        let responses = await this.multicallContract.callStatic.tryAggregate(false, callRequests, {
+        const responses = await this.multicallContract.callStatic.tryAggregate(false, callRequests, {
             blockTag: blockTag,
         });
 
@@ -130,7 +129,7 @@ export class Multicall {
                 // If we do the !success check before the decode, we cannot get the error message of
                 // decodeFunctionResult. So we always decode first, then check the success later.
                 if (!success) {
-                    let callId = FunctionFragment.from(call.fragment).format();
+                    const callId = FunctionFragment.from(call.fragment).format();
                     throw new Error(`Call ${call.address}:${callId} failed`);
                 }
 

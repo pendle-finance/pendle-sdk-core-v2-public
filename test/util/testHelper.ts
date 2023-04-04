@@ -98,7 +98,7 @@ export async function getERC20Decimals(token: Address): Promise<number> {
 }
 
 export async function stalkAccount(user: Address, markets: any[]) {
-    for (let market of markets) {
+    for (const market of markets) {
         console.log('Market: ', market.symbol);
         console.log('Portfolio');
 
@@ -175,7 +175,8 @@ const registerCustomInspection = (BigNumber: any) => {
     const inspectCustomSymbol = Symbol.for('nodejs.util.inspect.custom');
 
     BigNumber.prototype[inspectCustomSymbol] = function () {
-        return `BigNumber { value: "${this.toString()}" }`;
+        const value = this.toString() as string;
+        return `BigNumber { value: "${value}" }`;
     };
 };
 

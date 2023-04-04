@@ -31,7 +31,7 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
         return { token: this.tokenIn, amount: this.tokenDesired };
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): AddLiquidityDualTokenAndPtRoute<T> {
+    override routeWithBulkSeller(withBulkSeller = true): AddLiquidityDualTokenAndPtRoute<T> {
         return new AddLiquidityDualTokenAndPtRoute(
             this.market,
             this.tokenIn,
@@ -95,7 +95,7 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
      * The type binder somehow still work fine, so for now we can let tsc do
      * the typing for us.
      */
-    protected async buildGenericCall<Data extends {}, MT extends MetaMethodType>(
+    protected async buildGenericCall<Data extends object, MT extends MetaMethodType>(
         data: Data,
         params: FixedRouterMetaMethodExtraParams<MT>
     ) {

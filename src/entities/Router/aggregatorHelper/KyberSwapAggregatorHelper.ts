@@ -4,7 +4,7 @@ import {
     CHAIN_ID_MAPPING,
     ChainId,
     Address,
-    isSameAddress,
+    areSameAddresses,
     isNativeToken,
     toAddress,
     NATIVE_ADDRESS_0xEE,
@@ -41,7 +41,6 @@ export type KyberAPIParams = KyberAPIParamsOverrides & {
 
 const KYBER_API = {
     [CHAIN_ID_MAPPING.ETHEREUM]: 'https://aggregator-api.kyberswap.com/ethereum/route/encode',
-    [CHAIN_ID_MAPPING.AVALANCHE]: 'https://aggregator-api.kyberswap.com/avalanche/route/encode',
     [CHAIN_ID_MAPPING.FUJI]: 'https://aggregator-api.stg.kyberengineering.io/fuji/route/encode',
     [CHAIN_ID_MAPPING.MUMBAI]: 'https://aggregator-api.stg.kyberengineering.io/mumbai/route/encode',
     [CHAIN_ID_MAPPING.ARBITRUM]: 'https://aggregator-api.kyberswap.com/arbitrum/route/encode',
@@ -65,7 +64,10 @@ type RawKybercallData<HasEncodedData extends boolean = boolean> = {
     routerAddress: string;
 };
 
-function rawKybercallDataHasEncodedData(data: RawKybercallData): data is RawKybercallData<true> {
+// Workaround with type alias, because of TypeScript _current_
+// [_Design limitation_](https://github.com/microsoft/TypeScript/issues/53453)
+type RawKybercallDataWithEncodedSwapData = RawKybercallData<true>;
+function rawKybercallDataHasEncodedData(data: RawKybercallData): data is RawKybercallDataWithEncodedSwapData {
     return data.encodedSwapData !== undefined;
 }
 
@@ -150,13 +152,13 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
         { aggregatorReceiver = this.routerAddress }: { aggregatorReceiver?: Address } = {}
     ): Promise<AggregatorResult | undefined> {
         if (!isKyberSupportedChain(this.chainId)) {
-            throw new PendleSdkError(`Chain ${this.chainId} is not supported for kybercall.`);
+            throw new PendleSdkError(`Chain ${this.chainId as number} is not supported for kybercall.`);
         }
         // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
         if (isNativeToken(tokenIn)) tokenIn = NATIVE_ADDRESS_0xEE;
         if (isNativeToken(tokenOut)) tokenOut = NATIVE_ADDRESS_0xEE;
 
-        if (isSameAddress(tokenIn, tokenOut)) {
+        if (areSameAddresses(tokenIn, tokenOut)) {
             return createNoneAggregatorResult(amount);
         }
 
@@ -230,8 +232,8 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
             [tokenIn, tokenOut],
             [tokenOut, tokenIn],
         ]) {
-            if (isNativeToken(tokenA) && isSameAddress(tokenB, wrappedNative)) {
-                return createETH_WETHAggregatorResult(amount);
+            if (isNativeToken(tokenA) && areSameAddresses(tokenB, wrappedNative)) {
+                return Promise.resolve(createETH_WETHAggregatorResult(amount));
             }
         }
     }

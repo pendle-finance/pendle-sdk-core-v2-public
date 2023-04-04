@@ -5,7 +5,7 @@ describe('MarketFactory', () => {
     const marketFactory = new MarketFactory(currentConfig.marketFactory, networkConnection);
     const contract = marketFactory.contract;
 
-    it('#constructor', async () => {
+    it('#constructor', () => {
         expect(marketFactory).toBeInstanceOf(MarketFactory);
         expect(marketFactory.address).toBe(currentConfig.marketFactory);
         // expect(marketFactory.contract).toBeInstanceOf(Contract);

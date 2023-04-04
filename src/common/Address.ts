@@ -1,4 +1,5 @@
 import { constants as ethersConstants } from 'ethers';
+import { Opaque } from 'ts-essentials';
 
 /**
  * @remarks
@@ -11,7 +12,7 @@ import { constants as ethersConstants } from 'ethers';
  *
  * Use {@link toAddress} to convert a raw address to this type.
  */
-export type Address = `0x${string}`;
+export type Address = Opaque<`0x${string}`, 'pendle.sdk.Address'>;
 
 /**
  * Convert a raw address to Pendle SDK's {@link Address} for type safety.
@@ -48,7 +49,7 @@ export function toAddressOrUndefined(rawAddress: string | undefined): Address | 
  * @param address2
  * @returns true if two address are the same.
  */
-export function isSameAddress(address1: Address, address2: Address): boolean {
+export function areSameAddresses(address1: Address, address2: Address): boolean {
     return address1.toLowerCase() === address2.toLowerCase();
 }
 
@@ -67,5 +68,5 @@ export type NativeTokenAddress = typeof NATIVE_ADDRESS_0x00 | typeof NATIVE_ADDR
  * @returns
  */
 export function isNativeToken(address: Address): address is NativeTokenAddress {
-    return isSameAddress(address, NATIVE_ADDRESS_0x00) || isSameAddress(address, NATIVE_ADDRESS_0xEE);
+    return areSameAddresses(address, NATIVE_ADDRESS_0x00) || areSameAddresses(address, NATIVE_ADDRESS_0xEE);
 }

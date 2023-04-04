@@ -43,8 +43,10 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
         const other = params.cloneFrom;
         if (other != undefined) {
             if (this.withBulkSeller === other.withBulkSeller) {
+                /* eslint-disable @typescript-eslint/unbound-method */
                 NoArgsCache.copyValue(this, other, AddLiquiditySingleTokenKeepYtRoute.prototype.getAggregatorResult);
                 NoArgsCache.copyValue(this, other, AddLiquiditySingleTokenKeepYtRoute.prototype.buildTokenInput);
+                /* eslint-enable @typescript-eslint/unbound-method */
             }
         }
     }
@@ -65,7 +67,7 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
         return { token: this.patchedTokenIn, amount: this.netTokenIn };
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): AddLiquiditySingleTokenKeepYtRoute<T> {
+    override routeWithBulkSeller(withBulkSeller = true): AddLiquiditySingleTokenKeepYtRoute<T> {
         return new AddLiquiditySingleTokenKeepYtRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
             context: this.context,
             tokenMintSy: this.tokenMintSy,
@@ -141,7 +143,7 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
      * See {@link BaseRouter#addLiquiditySingleTokenKeepYt} for the explanation
      * of the return type.
      */
-    protected async buildGenericCall<Data extends {}, MT extends MetaMethodType>(
+    protected async buildGenericCall<Data extends object, MT extends MetaMethodType>(
         data: Data,
         params: FixedRouterMetaMethodExtraParams<MT>
     ) {

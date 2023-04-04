@@ -28,7 +28,7 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
         return this.tokenOut;
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): RemoveLiquidityDualTokenAndPtRoute<T> {
+    override routeWithBulkSeller(withBulkSeller = true): RemoveLiquidityDualTokenAndPtRoute<T> {
         return new RemoveLiquidityDualTokenAndPtRoute(this.market, this.lpToRemove, this.tokenOut, this.slippage, {
             context: this.context,
             tokenRedeemSy: this.tokenRedeemSy,

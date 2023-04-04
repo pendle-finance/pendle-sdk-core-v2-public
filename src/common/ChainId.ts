@@ -1,6 +1,5 @@
 export const CHAIN_ID_MAPPING = {
     ETHEREUM: 1,
-    AVALANCHE: 43114,
     FUJI: 43113,
     MUMBAI: 80001,
     ARBITRUM: 42161,

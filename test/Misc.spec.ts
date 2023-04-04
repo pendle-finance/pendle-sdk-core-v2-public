@@ -45,7 +45,7 @@ describe('Misc', () => {
 
     it('#getContractAddresses', () => {
         Object.values(CHAIN_ID_MAPPING).forEach((chainId) => {
-            let addresses = getContractAddresses(chainId);
+            const addresses = getContractAddresses(chainId);
             expect(addresses.ROUTER_STATIC).toBeDefined();
             expect(addresses.ROUTER).toBeDefined();
             expect(addresses.PENDLE).toBeDefined();
@@ -56,7 +56,6 @@ describe('Misc', () => {
     it('#isMainchain', () => {
         expect(isMainchain(CHAIN_ID_MAPPING.ETHEREUM)).toBe(true);
         expect(isMainchain(CHAIN_ID_MAPPING.FUJI)).toBe(true);
-        expect(isMainchain(CHAIN_ID_MAPPING.AVALANCHE)).toBe(false);
         expect(isMainchain(CHAIN_ID_MAPPING.MUMBAI)).toBe(false);
     });
 
@@ -65,6 +64,6 @@ describe('Misc', () => {
             provider: networkConnection.provider,
         });
 
-        expect(async () => usdWithoutSigner.transfer(currentConfig.marketAddress, 1)).rejects.toThrowError();
+        await expect(async () => usdWithoutSigner.transfer(currentConfig.marketAddress, 1)).rejects.toThrowError();
     });
 });

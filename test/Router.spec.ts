@@ -8,7 +8,7 @@ import {
     toAddress,
     MarketEntity,
     NATIVE_ADDRESS_0xEE,
-    isSameAddress,
+    areSameAddresses,
     getContractAddresses,
     isNativeToken,
 } from '../src';
@@ -97,14 +97,16 @@ describeWrite('Router', () => {
         await increaseNativeBalance(signerAddress);
 
         const tokensIn = [...(await sySdk.getTokensIn()), rawTokenAddress];
-        for (const token of tokensIn) {
-            const slotInfo = BALANCE_OF_STORAGE_SLOT[token];
-            if (!slotInfo) {
-                console.log(`No balanceOf slot info for ${await getERC20Name(token)} ${token}`);
-                continue;
-            }
-            setERC20Balance(token, signerAddress, balance, ...slotInfo);
-        }
+        await Promise.all(
+            tokensIn.map(async (token) => {
+                const slotInfo = BALANCE_OF_STORAGE_SLOT[token];
+                if (!slotInfo) {
+                    console.log(`No balanceOf slot info for ${await getERC20Name(token)} ${token}`);
+                    return;
+                }
+                return setERC20Balance(token, signerAddress, balance, ...slotInfo);
+            })
+        );
 
         // Approve router
         const toBeApproved = [
@@ -166,7 +168,7 @@ describeWrite('Router', () => {
         return metaCall.data;
     }
 
-    it('#constructor', async () => {
+    it('#constructor', () => {
         expect(router).toBeInstanceOf(Router);
         expect(router.address).toBe(currentConfig.router);
     });
@@ -214,8 +216,8 @@ describeWrite('Router', () => {
         });
 
         it('#addLiquidityDualTokenAndPt', async () => {
-            let tokensIn = await sySdk.getTokensIn();
-            for (let token of tokensIn) {
+            const tokensIn = await sySdk.getTokensIn();
+            for (const token of tokensIn) {
                 const tokenDecimals = await getERC20Decimals(token);
                 const tokenAddAmount = bnMinAsBn(
                     // Use small amount of token to make sure we will add all of them
@@ -498,8 +500,8 @@ describeWrite('Router', () => {
         });
 
         it('#removeLiquidityDualTokenAndPt', async () => {
-            let tokensOut = await sySdk.getTokensOut();
-            for (let token of tokensOut) {
+            const tokensOut = await sySdk.getTokensOut();
+            for (const token of tokensOut) {
                 const liquidityRemove = bnMinAsBn(
                     await getBalance(marketAddress, signerAddress),
                     decimalFactor(lpDecimals).mul(MAX_REMOVE_LIQUIDITY_AMOUNT)
@@ -648,7 +650,7 @@ describeWrite('Router', () => {
 
             it('tokens out sy', async () => {
                 const tokensOut = await sySdk.getTokensOut();
-                for (let token of tokensOut) {
+                for (const token of tokensOut) {
                     await checkRemoveLiquiditySingleToken(token);
                     await switchToZeroApproval();
                 }
@@ -695,7 +697,7 @@ describeWrite('Router', () => {
             const readerData = await sendTxWithInfApproval(callback, [ptAddress], skipTxCheck);
             if (skipTxCheck(readerData)) {
                 throw new Error(
-                    `skip test because netPtIn (${readerData.netPtIn}) > ptBalance (${balanceBefore.ptBalance})`
+                    `skip test because netPtIn (${readerData.netPtIn.toString()}) > ptBalance (${balanceBefore.ptBalance.toString()})`
                 );
             }
 
@@ -727,7 +729,7 @@ describeWrite('Router', () => {
 
             if (skipTxCheck(readerResult)) {
                 throw new Error(
-                    `skip test because netSyIn (${readerResult.netSyIn}) > syBalance (${balanceBefore.syBalance})`
+                    `skip test because netSyIn (${readerResult.netSyIn.toString()}) > syBalance (${balanceBefore.syBalance.toString()})`
                 );
             }
 
@@ -811,7 +813,7 @@ describeWrite('Router', () => {
             const readerData = await sendTxWithInfApproval(callback, [ytAddress], skipTxCheck);
             if (skipTxCheck(readerData)) {
                 throw new Error(
-                    `skip test because netYtIn (${readerData.netYtIn}) > ytBalance (${balanceBefore.ytBalance})`
+                    `skip test because netYtIn (${readerData.netYtIn.toString()}) > ytBalance (${balanceBefore.ytBalance.toString()})`
                 );
             }
 
@@ -841,7 +843,7 @@ describeWrite('Router', () => {
 
             if (skipTxCheck(readerData)) {
                 throw new Error(
-                    `skip test because netSyIn (${readerData.netSyIn}) > syBalance (${balanceBefore.syBalance})`
+                    `skip test because netSyIn (${readerData.netSyIn.toString()}) > syBalance (${balanceBefore.syBalance.toString()})`
                 );
             }
 
@@ -1151,7 +1153,7 @@ describeWrite('Router', () => {
         });
     });
 
-    describeWrite('Bundler', async () => {
+    describeWrite('Bundler', () => {
         it('#mintPyFromSy and redeem market reward', async () => {
             const bundler = router.createTransactionBundler();
             const rewardTokens = await marketEntity.getRewardTokens();
@@ -1201,7 +1203,7 @@ describeWrite('Router', () => {
             const syAddresses = markets.map((x) => toAddress(x.SY));
             for (let i = 0; i < markets.length; i++) {
                 for (let j = i + 1; j < markets.length; j++) {
-                    if (isSameAddress(syAddresses[i], syAddresses[j])) {
+                    if (areSameAddresses(syAddresses[i], syAddresses[j])) {
                         return [markets[i], markets[j]];
                     }
                 }
@@ -1215,7 +1217,7 @@ describeWrite('Router', () => {
             for (let i = 0; i < markets.length; i++) {
                 // for down to find latest market
                 for (let j = markets.length - 1; j > i; j--) {
-                    if (!isSameAddress(syAddresses[i], syAddresses[j])) {
+                    if (!areSameAddresses(syAddresses[i], syAddresses[j])) {
                         return [markets[i], markets[j]];
                     }
                 }
@@ -1295,7 +1297,7 @@ describeWrite('Router', () => {
             await approveInfHelper(srcMarketAddress, router.getRouterHelper().address);
             await approveInfHelper(srcMarketAddress, router.address);
 
-            let getMetaCall = async () => {
+            const getMetaCall = async () => {
                 if (sameSy) {
                     if (keepYt) {
                         return router.migrateLiquidityViaSharedSyKeepYt(
@@ -1458,29 +1460,29 @@ describeWrite('Router', () => {
     }
 
     function getSySwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean): BN {
-        let marketAmount = balanceSnapshot.marketSyBalance.div(MARKET_SWAP_FACTOR);
-        let userAmount = balanceSnapshot.syBalance;
+        const marketAmount = balanceSnapshot.marketSyBalance.div(MARKET_SWAP_FACTOR);
+        const userAmount = balanceSnapshot.syBalance;
 
-        let amount = getIn ? bnMinAsBn(marketAmount, userAmount) : marketAmount;
+        const amount = getIn ? bnMinAsBn(marketAmount, userAmount) : marketAmount;
 
         return bnMinAsBn(amount, decimalFactor(syDecimals).mul(MAX_SY_SWAP_AMOUNT));
     }
 
     function getPtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
-        let marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
-        let userAmount = balanceSnapshot.ptBalance;
+        const marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
+        const userAmount = balanceSnapshot.ptBalance;
 
-        let amount = getIn ? bnMinAsBn(marketAmount, userAmount) : marketAmount;
+        const amount = getIn ? bnMinAsBn(marketAmount, userAmount) : marketAmount;
 
         return bnMinAsBn(amount, decimalFactor(ptDecimals).mul(MAX_PT_SWAP_AMOUNT));
     }
 
     function getYtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
         // `pt` is not a typo here
-        let marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
-        let userAmount = balanceSnapshot.ytBalance;
+        const marketAmount = balanceSnapshot.marketPtBalance.div(MARKET_SWAP_FACTOR);
+        const userAmount = balanceSnapshot.ytBalance;
 
-        let amount = getIn ? bnMinAsBn(marketAmount, userAmount) : marketAmount;
+        const amount = getIn ? bnMinAsBn(marketAmount, userAmount) : marketAmount;
 
         return bnMinAsBn(amount, decimalFactor(ytDecimals).mul(MAX_YT_SWAP_AMOUNT));
     }

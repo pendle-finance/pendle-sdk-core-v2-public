@@ -8,7 +8,7 @@ import {
     Router,
     createContractObject,
     decimalFactor,
-    isSameAddress,
+    areSameAddresses,
     toAddress,
 } from '../src';
 
@@ -185,7 +185,7 @@ describeWrite('Routing', () => {
 
             const [lpBalanceAfter, tokenBalanceAfter] = await getUserBalances(signerAddress, [market.market, token]);
 
-            const usedBulkSeller = !isSameAddress(await metaMethod.data.route.getUsedBulk(), NATIVE_ADDRESS_0x00);
+            const usedBulkSeller = !areSameAddresses(await metaMethod.data.route.getUsedBulk(), NATIVE_ADDRESS_0x00);
 
             if (usedBulkSeller) {
                 // check if bulkseller is used by checking log
@@ -195,7 +195,7 @@ describeWrite('Routing', () => {
 
                 const filter = bulkSellerContract.filters.SwapExactTokenForSy();
                 const events = tx.logs.filter((log) =>
-                    isSameAddress(toAddress(log.topics[0]), toAddress(filter.topics![0] as string))
+                    areSameAddresses(toAddress(log.topics[0]), toAddress(filter.topics![0] as string))
                 );
 
                 expect(events.length).toBeGreaterThan(0);
@@ -211,7 +211,7 @@ describeWrite('Routing', () => {
                 const selected =
                     route.tokenMintSy == metaMethod.data.route.tokenMintSy &&
                     route.withBulkSeller == metaMethod.data.route.withBulkSeller;
-                const usedBulkSeller = !isSameAddress(await route.getUsedBulk(), NATIVE_ADDRESS_0x00);
+                const usedBulkSeller = !areSameAddresses(await route.getUsedBulk(), NATIVE_ADDRESS_0x00);
                 const gasUsedBN = await route.getGasUsed();
                 const gasUsedStr = gasUsedBN.eq(INF) ? 'null' : gasUsedBN.toString();
                 const netOut = await route.getNetOut().then(nullOrToEthAmount);
@@ -263,7 +263,7 @@ describeWrite('Routing', () => {
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
             const [lpBalanceAfter, tokenBalanceAfter] = await getUserBalances(signerAddress, [market.market, token]);
-            const usedBulkSeller = !isSameAddress(await metaMethod.data.route.getUsedBulk(), NATIVE_ADDRESS_0x00);
+            const usedBulkSeller = !areSameAddresses(await metaMethod.data.route.getUsedBulk(), NATIVE_ADDRESS_0x00);
 
             if (usedBulkSeller) {
                 // check if bulkseller is used by checking log
@@ -273,7 +273,7 @@ describeWrite('Routing', () => {
 
                 const filter = bulkSellerContract.filters.SwapExactSyForToken();
                 const events = tx.logs.filter((log) =>
-                    isSameAddress(toAddress(log.topics[0]), toAddress(filter.topics![0] as string))
+                    areSameAddresses(toAddress(log.topics[0]), toAddress(filter.topics![0] as string))
                 );
 
                 expect(events.length).toBeGreaterThan(0);
@@ -292,7 +292,7 @@ describeWrite('Routing', () => {
                 const selected =
                     route.tokenRedeemSy == metaMethod.data.route.tokenRedeemSy &&
                     route.withBulkSeller == metaMethod.data.route.withBulkSeller;
-                const usedBulkSeller = !isSameAddress(await route.getUsedBulk(), NATIVE_ADDRESS_0x00);
+                const usedBulkSeller = !areSameAddresses(await route.getUsedBulk(), NATIVE_ADDRESS_0x00);
                 const gasUsedBN = await route.getGasUsed();
                 const gasUsedStr = gasUsedBN.eq(INF) ? 'null' : gasUsedBN.toString();
                 const netOut = await route.getNetOut().then(nullOrToEthAmount);

@@ -55,9 +55,7 @@ export class LiquidityMigrationFixTokenRedeemSyRoute<
         );
     }
 
-    override removeLiquidityRouteWithBulkSeller(
-        withBulkSeller: boolean = true
-    ): LiquidityMigrationFixTokenRedeemSyRoute<T> {
+    override removeLiquidityRouteWithBulkSeller(withBulkSeller = true): LiquidityMigrationFixTokenRedeemSyRoute<T> {
         return this.withRemoveLiquidityRoute(
             withBulkSeller
                 ? this.getRemoveLiquidityRouteWithBulkSeller()
@@ -79,13 +77,16 @@ export class LiquidityMigrationFixTokenRedeemSyRoute<
         });
     }
 
-    override addLiquidityRouteWithBulkSeller(
-        withBulkSeller: boolean = true
-    ): LiquidityMigrationFixTokenRedeemSyRoute<T> {
+    override addLiquidityRouteWithBulkSeller(withBulkSeller = true): LiquidityMigrationFixTokenRedeemSyRoute<T> {
         let cachedAddLiqRoute: any = undefined;
-        const createAddLiquidityRouteFn = BaseLiquidityMigrationFixTokenRedeemSyRoute.prototype.createAddLiquidityRoute;
-        if (NoArgsCache.checkProperty(this, createAddLiquidityRouteFn)) {
-            cachedAddLiqRoute = NoArgsCache.getValue(this, createAddLiquidityRouteFn);
+        {
+            /* eslint-disable @typescript-eslint/unbound-method */
+            const createAddLiquidityRouteFn =
+                BaseLiquidityMigrationFixTokenRedeemSyRoute.prototype.createAddLiquidityRoute;
+            if (NoArgsCache.checkProperty(this, createAddLiquidityRouteFn)) {
+                cachedAddLiqRoute = NoArgsCache.getValue(this, createAddLiquidityRouteFn);
+            }
+            /* eslint-enable @typescript-eslint/unbound-method */
         }
         return new LiquidityMigrationFixTokenRedeemSyRoute<T>({
             context: this.context,
@@ -143,7 +144,7 @@ export class LiquidityMigrationFixTokenRedeemSyRoute<
      *
      * So before calling the contract, we need to mix the parameters a bit.
      */
-    protected async buildGenericCall<Data extends {}, MT extends MetaMethodType>(
+    protected async buildGenericCall<Data extends object, MT extends MetaMethodType>(
         data: Data,
         params: FixedRouterMetaMethodExtraParams<MT>
     ) {

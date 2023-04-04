@@ -30,7 +30,7 @@ export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapI
         return { token: this.tokenIn, amount: this.netTokenIn };
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): SwapExactTokenForYtRoute<T> {
+    override routeWithBulkSeller(withBulkSeller = true): SwapExactTokenForYtRoute<T> {
         return new SwapExactTokenForYtRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
             context: this.context,
             tokenMintSy: this.tokenMintSy,
@@ -85,7 +85,7 @@ export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapI
      * The type binder somehow still work fine, so for now we can let tsc do
      * the typing for us.
      */
-    protected async buildGenericCall<Data extends {}, MT extends MetaMethodType>(
+    protected async buildGenericCall<Data extends object, MT extends MetaMethodType>(
         data: Data,
         params: FixedRouterMetaMethodExtraParams<MT>
     ) {

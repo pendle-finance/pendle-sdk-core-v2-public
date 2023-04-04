@@ -55,7 +55,7 @@ export class LiquidityMigrationFixTokenRedeemSyKeepYtRoute<
         );
     }
     override removeLiquidityRouteWithBulkSeller(
-        withBulkSeller: boolean = true
+        withBulkSeller = true
     ): LiquidityMigrationFixTokenRedeemSyKeepYtRoute<T> {
         return this.withRemoveLiquidityRoute(
             withBulkSeller
@@ -78,13 +78,16 @@ export class LiquidityMigrationFixTokenRedeemSyKeepYtRoute<
         });
     }
 
-    override addLiquidityRouteWithBulkSeller(
-        withBulkSeller: boolean = true
-    ): LiquidityMigrationFixTokenRedeemSyKeepYtRoute<T> {
+    override addLiquidityRouteWithBulkSeller(withBulkSeller = true): LiquidityMigrationFixTokenRedeemSyKeepYtRoute<T> {
         let cachedAddLiqRoute: any = undefined;
-        const createAddLiquidityRouteFn = BaseLiquidityMigrationFixTokenRedeemSyRoute.prototype.createAddLiquidityRoute;
-        if (NoArgsCache.checkProperty(this, createAddLiquidityRouteFn)) {
-            cachedAddLiqRoute = NoArgsCache.getValue(this, createAddLiquidityRouteFn);
+        {
+            /* eslint-disable @typescript-eslint/unbound-method */
+            const createAddLiquidityRouteFn =
+                BaseLiquidityMigrationFixTokenRedeemSyRoute.prototype.createAddLiquidityRoute;
+            if (NoArgsCache.checkProperty(this, createAddLiquidityRouteFn)) {
+                cachedAddLiqRoute = NoArgsCache.getValue(this, createAddLiquidityRouteFn);
+            }
+            /* eslint-enable @typescript-eslint/unbound-method */
         }
         return new LiquidityMigrationFixTokenRedeemSyKeepYtRoute<T>({
             context: this.context,
@@ -142,7 +145,7 @@ export class LiquidityMigrationFixTokenRedeemSyKeepYtRoute<
      *
      * So before calling the contract, we need to mix the parameters a bit.
      */
-    protected async buildGenericCall<Data extends {}, MT extends MetaMethodType>(
+    protected async buildGenericCall<Data extends object, MT extends MetaMethodType>(
         data: Data,
         params: FixedRouterMetaMethodExtraParams<MT>
     ) {

@@ -15,9 +15,7 @@
         "resolveJsonModule": true,
         "forceConsistentCasingInFileNames": true,
         "typeRoots": ["./node_modules/@types"],
-        "plugins": [{ "transform": "@zerollup/ts-transform-paths" }],
-        "strict": true,
-        "resolveJsonModule": true
+        "strict": true
     },
     "ts-node": {
         "files": true,

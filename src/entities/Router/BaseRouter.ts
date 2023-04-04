@@ -29,7 +29,7 @@ import {
     calcSlippedDownAmount,
     calcSlippedUpAmount,
     calcSlippedDownAmountSqrt,
-    isSameAddress,
+    areSameAddresses,
     NoArgsCache,
 } from '../../common';
 import { BigNumber } from 'bignumber.js';
@@ -1215,7 +1215,7 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapInRoute(routes);
         if (bestRoute === undefined) {
             // TODO: One additional call to get the yt address, does it worth it?
-            let yt = await market.ptEntity().then((pt) => pt.yt(params.forCallStatic));
+            const yt = await market.ptEntity().then((pt) => pt.yt(params.forCallStatic));
             throw NoRouteFoundError.action('swap', tokenIn, yt);
         }
         return bestRoute.buildCall();
@@ -1252,7 +1252,7 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapOutRoute(routes);
         if (bestRoute === undefined) {
             // TODO: One additional call to get the yt address, does it worth it?
-            let yt = await market.ptEntity().then((pt) => pt.yt(params.forCallStatic));
+            const yt = await market.ptEntity().then((pt) => pt.yt(params.forCallStatic));
             throw NoRouteFoundError.action('swap', yt, tokenOut);
         }
         return bestRoute.buildCall();
@@ -1329,7 +1329,7 @@ export abstract class BaseRouter extends PendleEntity {
             markets?: (Address | MarketEntity)[];
         },
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'redeemDueInterestAndRewards', {}> {
+    ): RouterMetaMethodReturnType<T, 'redeemDueInterestAndRewards'> {
         const params = this.addExtraParams(_params);
         const sys = redeemingSources.sys?.map(BaseRouter.extractAddress) ?? [];
         const yts = redeemingSources.yts?.map(BaseRouter.extractAddress) ?? [];
@@ -1356,7 +1356,7 @@ export abstract class BaseRouter extends PendleEntity {
         srcMarket = typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
         dstMarket = typeof dstMarket === 'string' ? new MarketEntity(dstMarket, this.entityConfig) : dstMarket;
         const [srcSy, dstSy] = await Promise.all([srcMarket.sy(), dstMarket.sy()]);
-        if (!isSameAddress(srcSy, dstSy)) {
+        if (!areSameAddresses(srcSy, dstSy)) {
             throw new PendleSdkError('Source and destination market should share the same SY');
         }
         const removeLiquidityMetaMethod = await this.removeLiquiditySingleSy(srcMarket, netLpToMigrate, slippage, {
@@ -1407,7 +1407,7 @@ export abstract class BaseRouter extends PendleEntity {
         srcMarket = typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
         dstMarket = typeof dstMarket === 'string' ? new MarketEntity(dstMarket, this.entityConfig) : dstMarket;
         const [srcSy, dstSy] = await Promise.all([srcMarket.sy(), dstMarket.sy()]);
-        if (!isSameAddress(srcSy, dstSy)) {
+        if (!areSameAddresses(srcSy, dstSy)) {
             throw new PendleSdkError('Source and destination market should share the same SY');
         }
         const removeLiquidityMetaMethod = await this.removeLiquiditySingleSy(srcMarket, netLpToMigrate, slippage, {
@@ -1635,7 +1635,7 @@ export abstract class BaseRouter extends PendleEntity {
         return new RouterTransactionBundler(this);
     }
 
-    protected static extractAddress(addressOrEntity: Address | { address: Address }): Address {
+    protected static extractAddress(this: void, addressOrEntity: Address | { address: Address }): Address {
         return typeof addressOrEntity === 'string' ? addressOrEntity : addressOrEntity.address;
     }
 

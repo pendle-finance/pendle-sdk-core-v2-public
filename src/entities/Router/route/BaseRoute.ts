@@ -4,7 +4,7 @@ import {
     BN,
     toAddress,
     NATIVE_ADDRESS_0x00,
-    isSameAddress,
+    areSameAddresses,
     NoArgsCache,
     ethersConstants,
     RawTokenAmount,
@@ -46,8 +46,10 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
     constructor(params: BaseRouteConfig<T, SelfType>) {
         ({ context: this.context, withBulkSeller: this.withBulkSeller = false } = params);
         if (params.cloneFrom != undefined) {
+            /* eslint-disable @typescript-eslint/unbound-method */
             NoArgsCache.copyValue(this, params.cloneFrom, BaseRoute.prototype.getBulkSellerInfo);
             NoArgsCache.copyValue(this, params.cloneFrom, BaseRoute.prototype.getGasUsedUnwrapped);
+            /* eslint-enable @typescript-eslint/unbound-method */
         }
         this.addSelfToContext();
     }
@@ -164,7 +166,7 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
     }
 
     async hasBulkSeller(): Promise<boolean> {
-        return !isSameAddress((await this.getBulkSellerInfo()).bulk, NATIVE_ADDRESS_0x00);
+        return !areSameAddresses((await this.getBulkSellerInfo()).bulk, NATIVE_ADDRESS_0x00);
     }
 
     async getUsedBulk(): Promise<Address> {

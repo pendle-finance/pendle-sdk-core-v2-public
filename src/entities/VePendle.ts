@@ -72,7 +72,7 @@ export class VePendle extends PendleEntity {
 export type VePendleMainchainMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<VotingEscrowPendleMainchain>,
-    ExtraData extends {} = {}
+    ExtraData extends object = object
 > = MetaMethodReturnType<T, VotingEscrowPendleMainchain, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 /**

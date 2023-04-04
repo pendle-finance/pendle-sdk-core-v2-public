@@ -8,7 +8,7 @@ import {
     ethersConstants,
     TransactionResponse,
     NATIVE_ADDRESS_0x00,
-    isSameAddress,
+    areSameAddresses,
     NativeTokenAddress,
 } from '../../common';
 import { PendleSdkError } from '../../errors';
@@ -27,7 +27,7 @@ export class NativeERC20 implements ERC20Like {
     constructor(readonly address: NativeTokenAddress, config: NativeERC20Config) {
         this.networkConnection = copyNetworkConnection(config);
 
-        if (isSameAddress(address, NATIVE_ADDRESS_0x00)) {
+        if (areSameAddresses(address, NATIVE_ADDRESS_0x00)) {
             this._name = '[NATIVE TOKEN 0x00]';
             this._symbol = '0x00';
         } else {
@@ -43,7 +43,7 @@ export class NativeERC20 implements ERC20Like {
      * - `'[NATIVE TOKEN 0xEE]'` is returned otherwise.
      */
     async name(): Promise<string> {
-        return this._name;
+        return Promise.resolve(this._name);
     }
 
     /**
@@ -53,7 +53,7 @@ export class NativeERC20 implements ERC20Like {
      * - `'0xEE'` is returned otherwise.
      */
     async symbol(): Promise<string> {
-        return this._symbol;
+        return Promise.resolve(this._symbol);
     }
 
     get provider() {
@@ -74,7 +74,7 @@ export class NativeERC20 implements ERC20Like {
     }
 
     async decimals(): Promise<number> {
-        return 18;
+        return Promise.resolve(18);
     }
 
     async balanceOf(userAddress: Address): Promise<BN> {
@@ -85,7 +85,7 @@ export class NativeERC20 implements ERC20Like {
      * As a native token is not a real ERC20, `2^256 - 1` is returned instead.
      */
     async allowance(_owner: Address, _spender: Address): Promise<BN> {
-        return ethersConstants.MaxUint256;
+        return Promise.resolve(ethersConstants.MaxUint256);
     }
 
     /**
@@ -93,12 +93,11 @@ export class NativeERC20 implements ERC20Like {
      * @returns undefined
      */
     async approve(_spender: Address, _amount: BN) {
-        return undefined;
+        return Promise.resolve(undefined);
     }
 
     async transfer(to: Address, amount: BigNumberish): Promise<TransactionResponse> {
         const signer = this.signer;
-        const provider = this.provider;
         return signer.sendTransaction({
             to,
             value: amount,

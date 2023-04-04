@@ -3,8 +3,8 @@ import ARBITRUM_CORE_ADDRESSES from '@pendle/core-v2-mainnet/deployments/42161-c
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-core.json';
 import MUMBAI_CORE_ADDRESSES from '@pendle/core-v2-testnet/deployments/80001-core.json';
 
-import { toAddress, toAddressOrUndefined } from '../src/common';
-import { ContractAddresses } from '../src/common/ContractAddresses';
+import { toAddress, toAddressOrUndefined } from '../src/common/Address';
+import { ContractAddresses } from '../src/common/ContractAddresses/types';
 import { writeTsThenFormat } from './writeTsThenFormat';
 
 const FILENAME = './src/common/ContractAddresses/data.ts';
@@ -14,6 +14,7 @@ lines.push(`
 // This file is generated via \`yarn generateContractAddresses\`
 // Generated at ${new Date().toUTCString()}
 import { ContractAddresses } from './types';
+import { toAddress } from '../Address';
 `);
 
 function transformData(data: any): ContractAddresses {
@@ -39,7 +40,7 @@ function genData(varName: string, data: any) {
         if (val == undefined) {
             continue;
         }
-        lines.push(`    ${key}: '${val}',`);
+        lines.push(`    ${key}: toAddress(${JSON.stringify(val)}),`);
     }
     lines.push('}');
 }

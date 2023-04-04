@@ -28,7 +28,7 @@ export type FeeDistributorConfigWithChainId = FeeDistributorConfig & { chainId: 
 export type FeeDistributorMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<PendleFeeDistributor>,
-    ExtraData extends {} = {}
+    ExtraData extends object = object
 > = MetaMethodReturnType<T, PendleFeeDistributor, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 export class FeeDistributor extends PendleEntity {

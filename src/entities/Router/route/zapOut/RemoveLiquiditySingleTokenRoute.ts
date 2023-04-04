@@ -14,7 +14,7 @@ export type RemoveLiquiditySingleTokenRouteIntermediateData = BaseZapOutRouteInt
     netSyFromSwap: BN;
 };
 
-export class _RemoveLiquiditySingleTokenRoute<
+export abstract class _RemoveLiquiditySingleTokenRoute<
     T extends MetaMethodType,
     SelfType extends _RemoveLiquiditySingleTokenRoute<T, SelfType>
 > extends BaseZapOutRoute<T, RemoveLiquiditySingleTokenRouteIntermediateData, SelfType> {
@@ -32,13 +32,7 @@ export class _RemoveLiquiditySingleTokenRoute<
         return this.tokenOut;
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): SelfType {
-        return new _RemoveLiquiditySingleTokenRoute(this.market, this.lpToRemove, this.tokenOut, this.slippage, {
-            context: this.context,
-            tokenRedeemSy: this.tokenRedeemSy,
-            withBulkSeller,
-        }) as SelfType;
-    }
+    abstract routeWithBulkSeller(withBulkSeller?: boolean): SelfType;
 
     override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         return this.checkUserApproval(signerAddress, { token: this.market, amount: this.lpToRemove });
@@ -101,4 +95,12 @@ export class _RemoveLiquiditySingleTokenRoute<
 export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends _RemoveLiquiditySingleTokenRoute<
     T,
     RemoveLiquiditySingleTokenRoute<T>
-> {}
+> {
+    override routeWithBulkSeller(withBulkSeller = true): RemoveLiquiditySingleTokenRoute<T> {
+        return new RemoveLiquiditySingleTokenRoute(this.market, this.lpToRemove, this.tokenOut, this.slippage, {
+            context: this.context,
+            tokenRedeemSy: this.tokenRedeemSy,
+            withBulkSeller,
+        });
+    }
+}

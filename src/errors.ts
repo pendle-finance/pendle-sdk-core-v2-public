@@ -62,7 +62,7 @@ export class NoRouteFoundError extends PendleSdkError {
  * @See https://github.com/ethers-io/ethers.js/blob/01b5badbb616b29fd8b69ef7c3cc3833062da3d7/packages/logger/src.ts/index.ts#L197
  */
 export class EthersJsError extends PendleSdkError {
-    static USE_SIMPLE_MESSAGE: boolean = false;
+    static USE_SIMPLE_MESSAGE = false;
     /**
      * List of error handlers to lookup.
      *
@@ -74,10 +74,11 @@ export class EthersJsError extends PendleSdkError {
         { (e: Error): Error | undefined } | { makeError(e: Error): Error | undefined }
     > = [];
 
-    // @ts-ignore
-    readonly code: EthersJsErrorCode;
-    // @ts-ignore
-    readonly reason: string;
+    // Should be assigned in constructor with `Object.assign(this, err)`
+    readonly code!: EthersJsErrorCode;
+
+    // Should be assigned in constructor with `Object.assign(this, err)`
+    readonly reason!: string;
 
     readonly originalMessage: string;
 
@@ -113,7 +114,7 @@ export class EthersJsError extends PendleSdkError {
         return Array.isArray(errorArgs) && errorArgs.length > 0 && errorArgs[0].includes(substring);
     }
 
-    static isEthersJsError(err: Error): boolean {
+    static isEthersJsError(err: Error): err is EthersJsError {
         return 'reason' in err && 'code' in err;
     }
 
@@ -210,7 +211,9 @@ export class ContractErrorFactory<
         if (typeof value === 'string') {
             try {
                 return this.makeError(JSON.parse(value), originalError);
-            } catch (error) {}
+            } catch {
+                // Nothing
+            }
         }
     }
 }
@@ -289,7 +292,7 @@ export class PendleContractError<
         readonly args: PendleContractErrorParams<ErrorType>,
         readonly ethersJsError: Error
     ) {
-        const message: string = (PendleContractError.errorMessageHandler[errorName] as any).apply(null, args);
+        const message: string = (PendleContractError.errorMessageHandler[errorName] as any)(...args);
         super(message);
     }
 

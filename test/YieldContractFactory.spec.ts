@@ -6,7 +6,7 @@ describe(YieldContractFactory, () => {
     const ytAddress = currentConfig.market.YT;
     const yieldFactory = new YieldContractFactory(currentConfig.yieldContractFactory, networkConnection);
 
-    it('#constructor', async () => {
+    it('#constructor', () => {
         expect(yieldFactory).toBeInstanceOf(YieldContractFactory);
         expect(yieldFactory.address).toBe(currentConfig.yieldContractFactory);
         // expect(yieldFactory.contract).toBeInstanceOf(Contract);

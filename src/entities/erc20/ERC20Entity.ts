@@ -26,7 +26,7 @@ export type ERC20EntityConfig = PendleEntityConfigOptionalAbi;
 export type ERC20EntityMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<PendleERC20>,
-    ExtraData extends {} = {}
+    ExtraData extends object = object
 > = MetaMethodReturnType<T, PendleERC20, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 /**

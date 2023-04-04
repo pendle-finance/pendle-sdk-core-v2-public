@@ -21,7 +21,7 @@ const MINT_SY_PERCENTAGE = 50;
 const FUND_KEEPER = new Contract(currentConfig.fundKeeper, FUND_KEEPER_ABI, networkConnection.signer);
 
 async function fundToken(token: Address, user: string) {
-    let decimal = await getERC20Decimals(token);
+    const decimal = await getERC20Decimals(token);
 
     // 1/50 of the fundKeeper balance, or 100 tokens.
 

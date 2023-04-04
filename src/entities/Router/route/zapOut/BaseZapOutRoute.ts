@@ -39,17 +39,21 @@ export abstract class BaseZapOutRoute<
         const other = params.cloneFrom;
         if (other != undefined) {
             if (other.withBulkSeller === this.withBulkSeller) {
+                /* eslint-disable @typescript-eslint/unbound-method */
                 NoArgsCache.copyValue(this, other, BaseZapOutRoute.prototype.getTokenRedeemSyAmount);
                 NoArgsCache.copyValue(this, other, BaseZapOutRoute.prototype.getTokenRedeemSyAmount);
                 NoArgsCache.copyValue(this, other, BaseZapOutRoute.prototype.buildTokenOutput);
+                /* eslint-enable @typescript-eslint/unbound-method */
             }
         }
     }
 
+    /* eslint-disable @typescript-eslint/unbound-method */
     protected override addSelfToContext() {
         super.addSelfToContext();
         RouteContext.NoArgsSharedCache.invalidate(this, BaseZapOutRoute.prototype.estimateMaxOutAmoungAllRouteInEth);
     }
+    /* eslint-enable @typescript-eslint/unbound-method */
 
     protected abstract previewIntermediateSyImpl(): Promise<IntermediateSyData | undefined>;
 

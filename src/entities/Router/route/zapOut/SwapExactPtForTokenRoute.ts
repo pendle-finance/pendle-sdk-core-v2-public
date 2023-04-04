@@ -31,7 +31,7 @@ export class SwapExactPtForTokenRoute<T extends MetaMethodType> extends BaseZapO
         return this.tokenOut;
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): SwapExactPtForTokenRoute<T> {
+    override routeWithBulkSeller(withBulkSeller = true): SwapExactPtForTokenRoute<T> {
         return new SwapExactPtForTokenRoute(this.market, this.exactPtIn, this.tokenOut, this.slippage, {
             context: this.context,
             tokenRedeemSy: this.tokenRedeemSy,

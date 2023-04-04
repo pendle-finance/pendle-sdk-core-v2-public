@@ -1,4 +1,4 @@
-import { PtEntity, YtEntity, Multicall, toAddress } from '../src';
+import { PtEntity, YtEntity, Multicall, toAddress, zip } from '../src';
 import { DEFAULT_EPSILON } from './util/constants';
 import { currentConfig, networkConnectionWithChainId } from './util/testEnv';
 import { describeWithMulticall } from './util/testHelper';
@@ -34,11 +34,12 @@ describe('PY', () => {
             expect(interest.token).toBe(interestToken);
             expect(interest.amount).toEqBN(simulateInterestAndRewards.interestOut, DEFAULT_EPSILON);
 
-            await Promise.all(
-                userInfo.unclaimedRewards.map(async ({ token, amount }, i) => {
-                    expect(amount).toEqBN(simulateInterestAndRewards.rewardsOut[i], DEFAULT_EPSILON);
-                })
-            );
+            for (const [unclaimedReward, simulatedClaimedReward] of zip(
+                userInfo.unclaimedRewards,
+                simulateInterestAndRewards.flat()
+            )) {
+                expect(unclaimedReward.amount).toEqBN(simulatedClaimedReward, DEFAULT_EPSILON);
+            }
         });
 
         it('#YT.userInfo & PT.userInfo', async () => {

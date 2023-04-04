@@ -38,7 +38,9 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
 
     addRoute(route: RouteType) {
         this.routes.push(route);
+        /* eslint-disable @typescript-eslint/unbound-method */
         NoArgsCache.invalidate(this, RouteContext.prototype.getMaxOutAmongAllRoutes);
+        /* eslint-enable @typescript-eslint/unbound-method */
     }
 
     @NoArgsCache

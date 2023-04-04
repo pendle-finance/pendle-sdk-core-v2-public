@@ -4,8 +4,9 @@ import {
     VePendle,
     VePendleMainchain,
     isMainchain,
-    isSameAddress,
+    areSameAddresses,
     toAddress,
+    zip,
 } from '../src';
 import {
     ACTIVE_CHAIN_ID,
@@ -103,8 +104,8 @@ describeIf(isMainchain(ACTIVE_CHAIN_ID), 'VePendle', () => {
 
         function verifyBroadcastTx(tx: TransactionReceipt) {
             const filter = contract.filters.BroadcastUserPosition();
-            let broadcastEvents = tx.logs.filter((log) =>
-                isSameAddress(toAddress(log.topics[0]), toAddress(filter.topics![0] as string))
+            const broadcastEvents = tx.logs.filter((log) =>
+                areSameAddresses(toAddress(log.topics[0]), toAddress(filter.topics![0] as string))
             );
 
             expect(broadcastEvents.length).toEqual(1);
@@ -112,8 +113,8 @@ describeIf(isMainchain(ACTIVE_CHAIN_ID), 'VePendle', () => {
             const parsedEvent = contract.interface.parseLog(broadcastEvents[0]);
 
             const broadcastedChainIds: BN[] = parsedEvent.args[1];
-            for (const i in broadcastedChainIds) {
-                expect(sideChains[i]).toEqBN(broadcastedChainIds[i]);
+            for (const [sideChainId, broadcastedChainId] of zip(sideChains, broadcastedChainIds)) {
+                expect(sideChainId).toEqBN(broadcastedChainId);
             }
         }
 

@@ -1,12 +1,21 @@
-import { PendleERC20, ERC20Entity, SyEntity, decimalFactor, Address, zip, toAddress } from '../src';
-import { BigNumber as BN, ethers } from 'ethers';
-import { MarketEntity, PtEntity, WrappedContract } from '../src';
-import './util/bigNumberMatcher.ts';
+import {
+    PendleERC20,
+    ERC20Entity,
+    SyEntity,
+    decimalFactor,
+    Address,
+    zip,
+    toAddress,
+    MarketEntity,
+    PtEntity,
+    WrappedContract,
+    NATIVE_ADDRESS_0x00,
+} from '../src';
+import { BigNumber as BN } from 'ethers';
 import { currentConfig, networkConnection, networkConnectionWithChainId, USE_HARDHAT_RPC } from './util/testEnv';
 import { itWhen } from './util/testHelper';
 
 describe('Multicall', () => {
-    const chainId = currentConfig.chainId;
     const multicall = currentConfig.multicall;
     let market: MarketEntity;
     let pt: WrappedContract<PendleERC20>,
@@ -20,7 +29,7 @@ describe('Multicall', () => {
         pt = new ERC20Entity(marketInfo.pt, networkConnection).contract;
         yt = (await new PtEntity(marketInfo.pt, networkConnectionWithChainId).ytEntity()).contract;
         sy = new ERC20Entity(marketInfo.sy, networkConnection).contract;
-        dummy = new ERC20Entity(ethers.constants.AddressZero, networkConnection).contract;
+        dummy = new ERC20Entity(NATIVE_ADDRESS_0x00, networkConnection).contract;
     });
 
     it('Single call', async () => {
@@ -30,13 +39,13 @@ describe('Multicall', () => {
     });
 
     it('Batch call', async () => {
-        let promiseCalls = await Promise.all([
+        const promiseCalls = await Promise.all([
             pt.balanceOf(currentConfig.userAddress),
             yt.balanceOf(currentConfig.userAddress),
             sy.balanceOf(currentConfig.userAddress),
         ]);
 
-        let multicalls = await Promise.all([
+        const multicalls = await Promise.all([
             multicall.wrap(pt).callStatic.balanceOf(currentConfig.userAddress),
             multicall.wrap(yt).callStatic.balanceOf(currentConfig.userAddress),
             multicall.wrap(sy).callStatic.balanceOf(currentConfig.userAddress),
@@ -48,9 +57,9 @@ describe('Multicall', () => {
     });
 
     it('Error handler', async () => {
-        expect(multicall.wrap(dummy).callStatic.balanceOf(currentConfig.userAddress)).rejects.toThrow();
+        await expect(multicall.wrap(dummy).callStatic.balanceOf(currentConfig.userAddress)).rejects.toThrow();
 
-        let result = await multicall
+        const result = await multicall
             .wrap(dummy)
             .callStatic.balanceOf(currentConfig.userAddress)
             .catch(() => {
@@ -60,14 +69,14 @@ describe('Multicall', () => {
     });
 
     it('Error handler in batch', async () => {
-        let promiseCalls = await Promise.all([
+        const promiseCalls = await Promise.all([
             pt.balanceOf(currentConfig.userAddress),
             yt.balanceOf(currentConfig.userAddress),
             sy.balanceOf(currentConfig.userAddress),
             Promise.resolve().then(() => BN.from(-1)),
         ]);
 
-        let multicalls = await Promise.all([
+        const multicalls = await Promise.all([
             multicall.wrap(pt).callStatic.balanceOf(currentConfig.userAddress),
             multicall.wrap(yt).callStatic.balanceOf(currentConfig.userAddress),
             multicall.wrap(sy).callStatic.balanceOf(currentConfig.userAddress),
@@ -83,7 +92,7 @@ describe('Multicall', () => {
     });
 
     it('Stress test', async () => {
-        let calls = [];
+        const calls = [];
         for (let i = 0; i < 100; i++) {
             calls.push(multicall.wrap(pt).callStatic.balanceOf(currentConfig.userAddress));
         }

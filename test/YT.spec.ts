@@ -4,7 +4,7 @@ import { ACTIVE_CHAIN_ID, currentConfig, networkConnectionWithChainId } from './
 describe(YtEntity, () => {
     const yt = new YtEntity(currentConfig.market.YT, networkConnectionWithChainId);
 
-    it('#constructor', async () => {
+    it('#constructor', () => {
         expect(yt).toBeInstanceOf(YtEntity);
         expect(yt.address).toBe(currentConfig.market.YT);
         expect(yt.chainId).toBe(ACTIVE_CHAIN_ID);

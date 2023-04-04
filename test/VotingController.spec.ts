@@ -12,11 +12,11 @@ import {
 } from './util/testEnv';
 
 describeIf(isMainchain(ACTIVE_CHAIN_ID), 'VotingController', () => {
-    const votingController = new VotingController(currentConfig.votingController!, networkConnection);
+    const votingController = new VotingController(currentConfig.votingController, networkConnection);
     const market = new MarketEntity(currentConfig.marketAddress, networkConnectionWithChainId);
     const signerAddress = networkConnection.signer.address;
 
-    it('#constructor', async () => {
+    it('#constructor', () => {
         expect(votingController).toBeInstanceOf(VotingController);
         expect(votingController.address).toBe(currentConfig.votingController);
     });

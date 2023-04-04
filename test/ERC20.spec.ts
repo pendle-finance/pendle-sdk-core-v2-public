@@ -103,7 +103,7 @@ describe('ERC20Like', () => {
                         return;
                     }
 
-                    let tx = await token
+                    const tx = await token
                         .transfer(NATIVE_ADDRESS_0xEE, transferAmount)
                         .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 

@@ -1,3 +1,4 @@
+import { AnyArray, AnyFunction, Tuple, AsyncOrSync, AsyncOrSyncType } from 'ts-essentials';
 // Type helper
 
 // These imports are only for documentation
@@ -30,7 +31,7 @@
  * Another reason to use this type, is for type-safety, as we force the usage of
  * the tuple.
  */
-export type ConcatTuple<A extends any[], B extends any[]> = [...A, ...B];
+export type ConcatTuple<A extends AnyArray, B extends AnyArray> = [...A, ...B];
 
 /**
  * Dynamically get the field type, even if `Key` is not a key of `Obj`.
@@ -49,7 +50,7 @@ export type ConcatTuple<A extends any[], B extends any[]> = [...A, ...B];
  * @typeParam Default - the type to return if in reality, Key is not `keyof Obj`.
  * @returns Obj[key] if Key is `keyof Obj`. Otherwise `Default` is returned.
  */
-export type GetField<Obj extends {}, Key, Default = never> = Key extends keyof Obj ? Obj[Key] : Default;
+export type GetField<Obj extends object, Key, Default = never> = Key extends keyof Obj ? Obj[Key] : Default;
 /**
  * Remove the last optional fields of a tuple.
  *
@@ -57,13 +58,13 @@ export type GetField<Obj extends {}, Key, Default = never> = Key extends keyof O
  * An example usage of this type is to remove the overrides parameters of the contract methods,
  * then add our own type/overrides.
  */
-export type RemoveLastOptional<T extends any[]> = T extends [...infer Head, any?] ? Head : T;
+export type RemoveLastOptional<T extends AnyArray> = T extends [...infer Head, unknown?] ? Head : T;
 
 /**
  * @deprecated
  * Use {@link ConcatTuple} instead, like `ConcatTuple<T, [name?: P]>`.
  */
-export type AddOptional<T extends any[], P> = [...T, P?];
+export type AddOptional<T extends AnyArray, P> = [...T, P?];
 
 /**
  * @remarks
@@ -100,8 +101,8 @@ export type AddOptional<T extends any[], P> = [...T, P?];
  * Using infer, we can get both parameters type and the return type, as they
  * come **in pair**. `Parameters` and `ReturnType`, on the other hand, are not.
  */
-export type RemoveLastOptionalParam<Fn extends (...params: any[]) => any> = Fn extends (
-    ...params: [...infer Head, any?]
+export type RemoveLastOptionalParam<Fn extends AnyFunction> = Fn extends (
+    ...params: [...infer Head, unknown?]
 ) => infer R
     ? (...params: Head) => R
     : Fn;
@@ -110,16 +111,14 @@ export type RemoveLastOptionalParam<Fn extends (...params: any[]) => any> = Fn e
  * @remarks
  * See {@link RemoveLastOptionalParam} for note on the implementation.
  */
-export type AddParams<Fn extends (...params: any[]) => any, P extends any[]> = Fn extends (
-    ...params: infer Params
-) => infer R
+export type AddParams<Fn extends AnyFunction, P extends Tuple> = Fn extends (...params: infer Params) => infer R
     ? (...params: ConcatTuple<Params, P>) => R
     : Fn;
 
 /**
  * Shorthand for `Awaited<ReturnType<Fn>>`.
  */
-export type SyncReturnType<Fn extends (...params: any[]) => Promise<any>> = Awaited<ReturnType<Fn>>;
+export type SyncReturnType<Fn extends AnyFunction<unknown[], AsyncOrSync<unknown>>> = AsyncOrSyncType<ReturnType<Fn>>;
 
 /**
  * Union of all types of a given tuple `Types`.
@@ -136,7 +135,7 @@ export type FixedLengthTuple<T, Length extends number> = Length extends Length
         ? T[]
         : _FixedLengthTupleOf<T, Length, []>
     : never;
-type _FixedLengthTupleOf<T, N extends number, R extends unknown[]> = R['length'] extends N
+type _FixedLengthTupleOf<T, N extends number, R extends AnyArray> = R['length'] extends N
     ? R
     : _FixedLengthTupleOf<T, N, [T, ...R]>;
 
@@ -191,7 +190,7 @@ export type Iterableify<T> = { [K in keyof T]: Iterable<T[K]> };
  * const mappedArray = Array.from(zip(a, b), mapFn);
  * ```
  */
-export function* zip<T extends Array<any>>(...toZip: Iterableify<T>): Generator<T> {
+export function* zip<T extends unknown[]>(...toZip: Iterableify<T>): Generator<T> {
     const iterators = toZip.map((i) => i[Symbol.iterator]());
     while (true) {
         const results = iterators.map((i) => i.next());
@@ -205,7 +204,7 @@ export function* zip<T extends Array<any>>(...toZip: Iterableify<T>): Generator<
 /**
  * Log the `message` when `process.env.NODE_ENV !== 'production'`.
  */
-export function devLog(message?: any, ...optionalParams: any[]): void {
+export function devLog(message?: unknown, ...optionalParams: AnyArray): void {
     if (process.env.NODE_ENV !== 'production') {
         console.log(message, ...optionalParams);
     }
@@ -229,10 +228,10 @@ export type SyncUpCheckpointFn = (id: number) => Promise<void>;
 
 // Consideration: add timeout?
 function createSyncUpCheckpointFn(entriesCount: number): SyncUpCheckpointFn {
-    let awaitedEntries = Array.from({ length: entriesCount }, () => false);
+    const awaitedEntries = Array.from({ length: entriesCount }, () => false);
     let awaitedEntriesCount = 0;
     let promiseResolve: () => void;
-    let curPromise = new Promise<void>((resolve) => {
+    const curPromise = new Promise<void>((resolve) => {
         promiseResolve = resolve;
     });
     return (id: number) => {
@@ -264,19 +263,19 @@ export function mapPromisesToSyncUp<SyncUpCheckpointCount extends number, ArrayT
             return await fn(syncUpCheckpointFns, elm, index);
         } finally {
             // call/re-call all checkpoint fn to not block the others
-            for (const fn of syncUpCheckpointFns) {
-                fn(index);
-            }
+            void Promise.all(syncUpCheckpointFns.map((fn) => fn(index)));
         }
     });
 }
 
-export type StructureOfArrays<StructureSlice extends {}> = { [key in keyof StructureSlice]: StructureSlice[key][] };
-export type ArrayOfStructures<Structure extends {}> = Structure[];
+export type StructureOfArrays<StructureSlice extends object> = {
+    [key in keyof StructureSlice]: StructureSlice[key][];
+};
+export type ArrayOfStructures<Structure extends object> = Structure[];
 
-export type ArrayOrStructure<T extends {}> = StructureOfArrays<T> | ArrayOfStructures<T>;
+export type ArrayOrStructure<T extends object> = StructureOfArrays<T> | ArrayOfStructures<T>;
 
-export function toArrayOfStructures<T extends {}>(structureOfArrays: StructureOfArrays<T>): ArrayOfStructures<T> {
+export function toArrayOfStructures<T extends object>(structureOfArrays: StructureOfArrays<T>): ArrayOfStructures<T> {
     const keys = Object.keys(structureOfArrays) as Array<keyof T>;
     if (keys.length === 0) return [];
     const length = structureOfArrays[keys[0]].length;
@@ -293,7 +292,7 @@ export function toArrayOfStructures<T extends {}>(structureOfArrays: StructureOf
     return res;
 }
 
-export function toStructureOfArray<T extends {}>(arrayOfStructures: ArrayOfStructures<T>): StructureOfArrays<T> {
+export function toStructureOfArray<T extends object>(arrayOfStructures: ArrayOfStructures<T>): StructureOfArrays<T> {
     const res: StructureOfArrays<T> = {} as any;
 
     for (const elm of arrayOfStructures) {
@@ -308,24 +307,26 @@ export function toStructureOfArray<T extends {}>(arrayOfStructures: ArrayOfStruc
     return res;
 }
 
+// Disable as the following helper use dynamic typing a lot
+/* eslint-disable */
+
 /**
  * Implementation for caching result of a function that accepts no arguments.
  * @privateRemarks
  * Rough test with usage in [this playground](https://www.typescriptlang.org/play?#code/AQMwrgdgxgLglgewsKAnApgQxugcggQVQHMBnAYUygAt0AeAFQD4AKAKGE5VqgGsAFVAgAO6VDACeALmAsEAIwBWMhgBpgwoaPESA0umnBSMVHAjFgAHyMSAtvIQAbAJTAAvE2AOnWCKo5cpOgwAGqYjmDoMnJKKuqaImKS+obGpuZWNvZO6gBu4ZEymBASrh7AuQhwACb+XMDEwWERUbIKysBqGlpJegYyaWYW1qR2Di7unsUS-q4A3gGcUEjGwPhEZJQ06O6yAPowmCTBRSXxPTopAyZDmaPZjurV6KRocMIwCKgygok6ACIvN4fL5lTwLer1ZYQVYgZBuYDPV6mEGoAB0+RaAG5FpC4CBZHD3G4EZBniAzOhqq4MDAwKgIDjcVCVjAUFRaCldgBlMZOFjcm7mFgJbTJAyuADUwAARHs9lAOegZc4cZCuEjgZ90ZjIrtwNB4EhZDBqHBSKdSsAIeq8QSWABCbZ8X5iiQsU3m9SK7YpZzzZm2+pBUIFdAes2kb1KlLqOFozDCYSOd2eqPAI7EMC2dAQGCkf1qoNcAC+gfVtPpyEaoZaEa97N9EqL6pLLchmpR2oxYbRPs5Bl2-fQKXbbbYuPWJAoSr7IgkzT1CJYSJglvUpAQ9KgrWmcYglrB1vLKFZwF4g4R8eHo5P+NkzoEF0kLE32-Q6gvpQDxcCTTDK4vDAn4GOoNaLuGb6oDuIHfu29Rlgh7aVgyayENOWy0DiZZsNCqxTpsSpDhg2B4OhhHbHQ0ysLiMSKOcfzila5Qis+fQSMAZjAO0zh1FwdEMW6sYVGGR4APJKOgsBouSlKur0AndIx7HqHMIktOoubZmImDyI4rQgOEQTACWvG0e0gm9H6kzcUoADaopWQYAC6bCqhOUCOJgpCkMABDHvUmC7AADO28ghUy9QAAIETO2y4jWBAsD+tppgmwCSgiACM8FcChyBpZgY4TtFsWYeguLeRI0ANMEABCyUBba+XAL8tjmugaIYJuji5OGzhoqauYsI15Q2r+LWSpKaXyLlnCmcVuKeUg-UyP542QnhbLhQiEDoAA7n5yVzV46UIoVJ3yGiO3ADNJ1lbOyzCAuAHyOoabqAQaIJJ8kiiGiiXuSeLWzbiZY4SwVXQKN4JLWeQW7QdR3uSyMI+GijgIMQLAypgAPBElzgqu2IBfLI+lsnAEWccAdDAAArFiGWSnAKXqnh6OY9jeOJclKO2njCOcYtqM9Z1XM4zz9XJcTuKk6g5PBDTCKhTTdOM8zrNNezKyc1jkP7ZgcBslLMANYWJ54zdcAi1wW1eLsePLXtx1w2j+kY-rMpXbzRP85w8uK5T1NU+rTNTVrG2i3r2M+wTfOXWdwtg27Yue9j3v42bMv+6AZMsBTyvAKrocM+HLNs5tusexLmCG8bp01ubuf1Fd1vFaZx1AA)
  */
-
 export function createNoArgsCache<T>(
     checkProperty: (obj: T, propertyKey: string | symbol) => boolean,
     setValue: (obj: T, propertyKey: string | symbol, value: any) => void,
     getValue: (obj: T, propertyKey: string | symbol) => any,
     deleteValue: (obj: T, propertyKey: string | symbol) => any
 ) {
-    const NoArgsCache = (_target: any, propertyKey: string | symbol, descriptor: PropertyDescriptor) => {
+    const NoArgsCache = (_target: T, propertyKey: string | symbol, descriptor: PropertyDescriptor) => {
         const fn = descriptor.value;
         if (fn === undefined) return;
 
         const cacheKey = Symbol(String(propertyKey) + '__cache');
-        descriptor.value = function (this: any) {
+        descriptor.value = function (this: T) {
             if (!checkProperty(this, cacheKey)) {
                 setValue(this, cacheKey, fn.apply(this, arguments));
             }
@@ -334,14 +335,14 @@ export function createNoArgsCache<T>(
         descriptor.value.cacheKey = cacheKey;
     };
 
-    NoArgsCache.copyValue = (dest: any, source: any, fn: any) => {
+    NoArgsCache.copyValue = (dest: T, source: T, fn: any) => {
         const key = fn.cacheKey;
         if (checkProperty(source, key)) {
             setValue(dest, key, getValue(source, key));
         }
     };
 
-    NoArgsCache.invalidate = (source: any, fn: any) => {
+    NoArgsCache.invalidate = (source: T, fn: any) => {
         const key = fn.cacheKey;
         deleteValue(source, key);
     };
@@ -358,16 +359,18 @@ export function createNoArgsCache<T>(
 }
 
 const CACHE_KEY = Symbol('CACHE_KEY');
-export const NoArgsCache = createNoArgsCache<any>(
-    (obj, propertyKey) => CACHE_KEY in obj && propertyKey in obj[CACHE_KEY],
+export const NoArgsCache = createNoArgsCache<object>(
+    (obj, propertyKey) => CACHE_KEY in obj && propertyKey in (obj[CACHE_KEY] as any),
     (obj, propertyKey, value) => {
         if (!(CACHE_KEY in obj)) {
             Object.defineProperty(obj, CACHE_KEY, { value: {}, enumerable: false });
         }
-        obj[CACHE_KEY][propertyKey] = value;
+        (obj as any)[CACHE_KEY][propertyKey] = value;
     },
-    (obj, propertyKey) => obj[CACHE_KEY][propertyKey],
+    (obj, propertyKey) => (obj as any)[CACHE_KEY][propertyKey],
     (obj, propertyKey) => {
-        if (CACHE_KEY in obj) delete obj[CACHE_KEY][propertyKey];
+        if (CACHE_KEY in obj) delete (obj as any)[CACHE_KEY][propertyKey];
     }
 );
+
+/* eslint-enable */

@@ -2,7 +2,7 @@ import { toAddress, Address } from '../../../src';
 
 export type ShallowToAddressType<T> = T extends string
     ? Address
-    : T extends {}
+    : T extends object
     ? { [Key in keyof T]: ShallowToAddressType<T[Key]> }
     : T;
 
@@ -17,7 +17,7 @@ export function shallowToAddress<T>(obj: T): ShallowToAddressType<T> {
         return obj as any;
     }
     const res: Record<string, any> = {};
-    for (const [key, value] of Object.entries(obj as {})) {
+    for (const [key, value] of Object.entries(obj as object)) {
         res[key] = shallowToAddress(value);
     }
     return res as any;

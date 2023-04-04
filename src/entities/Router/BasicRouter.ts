@@ -1,5 +1,5 @@
 import { MetaMethodType } from '../../contracts';
-import { isSameAddress } from '../../common';
+import { areSameAddresses } from '../../common';
 
 import {
     BaseZapInRoute,
@@ -38,7 +38,9 @@ export class BasicRouter extends BaseRouter {
     override async findBestZapInRoute<
         ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>
     >(routes: ZapInRoute[]): Promise<ZapInRoute | undefined> {
-        return routes.filter((route) => isSameAddress(route.sourceTokenAmount.token, route.tokenMintSy))[0];
+        return Promise.resolve(
+            routes.filter((route) => areSameAddresses(route.sourceTokenAmount.token, route.tokenMintSy))[0]
+        );
     }
 
     /**
@@ -47,7 +49,7 @@ export class BasicRouter extends BaseRouter {
     override async findBestZapOutRoute<
         ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
     >(routes: ZapOutRoute[]): Promise<ZapOutRoute | undefined> {
-        return routes.filter((route) => isSameAddress(route.targetToken, route.tokenRedeemSy))[0];
+        return Promise.resolve(routes.filter((route) => areSameAddresses(route.targetToken, route.tokenRedeemSy))[0]);
     }
 
     /**
@@ -56,6 +58,6 @@ export class BasicRouter extends BaseRouter {
     override async findBestLiquidityMigrationRoute<
         LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any, any>
     >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute | undefined> {
-        return routes.filter((route) => isSameAddress(route.tokenRedeemSy, route.tokenMintSy))[0];
+        return routes.filter((route) => areSameAddresses(route.tokenRedeemSy, route.tokenMintSy))[0];
     }
 }

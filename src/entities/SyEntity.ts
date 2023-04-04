@@ -41,7 +41,7 @@ export type SyEntityConfig = ERC20EntityConfig & {
 export type SyEntityMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<SYBase>,
-    ExtraData extends {} = {}
+    ExtraData extends object = object
 > = MetaMethodReturnType<T, SYBase, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 /**

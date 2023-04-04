@@ -126,9 +126,7 @@ export class PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<
         this.redeemRewards = params.redeemRewards ?? false;
     }
 
-    override routeWithBulkSeller(
-        withBulkSeller: boolean = true
-    ): PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T> {
+    override routeWithBulkSeller(withBulkSeller = true): PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T> {
         return new PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper(
             this.market,
             this.lpToRemove,

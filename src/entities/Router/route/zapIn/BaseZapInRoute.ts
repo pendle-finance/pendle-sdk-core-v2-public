@@ -37,6 +37,7 @@ export abstract class BaseZapInRoute<
         ({ tokenMintSy: this.tokenMintSy } = params);
         const other = params.cloneFrom;
         if (other != undefined) {
+            /* eslint-disable @typescript-eslint/unbound-method */
             // Can we somehow automate this?
             NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.getAggregatorResult);
 
@@ -44,6 +45,7 @@ export abstract class BaseZapInRoute<
                 NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.preview);
                 NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.buildTokenInput);
             }
+            /* eslint-disable @typescript-eslint/unbound-method */
         }
     }
 

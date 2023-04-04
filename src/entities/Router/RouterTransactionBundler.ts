@@ -85,7 +85,7 @@ export class RouterTransactionBundler {
      */
     execute<T extends MetaMethodType>(
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'batchExec', {}> {
+    ): RouterMetaMethodReturnType<T, 'batchExec'> {
         return this.router.contract.metaCall.batchExec(
             (mainContractMetaMethod) =>
                 Promise.all(

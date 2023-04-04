@@ -29,7 +29,7 @@ export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         return this.tokenOut;
     }
 
-    override routeWithBulkSeller(withBulkSeller: boolean = true): RedeemPyToTokenRoute<T> {
+    override routeWithBulkSeller(withBulkSeller = true): RedeemPyToTokenRoute<T> {
         return new RedeemPyToTokenRoute(this.ytEntity, this.netPyIn, this.tokenOut, this.slippage, {
             context: this.context,
             tokenRedeemSy: this.tokenRedeemSy,

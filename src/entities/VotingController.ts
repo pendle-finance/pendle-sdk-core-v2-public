@@ -21,7 +21,7 @@ export type VotingControllerConfig = PendleEntityConfigOptionalAbi;
 export type VotingControllerMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<PendleVotingControllerUpg>,
-    ExtraData extends {}
+    ExtraData extends object
 > = MetaMethodReturnType<T, PendleVotingControllerUpg, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 export class VotingController extends PendleEntity {
@@ -78,7 +78,7 @@ export class VotingController extends PendleEntity {
     async vote<T extends MetaMethodType>(
         votes: { market: MarketEntity; weight: number }[],
         params: MetaMethodExtraParams<T> = {}
-    ): VotingControllerMetaMethodReturnType<T, 'vote', {}> {
+    ): VotingControllerMetaMethodReturnType<T, 'vote', object> {
         return this.contract.metaCall.vote(
             votes.map(({ market }) => market.address),
             votes.map(({ weight }) => VotingController.scaleWeight(weight)),

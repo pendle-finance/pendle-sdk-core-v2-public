@@ -23,12 +23,12 @@ export function createPendlecontractErrorMessageHandler(
             if (key in target) {
                 return target[key];
             }
-            return (...args: any[]) => fallback(key, ...(args as PendleContractErrorParams));
+            return (...args: PendleContractErrorParams) => fallback(key, ...args);
         },
     }) as PendleContractErrorMessageHandler;
 }
 
-function joinArgs(args: any[]) {
+function joinArgs<Args extends unknown[]>(args: Args) {
     return args
         .map((arg) => {
             if (arg instanceof BN) {

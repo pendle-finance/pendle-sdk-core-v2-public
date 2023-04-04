@@ -1,8 +1,9 @@
+import { NATIVE_ADDRESS_0xEE } from '../../src';
 import { ethers } from 'ethers';
 
 export const INF = ethers.constants.MaxUint256;
 
-export const DUMMY_ADDRESS = '0x0000000000000000000000000000000000000001';
+export const DUMMY_ADDRESS = NATIVE_ADDRESS_0xEE;
 
 export const ONE_E18_BN = ethers.BigNumber.from(10).pow(18);
 
