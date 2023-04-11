@@ -188,14 +188,20 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
         return netOutInEth.sub(gasUsed.mul(gasFee));
     }
 
+    protected getSpenderAddress(): Address {
+        return this.router.address;
+    }
+
     protected async checkUserApproval(
         userAddress: Address,
         { token, amount }: RawTokenAmount<BigNumberish>
     ): Promise<boolean> {
-        const allowance = await createERC20(token, this.router.entityConfig).allowance(
-            userAddress,
-            this.router.address
-        );
-        return allowance.gte(amount);
+        const erc20 = createERC20(token, this.router.entityConfig);
+        const spenderAddress = this.getSpenderAddress();
+        const [userBalance, spenderAllowance] = await Promise.all([
+            erc20.allowance(userAddress, spenderAddress),
+            erc20.balanceOf(userAddress),
+        ]);
+        return spenderAllowance.gte(amount) && userBalance.gte(amount);
     }
 }

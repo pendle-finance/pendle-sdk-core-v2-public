@@ -2,10 +2,9 @@ import { BaseRoute, BaseRouteConfig } from '../BaseRoute';
 import { MetaMethodType } from '../../../../contracts';
 import { _RemoveLiquiditySingleTokenRoute, BaseZapOutRouteConfig } from '../zapOut';
 import { BaseZapInRoute } from '../zapIn';
-import { BN, Address, NoArgsCache, BigNumberish, RawTokenAmount } from '../../../../common';
+import { BN, Address, NoArgsCache, BigNumberish } from '../../../../common';
 import { RouteContext } from '../RouteContext';
 import { FixedRouterMetaMethodExtraParams } from '../../types';
-import { createERC20 } from '../../../erc20';
 
 export type BaseLiquidityMigrationFixTokenRedeemSyRouteConfig<
     T extends MetaMethodType,
@@ -174,14 +173,7 @@ export class PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<
         );
     }
 
-    protected override async checkUserApproval(
-        userAddress: Address,
-        { token, amount }: RawTokenAmount<BigNumberish>
-    ): Promise<boolean> {
-        const allowance = await createERC20(token, this.router.entityConfig).allowance(
-            userAddress,
-            this.router.getRouterHelper().address
-        );
-        return allowance.gte(amount);
+    protected override getSpenderAddress() {
+        return this.router.getRouterHelper().address;
     }
 }
