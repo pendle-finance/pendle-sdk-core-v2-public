@@ -2,7 +2,7 @@
     "compilerOptions": {
         "experimentalDecorators": true,
         "target": "esnext",
-        "module": "esnext",
+        "module": "commonjs",
         "removeComments": true,
         "inlineSourceMap": true,
         "outDir": "./dist",
@@ -14,7 +14,8 @@
         "resolveJsonModule": true,
         "forceConsistentCasingInFileNames": true,
         "typeRoots": ["./node_modules/@types"],
-        "strict": true
+        "strict": true,
+        "importHelpers": true
     },
     "ts-node": {
         "files": true,
