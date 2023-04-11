@@ -3,7 +3,7 @@
     "author": "Pendle Labs",
     "description": "SDK of Pendle Protocol.",
     "license": "MIT",
-    "version": "2.2.0-mainnet",
+    "version": "2.2.1-mainnet",
     "main": "dist/index.js",
     "typings": "dist/index.d.ts",
     "files": [
@@ -31,7 +31,7 @@
         "test:prepare": "yarn ts-node test/scripts/prepareMarket.ts && yarn test:approveRouter",
         "test:approveRouter": "yarn ts-node test/scripts/approveRouter.ts",
         "test:coverage": "yarn jest --coverage --maxWorkers=1",
-        "build": "tsdx build --tsconfig tsconfig.build.json",
+        "build": "yarn clean && yarn tsc -p ./tsconfig.build.json",
         "prepack": "yarn generateContractErrors && yarn build",
         "clean": "rm -rf dist/",
         "generateContractErrors": "yarn ts-node scripts/generatePendleContractErrorMessageHandler.ts",
