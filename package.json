@@ -40,7 +40,7 @@
         "release": "yarn npm publish --tag nightly"
     },
     "dependencies": {
-        "@pendle/core-v2": "2.6.0-mainnet",
+        "@pendle/core-v2": "2.7.0-mainnet",
         "axios": "^0.27.2",
         "bignumber.js": "^9.1.0",
         "ethers": "^5.7.1",
