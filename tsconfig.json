@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "experimentalDecorators": true,
-        "target": "esnext",
+        "target": "es2020",
         "module": "commonjs",
         "removeComments": true,
         "inlineSourceMap": true,
@@ -15,7 +15,8 @@
         "forceConsistentCasingInFileNames": true,
         "typeRoots": ["./node_modules/@types"],
         "strict": true,
-        "importHelpers": true
+        "importHelpers": true,
+        "useDefineForClassFields": true
     },
     "ts-node": {
         "files": true,
