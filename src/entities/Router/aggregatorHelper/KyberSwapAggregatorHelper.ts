@@ -1,4 +1,4 @@
-import { BigNumberish, BytesLike, BigNumber as BN } from 'ethers';
+import { BigNumberish, BytesLike, BigNumber as BN, ethers } from 'ethers';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import {
     CHAIN_ID_MAPPING,
@@ -29,6 +29,7 @@ export type KyberAPIParamsOverrides = {
     gasInclude?: '0' | '1';
     useMeta?: boolean;
     clientData?: { source: string };
+    deadline?: string;
 };
 
 export type KyberAPIParams = KyberAPIParamsOverrides & {
@@ -213,12 +214,16 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
         }
     }
 
-    private getApiParamsOverrides(): KyberAPIParamsOverrides {
+    protected getApiParamsOverrides(): KyberAPIParamsOverrides {
         if (this.apiParamsOverrides) return this.apiParamsOverrides;
+        const ans: KyberAPIParamsOverrides = {
+            deadline: ethers.constants.MaxInt256.toString(),
+        };
         if (this.chainId === CHAIN_ID_MAPPING.ARBITRUM) {
-            return { saveGas: '0', gasInclude: '1' };
+            ans.saveGas = '0';
+            ans.gasInclude = '1';
         }
-        return {};
+        return ans;
     }
 
     private async patchETH_wETH(
