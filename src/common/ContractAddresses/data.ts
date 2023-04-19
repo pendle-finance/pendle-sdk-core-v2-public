@@ -1,5 +1,5 @@
 // This file is generated via `yarn generateContractAddresses`
-// Generated at Fri, 31 Mar 2023 01:39:36 GMT
+// Generated at Wed, 19 Apr 2023 09:59:32 GMT
 import { ContractAddresses } from './types';
 import { toAddress } from '../Address';
 
@@ -39,7 +39,7 @@ export const ARBITRUM_CORE_ADDRESSES: ContractAddresses = {
     ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
     ROUTER_STATIC: toAddress('0xadb09f65bd90d19e3148d9ccb693f3161c6db3e8'),
     VEPENDLE: toAddress('0x3209e9412cca80b18338f2a56ada59c484c39644'),
-    PENDLE_SWAP: toAddress('0xda78d46c4133ea548386e64eaca26fc456f71d2d'),
+    PENDLE_SWAP: toAddress('0xf0bf560f01d4196773a5c58a09d6d34b6bba4503'),
     WRAPPED_NATIVE: toAddress('0x82af49447d8a07e3bd95bd0d56f35241523fbab1'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
 };

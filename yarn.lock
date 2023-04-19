@@ -2445,13 +2445,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pendle/core-v2-mainnet@npm:@pendle/core-v2@2.8.1-mainnet, @pendle/core-v2@npm:2.8.1-mainnet":
-  version: 2.8.1-mainnet
-  resolution: "@pendle/core-v2@npm:2.8.1-mainnet"
+"@pendle/core-v2-mainnet@npm:@pendle/core-v2@2.8.3-mainnet, @pendle/core-v2@npm:2.8.3-mainnet":
+  version: 2.8.3-mainnet
+  resolution: "@pendle/core-v2@npm:2.8.3-mainnet"
   dependencies:
     "@openzeppelin/contracts": 4.7.3
     "@openzeppelin/contracts-upgradeable": 4.7.3
-  checksum: 6046148d25f37d5ce940e43c66301d8fb0e2e8d33b2508ed6cbc893615c78a2d08371de9911377ab0de38b0650312b07625951c6160ca99f116da1881b9b9c47
+  checksum: 0531470c77c9acebae533dbcb6bcae720b6fe959282b923dc095b69e576f6099bcfaf29c2cdd44335d11b4a82c00811689eac6217dffd301174ed181f113c27e
   languageName: node
   linkType: hard
 
@@ -2469,8 +2469,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@pendle/sdk-v2@workspace:."
   dependencies:
-    "@pendle/core-v2": 2.8.1-mainnet
-    "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.8.1-mainnet"
+    "@pendle/core-v2": 2.8.3-mainnet
+    "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.8.3-mainnet"
     "@pendle/core-v2-testnet": "npm:@pendle/core-v2@1.5.0-testnet"
     "@size-limit/preset-small-lib": ^8.1.0
     "@types/jest": ^29.4.0
