@@ -36,7 +36,7 @@ export class MulticallAggregateCallerNoGasLimit implements MulticallAggregateCal
 }
 
 export class MulticallAggregateCallerWithGasLimit implements MulticallAggregateCaller {
-    static readonly DEFAULT_GAS_PER_CALL = 10_000_000;
+    static DEFAULT_GAS_PER_CALL = 10_000_000;
     readonly contract: PendleMulticallV1;
 
     constructor(params: { chainId: ChainId; provider: providers.Provider }) {
@@ -49,11 +49,16 @@ export class MulticallAggregateCallerWithGasLimit implements MulticallAggregateC
 
     async tryAggregate(calls: Calls[], overrides?: { blockTag?: BlockTag }): Promise<Result[]> {
         if (calls.length == 0) return [];
+        const gasLimitPerCall = MulticallAggregateCallerWithGasLimit.DEFAULT_GAS_PER_CALL;
+        const gasLimit = gasLimitPerCall * calls.length;
         return this.contract.callStatic.tryAggregate(
             false,
             MulticallAggregateCallerWithGasLimit.DEFAULT_GAS_PER_CALL,
             calls,
-            overrides
+            {
+                ...overrides,
+                gasLimit,
+            }
         );
     }
 }
