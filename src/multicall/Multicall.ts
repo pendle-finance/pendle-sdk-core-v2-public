@@ -1,20 +1,16 @@
 import type { BlockTag } from '@ethersproject/abstract-provider';
 import type { Provider } from '@ethersproject/providers';
-import type { Multicall2 } from './Multicall2';
 import { Contract, CallOverrides } from 'ethers';
 import { FunctionFragment, Interface } from 'ethers/lib/utils';
-import { abi as MulticallABI } from './Multicall2.json';
 import { EthersJsError, PendleSdkError } from '../errors';
-import { Address, toAddress, ChainId, CHAIN_ID_MAPPING, RemoveLastOptionalParam, AddParams } from '../common';
+import { Address, toAddress, ChainId, RemoveLastOptionalParam, AddParams, zip } from '../common';
 import { ContractLike } from '../contracts/types';
 import { getInnerContract } from '../contracts/helper';
-
-export const MULTICALL_ADDRESSES: Record<ChainId, Address> = {
-    [CHAIN_ID_MAPPING.ETHEREUM]: toAddress('0x5ba1e12693dc8f9c48aad8770482f4739beed696'),
-    [CHAIN_ID_MAPPING.FUJI]: toAddress('0x07e46d95cc98f0d7493d679e89e396ea99020185'),
-    [CHAIN_ID_MAPPING.MUMBAI]: toAddress('0x7De28d05a0781122565F3b49aA60331ced983a19'),
-    [CHAIN_ID_MAPPING.ARBITRUM]: toAddress('0xcA11bde05977b3631167028862bE2a173976CA11'),
-} as const;
+import {
+    MulticallAggregateCaller,
+    MulticallAggregateCallerNoGasLimit,
+    MulticallAggregateCallerWithGasLimit,
+} from './MulticallAggregateCaller';
 
 /**
  * Multicall implementation, allowing to call function of contract.callStatic functions
@@ -48,10 +44,10 @@ export const DEFAULT_CALL_LIMIT = 64;
 
 class ContractCall {
     fragment: FunctionFragment;
-    address: string;
+    address: Address;
     params: any[];
 
-    constructor({ fragment, address, params }: { fragment: FunctionFragment; address: string; params: any[] }) {
+    constructor({ fragment, address, params }: { fragment: FunctionFragment; address: Address; params: any[] }) {
         this.fragment = fragment;
         this.address = address;
         this.params = params;
@@ -84,7 +80,7 @@ export class Multicall {
         return true;
     }
 
-    private multicallContract: Multicall2;
+    private multicallAggregateCaller: MulticallAggregateCaller;
     public readonly batchMap = new Map<BlockTag, MulticallBatch>();
     readonly callLimit: number;
 
@@ -104,9 +100,14 @@ export class Multicall {
         return multicall ? multicall.wrap(contract) : (contract as unknown as MulticallStatic<T>);
     }
 
-    constructor({ chainId, provider, callLimit }: { chainId: ChainId; provider: Provider; callLimit?: number }) {
-        this.multicallContract = new Contract(MULTICALL_ADDRESSES[chainId], MulticallABI, provider) as Multicall2;
+    constructor(params: { chainId: ChainId; provider: Provider; callLimit?: number; withGasLimit?: boolean }) {
+        const { callLimit, withGasLimit = true } = params;
         this.callLimit = callLimit ?? DEFAULT_CALL_LIMIT;
+        if (withGasLimit) {
+            this.multicallAggregateCaller = new MulticallAggregateCallerWithGasLimit(params);
+        } else {
+            this.multicallAggregateCaller = new MulticallAggregateCallerNoGasLimit(params);
+        }
     }
 
     async doAggregateCalls(calls: readonly ContractCall[], blockTag: BlockTag) {
@@ -115,13 +116,9 @@ export class Multicall {
             callData: TRANSFORMER.encodeFunctionData(call.fragment, call.params),
         }));
 
-        const responses = await this.multicallContract.callStatic.tryAggregate(false, callRequests, {
-            blockTag: blockTag,
-        });
+        const responses = await this.multicallAggregateCaller.tryAggregate(callRequests, { blockTag });
 
-        const result = calls.map((call, i) => {
-            const [success, returnData] = responses[i];
-
+        const result = Array.from(zip(calls, responses), ([call, { success, returnData }]) => {
             try {
                 const outputs: any[] = call.fragment.outputs!;
                 const params = TRANSFORMER.decodeFunctionResult(call.fragment, returnData);
@@ -167,7 +164,7 @@ export class Multicall {
 
                 const contractCall = new ContractCall({
                     fragment: fn,
-                    address: contract.address,
+                    address: toAddress(contract.address),
                     params,
                 });
                 const res = new Promise((resolve, reject) => {

@@ -12,6 +12,8 @@ export type {
     PendleFeeDistributor,
     IWETH,
     PendleRouterHelper,
+    PendleMulticallV1,
+    Multicall2,
 } from '@pendle/core-v2/typechain-types';
 
 export type { IPRouterStatic, IPActionInfoStatic } from '@pendle/core-v2/typechain-types/IPRouterStatic';

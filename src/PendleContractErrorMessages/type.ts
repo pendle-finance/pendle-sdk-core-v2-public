@@ -98,6 +98,7 @@ export type PendleContractErrorMessageHandler = {
     SAInsufficientTokenIn: (tokenIn: Address, amountExpected: BN, amountActual: BN) => string;
     SYApeDepositAmountTooSmall: (amountDeposited: BN) => string;
     SYBalancerInvalidPid: () => string;
+    SYBalancerReentrancy: () => string;
     SYCurve3crvPoolNotFound: () => string;
     SYCurveInvalidPid: () => string;
     SYInsufficientSharesOut: (actualSharesOut: BN, requiredSharesOut: BN) => string;
