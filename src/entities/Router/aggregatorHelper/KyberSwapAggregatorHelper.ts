@@ -30,6 +30,11 @@ export type KyberAPIParamsOverrides = {
     useMeta?: boolean;
     clientData?: { source: string };
     deadline?: string;
+
+    /**
+     * Comma-separated sources
+     */
+    excludedSources?: string;
 };
 
 export type KyberAPIParams = KyberAPIParamsOverrides & {
@@ -181,6 +186,8 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
             saveGas: '1',
             gasInclude: '1',
             clientData: { source: 'Pendle' },
+            deadline: ethers.constants.MaxInt256.toString(),
+            excludedSources: 'kyberswap-limit-order,rfq',
         };
         // TODO move to helper
         for (const [key, value] of Object.entries(this.getApiParamsOverrides())) {
@@ -216,9 +223,7 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
 
     protected getApiParamsOverrides(): KyberAPIParamsOverrides {
         if (this.apiParamsOverrides) return this.apiParamsOverrides;
-        const ans: KyberAPIParamsOverrides = {
-            deadline: ethers.constants.MaxInt256.toString(),
-        };
+        const ans: KyberAPIParamsOverrides = {};
         if (this.chainId === CHAIN_ID_MAPPING.ARBITRUM) {
             ans.saveGas = '0';
             ans.gasInclude = '1';

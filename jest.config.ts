@@ -18,4 +18,5 @@ export default {
     },
     testTimeout: 300000,
     notify: true,
+    maxWorkers: 1,
 } satisfies Config;
