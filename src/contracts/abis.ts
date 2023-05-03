@@ -10,7 +10,8 @@ export { abi as PendleYieldContractFactoryABI } from '@pendle/core-v2/build/arti
 export { abi as PendleYieldTokenABI } from '@pendle/core-v2/build/artifacts/contracts/core/YieldContracts/PendleYieldToken.sol/PendleYieldToken.json';
 export { abi as RouterStaticABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPRouterStatic.sol/IPRouterStatic.json';
 export { abi as IApeStakingABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IApeStaking.sol/IApeStaking.json';
-export { abi as PendleFeeDistributorABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VeDistributor/PendleFeeDistributor.sol/PendleFeeDistributor.json';
+export { abi as PendleFeeDistributorABI } from '@pendle/core-v2-for-legacy-fee-distributor/build/artifacts/contracts/LiquidityMining/VeDistributor/PendleFeeDistributor.sol/PendleFeeDistributor.json';
+export { abi as PendleFeeDistributorV2ABI } from '@pendle/core-v2/build/artifacts/contracts/LiquidityMining/VeDistributor/PendleFeeDistributorV2.sol/PendleFeeDistributorV2.json';
 export { abi as IWETH_ABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IWETH.sol/IWETH.json';
 export { abi as BulkSellerABI } from '@pendle/core-v2/build/artifacts/contracts/core/BulkSeller/BulkSeller.sol/BulkSeller.json';
 export { abi as PendleRouterHelperABI } from '@pendle/core-v2/build/artifacts/contracts/router/PendleRouterHelper.sol/PendleRouterHelper.json';

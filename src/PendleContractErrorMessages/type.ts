@@ -47,6 +47,7 @@ export type PendleContractErrorMessageHandler = {
     GCNotPendleMarket: (caller: Address) => string;
     GCNotVotingController: (caller: Address) => string;
     InsufficientFeeToSendMsg: (currentFee: BN, requiredFee: BN) => string;
+    InvalidMerkleProof: () => string;
     InvalidRetryData: () => string;
     InvalidWTime: (wTime: BN) => string;
     MarketExchangeRateBelowOne: (exchangeRate: BN) => string;

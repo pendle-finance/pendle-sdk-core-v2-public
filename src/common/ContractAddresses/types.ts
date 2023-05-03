@@ -12,6 +12,7 @@ export type ContractAddresses = {
     WRAPPED_NATIVE: Address;
     VOTING_CONTROLLER?: Address;
     FEE_DISTRIBUTOR?: Address;
+    FEE_DISTRIBUTORV2?: Address;
     PENDLE_SWAP?: Address;
     ROUTER_HELPER: Address;
 };

@@ -1,5 +1,5 @@
 // This file is generated via `yarn generateContractAddresses`
-// Generated at Wed, 19 Apr 2023 09:59:32 GMT
+// Generated at Tue, 02 May 2023 04:19:06 GMT
 import { ContractAddresses } from './types';
 import { toAddress } from '../Address';
 
@@ -10,6 +10,7 @@ export const ETHEREUM_CORE_ADDRESSES: ContractAddresses = {
     VEPENDLE: toAddress('0x4f30a9d41b80ecc5b94306ab4364951ae3170210'),
     VOTING_CONTROLLER: toAddress('0x44087e105137a5095c008aab6a6530182821f2f0'),
     FEE_DISTRIBUTOR: toAddress('0xd7b34a6fdcb2a7ced2115ff7f5fdd72aa6aa4de2'),
+    FEE_DISTRIBUTORV2: toAddress('0x8c237520a8e14d658170a633d96f8e80764433b9'),
     PENDLE_SWAP: toAddress('0x38812c3ac3563bf200482ac9d096952d7cb55f9b'),
     WRAPPED_NATIVE: toAddress('0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
@@ -21,6 +22,7 @@ export const FUJI_CORE_ADDRESSES: ContractAddresses = {
     VEPENDLE: toAddress('0xb20e3c268c993bc3c9bc1c1cc5d7491f2268cd91'),
     VOTING_CONTROLLER: toAddress('0x40ea97a7e9a4a0520229d1bbdf4d82e36b1a5475'),
     FEE_DISTRIBUTOR: toAddress('0x40160f3439317bcd0ec8eb09545dd6a30771a7b6'),
+    FEE_DISTRIBUTORV2: toAddress('0x8c237520a8e14d658170a633d96f8e80764433b9'),
     PENDLE_SWAP: toAddress('0xc6404511ef2c4c05a15446af7d54fb63afbe4d47'),
     WRAPPED_NATIVE: toAddress('0xe43a7ad7c09d8fae3ade7361f0b847b23add5094'),
     ROUTER_HELPER: toAddress('0x3c201799c6adaabc84c4d5de736ea2f32c4f1649'),

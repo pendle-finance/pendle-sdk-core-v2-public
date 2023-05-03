@@ -11,3 +11,4 @@ export * from './Router';
 export * from './VePendle';
 export * from './VotingController';
 export * from './FeeDistributor';
+export * from './FeeDistributorV2';

@@ -27,6 +27,7 @@ function transformData(data: any): ContractAddresses {
         VEPENDLE: toAddress(data.vePendle),
         VOTING_CONTROLLER: toAddressOrUndefined(data.votingController),
         FEE_DISTRIBUTOR: toAddressOrUndefined(feeDistributor),
+        FEE_DISTRIBUTORV2: toAddressOrUndefined(data.feeDistributorV2),
         PENDLE_SWAP: toAddressOrUndefined(data.pendleSwap),
         WRAPPED_NATIVE: toAddress(data.network.wrappedNative),
         ROUTER_HELPER: toAddress(data.routerHelper),

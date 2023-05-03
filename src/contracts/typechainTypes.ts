@@ -10,6 +10,8 @@ export type {
     PendleYieldContractFactory,
     PendleYieldToken,
     PendleFeeDistributor,
+    IPFeeDistributorV2 as IPendleFeeDistributorV2,
+    PendleFeeDistributorV2,
     IWETH,
     PendleRouterHelper,
     PendleMulticallV1,
