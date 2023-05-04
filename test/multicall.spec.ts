@@ -10,6 +10,7 @@ import {
     PtEntity,
     WrappedContract,
     NATIVE_ADDRESS_0x00,
+    isNativeToken,
 } from '../src';
 import { BigNumber as BN } from 'ethers';
 import { currentConfig, networkConnection, networkConnectionWithChainId, USE_HARDHAT_RPC } from './util/testEnv';
@@ -30,6 +31,10 @@ describe('Multicall', () => {
         yt = (await new PtEntity(marketInfo.pt, networkConnectionWithChainId).ytEntity()).contract;
         sy = new ERC20Entity(marketInfo.sy, networkConnection).contract;
         dummy = new ERC20Entity(NATIVE_ADDRESS_0x00, networkConnection).contract;
+    });
+
+    it('Caching', async () => {
+        expect(multicall.wrap(pt)).toEqual(multicall.cacheWrappedContract.get(pt));
     });
 
     it('Single call', async () => {
@@ -103,8 +108,8 @@ describe('Multicall', () => {
         const currentBlock = await networkConnection.provider.getBlockNumber();
         const syContract = new SyEntity(currentConfig.market.SY, networkConnectionWithChainId).contract;
 
-        const tokensIn = (await syContract.getTokensIn()).map(toAddress);
-        const tokensOut = (await syContract.getTokensOut()).map(toAddress);
+        const tokensIn = (await syContract.getTokensIn()).map(toAddress).filter((addr) => !isNativeToken(addr));
+        const tokensOut = (await syContract.getTokensOut()).map(toAddress).filter((addr) => !isNativeToken(addr));
 
         const getOne = async (token: Address) => {
             const decimals = await new ERC20Entity(token, networkConnectionWithChainId).decimals();

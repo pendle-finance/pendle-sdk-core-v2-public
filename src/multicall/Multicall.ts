@@ -5,7 +5,6 @@ import { FunctionFragment, Interface } from 'ethers/lib/utils';
 import { EthersJsError, PendleSdkError } from '../errors';
 import { Address, toAddress, ChainId, RemoveLastOptionalParam, AddParams, zip } from '../common';
 import { ContractLike } from '../contracts/types';
-import { getInnerContract } from '../contracts/helper';
 import {
     MulticallAggregateCaller,
     MulticallAggregateCallerNoGasLimit,
@@ -82,10 +81,8 @@ export class Multicall {
 
     private multicallAggregateCaller: MulticallAggregateCaller;
     public readonly batchMap = new Map<BlockTag, MulticallBatch>();
+    public readonly cacheWrappedContract = new WeakMap<ContractLike, MulticallStatic<Contract>>();
     readonly callLimit: number;
-
-    // Note: this symbol is unique for each Multicall instance
-    readonly multicallStaticSymbol = Symbol.for('multicallStatic');
 
     /**
      * Perform _soft_ wrapping. If muticall is presented, multicall.wrap(contract) will be returned.
@@ -143,11 +140,10 @@ export class Multicall {
     }
 
     wrap<T extends Contract>(contract_: ContractLike<T>): MulticallStatic<T> {
-        contract_ = getInnerContract(contract_);
-        const contract = contract_ as T & { [key in symbol]: MulticallStatic<T> };
-        if (contract[this.multicallStaticSymbol]) {
-            return contract[this.multicallStaticSymbol];
+        if (this.cacheWrappedContract.has(contract_)) {
+            return this.cacheWrappedContract.get(contract_) as MulticallStatic<T>;
         }
+
         const functions = contract_.interface.functions;
         const funcs: Record<string, (...args: any[]) => Promise<any>> = {};
 
@@ -164,7 +160,7 @@ export class Multicall {
 
                 const contractCall = new ContractCall({
                     fragment: fn,
-                    address: toAddress(contract.address),
+                    address: toAddress(contract_.address),
                     params,
                 });
                 const res = new Promise((resolve, reject) => {
@@ -193,8 +189,7 @@ export class Multicall {
 
         const res = { callStatic: funcs } as unknown as MulticallStatic<T>;
 
-        // Do this to avoid typescript error.
-        Object.assign(contract, { [this.multicallStaticSymbol]: res });
+        this.cacheWrappedContract.set(contract_, res);
 
         return res;
     }
