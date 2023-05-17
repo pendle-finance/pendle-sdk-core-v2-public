@@ -249,7 +249,11 @@ export abstract class BaseRouter extends PendleEntity {
         ptDesired: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'addLiquidityDualSyAndPt', { netLpOut: BN; netSyUsed: BN; netPtUsed: BN }> {
+    ): RouterMetaMethodReturnType<
+        T,
+        'addLiquidityDualSyAndPt',
+        { netLpOut: BN; netSyUsed: BN; netPtUsed: BN; minLpOut: BN }
+    > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.addLiquidityDualSyAndPtStatic(
@@ -259,13 +263,14 @@ export abstract class BaseRouter extends PendleEntity {
             params.forCallStatic
         );
         const { netLpOut } = res;
+        const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage); // note: different slip down amount function
         return this.contract.metaCall.addLiquidityDualSyAndPt(
             params.receiver,
             marketAddr,
             syDesired,
             ptDesired,
-            calcSlippedDownAmountSqrt(netLpOut, slippage), // note: different slip down amount function
-            { ..._params, ...res }
+            minLpOut,
+            { ..._params, ...res, minLpOut }
         );
     }
 
@@ -325,6 +330,7 @@ export abstract class BaseRouter extends PendleEntity {
             exchangeRateAfter: BN;
             netSyFromSwap: BN;
             approxParam: ApproxParamsStruct;
+            minLpOut: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -332,13 +338,14 @@ export abstract class BaseRouter extends PendleEntity {
         const res = await this.routerStaticCall.addLiquiditySinglePtStatic(marketAddr, netPtIn, params.forCallStatic);
         const { netLpOut, netPtToSwap } = res;
         const approxParam = this.getApproxParamsToPushPt(netPtToSwap, slippage);
+        const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage); // note: different slip down amount function
         return this.contract.metaCall.addLiquiditySinglePt(
             params.receiver,
             marketAddr,
             netPtIn,
-            calcSlippedDownAmountSqrt(netLpOut, slippage), // note: different slip down amount function
+            minLpOut,
             approxParam,
-            { ...res, approxParam, ...params }
+            { ...res, ...params, approxParam, minLpOut }
         );
     }
 
@@ -358,6 +365,7 @@ export abstract class BaseRouter extends PendleEntity {
             exchangeRateAfter: BN;
             netSyToSwap: BN;
             approxParam: ApproxParamsStruct;
+            minLpOut: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -365,14 +373,15 @@ export abstract class BaseRouter extends PendleEntity {
         const res = await this.routerStaticCall.addLiquiditySingleSyStatic(marketAddr, netSyIn, params.forCallStatic);
         const { netPtFromSwap, netLpOut } = res;
         const approxParam = this.getApproxParamsToPullPt(netPtFromSwap, slippage);
+        const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage); // note: different slip down amount function
 
         return this.contract.metaCall.addLiquiditySingleSy(
             params.receiver,
             marketAddr,
             netSyIn,
-            calcSlippedDownAmountSqrt(netLpOut, slippage), // note: different slip down amount function
+            minLpOut,
             this.getApproxParamsToPullPt(netPtFromSwap, slippage),
-            { ...res, approxParam, ...params }
+            { ...res, ...params, approxParam, minLpOut }
         );
     }
 
@@ -388,6 +397,8 @@ export abstract class BaseRouter extends PendleEntity {
             netLpOut: BN;
             netYtOut: BN;
             netSyToPY: BN;
+            minLpOut: BN;
+            minYtOut: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -399,14 +410,17 @@ export abstract class BaseRouter extends PendleEntity {
         );
         const { netLpOut, netYtOut } = res;
 
+        // note: different slip down amount function
+        const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage);
+        const minYtOut = calcSlippedDownAmountSqrt(netYtOut, slippage);
+
         return this.contract.metaCall.addLiquiditySingleSyKeepYt(
             params.receiver,
             marketAddr,
             netSyIn,
-            // note: different slip down amount function
-            calcSlippedDownAmountSqrt(netLpOut, slippage),
-            calcSlippedDownAmountSqrt(netYtOut, slippage),
-            { ...res, ...params }
+            minLpOut,
+            minYtOut,
+            { ...res, ...params, minLpOut, minYtOut }
         );
     }
 
@@ -529,7 +543,16 @@ export abstract class BaseRouter extends PendleEntity {
         lpToRemove: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'removeLiquidityDualSyAndPt', { netSyOut: BN; netPtOut: BN }> {
+    ): RouterMetaMethodReturnType<
+        T,
+        'removeLiquidityDualSyAndPt',
+        {
+            netSyOut: BN;
+            netPtOut: BN;
+            minSyOut: BN;
+            minPtOut: BN;
+        }
+    > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.removeLiquidityDualSyAndPtStatic(
@@ -538,13 +561,15 @@ export abstract class BaseRouter extends PendleEntity {
             params.forCallStatic
         );
         const { netSyOut, netPtOut } = res;
+        const minSyOut = calcSlippedDownAmount(netSyOut, slippage);
+        const minPtOut = calcSlippedDownAmount(netPtOut, slippage);
         return this.contract.metaCall.removeLiquidityDualSyAndPt(
             params.receiver,
             marketAddr,
             lpToRemove,
-            calcSlippedDownAmount(netSyOut, slippage),
-            calcSlippedDownAmount(netPtOut, slippage),
-            { ...res, ...params }
+            minSyOut,
+            minPtOut,
+            { ...res, ...params, minSyOut, minPtOut }
         );
     }
 
@@ -606,6 +631,7 @@ export abstract class BaseRouter extends PendleEntity {
             exchangeRateAfter: BN;
             netSyFromBurn: BN;
             netPtFromBurn: BN;
+            minPtOut: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -616,13 +642,14 @@ export abstract class BaseRouter extends PendleEntity {
             params.forCallStatic
         );
         const { netPtOut, netPtFromSwap } = res;
+        const minPtOut = calcSlippedDownAmount(netPtOut, slippage);
         return this.contract.metaCall.removeLiquiditySinglePt(
             params.receiver,
             marketAddr,
             lpToRemove,
-            calcSlippedDownAmount(netPtOut, slippage),
+            minPtOut,
             this.getApproxParamsToPullPt(netPtFromSwap, slippage),
-            { ...res, ...params }
+            { ...res, ...params, minPtOut }
         );
     }
 
@@ -642,6 +669,7 @@ export abstract class BaseRouter extends PendleEntity {
             netSyFromBurn: BN;
             netPtFromBurn: BN;
             netSyFromSwap: BN;
+            minSyOut: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -652,13 +680,12 @@ export abstract class BaseRouter extends PendleEntity {
             params.forCallStatic
         );
         const { netSyOut } = res;
-        return this.contract.metaCall.removeLiquiditySingleSy(
-            params.receiver,
-            marketAddr,
-            lpToRemove,
-            calcSlippedDownAmount(netSyOut, slippage),
-            { ...res, ...params }
-        );
+        const minSyOut = calcSlippedDownAmount(netSyOut, slippage);
+        return this.contract.metaCall.removeLiquiditySingleSy(params.receiver, marketAddr, lpToRemove, minSyOut, {
+            ...res,
+            ...params,
+            minSyOut,
+        });
     }
 
     async removeLiquiditySingleToken<T extends MetaMethodType>(
@@ -713,19 +740,19 @@ export abstract class BaseRouter extends PendleEntity {
             netSyFee: BN;
             priceImpact: BN;
             exchangeRateAfter: BN;
+            minSyOut: BN;
         }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params.forCallStatic);
         const { netSyOut } = res;
-        return this.contract.metaCall.swapExactPtForSy(
-            params.receiver,
-            marketAddr,
-            exactPtIn,
-            calcSlippedDownAmount(netSyOut, slippage),
-            { ...res, ...params }
-        );
+        const minSyOut = calcSlippedDownAmount(netSyOut, slippage);
+        return this.contract.metaCall.swapExactPtForSy(params.receiver, marketAddr, exactPtIn, minSyOut, {
+            ...res,
+            ...params,
+            minSyOut,
+        });
     }
 
     async swapPtForExactSy<T extends MetaMethodType>(
@@ -742,6 +769,7 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: BN;
             exchangeRateAfter: BN;
             approxParam: ApproxParamsStruct;
+            maxPtIn: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -749,14 +777,13 @@ export abstract class BaseRouter extends PendleEntity {
         const res = await this.routerStaticCall.swapPtForExactSyStatic(marketAddr, exactSyOut, params.forCallStatic);
         const { netPtIn } = res;
         const approxParam = this.getApproxParamsToPushPt(netPtIn, slippage);
-        return this.contract.metaCall.swapPtForExactSy(
-            params.receiver,
-            marketAddr,
-            exactSyOut,
-            calcSlippedUpAmount(netPtIn, slippage),
+        const maxPtIn = calcSlippedUpAmount(netPtIn, slippage);
+        return this.contract.metaCall.swapPtForExactSy(params.receiver, marketAddr, exactSyOut, maxPtIn, approxParam, {
+            ...res,
+            ...params,
             approxParam,
-            { ...res, approxParam, ...params }
-        );
+            maxPtIn,
+        });
     }
 
     async swapSyForExactPt<T extends MetaMethodType>(
@@ -772,19 +799,19 @@ export abstract class BaseRouter extends PendleEntity {
             netSyFee: BN;
             priceImpact: BN;
             exchangeRateAfter: BN;
+            maxSyIn: BN;
         }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapSyForExactPtStatic(marketAddr, exactPtOut, params.forCallStatic);
         const { netSyIn } = res;
-        return this.contract.metaCall.swapSyForExactPt(
-            params.receiver,
-            marketAddr,
-            exactPtOut,
-            calcSlippedUpAmount(netSyIn, slippage),
-            { ...res, ...params }
-        );
+        const maxSyIn = calcSlippedUpAmount(netSyIn, slippage);
+        return this.contract.metaCall.swapSyForExactPt(params.receiver, marketAddr, exactPtOut, maxSyIn, {
+            ...res,
+            ...params,
+            maxSyIn,
+        });
     }
 
     async swapExactTokenForPt<T extends MetaMethodType>(
@@ -837,19 +864,21 @@ export abstract class BaseRouter extends PendleEntity {
             netSyFee: BN;
             priceImpact: BN;
             exchangeRateAfter: BN;
+            minPtOut: BN;
         }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapExactSyForPtStatic(marketAddr, exactSyIn, params.forCallStatic);
         const { netPtOut } = res;
+        const minPtOut = calcSlippedDownAmount(netPtOut, slippage);
         return this.contract.metaCall.swapExactSyForPt(
             params.receiver,
             marketAddr,
             exactSyIn,
-            calcSlippedDownAmount(netPtOut, slippage),
+            minPtOut,
             this.getApproxParamsToPullPt(netPtOut, slippage),
-            { ...res, ...params }
+            { ...res, ...params, minPtOut }
         );
     }
 
@@ -960,17 +989,16 @@ export abstract class BaseRouter extends PendleEntity {
         amountSyToMint: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'mintPyFromSy', { netPyOut: BN }> {
+    ): RouterMetaMethodReturnType<T, 'mintPyFromSy', { netPyOut: BN; minPyOut: BN }> {
         const params = this.addExtraParams(_params);
         const ytAddr = typeof yt === 'string' ? yt : yt.address;
         const netPyOut = await this.routerStaticCall.mintPyFromSyStatic(ytAddr, amountSyToMint);
-        return this.contract.metaCall.mintPyFromSy(
-            params.receiver,
-            ytAddr,
-            amountSyToMint,
-            calcSlippedDownAmount(netPyOut, slippage),
-            { ...params, netPyOut }
-        );
+        const minPyOut = calcSlippedDownAmount(netPyOut, slippage);
+        return this.contract.metaCall.mintPyFromSy(params.receiver, ytAddr, amountSyToMint, minPyOut, {
+            ...params,
+            netPyOut,
+            minPyOut,
+        });
     }
 
     async redeemPyToToken<T extends MetaMethodType>(
@@ -1012,17 +1040,16 @@ export abstract class BaseRouter extends PendleEntity {
         amountPyToRedeem: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T>
-    ): RouterMetaMethodReturnType<T, 'redeemPyToSy', { netSyOut: BN }> {
+    ): RouterMetaMethodReturnType<T, 'redeemPyToSy', { netSyOut: BN; minSyOut: BN }> {
         const params = this.addExtraParams(_params);
         const ytAddr = typeof yt === 'string' ? yt : yt.address;
         const netSyOut = await this.routerStaticCall.redeemPyToSyStatic(ytAddr, amountPyToRedeem);
-        return this.contract.metaCall.redeemPyToSy(
-            params.receiver,
-            ytAddr,
-            amountPyToRedeem,
-            calcSlippedDownAmount(netSyOut, slippage),
-            { ...params, netSyOut }
-        );
+        const minSyOut = calcSlippedDownAmount(netSyOut, slippage);
+        return this.contract.metaCall.redeemPyToSy(params.receiver, ytAddr, amountPyToRedeem, minSyOut, {
+            ...params,
+            netSyOut,
+            minSyOut,
+        });
     }
 
     async swapExactSyForYt<T extends MetaMethodType>(
@@ -1039,6 +1066,7 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: BN;
             exchangeRateAfter: BN;
             approxParam: ApproxParamsStruct;
+            minYtOut: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1046,13 +1074,14 @@ export abstract class BaseRouter extends PendleEntity {
         const res = await this.routerStaticCall.swapExactSyForYtStatic(marketAddr, exactSyIn, params.forCallStatic);
         const { netYtOut } = res;
         const approxParam = this.getApproxParamsToPullPt(netYtOut, slippage);
+        const minYtOut = calcSlippedDownAmount(netYtOut, slippage);
         return this.contract.metaCall.swapExactSyForYt(
             params.receiver,
             marketAddr,
             exactSyIn,
-            calcSlippedDownAmount(netYtOut, slippage),
+            minYtOut,
             this.getApproxParamsToPullPt(netYtOut, slippage),
-            { ...res, approxParam, ...params }
+            { ...res, ...params, approxParam, minYtOut }
         );
     }
 
@@ -1070,6 +1099,7 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: BN;
             exchangeRateAfter: BN;
             approxParam: ApproxParamsStruct;
+            maxYtIn: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1077,14 +1107,13 @@ export abstract class BaseRouter extends PendleEntity {
         const res = await this.routerStaticCall.swapYtForExactSyStatic(marketAddr, exactSyOut, params.forCallStatic);
         const { netYtIn } = res;
         const approxParam = this.getApproxParamsToPushPt(netYtIn, slippage);
-        return this.contract.metaCall.swapYtForExactSy(
-            params.receiver,
-            marketAddr,
-            exactSyOut,
-            calcSlippedUpAmount(netYtIn, slippage),
+        const maxYtIn = calcSlippedUpAmount(netYtIn, slippage);
+        return this.contract.metaCall.swapYtForExactSy(params.receiver, marketAddr, exactSyOut, maxYtIn, approxParam, {
+            ...res,
+            ...params,
             approxParam,
-            { ...res, approxParam, ...params }
-        );
+            maxYtIn,
+        });
     }
 
     async swapExactPtForToken<T extends MetaMethodType>(
@@ -1139,19 +1168,19 @@ export abstract class BaseRouter extends PendleEntity {
             netSyOwedInt: BN;
             netPYToRepaySyOwedInt: BN;
             netPYToRedeemSyOutInt: BN;
+            minSyOut: BN;
         }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params.forCallStatic);
         const { netSyOut } = res;
-        return this.contract.metaCall.swapExactYtForSy(
-            params.receiver,
-            marketAddr,
-            exactYtIn,
-            calcSlippedDownAmount(netSyOut, slippage),
-            { ...res, ...params }
-        );
+        const minSyOut = calcSlippedDownAmount(netSyOut, slippage);
+        return this.contract.metaCall.swapExactYtForSy(params.receiver, marketAddr, exactYtIn, minSyOut, {
+            ...res,
+            ...params,
+            minSyOut,
+        });
     }
 
     async swapSyForExactYt<T extends MetaMethodType>(
@@ -1169,19 +1198,19 @@ export abstract class BaseRouter extends PendleEntity {
             exchangeRateAfter: BN;
             netSyReceivedInt: BN;
             totalSyNeedInt: BN;
+            maxSyIn: BN;
         }
     > {
         const params = this.addExtraParams(_params);
         const marketAddr = typeof market === 'string' ? market : market.address;
         const res = await this.routerStaticCall.swapSyForExactYtStatic(marketAddr, exactYtOut, params.forCallStatic);
         const { netSyIn } = res;
-        return this.contract.metaCall.swapSyForExactYt(
-            params.receiver,
-            marketAddr,
-            exactYtOut,
-            calcSlippedUpAmount(netSyIn, slippage),
-            { ...res, ...params }
-        );
+        const maxSyIn = calcSlippedUpAmount(netSyIn, slippage);
+        return this.contract.metaCall.swapSyForExactYt(params.receiver, marketAddr, exactYtOut, maxSyIn, {
+            ...res,
+            ...params,
+            maxSyIn,
+        });
     }
 
     async swapExactTokenForYt<T extends MetaMethodType>(
@@ -1273,6 +1302,7 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: BN;
             exchangeRateAfter: BN;
             approxParam: ApproxParamsStruct;
+            minPtOut: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1280,14 +1310,13 @@ export abstract class BaseRouter extends PendleEntity {
         const res = await this.routerStaticCall.swapExactYtForPtStatic(marketAddr, exactYtIn, params.forCallStatic);
         const { netPtOut, totalPtSwapped } = res;
         const approxParam = this.getApproxParamsToPushPt(totalPtSwapped, slippage);
-        return this.contract.metaCall.swapExactYtForPt(
-            params.receiver,
-            marketAddr,
-            exactYtIn,
-            calcSlippedDownAmount(netPtOut, slippage),
+        const minPtOut = calcSlippedDownAmount(netPtOut, slippage);
+        return this.contract.metaCall.swapExactYtForPt(params.receiver, marketAddr, exactYtIn, minPtOut, approxParam, {
+            ...res,
             approxParam,
-            { ...res, approxParam, ...params }
-        );
+            ...params,
+            minPtOut,
+        });
     }
 
     async swapExactPtForYt<T extends MetaMethodType>(
@@ -1305,6 +1334,7 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: BN;
             exchangeRateAfter: BN;
             approxParam: ApproxParamsStruct;
+            minYtOut: BN;
         }
     > {
         const params = this.addExtraParams(_params);
@@ -1312,14 +1342,13 @@ export abstract class BaseRouter extends PendleEntity {
         const res = await this.routerStaticCall.swapExactPtForYtStatic(marketAddr, exactPtIn, params.forCallStatic);
         const { netYtOut, totalPtToSwap } = res;
         const approxParam = this.getApproxParamsToPushPt(totalPtToSwap, slippage);
-        return this.contract.metaCall.swapExactPtForYt(
-            params.receiver,
-            marketAddr,
-            exactPtIn,
-            calcSlippedDownAmount(netYtOut, slippage),
+        const minYtOut = calcSlippedDownAmount(netYtOut, slippage);
+        return this.contract.metaCall.swapExactPtForYt(params.receiver, marketAddr, exactPtIn, minYtOut, approxParam, {
+            ...res,
+            ...params,
             approxParam,
-            { ...res, approxParam, ...params }
-        );
+            minYtOut,
+        });
     }
 
     async redeemDueInterestAndRewards<T extends MetaMethodType>(

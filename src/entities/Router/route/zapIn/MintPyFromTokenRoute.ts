@@ -5,6 +5,7 @@ import { Address, BigNumberish, BN, calcSlippedDownAmount, isNativeToken, ethers
 
 export type MintPyFromTokenRouteData = BaseZapInRouteData & {
     netPyOut: BN;
+    minPyOut: BN;
 };
 
 export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
@@ -52,7 +53,8 @@ export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
             input.bulk,
             this.routerExtraParams.forCallStatic
         );
-        return { netPyOut, intermediateSyAmount: ethersConstants.Zero };
+        const minPyOut = calcSlippedDownAmount(netPyOut, this.slippage);
+        return { netPyOut, minPyOut, intermediateSyAmount: ethersConstants.Zero };
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
@@ -85,7 +87,7 @@ export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
         const [input, previewResult] = await Promise.all([this.buildTokenInput(), this.preview()]);
         if (!input || !previewResult) return undefined;
         const overrides = { value: isNativeToken(this.tokenIn) ? this.netTokenIn : undefined };
-        const minPyOut = calcSlippedDownAmount(previewResult.netPyOut, this.slippage);
+        const { minPyOut } = previewResult;
         return this.router.contract.metaCall.mintPyFromToken(params.receiver, this.yt, minPyOut, input, {
             ...data,
             ...mergeMetaMethodExtraParams({ overrides }, params),

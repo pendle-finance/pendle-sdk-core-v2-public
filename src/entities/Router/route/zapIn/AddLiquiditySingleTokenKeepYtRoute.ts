@@ -20,6 +20,8 @@ export type AddLiquiditySingleTokenKeepYtRouteData = BaseZapInRouteData & {
     netYtOut: BN;
     netSyMinted: BN;
     netSyToPY: BN;
+    minLpOut: BN;
+    minYtOut: BN;
 };
 
 export type AddLiquiditySingleTokenKeepYtRouteConfig<T extends MetaMethodType> = BaseZapInRouteConfig<
@@ -93,9 +95,13 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
             input.bulk,
             this.routerExtraParams.forCallStatic
         );
+        const minLpOut = calcSlippedDownAmountSqrt(data.netLpOut, this.slippage);
+        const minYtOut = calcSlippedDownAmountSqrt(data.netYtOut, this.slippage);
         return {
             ...data,
             intermediateSyAmount: data.netSyMinted,
+            minLpOut,
+            minYtOut,
         };
     }
 
@@ -149,8 +155,7 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
     ) {
         const [previewResult, input] = await Promise.all([this.preview(), this.buildTokenInput()]);
         if (!previewResult || !input) return undefined;
-        const minLpOut = calcSlippedDownAmountSqrt(previewResult.netLpOut, this.slippage);
-        const minYtOut = calcSlippedDownAmountSqrt(previewResult.netYtOut, this.slippage);
+        const { minLpOut, minYtOut } = previewResult;
         if (!this.needPatch()) {
             return this.router.contract.metaCall.addLiquiditySingleTokenKeepYt(
                 params.receiver,
@@ -171,15 +176,11 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
     }
 
     async getMinLpOut() {
-        const previewResult = await this.preview();
-        if (!previewResult) return undefined;
-        return calcSlippedDownAmountSqrt(previewResult.netLpOut, this.slippage);
+        return (await this.preview())?.minLpOut;
     }
 
     async getMinYtOut() {
-        const previewResult = await this.preview();
-        if (!previewResult) return undefined;
-        return calcSlippedDownAmountSqrt(previewResult.netYtOut, this.slippage);
+        return (await this.preview())?.minYtOut;
     }
 
     @NoArgsCache

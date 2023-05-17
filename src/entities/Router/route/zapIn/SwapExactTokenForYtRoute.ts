@@ -9,6 +9,7 @@ export type SwapExactTokenForYtRouteData = BaseZapInRouteData & {
     netSyFee: BN;
     priceImpact: BN;
     exchangeRateAfter: BN;
+    minYtOut: BN;
 };
 
 export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapInRoute<
@@ -56,9 +57,11 @@ export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapI
             input.bulk,
             this.routerExtraParams.forCallStatic
         );
+        const minYtOut = calcSlippedDownAmount(data.netYtOut, this.slippage);
         return {
             ...data,
             intermediateSyAmount: data.netSyMinted,
+            minYtOut,
         };
     }
 
@@ -92,13 +95,13 @@ export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapI
         const [input, previewResult] = await Promise.all([this.buildTokenInput(), this.preview()]);
         if (!input || !previewResult) return undefined;
         const overrides = { value: isNativeToken(this.tokenIn) ? this.netTokenIn : undefined };
-        const minLpOut = calcSlippedDownAmount(previewResult.netYtOut, this.slippage);
+        const { minYtOut } = previewResult;
         const approxParam = this.context.getApproxParamsToPullPt(previewResult.netYtOut, this.slippage);
 
         return this.router.contract.metaCall.swapExactTokenForYt(
             params.receiver,
             this.market,
-            minLpOut,
+            minYtOut,
             approxParam,
             input,
             { ...data, ...mergeMetaMethodExtraParams({ overrides }, params) }

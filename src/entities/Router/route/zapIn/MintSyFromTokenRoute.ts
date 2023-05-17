@@ -5,6 +5,7 @@ import { Address, BigNumberish, BN, calcSlippedDownAmount, isNativeToken } from 
 
 export type MintSyFromTokenRouteData = BaseZapInRouteData & {
     netSyOut: BN;
+    minSyOut: BN;
 };
 
 export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
@@ -54,7 +55,8 @@ export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
             await this.getTokenMintSyAmount(),
             { ...this.routerExtraParams.forCallStatic, bulk: input.bulk }
         );
-        return { netSyOut, intermediateSyAmount: netSyOut };
+        const minSyOut = calcSlippedDownAmount(netSyOut, this.slippage);
+        return { netSyOut, minSyOut, intermediateSyAmount: netSyOut };
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
@@ -86,7 +88,7 @@ export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
     ) {
         const [input, previewResult] = await Promise.all([this.buildTokenInput(), this.preview()]);
         if (!input || !previewResult) return undefined;
-        const minSyOut = calcSlippedDownAmount(previewResult.netSyOut, this.slippage);
+        const { minSyOut } = previewResult;
         const overrides = { value: isNativeToken(this.tokenIn) ? this.netTokenIn : undefined };
         return this.router.contract.metaCall.mintSyFromToken(params.receiver, this.sy, minSyOut, input, {
             ...data,

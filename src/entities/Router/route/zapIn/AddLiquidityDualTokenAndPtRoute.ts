@@ -9,6 +9,7 @@ export type AddLiquidityDualTokenAndPtRouteData = BaseZapInRouteData & {
     netPtUsed: BN;
     netSyUsed: BN;
     netSyDesired: BN;
+    minLpOut: BN;
 };
 
 export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends BaseZapInRoute<
@@ -64,9 +65,11 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
             this.ptDesired,
             this.routerExtraParams.forCallStatic
         );
+        const minLpOut = calcSlippedDownAmountSqrt(data.netLpOut, this.slippage);
         return {
             ...data,
             intermediateSyAmount: data.netSyDesired,
+            minLpOut,
         };
     }
 
@@ -102,7 +105,7 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
         const [input, previewResult] = await Promise.all([this.buildTokenInput(), this.preview()]);
         if (!input || !previewResult) return undefined;
         const overrides = { value: isNativeToken(this.tokenIn) ? this.tokenDesired : undefined };
-        const minLpOut = calcSlippedDownAmountSqrt(previewResult.netLpOut, this.slippage);
+        const { minLpOut } = previewResult;
         return this.router.contract.metaCall.addLiquidityDualTokenAndPt(
             this.routerExtraParams.receiver,
             this.market,
