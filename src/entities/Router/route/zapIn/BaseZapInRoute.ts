@@ -131,7 +131,13 @@ export abstract class BaseZapInRoute<
     async preview(syncAfterAggregatorCall: () => Promise<void> = () => Promise.resolve()): Promise<Data | undefined> {
         await this.buildTokenInput();
         await syncAfterAggregatorCall();
-        const res = await this.previewWithRouterStatic();
+        const [res] = await Promise.all([
+            this.previewWithRouterStatic(),
+
+            // Currently unused for routing algorithm, but it is useful _elsewhere_.
+            // Calling it here to batch it with multicall, then cache it.
+            this.routerExtraParams.multicall != undefined ? this.getMintedSyAmount() : undefined,
+        ]);
         return res;
     }
 
@@ -179,5 +185,14 @@ export abstract class BaseZapInRoute<
      */
     async getTokenMintSyAmount(): Promise<BigNumberish> {
         return (await this.getAggregatorResult())?.outputAmount ?? ethersConstants.Zero;
+    }
+
+    @NoArgsCache
+    async getMintedSyAmount() {
+        const [tokenMintSyAmount, bulk] = await Promise.all([this.getTokenMintSyAmount(), this.getUsedBulk()]);
+        return this.syEntity.previewDeposit(this.tokenMintSy, tokenMintSyAmount, {
+            ...this.routerExtraParams,
+            bulk,
+        });
     }
 }
