@@ -8,6 +8,7 @@ import {
     PendleContractErrorType,
     PendleContractErrorParams,
 } from './PendleContractErrorMessages';
+import { Address } from 'common';
 
 // The list of error code is here
 // https://docs.ethers.io/v5/troubleshooting/errors/
@@ -46,8 +47,19 @@ export class InvalidSlippageError extends PendleSdkError {
 }
 
 export class NoRouteFoundError extends PendleSdkError {
-    static action(actionName: string, from: string, to: string) {
-        return new NoRouteFoundError(`No route found to ${actionName} from ${from} to ${to}`);
+    tokenInAddress: Address;
+    tokenOutAddress: Address;
+    actionName: string;
+
+    constructor(actionName: string, from: Address, to: Address) {
+        super(`No route found to ${actionName} from ${from} to ${to}`);
+        this.tokenInAddress = from;
+        this.tokenOutAddress = to;
+        this.actionName = actionName;
+    }
+
+    static action(actionName: string, from: Address, to: Address) {
+        return new NoRouteFoundError(actionName, from, to);
     }
 }
 
