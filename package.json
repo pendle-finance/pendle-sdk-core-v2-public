@@ -40,7 +40,7 @@
         "release": "yarn npm publish --tag nightly"
     },
     "dependencies": {
-        "@pendle/core-v2": "2.10.1-mainnet",
+        "@pendle/core-v2": "2.15.2",
         "@pendle/core-v2-for-legacy-fee-distributor": "npm:@pendle/core-v2@2.9.0-mainnet",
         "axios": "^0.27.2",
         "bignumber.js": "^9.1.0",
@@ -50,7 +50,7 @@
         "tslib": "^2.5.0"
     },
     "devDependencies": {
-        "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.10.1-mainnet",
+        "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.15.2",
         "@pendle/core-v2-testnet": "npm:@pendle/core-v2@1.7.0-testnet",
         "@size-limit/preset-small-lib": "^8.1.0",
         "@types/jest": "^29.4.0",

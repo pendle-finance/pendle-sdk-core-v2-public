@@ -1,5 +1,5 @@
 // This file is generated via `yarn generateContractAddresses`
-// Generated at Tue, 02 May 2023 04:19:06 GMT
+// Generated at Fri, 26 May 2023 06:55:28 GMT
 import { ContractAddresses } from './types';
 import { toAddress } from '../Address';
 
@@ -11,7 +11,7 @@ export const ETHEREUM_CORE_ADDRESSES: ContractAddresses = {
     VOTING_CONTROLLER: toAddress('0x44087e105137a5095c008aab6a6530182821f2f0'),
     FEE_DISTRIBUTOR: toAddress('0xd7b34a6fdcb2a7ced2115ff7f5fdd72aa6aa4de2'),
     FEE_DISTRIBUTORV2: toAddress('0x8c237520a8e14d658170a633d96f8e80764433b9'),
-    PENDLE_SWAP: toAddress('0x38812c3ac3563bf200482ac9d096952d7cb55f9b'),
+    PENDLE_SWAP: toAddress('0x5719acdb9abbbc6ba414c9dbff5b2967342f465d'),
     WRAPPED_NATIVE: toAddress('0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
 };
@@ -41,7 +41,7 @@ export const ARBITRUM_CORE_ADDRESSES: ContractAddresses = {
     ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
     ROUTER_STATIC: toAddress('0xadb09f65bd90d19e3148d9ccb693f3161c6db3e8'),
     VEPENDLE: toAddress('0x3209e9412cca80b18338f2a56ada59c484c39644'),
-    PENDLE_SWAP: toAddress('0xf0bf560f01d4196773a5c58a09d6d34b6bba4503'),
+    PENDLE_SWAP: toAddress('0x150dd76fad24c0715db375d06f1c2c1d917d7d93'),
     WRAPPED_NATIVE: toAddress('0x82af49447d8a07e3bd95bd0d56f35241523fbab1'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
 };
