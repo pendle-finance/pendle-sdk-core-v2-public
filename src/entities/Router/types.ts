@@ -64,7 +64,7 @@ export type TokenOutput = {
 export type BaseRouterConfig = PendleEntityConfigOptionalAbi & {
     chainId: ChainId;
     gasFeeEstimator?: GasFeeEstimator;
-    aggregatorHelper: AggregatorHelper;
+    aggregatorHelper?: AggregatorHelper;
 };
 
 export type RouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtraParams<T> & {

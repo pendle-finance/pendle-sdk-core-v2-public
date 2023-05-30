@@ -18,7 +18,7 @@ import { MarketEntity } from '../MarketEntity';
 import { SyEntity } from '../SyEntity';
 import { YtEntity } from '../YtEntity';
 import { NoRouteFoundError, PendleSdkError } from '../../errors';
-import { AggregatorHelper, SwapType } from './aggregatorHelper';
+import { AggregatorHelper, SwapType, VoidAggregatorHelper } from './aggregatorHelper';
 import {
     NATIVE_ADDRESS_0x00,
     Address,
@@ -98,7 +98,7 @@ export abstract class BaseRouter extends PendleEntity {
     constructor(readonly address: Address, config: BaseRouterConfig) {
         super(address, { abi: IPAllActionABI, ...config });
         this.chainId = config.chainId;
-        this.aggregatorHelper = config.aggregatorHelper;
+        this.aggregatorHelper = config.aggregatorHelper ?? new VoidAggregatorHelper();
         this.routerStatic = getRouterStatic(config);
         this.gasFeeEstimator = config.gasFeeEstimator ?? new GasFeeEstimator(this.provider!);
     }

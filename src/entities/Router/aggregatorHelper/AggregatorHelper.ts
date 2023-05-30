@@ -1,5 +1,6 @@
 import { SwapData, SwapType } from '../types';
 import { BN, BigNumberish, RawTokenAmount, Address, NATIVE_ADDRESS_0x00 } from '../../../common';
+import { AsyncOrSync } from 'ts-essentials';
 
 // For easier import
 export { SwapData, SwapType } from '../types';
@@ -53,5 +54,5 @@ export interface AggregatorHelper {
         tokenOut: Address,
         slippage: number,
         params?: { aggregatorReceiver?: Address }
-    ): Promise<AggregatorResult | undefined>;
+    ): AsyncOrSync<AggregatorResult | undefined>;
 }
