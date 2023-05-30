@@ -289,11 +289,9 @@ export abstract class BaseRouter extends PendleEntity {
         }
     > {
         const params = this.addExtraParams(_params);
-        if (typeof market === 'string') {
-            market = new MarketEntity(market, this.entityConfig);
-        }
-        const marketAddr = market.address;
-        const syEntity = await market.syEntity(params.forCallStatic);
+        const marketEntity = typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
+        const marketAddr = marketEntity.address;
+        const syEntity = await marketEntity.syEntity(params.forCallStatic);
         const routeContext = this.createRouteContext<T, AddLiquidityDualTokenAndPtRoute<T>>({
             params,
             syEntity,
@@ -302,7 +300,7 @@ export abstract class BaseRouter extends PendleEntity {
         const tokenMintSyList = await routeContext.getTokensMintSy();
         const routes = tokenMintSyList.map(
             (tokenMintSy) =>
-                new AddLiquidityDualTokenAndPtRoute(marketAddr, tokenIn, tokenDesired, ptDesired, slippage, {
+                new AddLiquidityDualTokenAndPtRoute(marketEntity, tokenIn, tokenDesired, ptDesired, slippage, {
                     context: routeContext,
                     tokenMintSy,
                 })

@@ -2,6 +2,7 @@ import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData } from './Base
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmountSqrt } from '../../../../common';
+import { MarketEntity } from '../../../MarketEntity';
 
 export type AddLiquidityDualTokenAndPtRouteData = BaseZapInRouteData & {
     netLpOut: BN;
@@ -18,7 +19,7 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
     AddLiquidityDualTokenAndPtRoute<T>
 > {
     constructor(
-        readonly market: Address,
+        readonly market: MarketEntity,
         readonly tokenIn: Address,
         readonly tokenDesired: BigNumberish,
         readonly ptDesired: BigNumberish,
@@ -48,6 +49,15 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
         );
     }
 
+    override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
+        const pt = await this.market.PT(); // one more stage?
+        const [tokenIsApproved, ptIsApproved] = await Promise.all([
+            this.checkUserApproval(signerAddress, this.sourceTokenAmount),
+            this.checkUserApproval(signerAddress, { token: pt, amount: this.ptDesired }),
+        ]);
+        return tokenIsApproved && ptIsApproved;
+    }
+
     override async getNetOut(syncAfterAggregatorCall?: () => Promise<void>): Promise<BN | undefined> {
         return (await this.preview(syncAfterAggregatorCall))?.netLpOut;
     }
@@ -58,7 +68,7 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
             return undefined;
         }
         const data = await this.routerStaticCall.addLiquidityDualTokenAndPtStatic(
-            this.market,
+            this.market.address,
             this.tokenMintSy,
             await this.getTokenMintSyAmount(),
             input.bulk,
@@ -108,7 +118,7 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
         const { minLpOut } = previewResult;
         return this.router.contract.metaCall.addLiquidityDualTokenAndPt(
             this.routerExtraParams.receiver,
-            this.market,
+            this.market.address,
             input,
             this.ptDesired,
             minLpOut,
