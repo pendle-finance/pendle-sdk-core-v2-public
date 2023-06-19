@@ -1,18 +1,23 @@
 import { constants as ethersConstants } from 'ethers';
-import { Opaque } from 'ts-essentials';
 
 /**
+ * The `Address` type. Please use {@link toAddress} to cast a raw address to
+ * this type.
+ * 
  * @remarks
  * This type is defined to avoid using raw string as address.
  * The address returned by a contract call often have mixed cases,
  * which sometimes causes bug in comparison.
  *
- * Even though it only checks if the string begins with `0x`, we are
- * still sure that the address is not a raw string.
- *
- * Use {@link toAddress} to convert a raw address to this type.
+ * This type is an [Opaque](https://en.wikipedia.org/wiki/Opaque_data_type)
+ * type with the help of a private unique symbol. Similar implementation
+ * can be found in popular libraries such as
+ * [ts-essentials](https://github.com/ts-essentials/ts-essentials/tree/master/lib/opaque).
+ * We implemented our own, as the generated documentation are the IDE intellisense
+ * are nicer than using the library.
  */
-export type Address = Opaque<`0x${string}`, 'pendle.sdk.Address'>;
+export type Address = `0x${string}` & { readonly [ADDRESS_OPAQUE]: 'pendle.sdk.address' };
+declare const ADDRESS_OPAQUE: unique symbol;
 
 /**
  * Convert a raw address to Pendle SDK's {@link Address} for type safety.
