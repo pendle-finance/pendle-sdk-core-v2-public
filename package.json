@@ -70,7 +70,7 @@
         "ts-jest": "^29.0.5",
         "ts-node": "^10.9.1",
         "tsdx": "^0.14.1",
-        "typedoc": "^0.23.21",
+        "typedoc": "^0.24.8",
         "typescript": "5.0.3"
     },
     "packageManager": "yarn@3.3.1"

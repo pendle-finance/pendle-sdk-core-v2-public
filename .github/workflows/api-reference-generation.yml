@@ -1,0 +1,38 @@
+name: API reference generation
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  generate-api-reference:
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    environment: github-pages
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Setup environment
+        uses: ./.github/workflows/setup-env
+        with:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v3
+
+      - name: Generate docs
+        run: yarn run generate-docs
+
+      - name: Upload artifacts
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2

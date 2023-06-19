@@ -1,0 +1,23 @@
+inputs:
+    NPM_TOKEN:
+        description: NPM token to pass to scope
+        required: true
+
+runs:
+    using: 'composite'
+    steps:
+    - uses: actions/setup-node@v3
+        
+    - name: Set yarn version to version 3.x
+      run: yarn set version 3.3.1
+      shell: bash
+        
+    - name: Set authentication token
+      run: 'yarn config set npmScopes.pendle.npmAuthToken "${NPM_AUTH_TOKEN}"'
+      env:
+        NPM_AUTH_TOKEN: ${{ inputs.NPM_TOKEN }}
+      shell: bash
+        
+    - name: Run install
+      run: yarn install --immutable
+      shell: bash
