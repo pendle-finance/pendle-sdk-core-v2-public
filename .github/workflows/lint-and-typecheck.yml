@@ -1,26 +1,12 @@
 name: Lint and typecheck
 on: [push]
 jobs:
-  
   lint:
     runs-on: ubuntu-latest
-
-    env:
-      NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
     steps:
-    - uses: actions/checkout@v1
-    - uses: actions/setup-node@v3
-      
-    - name: Set yarn version to version 3.x
-      run: yarn set version 3.3.1
-        
-    - name: Set authentication token
-      run: 'yarn config set npmScopes.pendle.npmAuthToken "${NPM_AUTH_TOKEN}"'
-      
-    - name: Run install
-      run: yarn install --immutable
-          
+    - name: Setup environment
+      uses: ./.github/workflows/setup-env.yml
+
     - name: Lint 
       run: yarn lint:nofix
         

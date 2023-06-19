@@ -1,0 +1,23 @@
+name: Environment setup
+on:
+  workflow_call:
+
+jobs:
+  setup_env:
+    runs-on: ubuntu-latest
+
+    env:
+      NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-node@v3
+      
+    - name: Set yarn version to version 3.x
+      run: yarn set version 3.3.1
+        
+    - name: Set authentication token
+      run: 'yarn config set npmScopes.pendle.npmAuthToken "${NPM_AUTH_TOKEN}"'
+      
+    - name: Run install
+      run: yarn install --immutable
