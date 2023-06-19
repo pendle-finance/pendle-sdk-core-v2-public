@@ -3,7 +3,7 @@ import { constants as ethersConstants } from 'ethers';
 /**
  * The `Address` type. Please use {@link toAddress} to cast a raw address to
  * this type.
- * 
+ *
  * @remarks
  * This type is defined to avoid using raw string as address.
  * The address returned by a contract call often have mixed cases,
