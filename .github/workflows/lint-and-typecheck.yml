@@ -7,7 +7,9 @@ jobs:
     - uses: actions/checkout@v1
 
     - name: Setup environment
-      uses: ./.github/workflows/setup-env.yml
+      uses: ./.github/workflows/setup-env
+      with:
+        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     - name: Lint 
       run: yarn lint:nofix

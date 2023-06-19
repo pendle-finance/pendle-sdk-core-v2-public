@@ -3,21 +3,23 @@ on:
   push:
     branches:
       - main
-      - loc/gen-public-doc
 
 jobs:
-  deploy:
+  generate-api-reference:
     permissions:
       contents: read
       pages: write
       id-token: write
     runs-on: ubuntu-latest
     environment: github-pages
+
     steps:
       - uses: actions/checkout@v1
 
       - name: Setup environment
-        uses: ./.github/workflows/setup-env.yml
+        uses: ./.github/workflows/setup-env
+        with:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Setup Pages
         id: pages
@@ -29,7 +31,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-pages-artifact@v1
         with:
-          path: ./
+          path: ./docs
 
       - name: Deploy to GitHub Pages
         id: deployment
