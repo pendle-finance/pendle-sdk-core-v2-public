@@ -10,7 +10,6 @@ jobs:
       NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
-    - uses: actions/checkout@v1
     - uses: actions/setup-node@v3
       
     - name: Set yarn version to version 3.x
