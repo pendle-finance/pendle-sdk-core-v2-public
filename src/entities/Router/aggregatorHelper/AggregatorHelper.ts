@@ -1,6 +1,7 @@
 import { SwapData, SwapType } from '../types';
-import { BN, BigNumberish, RawTokenAmount, Address, NATIVE_ADDRESS_0x00 } from '../../../common';
+import { BN, BigNumberish, RawTokenAmount, Address, NATIVE_ADDRESS_0x00, If } from '../../../common';
 import { AsyncOrSync } from 'ts-essentials';
+import { PendleSdkError } from '../../../errors';
 
 // For easier import
 export { SwapData, SwapType } from '../types';
@@ -21,7 +22,7 @@ export function createNoneAggregatorResult(amount: BigNumberish): AggregatorResu
         outputAmount: BN.from(amount),
 
         getSwapType: () => SwapType.NONE,
-        createSwapData: (_params: { needScale: boolean }) => ({
+        createSwapData: () => ({
             swapType: SwapType.NONE,
             extRouter: NATIVE_ADDRESS_0x00,
             extCalldata: [],
@@ -48,11 +49,23 @@ export function createETH_WETHAggregatorResult(amount: BigNumberish): Aggregator
 
 export const NONE_AGGREGATOR_RESULT = createNoneAggregatorResult(0);
 
-export interface AggregatorHelper {
+export interface AggregatorHelper<CheckedResult extends boolean = boolean> {
     makeCall(
         tokenAmountIn: RawTokenAmount<BigNumberish>,
         tokenOut: Address,
         slippage: number,
         params?: { aggregatorReceiver?: Address }
-    ): AsyncOrSync<AggregatorResult | undefined>;
+    ): AsyncOrSync<If<CheckedResult, AggregatorResult, AggregatorResult | undefined>>;
+}
+
+export class AggregatorHelperError extends PendleSdkError {}
+
+export function forceAggregatorHelperToCheckResult(aggregatorHelper: AggregatorHelper): AggregatorHelper<true> {
+    return {
+        async makeCall(...params: Parameters<AggregatorHelper['makeCall']>): Promise<AggregatorResult> {
+            const res = await aggregatorHelper.makeCall(...params);
+            if (res == undefined) throw new AggregatorHelperError('Unexpected undefined result from aggregator.');
+            return res;
+        },
+    };
 }

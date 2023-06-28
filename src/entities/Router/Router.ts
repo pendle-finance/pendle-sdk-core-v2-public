@@ -1,6 +1,6 @@
 import { MetaMethodType } from '../../contracts';
-import { PendleSdkError } from '../../errors';
-import { devLog, promiseAllWithErrors } from '../../common';
+import { PendleSdkError, PendleSdkErrorParams } from '../../errors';
+import { promiseAllWithErrors, zip } from '../../common';
 
 import {
     BaseRoute,
@@ -17,6 +17,25 @@ import { getContractAddresses } from '../../common';
 import { KyberSwapAggregatorHelper } from './aggregatorHelper';
 
 export type RouterConfig = BaseRouterConfig;
+
+/**
+ * @remarks
+ * As the routing algorithm try multiple routes to find the best one,
+ * there are also multiple errors.
+ *
+ * This error is the collection of the errors from the routes.
+ */
+export class RoutingError extends PendleSdkError {
+    constructor(
+        readonly routeErrors: {
+            route: BaseRoute<any, any>;
+            error: unknown;
+        }[],
+        params?: PendleSdkErrorParams
+    ) {
+        super('RoutingError', params);
+    }
+}
 
 export class Router extends BaseRouter {
     /**
@@ -47,7 +66,7 @@ export class Router extends BaseRouter {
 
     override async findBestZapInRoute<
         ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>
-    >(routes: ZapInRoute[]): Promise<ZapInRoute | undefined> {
+    >(routes: ZapInRoute[]): Promise<ZapInRoute> {
         const routesWithBulkSeller = await Promise.all(
             routes.map(async (route) => {
                 if (!(await route.hasBulkSeller())) return [];
@@ -90,7 +109,7 @@ export class Router extends BaseRouter {
 
     override async findBestZapOutRoute<
         ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
-    >(routes: ZapOutRoute[]): Promise<ZapOutRoute | undefined> {
+    >(routes: ZapOutRoute[]): Promise<ZapOutRoute> {
         const routesWithBulkSeller = await Promise.all(
             routes.map(async (route) => {
                 if (!(await route.hasBulkSeller())) return [];
@@ -125,15 +144,14 @@ export class Router extends BaseRouter {
     }
 
     override async findBestLiquidityMigrationRoute<
-        LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any, any>
-    >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute | undefined> {
-        if (routes.length === 0) return undefined;
+        LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<any, LiquidityMigrationRoute, any>
+    >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute> {
+        if (routes.length === 0) {
+            throw new PendleSdkError('Unexpected empty routes');
+        }
         // Determine if we should use remove liquidity route with bulkseller.
         // Note that all route should have the same removeLiquidityRoute
         const optimalRemoveLiquidityRoute = await this.findBestZapOutRoute([routes[0].removeLiquidityRoute]);
-        if (!optimalRemoveLiquidityRoute) {
-            return undefined;
-        }
         routes = routes.map((route) => route.withRemoveLiquidityRoute(optimalRemoveLiquidityRoute));
 
         const routesWithBulkSellerForAddLiq = await Promise.all(
@@ -147,28 +165,21 @@ export class Router extends BaseRouter {
         return this.findBestGenericRoute(routes);
     }
 
-    async findBestGenericRoute<Route extends BaseRoute<any, Route>>(routes: Route[]): Promise<Route | undefined> {
+    async findBestGenericRoute<Route extends BaseRoute<any, Route>>(routes: Route[]): Promise<Route> {
         const routesData = routes.map(async (route) => {
-            try {
-                const netOutInEth = await route.estimateActualReceivedInEth();
-                return netOutInEth ? [{ route, netOutInEth }] : [];
-            } catch (e: any) {
-                devLog('Router params error: ', e);
-                if (e instanceof PendleSdkError) {
-                    throw e;
-                }
-                return [];
+            const netOutInEth = await route.estimateActualReceivedInEth();
+            if (!netOutInEth) {
+                throw new PendleSdkError('Unable to estimate output in term of ETH');
             }
+            return { route, netOutInEth };
         });
 
         const [results, errors] = await promiseAllWithErrors(routesData);
-        const flattenResults = results.flat();
-        if (flattenResults.length === 0) {
-            if (errors.length > 0) {
-                throw errors[0];
-            }
-            return undefined;
+
+        // consideration: maybe also gather the errors and put to the result.
+        if (results.length === 0) {
+            throw new RoutingError(Array.from(zip(routes, errors), ([route, error]) => ({ route, error })));
         }
-        return flattenResults.reduce((a, b) => (a.netOutInEth.gt(b.netOutInEth) ? a : b)).route;
+        return results.reduce((a, b) => (a.netOutInEth.gt(b.netOutInEth) ? a : b)).route;
     }
 }

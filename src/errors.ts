@@ -1,3 +1,4 @@
+// TODO reorganize the errors into respective subfolder.
 import { ErrorCode } from '@ethersproject/logger';
 import { Interface } from '@ethersproject/abi';
 import { utils as ethersUtils, BigNumber as BN } from 'ethers';
@@ -9,11 +10,16 @@ import {
     PendleContractErrorParams,
 } from './PendleContractErrorMessages';
 import { Address } from 'common';
+import * as ulid from 'ulid';
 
 // The list of error code is here
 // https://docs.ethers.io/v5/troubleshooting/errors/
 // The following is done to convert an enum into union.
 export type EthersJsErrorCode = ErrorCode[keyof ErrorCode];
+
+export type PendleSdkErrorParams = {
+    cause?: unknown;
+};
 
 /**
  * Pendle SDK Error base class to be extended by all errors.
@@ -25,24 +31,38 @@ export type EthersJsErrorCode = ErrorCode[keyof ErrorCode];
  * user-friendly error messages to users.
  */
 export class PendleSdkError extends Error {
-    constructor(message: string) {
-        super(message);
+    /**
+     * @privateRemarks
+     * The rng function can also be `ulid.detectRng(false)`  // allowInsecure = false
+     * But that function logs some info to the console.
+     * Passing our own instead.
+     *
+     * @see https://github.com/ulid/javascript/blob/a5831206a11636c94d4657b9e1a1354c529ee4e9/lib/index.ts#L138-L145
+     */
+    static ulid = ulid.factory(() => Math.random());
+
+    /**
+     * @remarks
+     * Below ES2022, Error has no `cause`.
+     * Adding it here as fallback so it is still accessible.
+     */
+    cause?: unknown;
+
+    /**
+     * @remarks
+     * An unique ID for the error. Can be used for reference else-where.
+     */
+    refId: string = PendleSdkError.ulid();
+
+    constructor(message: string, params?: PendleSdkErrorParams) {
+        super(message, params);
+
+        const cause = params?.cause;
+        if (!this.cause && cause) this.cause = cause;
 
         // Set the prototype explicitly.
         // See: https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
         Object.setPrototypeOf(this, this.constructor.prototype);
-    }
-}
-/**
- * @deprecated It is not used anymore. To be remove.
- */
-export class InvalidSlippageError extends PendleSdkError {
-    constructor(invalidSlippage: number) {
-        super(`Slippage must be a decimal value in the range [0, 1], but found ${invalidSlippage}`);
-    }
-
-    static verify(slippage: number) {
-        if (slippage < 0 || slippage > 1) throw new InvalidSlippageError(slippage);
     }
 }
 
@@ -51,8 +71,8 @@ export class NoRouteFoundError extends PendleSdkError {
     tokenOutAddress: Address;
     actionName: string;
 
-    constructor(actionName: string, from: Address, to: Address) {
-        super(`No route found to ${actionName} from ${from} to ${to}`);
+    constructor(actionName: string, from: Address, to: Address, params?: PendleSdkErrorParams) {
+        super(`No route found to ${actionName} from ${from} to ${to}.`, params);
         this.tokenInAddress = from;
         this.tokenOutAddress = to;
         this.actionName = actionName;
@@ -96,7 +116,7 @@ export class EthersJsError extends PendleSdkError {
 
     // must assume that err is the error thrown by ether's logger, because it does not has a type.
     constructor(err: Error) {
-        super(err.message);
+        super(err.message, { cause: err });
 
         Object.assign(this, err);
         this.originalMessage = this.message;
@@ -373,7 +393,7 @@ export class PanicBuiltinContractError extends BuiltinContractError {
  */
 export class ErrorBuiltinContractError extends BuiltinContractError {
     constructor(readonly reason: string, readonly cause: Error) {
-        super(reason);
+        super(reason, { cause });
     }
 }
 
@@ -383,104 +403,8 @@ export class ErrorBuiltinContractError extends BuiltinContractError {
  */
 export class GasEstimationError extends PendleSdkError {
     constructor(readonly cause: Error) {
-        super(`Gas estimation error: ${cause.message}`);
+        super(`Gas estimation error: ${cause.message}`, { cause });
     }
 }
 
-/**
- * @deprecated {@link PendleContractError}`<'ApproxFail'>` is now used instead.
- */
-export class ApproximateError extends EthersJsError {
-    static makeError(err: Error): EthersJsError | undefined {
-        if (!EthersJsError.errorArgsInclude(err, 'approx fail')) {
-            return undefined;
-        }
-        return new ApproximateError(err);
-    }
-}
-
-/**
- * @deprecated {@link PendleContractError} is now used instead.
- */
-export class InsufficientFundError extends EthersJsError {
-    static makeError(err: Error): EthersJsError | undefined {
-        if (
-            !EthersJsError.errorArgsInclude(err, 'insufficient') ||
-            EthersJsError.errorArgsInclude(err, 'insufficient allowance')
-        ) {
-            return undefined;
-        }
-        return new InsufficientFundError(err);
-    }
-}
-
-/**
- * @deprecated {@link PendleContractError} is now used instead.
- */
-export class MaxProportionExceededError extends EthersJsError {
-    static makeError(err: Error) {
-        if (!EthersJsError.errorArgsInclude(err, 'max proportion exceeded')) {
-            return undefined;
-        }
-        return new MaxProportionExceededError(err);
-    }
-
-    simpleMessage(): string {
-        return 'Insufficient SY in the liquidity pool to execute the action';
-    }
-}
-
-/**
- * @deprecated {@link PendleContractError} is now used instead.
- */
-export class ExchangeRateBelowOneError extends EthersJsError {
-    static makeError(err: Error) {
-        if (!EthersJsError.errorArgsInclude(err, 'exchange rate below 1')) {
-            return undefined;
-        }
-        return new ExchangeRateBelowOneError(err);
-    }
-
-    simpleMessage(): string {
-        return 'Insufficient PT in the liquidity pool to execute the action';
-    }
-}
-
-EthersJsError.MAKE_ERROR_CALLBACKS.push(
-    PendleContractError.factory,
-    BuiltinContractError.factory,
-    ApproximateError,
-    InsufficientFundError,
-    MaxProportionExceededError,
-    ExchangeRateBelowOneError
-);
-
-/**
- * Somehow we cannot override Logger.prototype.makeError, so skipped this part for now
- */
-
-/**
- * Wrap Error thrown by ethers.js with EtherError.
- *
- * This method will try to identify the error and wrap it with the appropriate error class.
- */
-// const oldMakeError = Logger.prototype.makeError;
-
-// Logger.prototype.makeError = function (message: string, code?: ErrorCode, params?: any): Error {
-//     if (typeof params === 'object' && params.reason == undefined) {
-//         /**
-//          *
-//          * As in https://github.com/ethers-io/ethers.js/blob/01b5badbb616b29fd8b69ef7c3cc3833062da3d7/packages/logger/src.ts/index.ts#L197
-//          * the method Logger#makeError will first set reason and code to the error, and then copy the params into the error.
-//          * But in https://github.com/ethers-io/ethers.js/blob/ec1b9583039a14a0e0fa15d0a2a6082a2f41cf5b/packages/abi/src.ts/interface.ts#L383
-//          * there is possibility of reason (of the params) being null, and it will overwrite the reason of the error.
-//          *
-//          * This hack will try to prevent that kind of overwrite.
-//          */
-//         params.reason = message;
-//     }
-
-//     let err = oldMakeError.call(this, message, code, params);
-
-//     return EthersJsError.makeEtherJsError(err);
-// };
+EthersJsError.MAKE_ERROR_CALLBACKS.push(PendleContractError.factory, BuiltinContractError.factory);

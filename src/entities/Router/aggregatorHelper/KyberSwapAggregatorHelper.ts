@@ -22,6 +22,7 @@ import {
     SwapData,
     createNoneAggregatorResult,
     createETH_WETHAggregatorResult,
+    AggregatorHelperError,
 } from './AggregatorHelper';
 
 export type KyberAPIParamsOverrides = {
@@ -77,6 +78,8 @@ function rawKybercallDataHasEncodedData(data: RawKybercallData): data is RawKybe
     return data.encodedSwapData !== undefined;
 }
 
+export class KyberSwapAggregatorHelperError extends AggregatorHelperError {}
+
 export class KyberSwapAggregatorResult implements AggregatorResult {
     readonly amountInUsd?: number | undefined;
     readonly amountOutUsd?: number | undefined;
@@ -114,7 +117,7 @@ export class KyberSwapAggregatorResult implements AggregatorResult {
     }
 }
 
-export class KyberSwapAggregatorHelper implements AggregatorHelper {
+export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
     readonly chainId: ChainId;
     readonly networkConnection: NetworkConnection;
     readonly routerAddress: Address;
@@ -156,7 +159,7 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
         tokenOut: Address,
         slippage: number,
         { aggregatorReceiver = this.routerAddress }: { aggregatorReceiver?: Address } = {}
-    ): Promise<AggregatorResult | undefined> {
+    ): Promise<AggregatorResult> {
         if (!isKyberSupportedChain(this.chainId)) {
             throw new PendleSdkError(`Chain ${this.chainId as number} is not supported for kybercall.`);
         }
@@ -207,18 +210,14 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper {
         //     console.log('Making request', this.axios.getUri(config));
         // }
 
-        try {
-            const { data }: { data: RawKybercallData } = await this.axios.request(config);
-            if (!rawKybercallDataHasEncodedData(data)) {
-                return undefined;
-            }
-            return new KyberSwapAggregatorResult({
-                ...data,
-                routerAddress: toAddress(data.routerAddress),
-            });
-        } catch {
-            return undefined;
+        const { data }: { data: RawKybercallData } = await this.axios.request(config);
+        if (!rawKybercallDataHasEncodedData(data)) {
+            throw new KyberSwapAggregatorHelperError('KyberSwap returned undefined encoded data');
         }
+        return new KyberSwapAggregatorResult({
+            ...data,
+            routerAddress: toAddress(data.routerAddress),
+        });
     }
 
     protected getApiParamsOverrides(): KyberAPIParamsOverrides {

@@ -8,16 +8,9 @@ import {
     calcSlippedUpAmount,
     calcSlippedDownAmountSqrt,
 } from '../src';
-import { InvalidSlippageError } from '../src/errors';
 import { currentConfig, networkConnection } from './util/testEnv';
 
 describe('Misc', () => {
-    it('#InvalidSlippageError', () => {
-        InvalidSlippageError.verify(0);
-        InvalidSlippageError.verify(1);
-        InvalidSlippageError.verify(0.5);
-    });
-
     it('#calcSlippedDownAmount', () => {
         const amount = BN.from(100);
         expect(calcSlippedDownAmount(amount, 0)).toEqBN(amount);

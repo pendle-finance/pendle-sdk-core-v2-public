@@ -16,16 +16,15 @@
         "typeRoots": ["./node_modules/@types"],
         "strict": true,
         "importHelpers": true,
-        "useDefineForClassFields": true
+        "useDefineForClassFields": true,
+        "lib": ["ES2022.Error"]
     },
     "ts-node": {
         "files": true,
         "compilerOptions": {
             "module": "CommonJS"
         },
-        "ignore": [
-            "/node_modules/(?!@pendle/core-v2/typechain-types)"
-        ]
+        "ignore": ["/node_modules/(?!@pendle/core-v2/typechain-types)"]
     },
     "include": ["src/**/*", "test/**/*", "scripts/**/*"]
 }

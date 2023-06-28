@@ -216,11 +216,20 @@ export function devLog(message?: unknown, ...optionalParams: AnyArray): void {
  * @returns pairs of arrays. The first array being the succesful results, and the second ones is the errors
  * of the failing ones.
  */
-export async function promiseAllWithErrors<T, ErrorType = Error>(promises: Promise<T>[]): Promise<[T[], ErrorType[]]> {
+export async function promiseAllWithErrors<T, ErrorType = unknown>(
+    promises: Promise<T>[]
+): Promise<[T[], ErrorType[]]> {
+    const settledPromises = await Promise.allSettled(promises);
     const results: T[] = [];
     const errors: ErrorType[] = [];
+    for (const settledPromise of settledPromises) {
+        if (settledPromise.status === 'fulfilled') {
+            results.push(settledPromise.value);
+        } else {
+            errors.push(settledPromise.reason);
+        }
+    }
 
-    await Promise.all(promises.map((promise) => promise.then((r) => results.push(r)).catch((e) => errors.push(e))));
     return [results, errors];
 }
 
@@ -374,3 +383,13 @@ export const NoArgsCache = createNoArgsCache<object>(
 );
 
 /* eslint-enable */
+
+export function assertDefined<T>(value: T | null | undefined, err?: string | (() => never)): T {
+    if (value != undefined) return value;
+    err ??= 'Unexpected undefined value';
+    if (typeof err == 'string') {
+        throw new Error(err);
+    } else {
+        return err();
+    }
+}

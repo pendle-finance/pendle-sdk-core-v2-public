@@ -17,8 +17,13 @@ import { BigNumber as BN, constants as etherConstants } from 'ethers';
 import { MarketEntity } from '../MarketEntity';
 import { SyEntity } from '../SyEntity';
 import { YtEntity } from '../YtEntity';
-import { NoRouteFoundError, PendleSdkError } from '../../errors';
-import { AggregatorHelper, SwapType, VoidAggregatorHelper } from './aggregatorHelper';
+import { NoRouteFoundError, PendleSdkError, PendleSdkErrorParams } from '../../errors';
+import {
+    AggregatorHelper,
+    SwapType,
+    VoidAggregatorHelper,
+    forceAggregatorHelperToCheckResult,
+} from './aggregatorHelper';
 import {
     NATIVE_ADDRESS_0x00,
     Address,
@@ -91,14 +96,16 @@ export abstract class BaseRouter extends PendleEntity {
     };
 
     readonly routerStatic: WrappedContract<IPRouterStatic>;
-    readonly aggregatorHelper: AggregatorHelper;
+    readonly aggregatorHelper: AggregatorHelper<true>;
     readonly chainId: ChainId;
     readonly gasFeeEstimator: GasFeeEstimator;
 
     constructor(readonly address: Address, config: BaseRouterConfig) {
         super(address, { abi: IPAllActionABI, ...config });
         this.chainId = config.chainId;
-        this.aggregatorHelper = config.aggregatorHelper ?? new VoidAggregatorHelper();
+        this.aggregatorHelper = forceAggregatorHelperToCheckResult(
+            config.aggregatorHelper ?? new VoidAggregatorHelper()
+        );
         this.routerStatic = getRouterStatic(config);
         this.gasFeeEstimator = config.gasFeeEstimator ?? new GasFeeEstimator(this.provider!);
     }
@@ -114,13 +121,13 @@ export abstract class BaseRouter extends PendleEntity {
 
     abstract findBestZapInRoute<ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>>(
         routes: ZapInRoute[]
-    ): Promise<ZapInRoute | undefined>;
+    ): Promise<ZapInRoute>;
     abstract findBestZapOutRoute<
         ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
-    >(routes: ZapOutRoute[]): Promise<ZapOutRoute | undefined>;
+    >(routes: ZapOutRoute[]): Promise<ZapOutRoute>;
     abstract findBestLiquidityMigrationRoute<
         LiquidityMigrationRoute extends liqMigrationRoutes.BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any, any>
-    >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute | undefined>;
+    >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute>;
 
     get provider() {
         return this.networkConnection.provider ?? this.networkConnection.signer.provider;
@@ -305,10 +312,9 @@ export abstract class BaseRouter extends PendleEntity {
                     tokenMintSy,
                 })
         );
-        const bestRoute = await this.findBestZapInRoute(routes);
-        if (bestRoute === undefined) {
-            throw NoRouteFoundError.action('add liquidity', tokenIn, marketAddr);
-        }
+        const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
+            this.throwNoRouteFoundError('add liquidity', tokenIn, marketAddr, { cause })
+        );
         return bestRoute.buildCall();
     }
 
@@ -456,10 +462,9 @@ export abstract class BaseRouter extends PendleEntity {
                 })
         );
 
-        const bestRoute = await this.findBestZapInRoute(routes);
-        if (bestRoute === undefined) {
-            throw NoRouteFoundError.action('add liquidity', tokenIn, marketAddr);
-        }
+        const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
+            this.throwNoRouteFoundError('add liquidity', tokenIn, marketAddr, { cause })
+        );
         return bestRoute.buildCall();
     }
 
@@ -529,10 +534,9 @@ export abstract class BaseRouter extends PendleEntity {
                 })
         );
 
-        const bestRoute = await this.findBestZapInRoute(routes);
-        if (bestRoute === undefined) {
-            throw NoRouteFoundError.action('add liquidity', tokenIn, marketAddr);
-        }
+        const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
+            this.throwNoRouteFoundError('add liquidity', tokenIn, marketAddr, { cause })
+        );
         return bestRoute.buildCall();
     }
 
@@ -606,10 +610,10 @@ export abstract class BaseRouter extends PendleEntity {
                 })
         );
 
-        const bestRoute = await this.findBestZapOutRoute(routes);
-        if (bestRoute === undefined) {
-            throw NoRouteFoundError.action('remove liquidity', marketAddr, tokenOut);
-        }
+        const bestRoute = await this.findBestZapOutRoute(routes).catch((cause: unknown) =>
+            this.throwNoRouteFoundError('remove liquidity', marketAddr, tokenOut, { cause })
+        );
+
         return bestRoute.buildCall();
     }
 
@@ -718,10 +722,9 @@ export abstract class BaseRouter extends PendleEntity {
                     tokenRedeemSy,
                 })
         );
-        const bestRoute = await this.findBestZapOutRoute(routes);
-        if (bestRoute === undefined) {
-            throw NoRouteFoundError.action('zap out', marketAddr, tokenOut);
-        }
+        const bestRoute = await this.findBestZapOutRoute(routes).catch((cause: unknown) =>
+            this.throwNoRouteFoundError('zap out', marketAddr, tokenOut, { cause })
+        );
         return bestRoute.buildCall();
     }
 
@@ -826,26 +829,21 @@ export abstract class BaseRouter extends PendleEntity {
         }
     > {
         const params = this.addExtraParams(_params);
-        if (typeof market === 'string') {
-            market = new MarketEntity(market, this.entityConfig);
-        }
-        const marketAddr = market.address;
-        const syEntity = await market.syEntity(params.forCallStatic);
+        const marketEntity = typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
+        const syEntity = await marketEntity.syEntity(params.forCallStatic);
         const routeContext = this.createRouteContext<T, SwapExactTokenForPtRoute<T>>({ params, syEntity, slippage });
         const tokenMintSyList = await routeContext.getTokensMintSy();
         const routes = tokenMintSyList.map(
             (tokenMintSy) =>
-                new SwapExactTokenForPtRoute(marketAddr, tokenIn, netTokenIn, slippage, {
+                new SwapExactTokenForPtRoute(marketEntity.address, tokenIn, netTokenIn, slippage, {
                     context: routeContext,
                     tokenMintSy,
                 })
         );
-        const bestRoute = await this.findBestZapInRoute(routes);
+        const bestRoute = await this.findBestZapInRoute(routes).catch(async (cause: unknown) =>
+            this.throwNoRouteFoundError('swap', tokenIn, await marketEntity.pt(), { cause })
+        );
 
-        if (bestRoute === undefined) {
-            const pt = await market.pt(params.forCallStatic);
-            throw NoRouteFoundError.action('swap', tokenIn, pt);
-        }
         return bestRoute.buildCall();
     }
 
@@ -908,10 +906,9 @@ export abstract class BaseRouter extends PendleEntity {
                     tokenMintSy,
                 })
         );
-        const bestRoute = await this.findBestZapInRoute(routes);
-        if (bestRoute === undefined) {
-            throw NoRouteFoundError.action('mint', tokenIn, syAddr);
-        }
+        const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
+            this.throwNoRouteFoundError('mint', tokenIn, syAddr, { cause })
+        );
         return bestRoute.buildCall();
     }
 
@@ -940,10 +937,9 @@ export abstract class BaseRouter extends PendleEntity {
                     tokenRedeemSy,
                 })
         );
-        const bestRoute = await this.findBestZapOutRoute(routes);
-        if (bestRoute === undefined) {
-            throw NoRouteFoundError.action('redeem', syAddr, tokenOut);
-        }
+        const bestRoute = await this.findBestZapOutRoute(routes).catch((cause: unknown) =>
+            this.throwNoRouteFoundError('redeem', syAddr, tokenOut, { cause })
+        );
         return bestRoute.buildCall();
     }
 
@@ -975,10 +971,9 @@ export abstract class BaseRouter extends PendleEntity {
                     tokenMintSy,
                 })
         );
-        const bestRoute = await this.findBestZapInRoute(routes);
-        if (bestRoute === undefined) {
-            throw NoRouteFoundError.action('mint', tokenIn, ytAddr);
-        }
+        const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
+            this.throwNoRouteFoundError('mint', tokenIn, ytAddr, { cause })
+        );
         return bestRoute.buildCall();
     }
 
@@ -1026,10 +1021,9 @@ export abstract class BaseRouter extends PendleEntity {
                     tokenRedeemSy,
                 })
         );
-        const bestRoute = await this.findBestZapOutRoute(routes);
-        if (bestRoute === undefined) {
-            throw NoRouteFoundError.action('redeem', ytAddr, tokenOut);
-        }
+        const bestRoute = await this.findBestZapOutRoute(routes).catch((cause: unknown) =>
+            this.throwNoRouteFoundError('redeem', ytAddr, tokenOut, { cause })
+        );
         return bestRoute.buildCall();
     }
 
@@ -1128,12 +1122,8 @@ export abstract class BaseRouter extends PendleEntity {
         }
     > {
         const params = this.addExtraParams(_params);
-        if (typeof market === 'string') {
-            market = new MarketEntity(market, this.entityConfig);
-        }
-        // Type safe
-        const marketEntity = market;
-        const syEntity = await market.syEntity(params.forCallStatic);
+        const marketEntity = typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
+        const syEntity = await marketEntity.syEntity(params.forCallStatic);
         const routeContext = this.createRouteContext<T, SwapExactPtForTokenRoute<T>>({ params, syEntity, slippage });
         const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
         const routes = tokenRedeemSyList.map(
@@ -1143,10 +1133,9 @@ export abstract class BaseRouter extends PendleEntity {
                     tokenRedeemSy,
                 })
         );
-        const bestRoute = await this.findBestZapOutRoute(routes);
-        if (bestRoute === undefined) {
-            throw NoRouteFoundError.action('swap', await market.pt(params.forCallStatic), tokenOut);
-        }
+        const bestRoute = await this.findBestZapOutRoute(routes).catch(async (cause: unknown) =>
+            this.throwNoRouteFoundError('swap', await marketEntity.pt(params.forCallStatic), tokenOut, { cause })
+        );
         return bestRoute.buildCall();
     }
 
@@ -1225,26 +1214,20 @@ export abstract class BaseRouter extends PendleEntity {
         }
     > {
         const params = this.addExtraParams(_params);
-        if (typeof market === 'string') {
-            market = new MarketEntity(market, this.entityConfig);
-        }
-        const marketAddr = market.address;
-        const syEntity = await market.syEntity(params.forCallStatic);
+        const marketEntity = typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
+        const syEntity = await marketEntity.syEntity(params.forCallStatic);
         const routeContext = this.createRouteContext<T, SwapExactTokenForYtRoute<T>>({ params, syEntity, slippage });
         const tokenMintSyList = await routeContext.getTokensMintSy();
         const routes = tokenMintSyList.map(
             (tokenMintSy) =>
-                new SwapExactTokenForYtRoute(marketAddr, tokenIn, netTokenIn, slippage, {
+                new SwapExactTokenForYtRoute(marketEntity.address, tokenIn, netTokenIn, slippage, {
                     context: routeContext,
                     tokenMintSy,
                 })
         );
-        const bestRoute = await this.findBestZapInRoute(routes);
-        if (bestRoute === undefined) {
-            // TODO: One additional call to get the yt address, does it worth it?
-            const yt = await market.ptEntity().then((pt) => pt.yt(params.forCallStatic));
-            throw NoRouteFoundError.action('swap', tokenIn, yt);
-        }
+        const bestRoute = await this.findBestZapInRoute(routes).catch(async (cause: unknown) =>
+            this.throwNoRouteFoundError('swap', tokenIn, await marketEntity.yt(params.forCallStatic), { cause })
+        );
         return bestRoute.buildCall();
     }
 
@@ -1262,11 +1245,8 @@ export abstract class BaseRouter extends PendleEntity {
         }
     > {
         const params = this.addExtraParams(_params);
-        if (typeof market === 'string') {
-            market = new MarketEntity(market, this.entityConfig);
-        }
-        const marketEntity = market; // type safe
-        const syEntity = await market.syEntity(params.forCallStatic);
+        const marketEntity = typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
+        const syEntity = await marketEntity.syEntity(params.forCallStatic);
         const routeContext = this.createRouteContext<T, SwapExactYtForTokenRoute<T>>({ params, syEntity, slippage });
         const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
         const routes = tokenRedeemSyList.map(
@@ -1276,12 +1256,9 @@ export abstract class BaseRouter extends PendleEntity {
                     tokenRedeemSy,
                 })
         );
-        const bestRoute = await this.findBestZapOutRoute(routes);
-        if (bestRoute === undefined) {
-            // TODO: One additional call to get the yt address, does it worth it?
-            const yt = await market.ptEntity().then((pt) => pt.yt(params.forCallStatic));
-            throw NoRouteFoundError.action('swap', yt, tokenOut);
-        }
+        const bestRoute = await this.findBestZapOutRoute(routes).catch(async (cause: unknown) =>
+            this.throwNoRouteFoundError('swap', await marketEntity.yt(params.forCallStatic), tokenOut, { cause })
+        );
         return bestRoute.buildCall();
     }
 
@@ -1485,15 +1462,13 @@ export abstract class BaseRouter extends PendleEntity {
     > {
         const redeemRewards = _params.redeemRewards ?? false;
         const params = this.addExtraParams(_params);
-        srcMarket = typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
-        dstMarket = typeof dstMarket === 'string' ? new MarketEntity(dstMarket, this.entityConfig) : dstMarket;
+        const srcMarketEntity =
+            typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
+        const dstMarketEntity =
+            typeof dstMarket === 'string' ? new MarketEntity(dstMarket, this.entityConfig) : dstMarket;
         const [srcSyEntity, dstSyEntity] = await Promise.all([
-            srcMarket.syEntity({
-                entityConfig: this.entityConfig,
-            }),
-            dstMarket.syEntity({
-                entityConfig: this.entityConfig,
-            }),
+            srcMarketEntity.syEntity({ entityConfig: this.entityConfig }),
+            dstMarketEntity.syEntity({ entityConfig: this.entityConfig }),
         ]);
 
         const removeLiqContext = this.createRouteContext<
@@ -1529,14 +1504,13 @@ export abstract class BaseRouter extends PendleEntity {
         });
 
         const removeLiquidityRoute = new liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper(
-            srcMarket.address,
+            srcMarketEntity.address,
             netLpToMigrate,
             tokenRedeemSrcSy,
             slippage,
             { context: removeLiqContext, tokenRedeemSy: tokenRedeemSrcSy, redeemRewards }
         );
 
-        const dstMarketAddr = dstMarket.address;
         const routes = dstTokenMintSyList.map(
             (dstTokenMintSy) =>
                 new liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyRoute({
@@ -1545,7 +1519,7 @@ export abstract class BaseRouter extends PendleEntity {
                     redeemRewards,
                     slippage,
                     addLiquidityRouteConfig: {
-                        destinationMarket: dstMarketAddr,
+                        destinationMarket: dstMarketEntity.address,
                         params: {
                             context: addLiqContext,
                             tokenMintSy: dstTokenMintSy,
@@ -1554,10 +1528,11 @@ export abstract class BaseRouter extends PendleEntity {
                 })
         );
 
-        const route = await this.findBestLiquidityMigrationRoute(routes);
-        if (!route) {
-            throw NoRouteFoundError.action('migrate liquidity', srcMarket.address, dstMarket.address);
-        }
+        const route = await this.findBestLiquidityMigrationRoute(routes).catch((cause: unknown) =>
+            this.throwNoRouteFoundError('migrate liquidity', srcMarketEntity.address, dstMarketEntity.address, {
+                cause,
+            })
+        );
         return route.buildCall();
     }
 
@@ -1579,13 +1554,15 @@ export abstract class BaseRouter extends PendleEntity {
     > {
         const redeemRewards = _params.redeemRewards ?? false;
         const params = this.addExtraParams(_params);
-        srcMarket = typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
-        dstMarket = typeof dstMarket === 'string' ? new MarketEntity(dstMarket, this.entityConfig) : dstMarket;
+        const srcMarketEntity =
+            typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
+        const dstMarketEntity =
+            typeof dstMarket === 'string' ? new MarketEntity(dstMarket, this.entityConfig) : dstMarket;
         const [srcSyEntity, dstSyEntity] = await Promise.all([
-            srcMarket.syEntity({
+            srcMarketEntity.syEntity({
                 entityConfig: this.entityConfig,
             }),
-            dstMarket.syEntity({
+            dstMarketEntity.syEntity({
                 entityConfig: this.entityConfig,
             }),
         ]);
@@ -1623,14 +1600,13 @@ export abstract class BaseRouter extends PendleEntity {
         });
 
         const removeLiquidityRoute = new liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper(
-            srcMarket.address,
+            srcMarketEntity.address,
             netLpToMigrate,
             tokenRedeemSrcSy,
             slippage,
             { context: removeLiqContext, tokenRedeemSy: tokenRedeemSrcSy, redeemRewards }
         );
 
-        const dstMarketAddr = dstMarket.address;
         const routes = dstTokenMintSyList.map(
             (dstTokenMintSy) =>
                 new liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyKeepYtRoute({
@@ -1639,7 +1615,7 @@ export abstract class BaseRouter extends PendleEntity {
                     redeemRewards,
                     slippage,
                     addLiquidityRouteConfig: {
-                        destinationMarket: dstMarketAddr,
+                        destinationMarket: dstMarketEntity.address,
                         params: {
                             context: addLiqContext,
                             tokenMintSy: dstTokenMintSy,
@@ -1648,10 +1624,11 @@ export abstract class BaseRouter extends PendleEntity {
                 })
         );
 
-        const route = await this.findBestLiquidityMigrationRoute(routes);
-        if (!route) {
-            throw NoRouteFoundError.action('migrate liquidity', srcMarket.address, dstMarket.address);
-        }
+        const route = await this.findBestLiquidityMigrationRoute(routes).catch((cause: unknown) =>
+            this.throwNoRouteFoundError('migrate liquidity', srcMarketEntity.address, dstMarketEntity.address, {
+                cause,
+            })
+        );
         return route.buildCall();
     }
 
@@ -1739,15 +1716,25 @@ export abstract class BaseRouter extends PendleEntity {
     ): Promise<SwapData[]> {
         const swapData = await Promise.all(
             tokenAmounts.map(async (tokenAmount) => {
-                const res = await this.aggregatorHelper.makeCall(tokenAmount, tokenOut, slippage, {
-                    aggregatorReceiver: params.receiver,
-                });
-                if (res === undefined) {
-                    throw NoRouteFoundError.action('sell token', tokenAmount.token, tokenOut);
+                try {
+                    const res = await this.aggregatorHelper.makeCall(tokenAmount, tokenOut, slippage, {
+                        aggregatorReceiver: params.receiver,
+                    });
+                    return res.createSwapData({ needScale: true });
+                } catch (cause: unknown) {
+                    return this.throwNoRouteFoundError('sell token', tokenAmount.token, tokenOut, { cause });
                 }
-                return res.createSwapData({ needScale: true });
             })
         );
         return swapData;
+    }
+
+    protected async throwNoRouteFoundError(
+        actionName: string,
+        from: Address,
+        to: Address,
+        params?: PendleSdkErrorParams
+    ): Promise<never> {
+        throw new NoRouteFoundError(actionName, from, to, params);
     }
 }

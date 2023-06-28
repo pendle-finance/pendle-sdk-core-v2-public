@@ -47,7 +47,8 @@
         "ethers": "^5.7.1",
         "merkletreejs": "^0.3.10",
         "ts-essentials": "^9.3.1",
-        "tslib": "^2.5.0"
+        "tslib": "^2.5.0",
+        "ulid": "^2.3.0"
     },
     "devDependencies": {
         "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.15.2",
@@ -67,7 +68,7 @@
         "node-notifier": "^10.0.1",
         "prettier": "^2.8.4",
         "size-limit": "^8.1.0",
-        "ts-jest": "^29.0.5",
+        "ts-jest": "^29.1.0",
         "ts-node": "^10.9.1",
         "tsdx": "^0.14.1",
         "typedoc": "^0.24.8",

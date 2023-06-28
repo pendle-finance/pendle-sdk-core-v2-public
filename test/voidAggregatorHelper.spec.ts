@@ -9,6 +9,7 @@ import {
 import { currentConfig } from './util/testEnv';
 import { BigNumber as BN } from 'ethers';
 import { networkConnection } from './util/testEnv';
+import { SLIPPAGE_TYPE2 } from './util/constants';
 
 describe('VoidAggregatorHelper', () => {
     const usdcAmount = createTokenAmount({ token: currentConfig.tokens.USDC, amount: BN.from(10) });
@@ -25,7 +26,9 @@ describe('VoidAggregatorHelper', () => {
         expect(voidAggregatorHelper.makeCall(usdcAmount, NATIVE_ADDRESS_0x00)).toBeUndefined();
         expect(voidAggregatorHelper.makeCall(nativeTokenAmount, usdcAddress)).toBeUndefined();
     });
-    it('router with undefined aggregator helper', () => {
-        expect(router.aggregatorHelper).toBeInstanceOf(VoidAggregatorHelper);
+    it('router with undefined aggregator helper', async () => {
+        await expect(
+            router.aggregatorHelper.makeCall(nativeTokenAmount, usdcAddress, SLIPPAGE_TYPE2)
+        ).rejects.toThrowError();
     });
 });

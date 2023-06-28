@@ -184,7 +184,7 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
             this.router.gasFeeEstimator.getGasFee(),
         ]);
 
-        if (netOutInEth == undefined || gasUsed == undefined) return undefined;
+        if (netOutInEth == undefined) return undefined;
         return netOutInEth.sub(gasUsed.mul(gasFee));
     }
 
