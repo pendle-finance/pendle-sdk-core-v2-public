@@ -3,6 +3,7 @@ export const CHAIN_ID_MAPPING = {
     FUJI: 43113,
     MUMBAI: 80001,
     ARBITRUM: 42161,
+    BSC: 56,
 } as const;
 
 /**

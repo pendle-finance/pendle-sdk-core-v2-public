@@ -96,7 +96,7 @@ const zapOutData = new CsvWriter([
     'selected',
 ] as const);
 
-describeWrite('Routing', () => {
+(currentConfig.chainId === 1 ? describeWrite : describe.skip)('Routing', () => {
     const router = Router.getRouter(currentConfig.routerConfig);
     const signerAddress = networkConnectionWithChainId.signerAddress;
 

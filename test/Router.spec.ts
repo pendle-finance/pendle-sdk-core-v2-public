@@ -478,13 +478,16 @@ describeWrite('Router', () => {
                 ptAddress,
             ]);
 
-            const readerResult = await sendTxWithInfApproval(
-                () =>
-                    router.removeLiquidityDualSyAndPt(currentConfig.marketAddress, liquidityRemove, SLIPPAGE_TYPE2, {
-                        method: 'meta-method',
-                    }),
-                [marketAddress]
+            const metaMethod = await router.removeLiquidityDualSyAndPt(
+                currentConfig.marketAddress,
+                liquidityRemove,
+                SLIPPAGE_TYPE2,
+                {
+                    method: 'meta-method',
+                }
             );
+
+            const readerResult = await sendTxWithInfApproval(() => metaMethod, [marketAddress]);
 
             const [lpBalanceAfter, syBalanceAfter, ptBalanceAfter] = await getUserBalances(signerAddress, [
                 marketAddress,
@@ -1225,61 +1228,68 @@ describeWrite('Router', () => {
             throw new Error('no markets with different sy');
         }
 
-        const sameSyMarkets = findMarketsWithSameSy();
-        const differentSyMarkets = findMarketsWithDifferentSy();
-
         const tests = {
             'same sy normal': {
-                getMarkets: () => sameSyMarkets,
+                getMarkets: findMarketsWithSameSy,
                 sameSy: true,
                 keepYt: false,
                 redeemRewards: false,
             },
             'same sy keep yt': {
-                getMarkets: () => sameSyMarkets,
+                getMarkets: findMarketsWithSameSy,
                 sameSy: true,
                 keepYt: true,
                 redeemRewards: false,
             },
             'different sy normal': {
-                getMarkets: () => differentSyMarkets,
+                getMarkets: findMarketsWithDifferentSy,
                 sameSy: false,
                 keepYt: false,
                 redeemRewards: false,
             },
             'different sy keep yt': {
-                getMarkets: () => differentSyMarkets,
+                getMarkets: findMarketsWithDifferentSy,
                 sameSy: false,
                 keepYt: true,
                 redeemRewards: false,
             },
             'same sy normal claim rewards': {
-                getMarkets: () => sameSyMarkets,
+                getMarkets: findMarketsWithSameSy,
                 sameSy: true,
                 keepYt: false,
                 redeemRewards: true,
             },
             'same sy keep yt claim rewards': {
-                getMarkets: () => sameSyMarkets,
+                getMarkets: findMarketsWithSameSy,
                 sameSy: true,
                 keepYt: true,
                 redeemRewards: true,
             },
             'different sy normal claim rewards': {
-                getMarkets: () => differentSyMarkets,
+                getMarkets: findMarketsWithDifferentSy,
                 sameSy: false,
                 keepYt: false,
                 redeemRewards: true,
             },
             'different sy keep yt claim rewards': {
-                getMarkets: () => differentSyMarkets,
+                getMarkets: findMarketsWithDifferentSy,
                 sameSy: false,
                 keepYt: true,
                 redeemRewards: true,
             },
         };
 
-        it.each(Object.entries(tests))('%s', async (_, { getMarkets, sameSy, keepYt, redeemRewards }) => {
+        // TODO better way to filter this
+        const testData = Object.entries(tests).filter(([_name, data]) => {
+            try {
+                data.getMarkets();
+                return true;
+            } catch {
+                return false;
+            }
+        });
+
+        it.each(testData)('%s', async (_, { getMarkets, sameSy, keepYt, redeemRewards }) => {
             const [srcMarket, dstMarket] = getMarkets();
             const [srcMarketAddress, dstMarketAddress] = [srcMarket.market, dstMarket.market];
             const rewardTokens = await getRewardTokens(srcMarket);

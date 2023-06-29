@@ -73,6 +73,7 @@ const providerUrls = {
     [CHAIN_ID_MAPPING.ETHEREUM]: `https://mainnet.infura.io/v3/${INFURA_PROJECT_ID}`,
     [CHAIN_ID_MAPPING.FUJI]: 'https://api.avax-test.network/ext/bc/C/rpc',
     [CHAIN_ID_MAPPING.MUMBAI]: 'https://matic-mumbai.chainstacklabs.com',
+    [CHAIN_ID_MAPPING.BSC]: 'https://rpc.ankr.com/bsc',
     [LOCAL_CHAIN_ID]: 'http://127.0.0.1:8545',
 };
 
