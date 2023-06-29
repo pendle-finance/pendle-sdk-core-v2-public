@@ -84,7 +84,7 @@ async function main() {
             (await getBalance(tokenIn, signerAddress)).mul(MINT_SY_PERCENTAGE).div(100),
             SLIPPAGE_TYPE3
         )
-        .then(async (tx: any) => await tx.wait());
+        .then((tx: any) => tx.wait());
 
     console.log('minting PY');
     await router

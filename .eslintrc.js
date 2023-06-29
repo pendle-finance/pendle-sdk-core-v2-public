@@ -35,6 +35,7 @@ module.exports = {
         "@typescript-eslint/no-unsafe-call": "warn",
         "@typescript-eslint/no-unsafe-member-access": "warn",
         "@typescript-eslint/no-unsafe-return": "warn",
+        "@typescript-eslint/return-await": "error",
         
         // There are cases we want an async function to have sync body, as we
         // still want the result to be a Promise.

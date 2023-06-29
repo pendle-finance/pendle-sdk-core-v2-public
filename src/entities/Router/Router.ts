@@ -69,9 +69,13 @@ export class Router extends BaseRouter {
     >(routes: ZapInRoute[]): Promise<ZapInRoute> {
         const routesWithBulkSeller = await Promise.all(
             routes.map(async (route) => {
-                if (!(await route.hasBulkSeller())) return [];
-                const routeWithBulkSeller = await this.tryZapInRouteWithBulkSeller(route);
-                return routeWithBulkSeller == undefined ? [] : [routeWithBulkSeller];
+                try {
+                    if (!(await route.hasBulkSeller())) return [];
+                    const routeWithBulkSeller = await this.tryZapInRouteWithBulkSeller(route);
+                    return routeWithBulkSeller == undefined ? [] : [routeWithBulkSeller];
+                } catch {
+                    return [];
+                }
             })
         ).then((result) => result.flat());
         routes = [...routes, ...routesWithBulkSeller];
@@ -94,16 +98,20 @@ export class Router extends BaseRouter {
             return route.routeWithBulkSeller();
         }
 
-        const tradeValueInEth = await route.estimateSourceTokenAmountInEth();
-        const isBelowLimit = tradeValueInEth.lt(bulkLimit);
-        const shouldRouteThroughBulkSeller = isBelowLimit;
-        if (shouldRouteThroughBulkSeller) {
-            // TODO implicitly specify to clone the route with more cache info.
-            // Right now the aggregatorResult is copied from route. The above
-            // already get the aggregator result and cached, so there should be
-            // no problem. In the future, we might want to directly specify
-            // that we want to get some info first before cloning.
-            return route.routeWithBulkSeller();
+        try {
+            const tradeValueInEth = await route.estimateSourceTokenAmountInEth();
+            const isBelowLimit = tradeValueInEth.lt(bulkLimit);
+            const shouldRouteThroughBulkSeller = isBelowLimit;
+            if (shouldRouteThroughBulkSeller) {
+                // TODO implicitly specify to clone the route with more cache info.
+                // Right now the aggregatorResult is copied from route. The above
+                // already get the aggregator result and cached, so there should be
+                // no problem. In the future, we might want to directly specify
+                // that we want to get some info first before cloning.
+                return route.routeWithBulkSeller();
+            }
+        } catch {
+            return undefined;
         }
     }
 
@@ -112,9 +120,13 @@ export class Router extends BaseRouter {
     >(routes: ZapOutRoute[]): Promise<ZapOutRoute> {
         const routesWithBulkSeller = await Promise.all(
             routes.map(async (route) => {
-                if (!(await route.hasBulkSeller())) return [];
-                const routeWithBulkSeller = await this.tryZapOutRouteWithBulkSeller(route);
-                return routeWithBulkSeller == undefined ? [] : [routeWithBulkSeller];
+                try {
+                    if (!(await route.hasBulkSeller())) return [];
+                    const routeWithBulkSeller = await this.tryZapOutRouteWithBulkSeller(route);
+                    return routeWithBulkSeller == undefined ? [] : [routeWithBulkSeller];
+                } catch {
+                    return [];
+                }
             })
         ).then((result) => result.flat());
         routes = [...routes, ...routesWithBulkSeller];
@@ -128,18 +140,21 @@ export class Router extends BaseRouter {
         if (bulkLimit.eq(BaseRouter.BULK_SELLER_NO_LIMIT)) {
             return route.routeWithBulkSeller();
         }
-
-        const tradeValueInEth = await route.estimateMaxOutAmoungAllRouteInEth();
-        if (tradeValueInEth == undefined) return;
-        const isBelowLimit = tradeValueInEth.lt(bulkLimit);
-        const shouldRouteThroughBulkSeller = isBelowLimit;
-        if (shouldRouteThroughBulkSeller) {
-            // TODO implicitly specify to clone the route with more cache info.
-            // Right now the aggregatorResult is copied from route. The above
-            // already get the aggregator result and cached, so there should be
-            // no problem. In the future, we might want to directly specify
-            // that we want to get some info first before cloning.
-            return route.routeWithBulkSeller();
+        try {
+            const tradeValueInEth = await route.estimateMaxOutAmoungAllRouteInEth();
+            if (tradeValueInEth == undefined) return;
+            const isBelowLimit = tradeValueInEth.lt(bulkLimit);
+            const shouldRouteThroughBulkSeller = isBelowLimit;
+            if (shouldRouteThroughBulkSeller) {
+                // TODO implicitly specify to clone the route with more cache info.
+                // Right now the aggregatorResult is copied from route. The above
+                // already get the aggregator result and cached, so there should be
+                // no problem. In the future, we might want to directly specify
+                // that we want to get some info first before cloning.
+                return route.routeWithBulkSeller();
+            }
+        } catch {
+            return undefined;
         }
     }
 
@@ -156,8 +171,12 @@ export class Router extends BaseRouter {
 
         const routesWithBulkSellerForAddLiq = await Promise.all(
             routes.map(async (route) => {
-                if (!(await route.addLiquidityHasBulkSeller())) return [];
-                return [route.addLiquidityRouteWithBulkSeller()];
+                try {
+                    if (!(await route.addLiquidityHasBulkSeller())) return [];
+                    return [route.addLiquidityRouteWithBulkSeller()];
+                } catch {
+                    return [];
+                }
             })
         ).then((res) => res.flat());
 

@@ -1697,7 +1697,7 @@ export abstract class BaseRouter extends PendleEntity {
         syTokenAmounts: RawTokenAmount<BigNumberish>[],
         params: { receiver?: Address } = {}
     ): Promise<TokenOutput[]> {
-        return await Promise.all(
+        return Promise.all(
             syTokenAmounts.map(async ({ token, amount }) => {
                 const res = await this.redeemSyToToken(token, amount, tokenOut, slippage, {
                     aggregatorReceiver: params.receiver,

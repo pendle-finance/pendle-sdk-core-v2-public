@@ -66,7 +66,7 @@ export class SwapExactTokenForPtRoute<T extends MetaMethodType> extends BaseZapI
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return await this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 
     async buildCall(): RouterMetaMethodReturnType<

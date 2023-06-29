@@ -125,7 +125,7 @@ export class ContractMetaMethod<
 
         data.overrides = { ...data.overrides, gasLimit: bufferedGas };
 
-        return await this.callback(
+        return this.callback(
             'send',
             this.contract.functions[this.methodName as string] as EthersContractMethod<C, 'send', M>,
             data,

@@ -60,7 +60,7 @@ export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return await this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 
     async buildCall(): RouterMetaMethodReturnType<

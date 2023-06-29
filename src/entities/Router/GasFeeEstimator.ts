@@ -22,6 +22,6 @@ export class GasFeeEstimator {
     }
 
     private async getGasFeeImpl(): Promise<BN> {
-        return await this.provider.getGasPrice();
+        return this.provider.getGasPrice();
     }
 }

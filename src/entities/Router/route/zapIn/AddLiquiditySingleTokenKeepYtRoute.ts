@@ -106,7 +106,7 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return await this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
     }
 
     /**
