@@ -83,12 +83,16 @@ export abstract class BaseZapInRoute<
     @RouteContext.NoArgsSharedCache
     async estimateSourceTokenAmountInEth(): Promise<BN> {
         const DUMMY_SLIPPAGE = 0.2 / 100;
-        const result = await this.aggregatorHelper.makeCall(
-            this.sourceTokenAmount,
-            NATIVE_ADDRESS_0xEE,
-            DUMMY_SLIPPAGE
-        );
-        return result ? BN.from(result.outputAmount) : BN.from(0);
+        try {
+            const { outputAmount } = await this.aggregatorHelper.makeCall(
+                this.sourceTokenAmount,
+                NATIVE_ADDRESS_0xEE,
+                DUMMY_SLIPPAGE
+            );
+            return outputAmount;
+        } catch {
+            return BN.from(0);
+        }
     }
 
     override async getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined> {

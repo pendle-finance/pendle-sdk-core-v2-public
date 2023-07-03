@@ -111,12 +111,16 @@ export abstract class BaseZapOutRoute<
         const targetToken = this.targetToken;
         if (maxOut == undefined || targetToken === undefined) return undefined;
         const DUMMY_SLIPPAGE = 0.2 / 100;
-        const aggregatorResult = await this.router.aggregatorHelper.makeCall(
-            { token: targetToken, amount: maxOut },
-            NATIVE_ADDRESS_0xEE,
-            DUMMY_SLIPPAGE
-        );
-        return aggregatorResult == undefined ? BN.from(0) : BN.from(aggregatorResult.outputAmount);
+        try {
+            const { outputAmount } = await this.router.aggregatorHelper.makeCall(
+                { token: targetToken, amount: maxOut },
+                NATIVE_ADDRESS_0xEE,
+                DUMMY_SLIPPAGE
+            );
+            return outputAmount;
+        } catch {
+            return BN.from(0);
+        }
     }
 
     @RouteContext.NoArgsSharedCache
