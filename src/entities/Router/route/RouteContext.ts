@@ -43,6 +43,13 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
         /* eslint-enable @typescript-eslint/unbound-method */
     }
 
+    removeRoute(route: RouteType): boolean {
+        const pos = this.routes.indexOf(route);
+        if (pos == -1) return false;
+        this.routes.splice(pos, 1);
+        return true;
+    }
+
     @NoArgsCache
     async getTokensMintSy(): Promise<Address[]> {
         return this.syEntity.getTokensIn(this.routerExtraParams);

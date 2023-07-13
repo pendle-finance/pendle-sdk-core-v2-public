@@ -1,4 +1,4 @@
-import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData } from './BaseZapInRoute';
+import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import {
     RouterMetaMethodReturnType,
     RouterHelperMetaMethodReturnType,
@@ -29,11 +29,22 @@ export type AddLiquiditySingleTokenKeepYtRouteConfig<T extends MetaMethodType> =
     AddLiquiditySingleTokenKeepYtRoute<T>
 >;
 
+export type AddLiquiditySingleTokenKeepYtRouteDebugInfo = ZapInRouteDebugInfo & {
+    marketAddress: Address;
+    tokenIn: Address;
+
+    // force BigNumber to string for readability
+    netTokenIn: string;
+    slippage: number;
+};
+
 export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extends BaseZapInRoute<
     T,
     AddLiquiditySingleTokenKeepYtRouteData,
     AddLiquiditySingleTokenKeepYtRoute<T>
 > {
+    override readonly routeName = 'AddLiquiditySingleTokenKeepYt';
+
     constructor(
         readonly market: Address,
         readonly tokenIn: Address,
@@ -199,5 +210,15 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
         if (!res) return res;
         res.tokenIn = this.patchedTokenIn;
         return res;
+    }
+
+    override async gatherDebugInfo(): Promise<AddLiquiditySingleTokenKeepYtRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            marketAddress: this.market,
+            netTokenIn: String(this.netTokenIn),
+            slippage: this.slippage,
+            tokenIn: this.tokenIn,
+        };
     }
 }

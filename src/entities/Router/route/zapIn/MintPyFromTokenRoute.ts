@@ -1,4 +1,4 @@
-import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData } from './BaseZapInRoute';
+import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, calcSlippedDownAmount, isNativeToken, ethersConstants } from '../../../../common';
@@ -8,11 +8,20 @@ export type MintPyFromTokenRouteData = BaseZapInRouteData & {
     minPyOut: BN;
 };
 
+export type MintPyFromTokenRouteDebugInfo = ZapInRouteDebugInfo & {
+    ytAddress: Address;
+    // force BigNumber to string for readability
+    netTokenIn: string;
+    slippage: number;
+};
+
 export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
     T,
     MintPyFromTokenRouteData,
     MintPyFromTokenRoute<T>
 > {
+    override readonly routeName = 'MintPyFromToken';
+
     constructor(
         readonly yt: Address,
         readonly tokenIn: Address,
@@ -92,5 +101,14 @@ export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
             ...data,
             ...mergeMetaMethodExtraParams({ overrides }, params),
         });
+    }
+
+    override async gatherDebugInfo(): Promise<MintPyFromTokenRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            netTokenIn: String(this.netTokenIn),
+            slippage: this.slippage,
+            ytAddress: this.yt,
+        };
     }
 }

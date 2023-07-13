@@ -1,4 +1,4 @@
-import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData } from './BaseZapInRoute';
+import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmountSqrt } from '../../../../common';
@@ -13,11 +13,24 @@ export type AddLiquidityDualTokenAndPtRouteData = BaseZapInRouteData & {
     minLpOut: BN;
 };
 
+export type AddLiquidityDualTokenAndPtRouteDebugInfo = ZapInRouteDebugInfo & {
+    marketAddress: Address;
+    tokenIn: Address;
+
+    // force BigNumber to human readable format
+    tokenDesired: string;
+    ptDesired: string;
+
+    slippage: number;
+};
+
 export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends BaseZapInRoute<
     T,
     AddLiquidityDualTokenAndPtRouteData,
     AddLiquidityDualTokenAndPtRoute<T>
 > {
+    override readonly routeName = 'AddLiquidityDualTokenAndPt';
+
     constructor(
         readonly market: MarketEntity,
         readonly tokenIn: Address,
@@ -124,5 +137,16 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
             minLpOut,
             { ...data, ...mergeMetaMethodExtraParams({ overrides }, params) }
         );
+    }
+
+    override async gatherDebugInfo(): Promise<AddLiquidityDualTokenAndPtRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            marketAddress: this.market.address,
+            ptDesired: String(this.ptDesired),
+            tokenDesired: String(this.tokenDesired),
+            tokenIn: this.tokenIn,
+            slippage: this.slippage,
+        };
     }
 }

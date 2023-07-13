@@ -1,4 +1,9 @@
-import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, BaseZapOutRouteConfig } from './BaseZapOutRoute';
+import {
+    BaseZapOutRoute,
+    BaseZapOutRouteIntermediateData,
+    BaseZapOutRouteConfig,
+    ZapOutRouteDebugInfo,
+} from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
 import { BN, Address, BigNumberish, NATIVE_ADDRESS_0x00 } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
@@ -15,11 +20,19 @@ export type SwapExactYtForTokenRouteIntermediateData = BaseZapOutRouteIntermedia
     netPYToRedeemSyOutInt: BN;
 };
 
+export type SwapExactYtForTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
+    market: Address;
+    // castt
+    exactYtIn: string;
+    tokenOut: Address;
+};
+
 export class SwapExactYtForTokenRoute<T extends MetaMethodType> extends BaseZapOutRoute<
     T,
     SwapExactYtForTokenRouteIntermediateData,
     SwapExactYtForTokenRoute<T>
 > {
+    override readonly routeName = 'SwapExactYtForToken';
     constructor(
         readonly market: MarketEntity,
         readonly exactYtIn: BigNumberish,
@@ -101,5 +114,14 @@ export class SwapExactYtForTokenRoute<T extends MetaMethodType> extends BaseZapO
                 ...intermediateResult,
             }
         );
+    }
+
+    override async gatherDebugInfo(): Promise<SwapExactYtForTokenRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            market: this.market.address,
+            exactYtIn: String(this.exactYtIn),
+            tokenOut: this.tokenOut,
+        };
     }
 }

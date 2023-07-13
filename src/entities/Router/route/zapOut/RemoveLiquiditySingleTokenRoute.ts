@@ -1,4 +1,9 @@
-import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, BaseZapOutRouteConfig } from './BaseZapOutRoute';
+import {
+    BaseZapOutRoute,
+    BaseZapOutRouteIntermediateData,
+    BaseZapOutRouteConfig,
+    ZapOutRouteDebugInfo,
+} from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
 import { BN, Address, BigNumberish, NATIVE_ADDRESS_0x00 } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
@@ -14,10 +19,18 @@ export type RemoveLiquiditySingleTokenRouteIntermediateData = BaseZapOutRouteInt
     netSyFromSwap: BN;
 };
 
+export type RemoveLiquiditySingleTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
+    market: Address;
+    // cast BigNumber to string for readability
+    lpToRemove: string;
+    tokenOut: Address;
+};
+
 export abstract class _RemoveLiquiditySingleTokenRoute<
     T extends MetaMethodType,
     SelfType extends _RemoveLiquiditySingleTokenRoute<T, SelfType>
 > extends BaseZapOutRoute<T, RemoveLiquiditySingleTokenRouteIntermediateData, SelfType> {
+    override readonly routeName = 'RemoveLiquiditySingleToken';
     constructor(
         readonly market: Address,
         readonly lpToRemove: BigNumberish,
@@ -89,6 +102,15 @@ export abstract class _RemoveLiquiditySingleTokenRoute<
             output,
             { ...data, ...params, ...intermediateResult }
         );
+    }
+
+    override async gatherDebugInfo(): Promise<RemoveLiquiditySingleTokenRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            market: this.market,
+            lpToRemove: String(this.lpToRemove),
+            tokenOut: this.tokenOut,
+        };
     }
 }
 

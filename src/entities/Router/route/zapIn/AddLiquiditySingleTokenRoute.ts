@@ -1,7 +1,14 @@
-import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData } from './BaseZapInRoute';
+import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
-import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmountSqrt } from '../../../../common';
+import {
+    Address,
+    BigNumberish,
+    BN,
+    isNativeToken,
+    calcSlippedDownAmountSqrt,
+    NATIVE_ADDRESS_0x00,
+} from '../../../../common';
 
 export type AddLiquiditySingleTokenRouteData = BaseZapInRouteData & {
     netLpOut: BN;
@@ -19,11 +26,22 @@ export type AddLiquiditySingleTokenRouteConfig<T extends MetaMethodType> = BaseZ
     AddLiquiditySingleTokenRoute<T>
 >;
 
+export type AddLiquiditySingleTokenRouteDebugInfo = ZapInRouteDebugInfo & {
+    marketAddress: Address;
+    tokenIn: Address;
+
+    // force BigNumber to string for readability
+    netTokenIn: string;
+
+    slippage: number;
+};
+
 export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
     T,
     AddLiquiditySingleTokenRouteData,
     AddLiquiditySingleTokenRoute<T>
 > {
+    override readonly routeName = 'AddLiquiditySingleToken';
     constructor(
         readonly market: Address,
         readonly tokenIn: Address,
@@ -127,5 +145,18 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
 
     async getMinLpOut() {
         return (await this.preview())?.minLpOut;
+    }
+
+    override async gatherDebugInfo(): Promise<AddLiquiditySingleTokenRouteDebugInfo> {
+        return {
+            type: 'zapIn',
+            name: 'AddLiquiditySingleToken',
+            tokenMintSy: this.tokenMintSy,
+            bulk: await this.getUsedBulk().catch(() => NATIVE_ADDRESS_0x00),
+            marketAddress: this.market,
+            netTokenIn: String(this.netTokenIn),
+            slippage: this.slippage,
+            tokenIn: this.tokenIn,
+        };
     }
 }

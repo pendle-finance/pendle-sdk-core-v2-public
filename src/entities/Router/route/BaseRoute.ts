@@ -14,10 +14,15 @@ import { MetaMethodType } from '../../../contracts';
 import { GasEstimationError } from '../../../errors';
 import { createERC20 } from '../../erc20';
 
-export type BaseRouteConfig<T extends MetaMethodType, SelfType extends BaseRoute<T, any>> = {
+export type BaseRouteConfig<T extends MetaMethodType, SelfType extends BaseRoute<T, SelfType>> = {
     readonly context: RouteContext<T, SelfType>;
     readonly withBulkSeller?: boolean;
     readonly cloneFrom?: BaseRoute<T, SelfType>;
+};
+
+export type RouteDebugInfo = {
+    name: string;
+    bulk: Address;
 };
 
 /**
@@ -59,6 +64,14 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
         this.context.addRoute(this as unknown as SelfType);
     }
 
+    /**
+     * Remove this route from context
+     */
+    remove(): boolean {
+        return this.context.removeRoute(this as unknown as SelfType);
+    }
+
+    abstract readonly routeName: string;
     abstract get tokenBulk(): Address;
 
     /**
@@ -203,5 +216,12 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
             erc20.balanceOf(userAddress),
         ]);
         return spenderAllowance.gte(amount) && userBalance.gte(amount);
+    }
+
+    async gatherDebugInfo(): Promise<RouteDebugInfo> {
+        return {
+            name: this.routeName,
+            bulk: await this.getUsedBulk().catch(() => NATIVE_ADDRESS_0x00),
+        };
     }
 }

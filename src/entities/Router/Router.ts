@@ -141,7 +141,7 @@ export class Router extends BaseRouter {
             return route.routeWithBulkSeller();
         }
         try {
-            const tradeValueInEth = await route.estimateMaxOutAmoungAllRouteInEth();
+            const tradeValueInEth = await route.estimateMaxOutAmongAllRouteInEth();
             if (tradeValueInEth == undefined) return;
             const isBelowLimit = tradeValueInEth.lt(bulkLimit);
             const shouldRouteThroughBulkSeller = isBelowLimit;

@@ -1,15 +1,29 @@
-import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, BaseZapOutRouteConfig } from './BaseZapOutRoute';
+import {
+    BaseZapOutRoute,
+    BaseZapOutRouteIntermediateData,
+    BaseZapOutRouteConfig,
+    ZapOutRouteDebugInfo,
+} from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
 import { BN, Address } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 
 export type RedeemSyToTokenRouteIntermediateData = BaseZapOutRouteIntermediateData;
 
+export type RedeemSyToTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
+    sy: Address;
+    // cast BigNumber to string for readability
+    netSyIn: string;
+    tokenOut: Address;
+};
+
 export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRoute<
     T,
     RedeemSyToTokenRouteIntermediateData,
     RedeemSyToTokenRoute<T>
 > {
+    override readonly routeName = 'RedeemSyToToken';
+
     constructor(
         readonly sy: Address,
         readonly netSyIn: BN,
@@ -74,5 +88,14 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
             ...params,
             ...intermediateResult,
         });
+    }
+
+    override async gatherDebugInfo(): Promise<RedeemSyToTokenRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            sy: this.sy,
+            netSyIn: String(this.netSyIn),
+            tokenOut: this.tokenOut,
+        };
     }
 }

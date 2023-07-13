@@ -1,4 +1,4 @@
-import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData } from './BaseZapInRoute';
+import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, calcSlippedDownAmount, isNativeToken } from '../../../../common';
@@ -8,11 +8,20 @@ export type MintSyFromTokenRouteData = BaseZapInRouteData & {
     minSyOut: BN;
 };
 
+export type MintSyFromTokenRouteDebugInfo = ZapInRouteDebugInfo & {
+    syAddress: Address;
+
+    // force BigNumber to string for readability
+    netTokenIn: string;
+    slippage: number;
+};
+
 export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
     T,
     MintSyFromTokenRouteData,
     MintSyFromTokenRoute<T>
 > {
+    override readonly routeName = 'MintSyFromToken';
     /**
      * @param sy Should be the same as params.context.syEntity.address.
      * This field is redundant to keep the same signature as the correesponding method of {@link Router}.
@@ -94,5 +103,14 @@ export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
             ...data,
             ...mergeMetaMethodExtraParams({ overrides }, params),
         });
+    }
+
+    override async gatherDebugInfo(): Promise<MintSyFromTokenRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            netTokenIn: String(this.netTokenIn),
+            syAddress: this.sy,
+            slippage: this.slippage,
+        };
     }
 }

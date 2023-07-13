@@ -1,4 +1,4 @@
-import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData } from './BaseZapInRoute';
+import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmount } from '../../../../common';
@@ -12,11 +12,21 @@ export type SwapExactTokenForYtRouteData = BaseZapInRouteData & {
     minYtOut: BN;
 };
 
+export type SwapExactTokenForYtRouteDebugInfo = ZapInRouteDebugInfo & {
+    market: Address;
+    tokenIn: Address;
+    // cast BigNumber to string for readability
+    netTokenIn: string;
+    slippage: number;
+};
+
 export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapInRoute<
     T,
     SwapExactTokenForYtRouteData,
     SwapExactTokenForYtRoute<T>
 > {
+    override readonly routeName = 'SwapExactTokenForYt';
+
     constructor(
         readonly market: Address,
         readonly tokenIn: Address,
@@ -106,5 +116,15 @@ export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapI
             input,
             { ...data, ...mergeMetaMethodExtraParams({ overrides }, params) }
         );
+    }
+
+    override async gatherDebugInfo(): Promise<SwapExactTokenForYtRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            market: this.market,
+            tokenIn: this.tokenIn,
+            netTokenIn: String(this.netTokenIn),
+            slippage: this.slippage,
+        };
     }
 }

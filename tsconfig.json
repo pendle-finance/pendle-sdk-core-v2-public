@@ -17,7 +17,8 @@
         "strict": true,
         "importHelpers": true,
         "useDefineForClassFields": true,
-        "lib": ["ES2022.Error"]
+        "lib": ["ES2022.Error"],
+        "noImplicitOverride": false
     },
     "ts-node": {
         "files": true,

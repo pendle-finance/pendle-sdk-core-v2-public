@@ -1,4 +1,9 @@
-import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, BaseZapOutRouteConfig } from './BaseZapOutRoute';
+import {
+    BaseZapOutRoute,
+    BaseZapOutRouteIntermediateData,
+    BaseZapOutRouteConfig,
+    ZapOutRouteDebugInfo,
+} from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
 import { BN, Address, BigNumberish, calcSlippedDownAmount, NATIVE_ADDRESS_0x00 } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
@@ -9,11 +14,19 @@ export type RemoveLiquidityDualTokenAndPtRouteIntermediateData = BaseZapOutRoute
     netSyToRedeem: BN;
 };
 
+export type RemoveLiquidityDualTokenAndPtRouteDebugInfo = ZapOutRouteDebugInfo & {
+    market: Address;
+    // cast BigNumber to string for readability
+    lpToRemove: string;
+    tokenOut: Address;
+};
+
 export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends BaseZapOutRoute<
     T,
     RemoveLiquidityDualTokenAndPtRouteIntermediateData,
     RemoveLiquidityDualTokenAndPtRoute<T>
 > {
+    override readonly routeName = 'RemoveLiquidityDualTokenAndPt';
     constructor(
         readonly market: Address,
         readonly lpToRemove: BigNumberish,
@@ -92,5 +105,14 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
             calcSlippedDownAmount(intermediateResult.netPtOut, this.slippage),
             { ...data, ...params, ...intermediateResult }
         );
+    }
+
+    override async gatherDebugInfo(): Promise<RemoveLiquidityDualTokenAndPtRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            market: this.market,
+            lpToRemove: String(this.lpToRemove),
+            tokenOut: this.tokenOut,
+        };
     }
 }

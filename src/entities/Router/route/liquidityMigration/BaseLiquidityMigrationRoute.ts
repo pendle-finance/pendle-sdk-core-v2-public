@@ -1,7 +1,7 @@
-import { BaseRoute, BaseRouteConfig } from '../BaseRoute';
+import { BaseRoute, BaseRouteConfig, RouteDebugInfo } from '../BaseRoute';
 import { MetaMethodType } from '../../../../contracts';
-import { _RemoveLiquiditySingleTokenRoute, BaseZapOutRouteConfig } from '../zapOut';
-import { BaseZapInRoute } from '../zapIn';
+import { _RemoveLiquiditySingleTokenRoute, BaseZapOutRouteConfig, ZapOutRouteDebugInfo } from '../zapOut';
+import { BaseZapInRoute, ZapInRouteDebugInfo } from '../zapIn';
 import { BN, Address, NoArgsCache, BigNumberish } from '../../../../common';
 import { RouteContext } from '../RouteContext';
 import { FixedRouterMetaMethodExtraParams } from '../../types';
@@ -13,9 +13,15 @@ export type BaseLiquidityMigrationFixTokenRedeemSyRouteConfig<
     removeLiquidityRoute: PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T>;
 };
 
+export type LiquidityMigrationFixTokenRedeemSyRouteDebugInfo = RouteDebugInfo & {
+    type: 'liquidityMigration';
+    zapOut: ZapOutRouteDebugInfo;
+    zapIn: ZapInRouteDebugInfo | undefined;
+};
+
 export abstract class BaseLiquidityMigrationFixTokenRedeemSyRoute<
     T extends MetaMethodType,
-    SelfType extends BaseLiquidityMigrationFixTokenRedeemSyRoute<T, any>,
+    SelfType extends BaseLiquidityMigrationFixTokenRedeemSyRoute<T, SelfType>,
     AddLiquidityRouteType extends BaseZapInRoute<T, any, any> = BaseZapInRoute<T, any, any>
 > extends BaseRoute<T, SelfType> {
     readonly removeLiquidityRoute: PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T>;
@@ -31,7 +37,7 @@ export abstract class BaseLiquidityMigrationFixTokenRedeemSyRoute<
 
     abstract get tokenMintSy(): Address;
 
-    abstract createAddliquidityRouteImplement(): Promise<AddLiquidityRouteType | undefined>;
+    abstract createAddLiquidityRouteImplement(): Promise<AddLiquidityRouteType | undefined>;
     abstract getGasUsedImplement(): Promise<BN | undefined>;
 
     abstract addLiquidityRouteWithBulkSeller(withBulkSeller?: boolean): SelfType;
@@ -71,7 +77,7 @@ export abstract class BaseLiquidityMigrationFixTokenRedeemSyRoute<
 
     @NoArgsCache
     async createAddLiquidityRoute(): Promise<AddLiquidityRouteType | undefined> {
-        return this.createAddliquidityRouteImplement();
+        return this.createAddLiquidityRouteImplement();
     }
 
     override get tokenBulk() {
@@ -104,6 +110,16 @@ export abstract class BaseLiquidityMigrationFixTokenRedeemSyRoute<
 
     override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         return this.removeLiquidityRoute.signerHasApprovedImplement(signerAddress);
+    }
+
+    // TODO better typing to get more info
+    override async gatherDebugInfo(): Promise<LiquidityMigrationFixTokenRedeemSyRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            type: 'liquidityMigration',
+            zapIn: await this.createAddLiquidityRoute().then((route) => route?.gatherDebugInfo()),
+            zapOut: await this.removeLiquidityRoute.gatherDebugInfo(),
+        };
     }
 }
 

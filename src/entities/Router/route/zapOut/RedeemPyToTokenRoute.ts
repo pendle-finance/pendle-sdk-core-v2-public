@@ -1,4 +1,9 @@
-import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, BaseZapOutRouteConfig } from './BaseZapOutRoute';
+import {
+    BaseZapOutRoute,
+    BaseZapOutRouteIntermediateData,
+    BaseZapOutRouteConfig,
+    ZapOutRouteDebugInfo,
+} from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
 import { BN, Address, PyIndex } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
@@ -8,11 +13,19 @@ export type RedeemPyToTokenRouteIntermediateData = BaseZapOutRouteIntermediateDa
     pyIndex: BN;
 };
 
+export type RedeemPyToTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
+    yt: Address;
+    // cast BigNumber to string for readability
+    netPyIn: string;
+    tokenOut: Address;
+};
+
 export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRoute<
     T,
     RedeemPyToTokenRouteIntermediateData,
     RedeemPyToTokenRoute<T>
 > {
+    override readonly routeName = 'RedeemPyToToken';
     readonly ytEntity: YtEntity;
     constructor(
         _yt: Address | YtEntity,
@@ -88,5 +101,14 @@ export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
             output,
             { ...data, ...params, ...intermediateResult }
         );
+    }
+
+    override async gatherDebugInfo(): Promise<RedeemPyToTokenRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            yt: this.ytEntity.address,
+            netPyIn: String(this.netPyIn),
+            tokenOut: this.tokenOut,
+        };
     }
 }

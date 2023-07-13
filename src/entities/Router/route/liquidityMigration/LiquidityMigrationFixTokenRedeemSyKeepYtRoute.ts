@@ -26,6 +26,7 @@ export class LiquidityMigrationFixTokenRedeemSyKeepYtRoute<
     LiquidityMigrationFixTokenRedeemSyKeepYtRoute<T>,
     AddLiquiditySingleTokenKeepYtRoute<T>
 > {
+    override readonly routeName = 'LiquidityMigrationFixTokenRedeemSyKeepYt';
     readonly redeemRewards: boolean;
     readonly slippage: number;
     readonly addLiquidityRouteConfig: LiquidityMigrationFixTokenRedeemSyKeepYtRouteConfig<T>['addLiquidityRouteConfig'];
@@ -41,7 +42,7 @@ export class LiquidityMigrationFixTokenRedeemSyKeepYtRoute<
         return this.addLiquidityRouteConfig.params.tokenMintSy;
     }
 
-    override async createAddliquidityRouteImplement(): Promise<AddLiquiditySingleTokenKeepYtRoute<T> | undefined> {
+    override async createAddLiquidityRouteImplement(): Promise<AddLiquiditySingleTokenKeepYtRoute<T> | undefined> {
         const netTokenToZap = await this.removeLiquidityRoute.getNetOut();
         if (!netTokenToZap) {
             return undefined;

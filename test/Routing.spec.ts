@@ -30,6 +30,7 @@ import {
     getERC20Name,
     getUserBalances,
     increaseNativeBalance,
+    print,
     setERC20Balance,
 } from './util/testHelper';
 import { CsvWriter } from './util/CsvWriter';
@@ -47,7 +48,7 @@ const { TOKENS_TO_TEST, MARKETS_TO_TEST, ETH_AMOUNTS_TO_TEST } =
           }
         : {
               TOKENS_TO_TEST: [currentConfig.tokens.USDC],
-              MARKETS_TO_TEST: [currentConfig.markets[6]!].filter((m) => m !== undefined),
+              MARKETS_TO_TEST: [currentConfig.markets[9]!].filter((m) => m !== undefined),
               ETH_AMOUNTS_TO_TEST: [4.9],
           };
 
@@ -112,7 +113,7 @@ const zapOutData = new CsvWriter([
             [`${market.market} - ${market.name} - ${new Date(market.expiry * 1000).toDateString()}`, market] as const
     );
 
-    describe.skip.each(marketData)('Market: %s', (_, market) => {
+    describe.each(marketData)('Market: %s', (_, market) => {
         describe.each(TOKENS_TO_TEST)('Token: %s', (token) => {
             let tokenPrice: BigNumber;
             let tokenDecimal: number;
@@ -220,6 +221,8 @@ const zapOutData = new CsvWriter([
                 const tokenName = await getERC20Name(token);
                 const tokenMintSyName = await getERC20Name(route.tokenMintSy);
                 const actualAmountInEth = await route.estimateSourceTokenAmountInEth().then(nullOrToEthAmount);
+                const debugInfo = await route.gatherDebugInfo();
+                print({ debugInfo });
 
                 zapInData.addRow({
                     id: currentTestId,
@@ -300,6 +303,8 @@ const zapOutData = new CsvWriter([
                 const estimateEthOut = await route.estimateNetOutInEth().then(nullOrToEthAmount);
                 const tokenName = await getERC20Name(token);
                 const tokenRedeemSy = await getERC20Name(route.tokenRedeemSy);
+                const debugInfo = await route.gatherDebugInfo();
+                print({ debugInfo });
 
                 zapOutData.addRow({
                     id: currentTestId,

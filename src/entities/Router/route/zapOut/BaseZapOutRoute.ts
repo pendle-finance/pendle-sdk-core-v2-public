@@ -10,7 +10,7 @@ import {
 } from '../../../../common';
 import { MetaMethodType } from '../../../../contracts';
 import { TokenOutput } from '../../types';
-import { BaseRoute, BaseRouteConfig } from '../BaseRoute';
+import { BaseRoute, BaseRouteConfig, RouteDebugInfo } from '../BaseRoute';
 import { RouteContext } from '../RouteContext';
 
 export type BaseZapOutRouteConfig<
@@ -18,6 +18,12 @@ export type BaseZapOutRouteConfig<
     SelfType extends BaseZapOutRoute<T, any, SelfType>
 > = BaseRouteConfig<T, SelfType> & {
     readonly tokenRedeemSy: Address;
+};
+
+export type ZapOutRouteDebugInfo = RouteDebugInfo & {
+    type: 'zapOut';
+    tokenRedeemSy: Address;
+    slippage: number;
 };
 
 export type BaseZapOutRouteIntermediateData = {
@@ -51,7 +57,7 @@ export abstract class BaseZapOutRoute<
     /* eslint-disable @typescript-eslint/unbound-method */
     protected override addSelfToContext() {
         super.addSelfToContext();
-        RouteContext.NoArgsSharedCache.invalidate(this, BaseZapOutRoute.prototype.estimateMaxOutAmoungAllRouteInEth);
+        RouteContext.NoArgsSharedCache.invalidate(this, BaseZapOutRoute.prototype.estimateMaxOutAmongAllRouteInEth);
     }
     /* eslint-enable @typescript-eslint/unbound-method */
 
@@ -84,7 +90,7 @@ export abstract class BaseZapOutRoute<
         const [curNetOut, maxNetOut, maxNetOutInEth] = await Promise.all([
             this.getNetOut(),
             this.context.getMaxOutAmongAllRoutes(),
-            this.estimateMaxOutAmoungAllRouteInEth(),
+            this.estimateMaxOutAmongAllRouteInEth(),
         ]);
 
         if (curNetOut == undefined || maxNetOut == undefined || maxNetOutInEth == undefined) {
@@ -106,7 +112,7 @@ export abstract class BaseZapOutRoute<
      * If the token is not swappable to ETH, this function will return `0`.
      */
     @RouteContext.NoArgsSharedCache
-    async estimateMaxOutAmoungAllRouteInEth(): Promise<BN | undefined> {
+    async estimateMaxOutAmongAllRouteInEth(): Promise<BN | undefined> {
         const maxOut = await this.context.getMaxOutAmongAllRoutes();
         const targetToken = this.targetToken;
         if (maxOut == undefined || targetToken === undefined) return undefined;
@@ -180,5 +186,14 @@ export abstract class BaseZapOutRoute<
             swapData,
         };
         return output;
+    }
+
+    override async gatherDebugInfo(): Promise<ZapOutRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            type: 'zapOut',
+            tokenRedeemSy: this.tokenRedeemSy,
+            slippage: this.slippage,
+        };
     }
 }

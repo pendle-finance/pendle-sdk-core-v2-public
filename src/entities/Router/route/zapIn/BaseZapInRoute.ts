@@ -11,7 +11,7 @@ import {
 } from '../../../../common';
 import { MetaMethodType } from '../../../../contracts';
 import { TokenInput } from '../../types';
-import { BaseRoute, BaseRouteConfig } from '../BaseRoute';
+import { BaseRoute, BaseRouteConfig, RouteDebugInfo } from '../BaseRoute';
 import { RouteContext } from '../RouteContext';
 
 export type BaseZapInRouteConfig<
@@ -19,6 +19,11 @@ export type BaseZapInRouteConfig<
     SelfType extends BaseZapInRoute<T, any, SelfType>
 > = BaseRouteConfig<T, SelfType> & {
     readonly tokenMintSy: Address;
+};
+
+export type ZapInRouteDebugInfo = RouteDebugInfo & {
+    type: 'zapIn';
+    tokenMintSy: Address;
 };
 
 export type BaseZapInRouteData = {
@@ -198,5 +203,13 @@ export abstract class BaseZapInRoute<
             ...this.routerExtraParams,
             bulk,
         });
+    }
+
+    override async gatherDebugInfo(): Promise<ZapInRouteDebugInfo> {
+        return {
+            ...(await super.gatherDebugInfo()),
+            type: 'zapIn',
+            tokenMintSy: this.tokenMintSy,
+        };
     }
 }
