@@ -1,5 +1,5 @@
 // This file is generated via `yarn generateContractAddresses`
-// Generated at Wed, 28 Jun 2023 07:55:40 GMT
+// Generated at Thu, 20 Jul 2023 07:04:29 GMT
 import { ContractAddresses } from './types';
 import { toAddress } from '../Address';
 
@@ -8,7 +8,7 @@ export const ETHEREUM_CORE_ADDRESSES: ContractAddresses = {
     ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
     ROUTER_STATIC: toAddress('0x263833d47ea3fa4a30f269323aba6a107f9eb14c'),
     VEPENDLE: toAddress('0x4f30a9d41b80ecc5b94306ab4364951ae3170210'),
-    PENDLE_SWAP: toAddress('0x5719acdb9abbbc6ba414c9dbff5b2967342f465d'),
+    PENDLE_SWAP: toAddress('0x10115a984d69b0a832239a26d1841f10a59e45d8'),
     WRAPPED_NATIVE: toAddress('0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
     VOTING_CONTROLLER: toAddress('0x44087e105137a5095c008aab6a6530182821f2f0'),
@@ -41,7 +41,7 @@ export const ARBITRUM_CORE_ADDRESSES: ContractAddresses = {
     ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
     ROUTER_STATIC: toAddress('0xadb09f65bd90d19e3148d9ccb693f3161c6db3e8'),
     VEPENDLE: toAddress('0x3209e9412cca80b18338f2a56ada59c484c39644'),
-    PENDLE_SWAP: toAddress('0x150dd76fad24c0715db375d06f1c2c1d917d7d93'),
+    PENDLE_SWAP: toAddress('0x38812c3ac3563bf200482ac9d096952d7cb55f9b'),
     WRAPPED_NATIVE: toAddress('0x82af49447d8a07e3bd95bd0d56f35241523fbab1'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
 };
@@ -50,7 +50,7 @@ export const BSC_CORE_ADDRESSES: ContractAddresses = {
     ROUTER: toAddress('0x00000000025efadc0b8d17d3d87ab5056e3d2510'),
     ROUTER_STATIC: toAddress('0x2700adb035f82a11899ce1d3f1bf8451c296eabb'),
     VEPENDLE: toAddress('0x8a09574b0401a856d89d1b583ee22e8cb0c5530b'),
-    PENDLE_SWAP: toAddress('0x6f41855cdf6861a1f8a017e8bb0f90927582ccf6'),
+    PENDLE_SWAP: toAddress('0x59f0c4a186744b573f15fbbc3737014f7f3da835'),
     WRAPPED_NATIVE: toAddress('0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c'),
     ROUTER_HELPER: toAddress('0x09d65812dcd0f276e052583d41885ca5c7dd0086'),
 };
