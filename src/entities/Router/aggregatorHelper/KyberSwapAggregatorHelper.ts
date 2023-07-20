@@ -190,7 +190,7 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
             saveGas: '1',
             gasInclude: '1',
             clientData: { source: 'Pendle' },
-            deadline: ethers.constants.MaxInt256.toString(),
+            deadline: String(2 ** 31 - 1),
             excludedSources: 'kyberswap-limit-order,rfq',
         };
         // TODO move to helper
