@@ -54,7 +54,6 @@ export class Router extends BaseRouter {
         const provider = (config.provider ?? config.signer?.provider)!;
         const aggregatorHelper = new KyberSwapAggregatorHelper(routerAddress, {
             chainId: config.chainId,
-            provider: provider,
         });
         return new Router(routerAddress, {
             ...config,

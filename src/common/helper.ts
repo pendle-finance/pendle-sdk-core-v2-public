@@ -393,3 +393,13 @@ export function assertDefined<T>(value: T | null | undefined, err?: string | (()
         return err();
     }
 }
+
+export function filterUndefinedFields<T extends object>(obj: T): T {
+    const res = {} as T;
+    for (const [key, value] of Object.entries(obj)) {
+        if (value == undefined) continue;
+        // eslint-disable-next-line
+        res[key as keyof T] = value;
+    }
+    return res;
+}

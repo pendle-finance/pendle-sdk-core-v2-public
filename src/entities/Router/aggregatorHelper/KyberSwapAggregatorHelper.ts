@@ -1,4 +1,15 @@
-import { BigNumberish, BytesLike, BigNumber as BN, ethers } from 'ethers';
+/**
+ * The specification for the KyberSwap aggregator API can be found [here][KyberSwapAPI].
+ * In particular, the **Legacy** endpoint is used instead of the new one.
+ * The reason is because we want to get the encoded data in one call instead of 2 separated calls.
+ *
+ * As KyberSwap updated their new new server, the error messages are also revamped. This lead to
+ * the old endpoint having the same errors as the new one, but that is not specified in the
+ * new docs.
+ *
+ * [KyberSwapAPI]: https://docs.kyberswap.com/kyberswap-solutions/kyberswap-aggregator/aggregator-api-specification/evm-swaps
+ */
+import { BigNumberish, BytesLike, BigNumber as BN } from 'ethers';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import {
     CHAIN_ID_MAPPING,
@@ -8,13 +19,12 @@ import {
     isNativeToken,
     toAddress,
     NATIVE_ADDRESS_0xEE,
-    NetworkConnection,
-    copyNetworkConnection,
     RawTokenAmount,
     If,
     getContractAddresses,
+    filterUndefinedFields,
 } from '../../../common';
-import { PendleSdkError } from '../../../errors';
+import { PendleSdkError, PendleSdkErrorParams } from '../../../errors';
 import {
     AggregatorHelper,
     AggregatorResult,
@@ -58,7 +68,7 @@ function isKyberSupportedChain(chainId: ChainId): chainId is keyof typeof KYBER_
     return chainId in KYBER_API;
 }
 
-export type KyberHelperConfig = NetworkConnection & {
+export type KyberHelperConfig = {
     chainId: ChainId;
     apiParamsOverrides?: Partial<KyberAPIParamsOverrides>;
     axios?: AxiosInstance;
@@ -80,6 +90,60 @@ function rawKybercallDataHasEncodedData(data: RawKybercallData): data is RawKybe
 }
 
 export class KyberSwapAggregatorHelperError extends AggregatorHelperError {}
+
+export class UnknownKyberSwapAggregatorHelperError extends KyberSwapAggregatorHelperError {
+    constructor(params?: PendleSdkErrorParams) {
+        const cause = params?.cause;
+        super(`KyberSwap: ${cause instanceof Error ? cause.message : 'unknown error'}`, params);
+    }
+}
+
+export enum KyberSwapAggergatorHelperRequestErrorCode {
+    MALFORMED_QUERY_PARAMS = 4001,
+    MALFORMED_REQUEST_BODY = 4002,
+    FEE_AMOUNT_GT_AMOUNT_IN = 4005,
+    FEE_AMOUNT_GT_AMOUNT_OUT = 4007,
+    ROUTE_NOT_FOUND = 4008,
+    AMOUNT_IN_GT_MAX_ALLOWED = 4009,
+    NO_ELIGIBLE_POOL = 4010,
+    TOKEN_NOT_FOUND = 4011,
+    NO_CONFIGURED_WETH = 4221,
+}
+
+export const KYBER_SWAP_REQUEST_ERROR_STATUS = [400, 422];
+
+export type KyberSwapErrorData = {
+    code: KyberSwapAggergatorHelperRequestErrorCode;
+    message: string;
+    requestId: string;
+};
+
+export function checkKyberSwapErrorData(errorData: unknown): errorData is KyberSwapErrorData {
+    if (typeof errorData !== 'object') return false;
+    if (errorData == null) return false;
+    if (!('message' in errorData) || typeof errorData.message !== 'string') return false;
+    if (!('requestId' in errorData) || typeof errorData.requestId !== 'string') return false;
+    if (!('code' in errorData) || typeof errorData.code !== 'number') return false;
+    if (!Object.values(KyberSwapAggergatorHelperRequestErrorCode).includes(errorData.code)) return false;
+    return true;
+}
+
+/**
+ * @remarks
+ * Response error, as specified for https://aggregator-api.kyberswap.com/{chain}/api/v1/routes endpoint.
+ * However, the legacy one now is also using the error.
+ */
+export class KyberSwapAggregatorHelperRequestError extends KyberSwapAggregatorHelperError {
+    constructor(
+        readonly code: KyberSwapAggergatorHelperRequestErrorCode,
+        readonly requestErrorMessage: string,
+        readonly requestId: string,
+        readonly requestData: KyberAPIParams,
+        params?: PendleSdkErrorParams
+    ) {
+        super(`KyberSwap request error: ${requestErrorMessage}`, params);
+    }
+}
 
 export class KyberSwapAggregatorResult implements AggregatorResult {
     readonly amountInUsd?: number | undefined;
@@ -120,7 +184,6 @@ export class KyberSwapAggregatorResult implements AggregatorResult {
 
 export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
     readonly chainId: ChainId;
-    readonly networkConnection: NetworkConnection;
     readonly routerAddress: Address;
     readonly apiParamsOverrides?: KyberAPIParamsOverrides;
     readonly axios: AxiosInstance;
@@ -131,10 +194,14 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
      */
     constructor(routerAddress: Address, config: KyberHelperConfig) {
         this.routerAddress = routerAddress;
-        this.networkConnection = copyNetworkConnection(config);
         this.chainId = config.chainId;
         this.apiParamsOverrides = config.apiParamsOverrides;
         this.axios = config.axios ?? axios;
+    }
+
+    static getKyberSwapAggregatorHelper(config: KyberHelperConfig): KyberSwapAggregatorHelper {
+        const routerAddress = getContractAddresses(config.chainId).ROUTER;
+        return new KyberSwapAggregatorHelper(routerAddress, config);
     }
 
     /**
@@ -192,13 +259,8 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
             clientData: { source: 'Pendle' },
             deadline: String(2 ** 31 - 1),
             excludedSources: 'kyberswap-limit-order,rfq',
+            ...filterUndefinedFields(this.getApiParamsOverrides()),
         };
-        // TODO move to helper
-        for (const [key, value] of Object.entries(this.getApiParamsOverrides())) {
-            if (value == undefined) continue;
-            // TODO typesafe
-            kyberAPIParams[key as keyof KyberAPIParamsOverrides] = value as any;
-        }
 
         const config: AxiosRequestConfig = {
             params: kyberAPIParams,
@@ -211,14 +273,31 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
         //     console.log('Making request', this.axios.getUri(config));
         // }
 
-        const { data }: { data: RawKybercallData } = await this.axios.request(config);
-        if (!rawKybercallDataHasEncodedData(data)) {
-            throw new KyberSwapAggregatorHelperError('KyberSwap returned undefined encoded data');
+        try {
+            const { data }: { data: RawKybercallData } = await this.axios.request(config);
+            if (!rawKybercallDataHasEncodedData(data)) {
+                throw new KyberSwapAggregatorHelperError('KyberSwap returned undefined encoded data');
+            }
+            return new KyberSwapAggregatorResult({
+                ...data,
+                routerAddress: toAddress(data.routerAddress),
+            });
+        } catch (e: unknown) {
+            if (
+                !axios.isAxiosError(e) ||
+                e.response == undefined ||
+                !KYBER_SWAP_REQUEST_ERROR_STATUS.includes(e.response.status)
+            ) {
+                throw new UnknownKyberSwapAggregatorHelperError({ cause: e });
+            }
+            const data = e.response.data;
+            if (!checkKyberSwapErrorData(data)) {
+                throw new UnknownKyberSwapAggregatorHelperError({ cause: e });
+            }
+            throw new KyberSwapAggregatorHelperRequestError(data.code, data.message, data.requestId, kyberAPIParams, {
+                cause: e,
+            });
         }
-        return new KyberSwapAggregatorResult({
-            ...data,
-            routerAddress: toAddress(data.routerAddress),
-        });
     }
 
     protected getApiParamsOverrides(): KyberAPIParamsOverrides {
