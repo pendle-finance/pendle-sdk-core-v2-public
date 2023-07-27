@@ -1,5 +1,5 @@
 // This file is generated via `yarn generateContractAddresses`
-// Generated at Thu, 20 Jul 2023 07:04:29 GMT
+// Generated at Thu, 27 Jul 2023 01:59:01 GMT
 import { ContractAddresses } from './types';
 import { toAddress } from '../Address';
 

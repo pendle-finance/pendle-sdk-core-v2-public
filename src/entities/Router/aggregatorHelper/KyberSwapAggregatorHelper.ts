@@ -15,11 +15,7 @@ import {
     CHAIN_ID_MAPPING,
     ChainId,
     Address,
-    areSameAddresses,
-    isNativeToken,
     toAddress,
-    NATIVE_ADDRESS_0xEE,
-    RawTokenAmount,
     If,
     getContractAddresses,
     filterUndefinedFields,
@@ -30,10 +26,10 @@ import {
     AggregatorResult,
     SwapType,
     SwapData,
-    createNoneAggregatorResult,
-    createETH_WETHAggregatorResult,
     AggregatorHelperError,
+    MakeCallParams,
 } from './AggregatorHelper';
+import { wrapMakeCall } from './wrapMakeCall';
 
 export type KyberAPIParamsOverrides = {
     saveGas?: '0' | '1';
@@ -63,10 +59,6 @@ const KYBER_API = {
     [CHAIN_ID_MAPPING.ARBITRUM]: 'https://aggregator-api.kyberswap.com/arbitrum/route/encode',
     [CHAIN_ID_MAPPING.BSC]: 'https://aggregator-api.kyberswap.com/bsc/route/encode',
 } as const;
-
-function isKyberSupportedChain(chainId: ChainId): chainId is keyof typeof KYBER_API {
-    return chainId in KYBER_API;
-}
 
 export type KyberHelperConfig = {
     chainId: ChainId;
@@ -188,6 +180,16 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
     readonly apiParamsOverrides?: KyberAPIParamsOverrides;
     readonly axios: AxiosInstance;
 
+    static isKyberSupportedChain(this: void, chainId: ChainId): chainId is keyof typeof KYBER_API {
+        return chainId in KYBER_API;
+    }
+
+    static assertKyberSupportedChain(this: void, chainId: ChainId): asserts chainId is keyof typeof KYBER_API {
+        if (!KyberSwapAggregatorHelper.isKyberSupportedChain(chainId)) {
+            throw new PendleSdkError(`Chain ${chainId as number} is not supported for kybercall.`);
+        }
+    }
+
     /**
      * @param routerAddress the address of the router (that is, the address that can be passed to {@link Router})
      * @param config
@@ -222,35 +224,27 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
      * If there is no route, `undefined` is returned.
      * If `input.token` is the same as `output`, no actual call is done.
      */
-    async makeCall(
-        { token: tokenIn, amount }: RawTokenAmount<BigNumberish>,
-        tokenOut: Address,
-        slippage: number,
-        { aggregatorReceiver = this.routerAddress }: { aggregatorReceiver?: Address } = {}
+    async makeCall(...params: MakeCallParams): Promise<AggregatorResult> {
+        KyberSwapAggregatorHelper.assertKyberSupportedChain(this.chainId);
+        return wrapMakeCall(this, params, (...fixedParams) => this.makeKyberCall(...fixedParams));
+    }
+
+    private async makeKyberCall(
+        ...[
+            { token: tokenIn, amount: amountIn },
+            tokenOut,
+            slippage,
+            { aggregatorReceiver = this.routerAddress } = {},
+        ]: MakeCallParams
     ): Promise<AggregatorResult> {
-        if (!isKyberSupportedChain(this.chainId)) {
-            throw new PendleSdkError(`Chain ${this.chainId as number} is not supported for kybercall.`);
-        }
-        // Our contracts use zero address to represent ETH, but kyber uses 0xeee..
-        if (isNativeToken(tokenIn)) tokenIn = NATIVE_ADDRESS_0xEE;
-        if (isNativeToken(tokenOut)) tokenOut = NATIVE_ADDRESS_0xEE;
-
-        if (areSameAddresses(tokenIn, tokenOut)) {
-            return createNoneAggregatorResult(amount);
-        }
-
-        const patchedResult = await this.patchETH_wETH({ token: tokenIn, amount }, tokenOut, slippage, {
-            receiver: aggregatorReceiver,
-        });
-        if (patchedResult) return patchedResult;
-
+        KyberSwapAggregatorHelper.assertKyberSupportedChain(this.chainId);
         const slippageTolerance = Math.min(Math.trunc(10000 * slippage), 2000);
 
         // Using type here because Rest API doesn't have type
         const kyberAPIParams: KyberAPIParams = {
             tokenIn: tokenIn,
             tokenOut: tokenOut,
-            amountIn: BN.from(amount).toString(),
+            amountIn: BN.from(amountIn).toString(),
             to: aggregatorReceiver,
             slippageTolerance,
             useMeta: false,
@@ -308,22 +302,5 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
             ans.gasInclude = '1';
         }
         return ans;
-    }
-
-    private async patchETH_wETH(
-        { token: tokenIn, amount }: RawTokenAmount<BigNumberish>,
-        tokenOut: Address,
-        _slippage: number,
-        _params: { receiver?: Address } = {}
-    ): Promise<AggregatorResult | undefined> {
-        const wrappedNative = getContractAddresses(this.chainId).WRAPPED_NATIVE;
-        for (const [tokenA, tokenB] of [
-            [tokenIn, tokenOut],
-            [tokenOut, tokenIn],
-        ]) {
-            if (isNativeToken(tokenA) && areSameAddresses(tokenB, wrappedNative)) {
-                return Promise.resolve(createETH_WETHAggregatorResult(amount));
-            }
-        }
     }
 }

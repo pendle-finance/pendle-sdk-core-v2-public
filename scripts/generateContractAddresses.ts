@@ -23,7 +23,7 @@ function transformData(data: CoreAddresses): ContractAddresses {
         ROUTER: toAddress(data.router),
         ROUTER_STATIC: toAddress(data.routerStatic),
         VEPENDLE: toAddress(data.vePendle),
-        PENDLE_SWAP: toAddressOrUndefined(data.pendleSwap),
+        PENDLE_SWAP: toAddress(data.pendleSwap),
         WRAPPED_NATIVE: toAddress(data.network.wrappedNative),
         ROUTER_HELPER: toAddress(data.routerHelper),
     };
