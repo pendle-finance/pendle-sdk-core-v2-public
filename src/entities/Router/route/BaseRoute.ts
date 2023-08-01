@@ -212,8 +212,8 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
         const erc20 = createERC20(token, this.router.entityConfig);
         const spenderAddress = this.getSpenderAddress();
         const [userBalance, spenderAllowance] = await Promise.all([
-            erc20.allowance(userAddress, spenderAddress),
             erc20.balanceOf(userAddress),
+            erc20.allowance(userAddress, spenderAddress),
         ]);
         return spenderAllowance.gte(amount) && userBalance.gte(amount);
     }
