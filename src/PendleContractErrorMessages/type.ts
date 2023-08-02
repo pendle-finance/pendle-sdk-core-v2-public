@@ -5,7 +5,7 @@ import { Address } from '../common';
 /**
  * This type is generated from the ABI of Pendle contract Errors.
  *
- * @see https://github.com/pendle-finance/pendle-core-internal-v2/blob/main/contracts/core/libraries/Errors.sol
+ * @see https://github.com/pendle-finance/pendle-core-v2/blob/6626a0c5daae59d10008375c7b0772affe0cf8ac/contracts/offchain-helpers/errors/SDKErrorsDirectory.sol
  */
 
 export type PendleContractErrorMessageHandler = {
