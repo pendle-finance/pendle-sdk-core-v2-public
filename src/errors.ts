@@ -2,7 +2,7 @@
 import { ErrorCode } from '@ethersproject/logger';
 import { Interface } from '@ethersproject/abi';
 import { utils as ethersUtils, BigNumber as BN } from 'ethers';
-import { abi as PendleContractErrorsAbi } from '@pendle/core-v2/build/artifacts/contracts/core/libraries/Errors.sol/Errors.json';
+import { abi as PendleContractErrorsAbi } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/errors/SDKErrorsDirectory.sol/SDKErrorsDirectory.json';
 import {
     defaultPendleContractErrorMessageHandler,
     PendleContractErrorMessageHandler,
