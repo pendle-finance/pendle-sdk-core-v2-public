@@ -80,8 +80,9 @@ const providerUrls = {
     [CHAIN_ID_MAPPING.MUMBAI]: 'https://matic-mumbai.chainstacklabs.com',
     [CHAIN_ID_MAPPING.BSC]: 'https://bsc-dataseed.binance.org',
     [CHAIN_ID_MAPPING.ARBITRUM]: 'https://endpoints.omniatech.io/v1/arbitrum/one/public',
+    [CHAIN_ID_MAPPING.MANTLE]: 'https://rpc.mantle.xyz',
     [LOCAL_CHAIN_ID]: 'http://127.0.0.1:8545',
-};
+} as const satisfies Record<ChainId | typeof LOCAL_CHAIN_ID, string>;
 
 export const provider = new StaticJsonRpcProvider(
     USE_HARDHAT_RPC ? providerUrls[LOCAL_CHAIN_ID] : providerUrls[ACTIVE_CHAIN_ID]

@@ -1,7 +1,11 @@
 import { Address, ChainId } from '../common';
 import { BytesLike, Contract, providers } from 'ethers';
 import type { BlockTag } from '@ethersproject/abstract-provider';
-import { MULTICALL_ADDRESSES_NO_GAS_LIMIT, MULTICALL_ADDRESSES_WITH_GAS_LIMIT } from './contractAddresses';
+import {
+    MULTICALL_ADDRESSES_NO_GAS_LIMIT,
+    MULTICALL_ADDRESSES_WITH_GAS_LIMIT,
+    PendleMulticallSupportedChain,
+} from './contractAddresses';
 import { Multicall2Abi, PendleMulticallV1Abi } from '../contracts/abis';
 import { Multicall2, PendleMulticallV1 } from '../contracts/typechainTypes';
 
@@ -39,12 +43,19 @@ export class MulticallAggregateCallerWithGasLimit implements MulticallAggregateC
     static DEFAULT_GAS_PER_CALL = 10_000_000;
     readonly contract: PendleMulticallV1;
 
-    constructor(params: { chainId: ChainId; provider: providers.Provider }) {
-        this.contract = new Contract(
+    constructor(address: Address, provider: providers.Provider) {
+        this.contract = new Contract(address, PendleMulticallV1Abi, provider) as PendleMulticallV1;
+    }
+
+    static isSupportedChain(chainId: ChainId): chainId is PendleMulticallSupportedChain {
+        return chainId in MULTICALL_ADDRESSES_WITH_GAS_LIMIT;
+    }
+
+    static createInstance(params: { chainId: PendleMulticallSupportedChain; provider: providers.Provider }) {
+        return new MulticallAggregateCallerWithGasLimit(
             MULTICALL_ADDRESSES_WITH_GAS_LIMIT[params.chainId],
-            PendleMulticallV1Abi,
             params.provider
-        ) as PendleMulticallV1;
+        );
     }
 
     async tryAggregate(calls: Calls[], overrides?: { blockTag?: BlockTag }): Promise<Result[]> {

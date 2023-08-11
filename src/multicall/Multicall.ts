@@ -98,12 +98,15 @@ export class Multicall {
     }
 
     constructor(params: { chainId: ChainId; provider: Provider; callLimit?: number; withGasLimit?: boolean }) {
-        const { callLimit, withGasLimit = true } = params;
+        const { callLimit, withGasLimit = true, chainId, provider } = params;
         this.callLimit = callLimit ?? DEFAULT_CALL_LIMIT;
-        if (withGasLimit) {
-            this.multicallAggregateCaller = new MulticallAggregateCallerWithGasLimit(params);
+        if (withGasLimit && MulticallAggregateCallerWithGasLimit.isSupportedChain(chainId)) {
+            this.multicallAggregateCaller = MulticallAggregateCallerWithGasLimit.createInstance({ chainId, provider });
         } else {
-            this.multicallAggregateCaller = new MulticallAggregateCallerNoGasLimit(params);
+            if (withGasLimit) {
+                console.info(`Multicall with gas limit is not supported on chain ${chainId}. Fallback to Multicall3`);
+            }
+            this.multicallAggregateCaller = new MulticallAggregateCallerNoGasLimit({ chainId, provider });
         }
     }
 

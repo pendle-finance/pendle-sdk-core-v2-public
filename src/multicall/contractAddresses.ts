@@ -1,19 +1,25 @@
-import { Address, toAddress, ChainId, CHAIN_ID_MAPPING } from '../common';
+import { Address, toAddress, ChainId, CHAIN_ID_MAPPING, getContractAddresses } from '../common';
 
-export const MULTICALL_ADDRESSES_NO_GAS_LIMIT: Record<ChainId, Address> = {
+const MULTICALL3_ADDRESS = toAddress('0xcA11bde05977b3631167028862bE2a173976CA11');
+const PENDLE_MULTICALL_V1 = toAddress('0xfd6Df9EFACfEfdF4E610d687A9c9b941D1b1Bf75');
+
+export const MULTICALL_ADDRESSES_NO_GAS_LIMIT = {
     [CHAIN_ID_MAPPING.ETHEREUM]: toAddress('0x5ba1e12693dc8f9c48aad8770482f4739beed696'),
     [CHAIN_ID_MAPPING.FUJI]: toAddress('0x07e46d95cc98f0d7493d679e89e396ea99020185'),
     [CHAIN_ID_MAPPING.MUMBAI]: toAddress('0x7De28d05a0781122565F3b49aA60331ced983a19'),
-    [CHAIN_ID_MAPPING.ARBITRUM]: toAddress('0xcA11bde05977b3631167028862bE2a173976CA11'),
-    [CHAIN_ID_MAPPING.BSC]: toAddress('0xcA11bde05977b3631167028862bE2a173976CA11'),
-} as const;
+    [CHAIN_ID_MAPPING.ARBITRUM]: MULTICALL3_ADDRESS,
+    [CHAIN_ID_MAPPING.BSC]: MULTICALL3_ADDRESS,
+    [CHAIN_ID_MAPPING.MANTLE]: MULTICALL3_ADDRESS,
+} as const satisfies Record<ChainId, Address>;
 
-export const PendleMulticallV1Address = toAddress('0xfd6Df9EFACfEfdF4E610d687A9c9b941D1b1Bf75');
+export const MULTICALL_ADDRESSES_WITH_GAS_LIMIT = {
+    [CHAIN_ID_MAPPING.ETHEREUM]: getContractAddresses(CHAIN_ID_MAPPING.ETHEREUM).PENDLE_MULTICALL,
+    [CHAIN_ID_MAPPING.ARBITRUM]: getContractAddresses(CHAIN_ID_MAPPING.ARBITRUM).PENDLE_MULTICALL,
+    [CHAIN_ID_MAPPING.BSC]: getContractAddresses(CHAIN_ID_MAPPING.BSC).PENDLE_MULTICALL,
+    [CHAIN_ID_MAPPING.MANTLE]: PENDLE_MULTICALL_V1, // TODO get from getContractAddresses
+} as const satisfies Record<
+    Exclude<ChainId, (typeof CHAIN_ID_MAPPING)['FUJI'] | (typeof CHAIN_ID_MAPPING)['MUMBAI']>,
+    Address | undefined
+>;
 
-export const MULTICALL_ADDRESSES_WITH_GAS_LIMIT: Record<ChainId, Address> = {
-    [CHAIN_ID_MAPPING.ETHEREUM]: PendleMulticallV1Address,
-    [CHAIN_ID_MAPPING.FUJI]: PendleMulticallV1Address,
-    [CHAIN_ID_MAPPING.MUMBAI]: PendleMulticallV1Address,
-    [CHAIN_ID_MAPPING.ARBITRUM]: PendleMulticallV1Address,
-    [CHAIN_ID_MAPPING.BSC]: PendleMulticallV1Address,
-};
+export type PendleMulticallSupportedChain = keyof typeof MULTICALL_ADDRESSES_WITH_GAS_LIMIT;

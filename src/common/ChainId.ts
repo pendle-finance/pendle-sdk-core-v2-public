@@ -4,6 +4,7 @@ export const CHAIN_ID_MAPPING = {
     MUMBAI: 80001,
     ARBITRUM: 42161,
     BSC: 56,
+    MANTLE: 5000,
 } as const;
 
 /**
