@@ -1,6 +1,17 @@
 import { PendleERC20 } from '@pendle/core-v2/typechain-types';
 import { BigNumber as BN, BigNumberish, Signer, ethers } from 'ethers';
-import { ERC20Entity, Address, MarketEntity, WrappedContract, bnMin, Multicall, isNativeToken } from '../../src';
+import {
+    ERC20Entity,
+    Address,
+    MarketEntity,
+    WrappedContract,
+    bnMin,
+    Multicall,
+    isNativeToken,
+    ChainId,
+    areSameAddresses,
+    toAddress,
+} from '../../src';
 import { INF } from './constants';
 import {
     networkConnection,
@@ -8,8 +19,11 @@ import {
     BLOCK_CONFIRMATION,
     USE_HARDHAT_RPC,
     currentConfig,
+    AMOUNT_TO_TEST_IN_USD,
 } from './testEnv';
 import { inspect } from 'util';
+import axios from 'axios';
+import BigNumber from 'bignumber.js';
 
 type EntitiesMapType = {
     [entity: Address]: WrappedContract<PendleERC20>;
@@ -169,6 +183,60 @@ export async function increaseNativeBalance(userAddress: string) {
 
 export async function getUserBalances(userAddress: Address, tokens: Address[]): Promise<BN[]> {
     return Promise.all(tokens.map((token) => getBalance(token, userAddress)));
+}
+
+const PENDLE_API_ALL_ASSETS_URL = (chainId: ChainId) => `https://api-v2.pendle.finance/core/v1/${chainId}/assets/all`;
+
+type PendleAssetNarrowType = {
+    chainId: ChainId;
+    address: string;
+    decimals: number;
+    price: {
+        usd: number;
+        acc: number;
+    };
+    priceUpdatedAt: string;
+};
+type PendleAllAssetsResponse = PendleAssetNarrowType[];
+
+const PENDLE_ALL_ASSETS_CACHE: Map<ChainId, PendleAllAssetsResponse> = new Map();
+
+export async function getAllAssets(chainId: ChainId): Promise<PendleAllAssetsResponse> {
+    const resp = await axios.get<PendleAllAssetsResponse>(PENDLE_API_ALL_ASSETS_URL(chainId), {
+        headers: { 'Content-Type': 'application/json' },
+    });
+    PENDLE_ALL_ASSETS_CACHE.set(chainId, resp.data);
+    return resp.data;
+}
+
+export function fetchPriceInfo(
+    address: Address,
+    chainId: ChainId
+): {
+    price: number;
+    decimals: number;
+} {
+    const token = PENDLE_ALL_ASSETS_CACHE.get(chainId)?.find((asset) =>
+        areSameAddresses(address, toAddress(asset.address))
+    );
+    if (!token) {
+        throw new Error(`Cannot find token ${address} in the list of all assets`);
+    }
+    return {
+        price: token.price.usd,
+        decimals: token.decimals,
+    };
+}
+
+export function valueToTokenAmount(token: Address, chainId: ChainId, value: number = AMOUNT_TO_TEST_IN_USD) {
+    const { price, decimals } = fetchPriceInfo(token, chainId);
+    const tokenAmount = value / price;
+    const rawTokenAmount = BN.from(
+        BigNumber(tokenAmount)
+            .times(10 ** decimals)
+            .toFixed(0)
+    );
+    return rawTokenAmount;
 }
 
 const registerCustomInspection = (BigNumber: any) => {

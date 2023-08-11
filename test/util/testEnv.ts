@@ -28,6 +28,8 @@ export const ACTIVE_CHAIN_ID = env.ACTIVE_CHAIN_ID;
 const LOCAL_CHAIN_ID = 31337;
 export const USE_HARDHAT_RPC = env.USE_LOCAL;
 
+export const AMOUNT_TO_TEST_IN_USD = env.AMOUNT_TO_TEST_IN_USD;
+
 export function describeWrite(...params: [fn: () => void] | [name: string, fn: () => void]) {
     let name = 'Write function';
     let fn: () => void;

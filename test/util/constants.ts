@@ -76,4 +76,5 @@ export const BALANCE_OF_STORAGE_SLOT: Record<string, [number, boolean]> = {
     '0x64048a7eecf3a2f1ba9e144aac3d7db6e58f555e': [0, false], // BSC frxETH
     '0x8a420aaca0c92e3f97cdcfdd852e01ac5b609452': [4, false], // BSC StableV1 AMM - ETH/frxETH
     '0xa2e3356610840701bdf5611a53974510ae27e2e1': [9, false], // BSC Wrapped Binance Beacon ETH
+    '0xae7ab96520de3a18e5e111b5eaab095312d7fe84': [0, false], // Liquid stETH 2.0
 };

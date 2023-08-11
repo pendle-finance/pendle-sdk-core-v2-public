@@ -34,6 +34,8 @@ import {
     setERC20Balance,
     getUserBalances,
     transferHelper,
+    valueToTokenAmount,
+    getAllAssets,
 } from './util/testHelper';
 import { BigNumber as BN } from 'ethers';
 import { IPAllAction, PendleRouterHelper } from '@pendle/core-v2/typechain-types';
@@ -41,20 +43,12 @@ import {
     DEFAULT_EPSILON,
     REDEEM_FACTOR,
     SLIPPAGE_TYPE2,
-    DEFAULT_SWAP_AMOUNT,
-    DEFAULT_MINT_AMOUNT,
     MARKET_SWAP_FACTOR,
-    MAX_REMOVE_LIQUIDITY_AMOUNT,
-    MAX_SY_SWAP_AMOUNT,
-    MAX_PT_SWAP_AMOUNT,
-    MAX_YT_SWAP_AMOUNT,
-    MAX_PT_ADD_AMOUNT,
-    MAX_TOKEN_ADD_AMOUNT,
-    MAX_SY_ADD_AMOUNT,
     BALANCE_OF_STORAGE_SLOT,
     EPSILON_FOR_AGGREGATOR,
 } from './util/constants';
 import { AsyncOrSync } from 'ts-essentials';
+import { TransactionReceipt } from '@ethersproject/abstract-provider';
 
 type BalanceSnapshot = {
     ptBalance: BN;
@@ -80,20 +74,17 @@ describeWrite('Router', () => {
     const rawTokenAddress = currentConfig.tokens.USDC;
     const sySdk = new SyEntity(syAddress, networkConnectionWithChainId);
     const marketEntity = new MarketEntity(marketAddress, networkConnectionWithChainId);
-
-    let syDecimals: number;
-    let ptDecimals: number;
-    let ytDecimals: number;
-    let lpDecimals: number;
-    let rawTokenDecimals: number;
+    const chainId = currentConfig.chainId;
 
     let zeroApprovalSnapshotId = '';
 
     beforeAll(async () => {
         // prepare balances
-        const balance = BN.from(10).pow(18).mul(1_000);
+        await getAllAssets(chainId);
         const tokens = [syAddress, ptAddress, ytAddress, marketAddress];
-        await Promise.all(tokens.map((token) => setPendleERC20Balance(token, signerAddress, balance)));
+        await Promise.all(
+            tokens.map(async (token) => setPendleERC20Balance(token, signerAddress, valueToTokenAmount(token, chainId)))
+        );
         await increaseNativeBalance(signerAddress);
 
         const tokensIn = [...(await sySdk.getTokensIn()), rawTokenAddress];
@@ -104,7 +95,7 @@ describeWrite('Router', () => {
                     console.log(`No balanceOf slot info for ${await getERC20Name(token)} ${token}`);
                     return;
                 }
-                return setERC20Balance(token, signerAddress, balance, ...slotInfo);
+                return setERC20Balance(token, signerAddress, valueToTokenAmount(token, chainId), ...slotInfo);
             })
         );
 
@@ -123,14 +114,6 @@ describeWrite('Router', () => {
             await approveHelper(token, router.address, 0);
         }
         zeroApprovalSnapshotId = await evm_snapshot();
-
-        [syDecimals, ptDecimals, ytDecimals, lpDecimals, rawTokenDecimals] = await Promise.all([
-            getERC20Decimals(syAddress),
-            getERC20Decimals(ptAddress),
-            getERC20Decimals(ytAddress),
-            getERC20Decimals(marketAddress),
-            getERC20Decimals(rawTokenAddress),
-        ]);
     });
 
     beforeEach(async () => {
@@ -153,7 +136,7 @@ describeWrite('Router', () => {
         callback: T,
         tokens: Address[],
         skipTxCheck?: SkipTxCheckCallback<T>
-    ): Promise<MetaMethodData<T>> {
+    ): Promise<MetaMethodData<T> & { txReceipt: TransactionReceipt }> {
         const metaCall = await callback();
 
         if (skipTxCheck && skipTxCheck(metaCall.data)) {
@@ -161,11 +144,12 @@ describeWrite('Router', () => {
         }
 
         await batchInfApprove(tokens);
-        await metaCall
+
+        const txReceipt = await metaCall
             .connect(signer)
             .send()
             .then((tx) => tx.wait(BLOCK_CONFIRMATION));
-        return metaCall.data;
+        return { ...metaCall.data, txReceipt };
     }
 
     it('#constructor', () => {
@@ -188,14 +172,8 @@ describeWrite('Router', () => {
         });
 
         it('#addLiquidityDualSyAndPt', async () => {
-            const syAdd = bnMinAsBn(
-                decimalFactor(syDecimals).mul(MAX_SY_ADD_AMOUNT),
-                await getBalance(syAddress, signerAddress)
-            );
-            const ptAdd = bnMinAsBn(
-                decimalFactor(ptDecimals).mul(MAX_PT_ADD_AMOUNT),
-                await getBalance(ptAddress, signerAddress)
-            );
+            const syAdd = bnMinAsBn(valueToTokenAmount(syAddress, chainId), await getBalance(syAddress, signerAddress));
+            const ptAdd = bnMinAsBn(valueToTokenAmount(ptAddress, chainId), await getBalance(ptAddress, signerAddress));
 
             if (syAdd.eq(0) || ptAdd.eq(0)) {
                 throw new Error('skip test because syAdd or ptAdd is 0');
@@ -226,7 +204,7 @@ describeWrite('Router', () => {
                     await getBalance(token, signerAddress)
                 );
                 const ptAdd = bnMinAsBn(
-                    decimalFactor(ptDecimals).mul(MAX_PT_ADD_AMOUNT),
+                    valueToTokenAmount(ptAddress, chainId),
                     await getBalance(ptAddress, signerAddress)
                 );
 
@@ -263,10 +241,7 @@ describeWrite('Router', () => {
         });
 
         it('#addLiquiditySinglePt', async () => {
-            const ptAdd = bnMinAsBn(
-                decimalFactor(ptDecimals).mul(MAX_PT_ADD_AMOUNT),
-                await getBalance(ptAddress, signerAddress)
-            );
+            const ptAdd = bnMinAsBn(valueToTokenAmount(ptAddress, chainId), await getBalance(ptAddress, signerAddress));
             if (ptAdd.eq(0)) {
                 throw new Error('skip test because ptAdd is 0');
             }
@@ -287,10 +262,7 @@ describeWrite('Router', () => {
         });
 
         it('#addLiquiditySingleSy', async () => {
-            const syAdd = bnMinAsBn(
-                decimalFactor(syDecimals).mul(MAX_SY_ADD_AMOUNT),
-                await getBalance(syAddress, signerAddress)
-            );
+            const syAdd = bnMinAsBn(valueToTokenAmount(syAddress, chainId), await getBalance(syAddress, signerAddress));
             if (syAdd.eq(0)) {
                 throw new Error('skip test because syAdd is 0');
             }
@@ -312,10 +284,7 @@ describeWrite('Router', () => {
         });
 
         it('#addLiquiditySingleSyKeepYt', async () => {
-            const syAdd = bnMinAsBn(
-                decimalFactor(syDecimals).mul(MAX_SY_ADD_AMOUNT),
-                await getBalance(syAddress, signerAddress)
-            );
+            const syAdd = bnMinAsBn(valueToTokenAmount(syAddress, chainId), await getBalance(syAddress, signerAddress));
             if (syAdd.eq(0)) {
                 throw new Error('skip test because syAdd is 0');
             }
@@ -347,9 +316,8 @@ describeWrite('Router', () => {
 
         describeWrite('#addLiquiditySingleToken', () => {
             async function checkAddLiquiditySingleToken(token: Address) {
-                const tokenDecimals = await getERC20Decimals(token);
                 const tokenAddAmount = bnMinAsBn(
-                    decimalFactor(tokenDecimals).mul(MAX_TOKEN_ADD_AMOUNT),
+                    valueToTokenAmount(token, chainId),
                     await getBalance(token, signerAddress)
                 );
 
@@ -362,7 +330,6 @@ describeWrite('Router', () => {
                     marketAddress,
                     token,
                 ]);
-
                 const readerData = await sendTxWithInfApproval(
                     () =>
                         router.addLiquiditySingleToken(
@@ -377,12 +344,20 @@ describeWrite('Router', () => {
                     [token]
                 );
 
+                const tx = readerData.txReceipt;
+                const gasPrice = tx.effectiveGasPrice;
+                const gasUsed = tx.gasUsed;
+                const gasUsedInEth = gasUsed.mul(gasPrice);
                 const [lpBalanceAfter, tokenBalanceAfter] = await getUserBalances(signerAddress, [
                     marketAddress,
                     token,
                 ]);
                 expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, EPSILON_FOR_AGGREGATOR);
-                expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount);
+                if (!isNativeToken(token)) {
+                    expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount);
+                } else {
+                    expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount.add(gasUsedInEth));
+                }
             }
 
             it('raw token', async () => {
@@ -400,9 +375,8 @@ describeWrite('Router', () => {
 
         describeWrite('#addLiquiditySingleTokenKeepYt', () => {
             async function checkAddLiquiditySingleTokenKeepYt(token: Address) {
-                const tokenDecimals = await getERC20Decimals(token);
                 const tokenAddAmount = bnMinAsBn(
-                    decimalFactor(tokenDecimals).mul(MAX_TOKEN_ADD_AMOUNT),
+                    valueToTokenAmount(token, chainId),
                     await getBalance(token, signerAddress)
                 );
 
@@ -440,9 +414,15 @@ describeWrite('Router', () => {
                 const actualYtOut = ytBalanceAfter.sub(ytBalanceBefore);
                 expect(actualLpOut).toEqBN(readerData.netLpOut, EPSILON_FOR_AGGREGATOR);
                 expect(actualYtOut).toEqBN(readerData.netYtOut, EPSILON_FOR_AGGREGATOR);
+                const tx = readerData.txReceipt;
+                const gasPrice = tx.effectiveGasPrice;
+                const gasUsed = tx.gasUsed;
+                const gasUsedInEth = gasUsed.mul(gasPrice);
                 // Todo: include gas check
                 if (!isNativeToken(token)) {
                     expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount);
+                } else {
+                    expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount.add(gasUsedInEth));
                 }
             }
 
@@ -466,7 +446,7 @@ describeWrite('Router', () => {
         it('#removeLiquidityDualSyAndPt', async () => {
             const liquidityRemove = bnMinAsBn(
                 await getBalance(marketAddress, signerAddress),
-                decimalFactor(lpDecimals).mul(MAX_REMOVE_LIQUIDITY_AMOUNT)
+                valueToTokenAmount(marketAddress, chainId)
             );
 
             if (liquidityRemove.eq(0)) {
@@ -507,7 +487,7 @@ describeWrite('Router', () => {
             for (const token of tokensOut) {
                 const liquidityRemove = bnMinAsBn(
                     await getBalance(marketAddress, signerAddress),
-                    decimalFactor(lpDecimals).mul(MAX_REMOVE_LIQUIDITY_AMOUNT)
+                    valueToTokenAmount(marketAddress, chainId)
                 );
                 if (liquidityRemove.eq(0)) {
                     throw new Error(
@@ -556,7 +536,7 @@ describeWrite('Router', () => {
         it('#removeLiquiditySinglePt', async () => {
             const liquidityRemove = bnMinAsBn(
                 await getBalance(marketAddress, signerAddress),
-                decimalFactor(lpDecimals).mul(MAX_REMOVE_LIQUIDITY_AMOUNT)
+                valueToTokenAmount(marketAddress, chainId)
             );
             if (liquidityRemove.eq(0)) {
                 throw new Error('skip test because liquidityRemove is 0');
@@ -582,7 +562,7 @@ describeWrite('Router', () => {
         it('#removeLiquiditySingleSy', async () => {
             const liquidityRemove = bnMinAsBn(
                 await getBalance(marketAddress, signerAddress),
-                decimalFactor(lpDecimals).mul(MAX_REMOVE_LIQUIDITY_AMOUNT)
+                valueToTokenAmount(marketAddress, chainId)
             );
             if (liquidityRemove.eq(0)) {
                 throw new Error('skip test because liquidityRemove is 0');
@@ -608,7 +588,7 @@ describeWrite('Router', () => {
             async function checkRemoveLiquiditySingleToken(token: Address) {
                 const liquidityRemove = bnMinAsBn(
                     await getBalance(marketAddress, signerAddress),
-                    decimalFactor(lpDecimals).mul(MAX_REMOVE_LIQUIDITY_AMOUNT)
+                    valueToTokenAmount(marketAddress, chainId)
                 );
                 if (liquidityRemove.eq(0)) {
                     throw new Error(
@@ -1007,7 +987,7 @@ describeWrite('Router', () => {
         it('#mintPyFromToken', async () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectRawTokenIn = bnMinAsBn(
-                decimalFactor(rawTokenDecimals).mul(DEFAULT_MINT_AMOUNT),
+                valueToTokenAmount(rawTokenAddress, chainId),
                 balanceBefore.tokenBalance
             );
             if (expectRawTokenIn.eq(0)) {
@@ -1061,7 +1041,7 @@ describeWrite('Router', () => {
         it('#mintSyFromToken', async () => {
             const balanceBefore = await getSwapBalanceSnapshot();
             const expectRawTokenIn = bnMinAsBn(
-                decimalFactor(rawTokenDecimals).mul(DEFAULT_MINT_AMOUNT),
+                valueToTokenAmount(rawTokenAddress, chainId),
                 balanceBefore.tokenBalance
             );
             if (expectRawTokenIn.eq(0)) {
@@ -1162,7 +1142,7 @@ describeWrite('Router', () => {
             const rewardTokens = await marketEntity.getRewardTokens();
             const rewardBalancesBefore = await getUserBalances(signerAddress, rewardTokens);
             const syBalanceBefore = await getBalance(syAddress, signerAddress);
-            const mintSyAmount = decimalFactor(syDecimals);
+            const mintSyAmount = valueToTokenAmount(syAddress, chainId);
             await approveInfHelper(syAddress, router.address);
             await marketEntity.transfer(NATIVE_ADDRESS_0xEE, '0');
 
@@ -1475,7 +1455,7 @@ describeWrite('Router', () => {
 
         const amount = getIn ? bnMinAsBn(marketAmount, userAmount) : marketAmount;
 
-        return bnMinAsBn(amount, decimalFactor(syDecimals).mul(MAX_SY_SWAP_AMOUNT));
+        return bnMinAsBn(amount, valueToTokenAmount(syAddress, chainId));
     }
 
     function getPtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
@@ -1484,7 +1464,7 @@ describeWrite('Router', () => {
 
         const amount = getIn ? bnMinAsBn(marketAmount, userAmount) : marketAmount;
 
-        return bnMinAsBn(amount, decimalFactor(ptDecimals).mul(MAX_PT_SWAP_AMOUNT));
+        return bnMinAsBn(amount, valueToTokenAmount(ptAddress, chainId));
     }
 
     function getYtSwapAmount(balanceSnapshot: BalanceSnapshot, getIn: boolean) {
@@ -1494,7 +1474,7 @@ describeWrite('Router', () => {
 
         const amount = getIn ? bnMinAsBn(marketAmount, userAmount) : marketAmount;
 
-        return bnMinAsBn(amount, decimalFactor(ytDecimals).mul(MAX_YT_SWAP_AMOUNT));
+        return bnMinAsBn(amount, valueToTokenAmount(ytAddress, chainId));
     }
 
     /**
@@ -1506,7 +1486,7 @@ describeWrite('Router', () => {
      * TODO: Fix this?
      */
     function getTokenSwapAmount(balanceSnapshot: BalanceSnapshot, _getIn: boolean) {
-        return bnMinAsBn(decimalFactor(rawTokenDecimals).mul(DEFAULT_SWAP_AMOUNT), balanceSnapshot.tokenBalance);
+        return bnMinAsBn(valueToTokenAmount(rawTokenAddress, chainId), balanceSnapshot.tokenBalance);
     }
 
     function getPyRedeemAmount(balanceSnapshot: BalanceSnapshot) {
