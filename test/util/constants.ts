@@ -77,4 +77,9 @@ export const BALANCE_OF_STORAGE_SLOT: Record<string, [number, boolean]> = {
     '0x8a420aaca0c92e3f97cdcfdd852e01ac5b609452': [4, false], // BSC StableV1 AMM - ETH/frxETH
     '0xa2e3356610840701bdf5611a53974510ae27e2e1': [9, false], // BSC Wrapped Binance Beacon ETH
     '0xae7ab96520de3a18e5e111b5eaab095312d7fe84': [0, false], // Liquid stETH 2.0
+
+    '0x4200000000000000000000000000000000000006': [3, false], // Optimism WETH
+    '0xda10009cbd5d07dd0cecc66161fc93d7c9000da1': [2, false], // Optimism DAI
+    '0x94b008aa00579c1307b0ef2c499ad98a8ce58e58': [0, false], // Optimism USDT
+    '0x7f5c764cbc14f9669b88837ca1490cca17c31607': [0, false], // Optimism USDC
 };

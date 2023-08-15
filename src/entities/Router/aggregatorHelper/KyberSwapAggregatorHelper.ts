@@ -58,6 +58,7 @@ const KYBER_API = {
     [CHAIN_ID_MAPPING.MUMBAI]: 'https://aggregator-api.stg.kyberengineering.io/mumbai/route/encode',
     [CHAIN_ID_MAPPING.ARBITRUM]: 'https://aggregator-api.kyberswap.com/arbitrum/route/encode',
     [CHAIN_ID_MAPPING.BSC]: 'https://aggregator-api.kyberswap.com/bsc/route/encode',
+    [CHAIN_ID_MAPPING.OPTIMISM]: 'https://aggregator-api.kyberswap.com/optimism/route/encode',
 } as const;
 
 export type KyberHelperConfig = {

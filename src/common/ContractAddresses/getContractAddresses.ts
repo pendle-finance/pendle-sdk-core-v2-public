@@ -10,6 +10,7 @@ export const CONTRACT_ADDRESSES = {
     [CHAIN_ID_MAPPING.ARBITRUM]: data.ARBITRUM_CORE_ADDRESSES,
     [CHAIN_ID_MAPPING.BSC]: data.BSC_CORE_ADDRESSES,
     [CHAIN_ID_MAPPING.MANTLE]: data.MANTLE_CORE_ADDRESSES,
+    [CHAIN_ID_MAPPING.OPTIMISM]: data.OPTIMISM_CORE_ADDRESSES,
 } as const satisfies Record<ChainId, ContractAddresses>;
 
 export function getContractAddresses<C extends ChainId>(chainId: C): (typeof CONTRACT_ADDRESSES)[C] {

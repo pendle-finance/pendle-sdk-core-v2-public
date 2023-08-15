@@ -185,6 +185,7 @@ export async function getUserBalances(userAddress: Address, tokens: Address[]): 
     return Promise.all(tokens.map((token) => getBalance(token, userAddress)));
 }
 
+// const PENDLE_API_ALL_ASSETS_URL = (chainId: ChainId) => `https://staging-api.pendle.finance/core/v1/${chainId}/assets/all`;
 const PENDLE_API_ALL_ASSETS_URL = (chainId: ChainId) => `https://api-v2.pendle.finance/core/v1/${chainId}/assets/all`;
 
 type PendleAssetNarrowType = {

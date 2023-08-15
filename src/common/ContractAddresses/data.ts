@@ -1,5 +1,5 @@
 // This file is generated via `yarn generateContractAddresses`
-// Generated at Wed, 09 Aug 2023 03:41:48 GMT
+// Generated at Fri, 11 Aug 2023 09:07:50 GMT
 import { ContractAddresses } from './types';
 import { toAddress } from '../Address';
 
@@ -53,6 +53,19 @@ export const MANTLE_CORE_ADDRESSES = {
     FEE_DISTRIBUTOR: undefined,
     FEE_DISTRIBUTORV2: undefined,
     PENDLE_MULTICALL: undefined,
+    VOTING_CONTROLLER: undefined,
+} as const satisfies ContractAddresses;
+export const OPTIMISM_CORE_ADDRESSES = {
+    PENDLE: toAddress('0xbc7b1ff1c6989f006a1185318ed4e7b5796e66e1'),
+    PENDLE_MULTICALL: toAddress('0xfd6df9efacfefdf4e610d687a9c9b941d1b1bf75'),
+    PENDLE_SWAP: toAddress('0x963ddbb35c1ae44e2a159e3b5fb5177e0b32660d'),
+    ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
+    ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
+    ROUTER_STATIC: toAddress('0x704478dd72fd7f9b83d1f1e0fc18c14b54f034d0'),
+    VEPENDLE: toAddress('0xd5c47d2383fddc19596489280c0a33ac42b2bb18'),
+    WRAPPED_NATIVE: toAddress('0x4200000000000000000000000000000000000006'),
+    FEE_DISTRIBUTOR: undefined,
+    FEE_DISTRIBUTORV2: undefined,
     VOTING_CONTROLLER: undefined,
 } as const satisfies ContractAddresses;
 export const FUJI_CORE_ADDRESSES = {

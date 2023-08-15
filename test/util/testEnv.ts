@@ -81,6 +81,7 @@ const providerUrls = {
     [CHAIN_ID_MAPPING.BSC]: 'https://bsc-dataseed.binance.org',
     [CHAIN_ID_MAPPING.ARBITRUM]: 'https://endpoints.omniatech.io/v1/arbitrum/one/public',
     [CHAIN_ID_MAPPING.MANTLE]: 'https://rpc.mantle.xyz',
+    [CHAIN_ID_MAPPING.OPTIMISM]: 'https://endpoints.omniatech.io/v1/op/mainnet/public',
     [LOCAL_CHAIN_ID]: 'http://127.0.0.1:8545',
 } as const satisfies Record<ChainId | typeof LOCAL_CHAIN_ID, string>;
 
