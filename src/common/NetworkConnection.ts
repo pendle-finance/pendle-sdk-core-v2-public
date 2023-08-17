@@ -20,3 +20,22 @@ export function copyNetworkConnection(networkConnection: NetworkConnection): Net
     }
     return { provider: networkConnection.provider, signer: networkConnection.signer };
 }
+
+export function getProviderFromNetworkConnection(
+    networkConnection: NetworkConnection,
+    checked?: false
+): providers.Provider | undefined;
+export function getProviderFromNetworkConnection(
+    networkConnection: NetworkConnection,
+    checked: true
+): providers.Provider;
+export function getProviderFromNetworkConnection(
+    networkConnection: NetworkConnection,
+    checked?: boolean
+): providers.Provider | undefined {
+    const provider = networkConnection.provider ?? networkConnection.signer.provider ?? undefined;
+    if (checked && provider == undefined) {
+        throw new Error('Provider does not exist in networkConnection');
+    }
+    return provider;
+}
