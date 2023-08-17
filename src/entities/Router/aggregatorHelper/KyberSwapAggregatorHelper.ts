@@ -10,7 +10,7 @@
  * [KyberSwapAPI]: https://docs.kyberswap.com/kyberswap-solutions/kyberswap-aggregator/aggregator-api-specification/evm-swaps
  */
 import { BigNumberish, BytesLike, BigNumber as BN } from 'ethers';
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import {
     CHAIN_ID_MAPPING,
     ChainId,
@@ -20,7 +20,7 @@ import {
     getContractAddresses,
     filterUndefinedFields,
 } from '../../../common';
-import { PendleSdkError, PendleSdkErrorParams } from '../../../errors';
+import { PendleSdkError, PendleSdkErrorParams, WrappedAxiosError } from '../../../errors';
 import {
     AggregatorHelper,
     AggregatorResult,
@@ -83,6 +83,12 @@ function rawKybercallDataHasEncodedData(data: RawKybercallData): data is RawKybe
 }
 
 export class KyberSwapAggregatorHelperError extends AggregatorHelperError {}
+
+export class KyberSwapAggregatorHelperAxiosError extends WrappedAxiosError {
+    constructor(readonly cause: AxiosError) {
+        super('KyberSwap aggregator axios error', cause);
+    }
+}
 
 export class UnknownKyberSwapAggregatorHelperError extends KyberSwapAggregatorHelperError {
     constructor(params?: PendleSdkErrorParams) {
@@ -283,6 +289,9 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
                 e.response == undefined ||
                 !KYBER_SWAP_REQUEST_ERROR_STATUS.includes(e.response.status)
             ) {
+                if (axios.isAxiosError(e)) {
+                    throw new KyberSwapAggregatorHelperAxiosError(e);
+                }
                 throw new UnknownKyberSwapAggregatorHelperError({ cause: e });
             }
             const data = e.response.data;

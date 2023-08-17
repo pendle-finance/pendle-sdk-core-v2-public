@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios';
 import {
     SyEntity,
     PendleContractError,
@@ -7,6 +8,8 @@ import {
     toAddress,
     KyberSwapAggregatorHelperRequestError,
     KyberSwapAggergatorHelperRequestErrorCode,
+    KyberSwapAggregatorHelperAxiosError,
+    OneInchAggregatorHelperAxiosError,
 } from '../src';
 import { currentConfig, describeWrite, networkConnectionWithChainId, signer } from './util/testEnv';
 
@@ -71,6 +74,46 @@ describe('KyberSwapAggregatorHelperRequestError', () => {
             // The value in the snapshot is generated
             // eslint-disable-next-line quotes
             expect(e.message).toMatchInlineSnapshot(`"KyberSwap request error: token not found"`);
+        }
+    });
+});
+
+describe('WrappedAxiosError', () => {
+    const testAxiosError = new AxiosError(
+        'Test Axios Error',
+        '696',
+        {},
+        {},
+        {
+            data: {
+                error: 'axios error data',
+            },
+            status: 696,
+            statusText: '696',
+            headers: {},
+            config: {},
+        }
+    );
+    it('Kyber Axios Error', async () => {
+        try {
+            throw new KyberSwapAggregatorHelperAxiosError(testAxiosError);
+        } catch (_e: unknown) {
+            expect(_e).toBeInstanceOf(KyberSwapAggregatorHelperAxiosError);
+            const e = _e as KyberSwapAggregatorHelperAxiosError;
+            expect(e.message).toBe(
+                'Wrapped axios error: KyberSwap aggregator axios error: Test Axios Error.\nResponse: {"error":"axios error data"}.'
+            );
+        }
+    });
+    it('1Inch Axios Error', async () => {
+        try {
+            throw new OneInchAggregatorHelperAxiosError(testAxiosError);
+        } catch (_e: unknown) {
+            expect(_e).toBeInstanceOf(OneInchAggregatorHelperAxiosError);
+            const e = _e as KyberSwapAggregatorHelperAxiosError;
+            expect(e.message).toBe(
+                'Wrapped axios error: 1inch aggregator axios error: Test Axios Error.\nResponse: {"error":"axios error data"}.'
+            );
         }
     });
 });

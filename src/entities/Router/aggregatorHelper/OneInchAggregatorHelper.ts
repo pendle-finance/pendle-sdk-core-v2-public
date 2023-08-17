@@ -7,10 +7,10 @@ import {
     SwapType,
     SwapData,
 } from './AggregatorHelper';
-import { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import { wrapMakeCall } from './wrapMakeCall';
-import { PendleSdkErrorParams } from '../../../errors';
+import { PendleSdkErrorParams, WrappedAxiosError } from '../../../errors';
 
 /*
 We don't use external tool to keep it small.
@@ -111,6 +111,13 @@ export class OneInchAggregatorHelperError extends AggregatorHelperError {
         super(`1inch aggregator error: ${message}`, params);
     }
 }
+
+export class OneInchAggregatorHelperAxiosError extends WrappedAxiosError {
+    constructor(readonly cause: AxiosError) {
+        super('1inch aggregator axios error', cause);
+    }
+}
+
 export class OneInchAggregatorHelperSwapAPI400Error extends OneInchAggregatorHelperError {
     constructor(readonly data: OneInchSwapAPI400ErrorData, params?: PendleSdkErrorParams) {
         super(data.description, params);
@@ -190,6 +197,9 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
             if (axios.isAxiosError(e) && e.response?.status === 400) {
                 const data = e.response.data as OneInchSwapAPI400ErrorData;
                 throw new OneInchAggregatorHelperSwapAPI400Error(data);
+            }
+            if (axios.isAxiosError(e)) {
+                throw new OneInchAggregatorHelperAxiosError(e);
             }
             throw new OneInchAggregatorHelperError('unknown error', { cause: e });
         }

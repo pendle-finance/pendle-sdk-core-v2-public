@@ -11,6 +11,7 @@ import {
 } from './PendleContractErrorMessages';
 import { Address } from 'common';
 import * as ulid from 'ulid';
+import { AxiosError } from 'axios';
 
 // The list of error code is here
 // https://docs.ethers.io/v5/troubleshooting/errors/
@@ -404,6 +405,14 @@ export class ErrorBuiltinContractError extends BuiltinContractError {
 export class GasEstimationError extends PendleSdkError {
     constructor(readonly cause: Error) {
         super(`Gas estimation error: ${cause.message}`, { cause });
+    }
+}
+
+export class WrappedAxiosError extends PendleSdkError {
+    constructor(message: string, readonly cause: AxiosError) {
+        const prefix = `Wrapped axios error: ${message}: ${cause.message}.`;
+        const errorMessage = cause.response ? `${prefix}\nResponse: ${JSON.stringify(cause.response.data)}.` : prefix;
+        super(errorMessage, { cause });
     }
 }
 
