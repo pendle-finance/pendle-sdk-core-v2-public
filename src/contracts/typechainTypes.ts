@@ -15,6 +15,7 @@ export type {
     IWETH,
     PendleRouterHelper,
     PendleMulticallV1,
+    PendleMulticallV2,
     Multicall2,
 } from '@pendle/core-v2/typechain-types';
 

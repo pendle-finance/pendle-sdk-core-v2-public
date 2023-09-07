@@ -18,3 +18,4 @@ export { abi as PendleRouterHelperABI } from '@pendle/core-v2/build/artifacts/co
 
 export { abi as Multicall2Abi } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/Multicall2.sol/Multicall2.json';
 export { abi as PendleMulticallV1Abi } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/PendleMulticallV1.sol/PendleMulticallV1.json';
+export { abi as PendleMulticallV2Abi } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/PendleMulticallV2.sol/PendleMulticallV2.json';

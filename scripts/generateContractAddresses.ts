@@ -43,6 +43,7 @@ function transformData(data: CoreAddresses, offchainHelper: OffchainHelperAddres
         WRAPPED_NATIVE: toAddress(data.network.wrappedNative),
         ROUTER_HELPER: toAddress(data.routerHelper),
         PENDLE_MULTICALL: toAddressOrUndefined(offchainHelper?.multicall),
+        PENDLE_MULTICALLV2: toAddressOrUndefined(offchainHelper?.pendleMulticallV2),
         VOTING_CONTROLLER: undefined,
         FEE_DISTRIBUTOR: undefined,
         FEE_DISTRIBUTORV2: undefined,

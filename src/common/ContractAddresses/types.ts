@@ -16,4 +16,5 @@ export type ContractAddresses = {
     PENDLE_SWAP: Address;
     ROUTER_HELPER: Address;
     PENDLE_MULTICALL: Address | undefined;
+    PENDLE_MULTICALLV2: Address | undefined;
 };

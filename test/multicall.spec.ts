@@ -11,10 +11,12 @@ import {
     WrappedContract,
     NATIVE_ADDRESS_0x00,
     isNativeToken,
+    YtEntity,
 } from '../src';
 import { BigNumber as BN } from 'ethers';
 import { currentConfig, networkConnection, networkConnectionWithChainId, USE_HARDHAT_RPC } from './util/testEnv';
-import { itWhen } from './util/testHelper';
+import { itWhen, print } from './util/testHelper';
+import { DEFAULT_EPSILON } from './util/constants';
 
 describe('Multicall', () => {
     const multicall = currentConfig.multicall;
@@ -38,9 +40,7 @@ describe('Multicall', () => {
     });
 
     it('Single call', async () => {
-        expect(await pt.balanceOf(currentConfig.userAddress)).toEqBN(
-            await multicall.wrap(pt).callStatic.balanceOf(currentConfig.userAddress)
-        );
+        expect(await sy.balanceOf(yt.address)).toEqBN(await multicall.wrap(sy).callStatic.balanceOf(yt.address));
     });
 
     it('Batch call', async () => {
@@ -147,5 +147,27 @@ describe('Multicall', () => {
         for (const [promiseCallResult, multicallResult] of zip(promiseCallResults, multicallResults)) {
             expect(multicallResult).toEqBN(promiseCallResult);
         }
+    });
+
+    describe('PendleMulticallV2 no side effect', () => {
+        it('Claim user rewards', async () => {
+            const currentMarket = currentConfig.market;
+            const userAddress = currentConfig.userAddress;
+            const yt = new YtEntity(currentMarket.YT, networkConnectionWithChainId);
+
+            const [firstSimulateInterestAndRewards, secondSimulateInterestAndRewards] = await Promise.all([
+                multicall.wrap(yt.contract).callStatic.redeemDueInterestAndRewards(userAddress, true, true),
+                multicall.wrap(yt.contract).callStatic.redeemDueInterestAndRewards(userAddress, true, true),
+            ]);
+            print(firstSimulateInterestAndRewards);
+            print(secondSimulateInterestAndRewards);
+
+            for (const [first, second] of zip(
+                firstSimulateInterestAndRewards.flat(),
+                secondSimulateInterestAndRewards.flat()
+            )) {
+                expect(first).toEqBN(second, DEFAULT_EPSILON);
+            }
+        });
     });
 });

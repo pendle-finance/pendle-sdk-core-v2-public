@@ -9,6 +9,7 @@ import {
     MulticallAggregateCaller,
     MulticallAggregateCallerNoGasLimit,
     MulticallAggregateCallerWithGasLimit,
+    MulticallV2AggregateCallerWithGasLimit,
 } from './MulticallAggregateCaller';
 
 /**
@@ -97,11 +98,23 @@ export class Multicall {
         return multicall ? multicall.wrap(contract) : (contract as unknown as MulticallStatic<T>);
     }
 
-    constructor(params: { chainId: ChainId; provider: Provider; callLimit?: number; withGasLimit?: boolean }) {
-        const { callLimit, withGasLimit = true, chainId, provider } = params;
+    constructor(params: {
+        chainId: ChainId;
+        provider: Provider;
+        callLimit?: number;
+        withGasLimit?: boolean;
+        usePendleMulticallV2?: boolean;
+    }) {
+        const { callLimit, withGasLimit = true, chainId, provider, usePendleMulticallV2 = true } = params;
         this.callLimit = callLimit ?? DEFAULT_CALL_LIMIT;
-        if (withGasLimit && MulticallAggregateCallerWithGasLimit.isSupportedChain(chainId)) {
-            this.multicallAggregateCaller = MulticallAggregateCallerWithGasLimit.createInstance({ chainId, provider });
+        const AggregateCallerGasLimitClass = usePendleMulticallV2
+            ? MulticallV2AggregateCallerWithGasLimit
+            : MulticallAggregateCallerWithGasLimit;
+        if (withGasLimit && AggregateCallerGasLimitClass.isSupportedChain(chainId)) {
+            this.multicallAggregateCaller = AggregateCallerGasLimitClass.createInstance({
+                chainId,
+                provider,
+            });
         } else {
             if (withGasLimit) {
                 console.info(`Multicall with gas limit is not supported on chain ${chainId}. Fallback to Multicall3`);
@@ -117,7 +130,6 @@ export class Multicall {
         }));
 
         const responses = await this.multicallAggregateCaller.tryAggregate(callRequests, { blockTag });
-
         const result = Array.from(zip(calls, responses), ([call, { success, returnData }]) => {
             try {
                 const outputs: any[] = call.fragment.outputs!;
