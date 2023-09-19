@@ -31,6 +31,10 @@ export abstract class BaseLiquidityMigrationFixTokenRedeemSyRoute<
         this.removeLiquidityRoute = params.removeLiquidityRoute;
     }
 
+    override async getSourceTokenAmount() {
+        return this.removeLiquidityRoute.getSourceTokenAmount();
+    }
+
     get tokenRedeemSy() {
         return this.removeLiquidityRoute.tokenRedeemSy;
     }

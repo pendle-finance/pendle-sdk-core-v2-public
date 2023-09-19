@@ -130,26 +130,30 @@ export class Multicall {
         }));
 
         const responses = await this.multicallAggregateCaller.tryAggregate(callRequests, { blockTag });
-        const result = Array.from(zip(calls, responses), ([call, { success, returnData }]) => {
-            try {
-                const outputs: any[] = call.fragment.outputs!;
-                const params = TRANSFORMER.decodeFunctionResult(call.fragment, returnData);
+        const result = Array.from(
+            zip(calls, responses, callRequests),
+            ([call, { success, returnData }, callRequest]) => {
+                try {
+                    const outputs: any[] = call.fragment.outputs!;
+                    const params = TRANSFORMER.decodeFunctionResult(call.fragment, returnData);
 
-                // If we do the !success check before the decode, we cannot get the error message of
-                // decodeFunctionResult. So we always decode first, then check the success later.
-                if (!success) {
-                    const callId = FunctionFragment.from(call.fragment).format();
-                    throw new Error(`Call ${call.address}:${callId} failed`);
-                }
+                    // If we do the !success check before the decode, we cannot get the error message of
+                    // decodeFunctionResult. So we always decode first, then check the success later.
+                    if (!success) {
+                        const callId = FunctionFragment.from(call.fragment).format();
+                        throw new Error(`Call ${call.address}:${callId} failed`);
+                    }
 
-                return outputs.length === 1 ? params[0] : params;
-            } catch (e: any) {
-                if (e.reason == null) {
-                    e.reason = 'Call failed for unknown reason';
+                    return outputs.length === 1 ? params[0] : params;
+                } catch (e: any) {
+                    if (e.reason == null) {
+                        e.reason = 'Call failed for unknown reason';
+                    }
+                    e.calldata = callRequest.callData;
+                    return EthersJsError.handleEthersJsError(e);
                 }
-                return EthersJsError.handleEthersJsError(e);
             }
-        });
+        );
 
         return result;
     }

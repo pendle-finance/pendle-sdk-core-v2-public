@@ -57,6 +57,9 @@ export abstract class BaseZapInRoute<
     abstract readonly sourceTokenAmount: RawTokenAmount<BigNumberish>;
     protected abstract previewWithRouterStatic(): Promise<Data | undefined>;
 
+    override async getSourceTokenAmount() {
+        return this.sourceTokenAmount;
+    }
     override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         return this.checkUserApproval(signerAddress, this.sourceTokenAmount);
     }

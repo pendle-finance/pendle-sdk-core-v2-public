@@ -34,6 +34,10 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         super(params);
     }
 
+    override async getSourceTokenAmount() {
+        return { token: this.sy, amount: this.netSyIn };
+    }
+
     override get targetToken() {
         return this.tokenOut;
     }

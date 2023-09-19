@@ -38,6 +38,10 @@ export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         this.ytEntity = typeof _yt === 'string' ? new YtEntity(_yt, this.router.entityConfig) : _yt;
     }
 
+    override async getSourceTokenAmount() {
+        return { token: this.ytEntity.address, amount: this.netPyIn };
+    }
+
     override get targetToken() {
         return this.tokenOut;
     }

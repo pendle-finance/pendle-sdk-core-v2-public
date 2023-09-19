@@ -39,6 +39,10 @@ export class SwapExactPtForTokenRoute<T extends MetaMethodType> extends BaseZapO
         super(params);
     }
 
+    override async getSourceTokenAmount() {
+        return { token: await this.market.pt(), amount: this.exactPtIn };
+    }
+
     override get targetToken() {
         return this.tokenOut;
     }

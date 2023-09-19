@@ -41,6 +41,10 @@ export abstract class _RemoveLiquiditySingleTokenRoute<
         super(params);
     }
 
+    override async getSourceTokenAmount() {
+        return { token: this.market, amount: this.lpToRemove };
+    }
+
     override get targetToken() {
         return this.tokenOut;
     }

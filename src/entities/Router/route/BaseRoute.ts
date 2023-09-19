@@ -73,6 +73,7 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
 
     abstract readonly routeName: string;
     abstract get tokenBulk(): Address;
+    abstract getSourceTokenAmount(): Promise<RawTokenAmount<BigNumberish>>;
 
     /**
      * _Clone_ the current object but set {@link withBulkSeller} to `true`.
