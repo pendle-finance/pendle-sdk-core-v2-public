@@ -1721,6 +1721,7 @@ export abstract class BaseRouter extends PendleEntity {
                 try {
                     const res = await this.aggregatorHelper.makeCall(tokenAmount, tokenOut, slippage, {
                         aggregatorReceiver: params.receiver,
+                        needScale: false,
                     });
                     return res.createSwapData({ needScale: true });
                 } catch (cause: unknown) {

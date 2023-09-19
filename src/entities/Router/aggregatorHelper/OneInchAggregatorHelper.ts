@@ -104,6 +104,15 @@ export type OneInchAggregatorHelperParams = {
      * Default to 1inch's AggregationRouterV5 ('0x1111111254EEB25477B68fb85Ed929f73A960582')
      */
     extRouter?: Address;
+
+    liquiditySourcesProvider?(instance: OneInchAggregatorHelper): Promise<string[]>;
+};
+
+export type OneInchLiquidtySourcesResult = {
+    protocols: {
+        id: string;
+        // No need for the other metadata
+    }[];
 };
 
 export class OneInchAggregatorHelperError extends AggregatorHelperError {
@@ -126,14 +135,17 @@ export class OneInchAggregatorHelperSwapAPI400Error extends OneInchAggregatorHel
 
 export class OneInchAggregatorResult implements AggregatorResult {
     readonly outputAmount: BN;
+    readonly needScale: boolean;
     constructor(
         readonly queryParams: OneInchSwapAPIQueryParams,
         readonly data: OneInchSwapAPI200Result,
         readonly params: {
             extRouter: Address;
+            needScale: boolean;
         }
     ) {
         this.outputAmount = BN.from(data.toTokenAmount);
+        this.needScale = params.needScale;
     }
 
     getSwapType() {
@@ -141,6 +153,10 @@ export class OneInchAggregatorResult implements AggregatorResult {
     }
 
     createSwapData({ needScale }: { needScale: boolean }): SwapData {
+        if (needScale !== this.needScale) {
+            // If this error is thrown, something is wrong happend to the SDK's Routing algo.
+            throw new OneInchAggregatorHelperError('Mismatch needScale param');
+        }
         return {
             swapType: SwapType.ONE_INCH,
             // default to fromAddress as convention here https://docs.1inch.io/docs/aggregation-protocol/api/swagger
@@ -159,6 +175,7 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
     readonly apiParamsOverrides?: Partial<OneInchSwapAPIQueryParams>;
     readonly apiUrl: string;
     readonly extRouter: Address;
+    readonly liquiditySourcesProvider: (instance: OneInchAggregatorHelper) => Promise<string[]>;
 
     constructor(params: OneInchAggregatorHelperParams) {
         this.chainId = params.chainId;
@@ -166,10 +183,16 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
         this.apiParamsOverrides = params.apiParamsOverrides;
         this.apiUrl = params.apiUrl ?? 'https://api.1inch.io/v5.0';
         this.extRouter = params.extRouter ?? OneInchAggregatorHelper.OneInchAggregationRouterV5;
+        this.liquiditySourcesProvider =
+            params.liquiditySourcesProvider?.bind(params) ?? OneInchAggregatorHelper.provideCachedLiquiditySources;
     }
 
     getSwapUrl() {
         return `${this.apiUrl}/${this.chainId}/swap`;
+    }
+
+    getLiquiditySourcesUrl() {
+        return `${this.apiUrl}/${this.chainId}/liquidity-sources`;
     }
 
     async makeCall(...params: MakeCallParams): Promise<AggregatorResult> {
@@ -177,7 +200,8 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
     }
 
     private async make1InchCall(...params: MakeCallParams): Promise<AggregatorResult> {
-        const queryParams = this.getOverriddenQueryParams(params);
+        const queryParams = await this.getOverriddenQueryParams(params);
+        const [, , , { needScale = false } = {}] = params;
 
         const config: AxiosRequestConfig = {
             params: queryParams,
@@ -191,7 +215,10 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
 
         try {
             const { data }: { data: OneInchSwapAPI200Result } = await this.axios.request(config);
-            return new OneInchAggregatorResult(queryParams, data, { extRouter: this.extRouter });
+            return new OneInchAggregatorResult(queryParams, data, {
+                extRouter: this.extRouter,
+                needScale: needScale,
+            });
         } catch (e: unknown) {
             // https://docs.1inch.io/docs/aggregation-protocol/api/swagger
             if (axios.isAxiosError(e) && e.response?.status === 400) {
@@ -205,12 +232,12 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
         }
     }
 
-    getBaseQueryParams([
+    async getBaseQueryParams([
         { token: tokenIn, amount: amountIn },
         tokenOut,
         slippage,
         params,
-    ]: MakeCallParams): OneInchSwapAPIQueryParams {
+    ]: MakeCallParams): Promise<OneInchSwapAPIQueryParams> {
         const { PENDLE_SWAP, ROUTER } = getContractAddresses(this.chainId);
         slippage *= 100;
         if (slippage > 50) {
@@ -225,13 +252,51 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
             destReceiver: params?.aggregatorReceiver ?? ROUTER,
             slippage: slippage,
             disableEstimate: true,
+            protocols: (await this.getLiquiditySources({ needScale: params?.needScale ?? false })).join(','),
         };
     }
 
-    getOverriddenQueryParams(params: MakeCallParams): OneInchSwapAPIQueryParams {
+    async getOverriddenQueryParams(params: MakeCallParams): Promise<OneInchSwapAPIQueryParams> {
         return {
-            ...this.getBaseQueryParams(params),
+            ...(await this.getBaseQueryParams(params)),
             ...filterUndefinedFields(this.apiParamsOverrides ?? {}),
         };
+    }
+
+    async getLiquiditySources(params: { needScale: boolean }): Promise<string[]> {
+        const liquiditySources = await this.liquiditySourcesProvider(this);
+        return liquiditySources.filter(params.needScale ? this.testValidProtocolIdForScaling.bind(this) : () => true);
+    }
+
+    protected testValidProtocolIdForScaling(liquiditySourceProtocolId: string): boolean {
+        return !/LIMIT_ORDER|PMM/.test(liquiditySourceProtocolId);
+    }
+
+    static cachedLiquiditySources = new Map<ChainId, Promise<string[]>>();
+    /**
+     * @remarks
+     * This cache (without expiry) is introduced to avoid calling the `liquiditySources` endpoint lots
+     * of time.
+     *
+     * The routing algorithm will call {@link AggregatorHelper#makeCall} a lot.
+     * As {@link OneInchAggregatorHelper#makeCall} depend on {@link OneInchAggregatorHelper#getLiquiditySources},
+     * and liquidity sources is is very unlikely to change (and should be the
+     * same accross multiple call), the liquidity sources should be cache.
+     *
+     * To invalidate the cache, simply clear this map.
+     *
+     * But for better behaviour customization, it is recommended to pass in a
+     * custom {@link OneInchAggregatorHelperParams#liquiditySourcesProvider}.
+     */
+    static provideCachedLiquiditySources(this: void, instance: OneInchAggregatorHelper): Promise<string[]> {
+        const res = OneInchAggregatorHelper.cachedLiquiditySources.get(instance.chainId);
+        if (res != undefined) return res;
+        const fetchLiquiditySourcesPromise = instance.axios
+            .request<OneInchLiquidtySourcesResult>({
+                url: instance.getLiquiditySourcesUrl(),
+            })
+            .then(({ data }) => data.protocols.map(({ id }) => id));
+        OneInchAggregatorHelper.cachedLiquiditySources.set(instance.chainId, fetchLiquiditySourcesPromise);
+        return fetchLiquiditySourcesPromise;
     }
 }

@@ -10,6 +10,7 @@ import MAINNET_ANKRETH_MAR28_2024_ADDRESSES from '@pendle/core-v2-mainnet/deploy
 import MAINNET_SFRXETH_26DEC2024_ADDRESSES from '@pendle/core-v2-mainnet/deployments/1-markets/STETH-26DEC2024.json';
 import MAINNET_STARGATE_27JUNE2024_ADDRESSES from '@pendle/core-v2-mainnet/deployments/1-markets/STARGATE-USDT-27JUNE2024-ETHEREUM.json';
 import MAINNET_STAFI_27JUNE2024_ADDRESSES from '@pendle/core-v2-mainnet/deployments/1-markets/BALANCER-LP-AURA-STAFI-RETH-WETH-JUNE-27-2024.json';
+import MAINNET_SDAI_26SEP2024 from '@pendle/core-v2-mainnet/deployments/1-markets/SDAI-26SEP2024.json';
 
 import { DUMMY_ADDRESS } from '../constants';
 import { shallowToAddress } from './helper';
@@ -51,6 +52,7 @@ export const MAINNET_CONTRACT_ADDRESSES = shallowToAddress({
         MAINNET_SFRXETH_26DEC2024_ADDRESSES,
         MAINNET_STARGATE_27JUNE2024_ADDRESSES,
         MAINNET_STAFI_27JUNE2024_ADDRESSES,
+        MAINNET_SDAI_26SEP2024,
     },
     FUND_KEEPER: DUMMY_ADDRESS,
     FAUCET: DUMMY_ADDRESS,

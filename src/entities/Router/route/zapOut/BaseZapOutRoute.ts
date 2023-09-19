@@ -155,6 +155,10 @@ export abstract class BaseZapOutRoute<
         });
     }
 
+    getNeedScale() {
+        return true;
+    }
+
     @NoArgsCache
     async getAggregatorResult() {
         const tokenRedeemSyAmount = await this.getTokenRedeemSyAmount();
@@ -165,7 +169,7 @@ export abstract class BaseZapOutRoute<
             { token: this.tokenRedeemSy, amount: tokenRedeemSyAmount },
             this.targetToken,
             this.context.aggregatorSlippage,
-            { aggregatorReceiver: this.routerExtraParams.aggregatorReceiver }
+            { aggregatorReceiver: this.routerExtraParams.aggregatorReceiver, needScale: this.getNeedScale() }
         );
     }
 
@@ -175,7 +179,7 @@ export abstract class BaseZapOutRoute<
         if (aggregatorResult === undefined) {
             return undefined;
         }
-        const swapData = aggregatorResult.createSwapData({ needScale: true });
+        const swapData = aggregatorResult.createSwapData({ needScale: this.getNeedScale() });
         const pendleSwap = this.router.getPendleSwapAddress(swapData.swapType);
         const output: TokenOutput = {
             tokenOut: this.targetToken,

@@ -126,31 +126,63 @@ describeWrite('Router', () => {
         zeroApprovalSnapshotId = await evm_snapshot();
     }
 
-    async function batchInfApprove(tokens: Address[]) {
+    async function batchInfApprove(tokens: Address[]): Promise<{
+        gas: {
+            used: BN;
+            nativeSpent: BN;
+        };
+    }> {
+        const addressesToApprove = [router.address, router.getRouterHelper().address];
+        const filteredTxs: TransactionReceipt[] = [];
         for (const token of tokens) {
-            await approveInfHelper(token, router.address);
-            await approveInfHelper(token, router.getRouterHelper().address);
+            for (const addressToApprove of addressesToApprove) {
+                const tx = await approveInfHelper(token, addressToApprove);
+                if (tx) filteredTxs.push(tx);
+            }
         }
+        const totalGasUsed = filteredTxs.reduce((acc, { gasUsed }) => acc.add(gasUsed), BN.from(0));
+        const totalNativeSpentForGas = filteredTxs.reduce(
+            (acc, { gasUsed, effectiveGasPrice }) => acc.add(gasUsed.mul(effectiveGasPrice)),
+            BN.from(0)
+        );
+
+        return { gas: { used: totalGasUsed, nativeSpent: totalNativeSpentForGas } };
     }
 
     async function sendTxWithInfApproval<T extends MetaMethodCallback>(
         callback: T,
         tokens: Address[],
         skipTxCheck?: SkipTxCheckCallback<T>
-    ): Promise<MetaMethodData<T> & { txReceipt: TransactionReceipt }> {
+    ): Promise<
+        MetaMethodData<T> & {
+            txReceipt: TransactionReceipt;
+            gas: {
+                used: BN;
+                nativeSpent: BN;
+            };
+        }
+    > {
         const metaCall = await callback();
 
         if (skipTxCheck && skipTxCheck(metaCall.data)) {
             return metaCall.data;
         }
 
-        await batchInfApprove(tokens);
+        const { gas: approvalGas } = await batchInfApprove(tokens);
 
-        const txReceipt = await metaCall
+        const txReceipt: TransactionReceipt = await metaCall
             .connect(signer)
             .send()
             .then((tx) => tx.wait(BLOCK_CONFIRMATION));
-        return { ...metaCall.data, txReceipt };
+
+        return {
+            ...metaCall.data,
+            txReceipt,
+            gas: {
+                used: approvalGas.used.add(txReceipt.gasUsed),
+                nativeSpent: approvalGas.nativeSpent.add(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)),
+            },
+        };
     }
 
     it('#constructor', () => {
@@ -415,11 +447,7 @@ describeWrite('Router', () => {
                 const actualYtOut = ytBalanceAfter.sub(ytBalanceBefore);
                 expect(actualLpOut).toEqBN(readerData.netLpOut, EPSILON_FOR_AGGREGATOR);
                 expect(actualYtOut).toEqBN(readerData.netYtOut, EPSILON_FOR_AGGREGATOR);
-                const tx = readerData.txReceipt;
-                const gasPrice = tx.effectiveGasPrice;
-                const gasUsed = tx.gasUsed;
-                const gasUsedInEth = gasUsed.mul(gasPrice);
-                // Todo: include gas check
+                const gasUsedInEth = readerData.gas.nativeSpent;
                 if (!isNativeToken(token)) {
                     expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAddAmount);
                 } else {
@@ -1186,7 +1214,9 @@ describeWrite('Router', () => {
             const markets = currentConfig.markets;
             const syAddresses = markets.map((x) => toAddress(x.SY));
             for (let i = 0; i < markets.length; i++) {
+                if (markets[i].expiry < Date.now() / 1000) continue;
                 for (let j = i + 1; j < markets.length; j++) {
+                    if (markets[j].expiry < Date.now() / 1000) continue;
                     if (areSameAddresses(syAddresses[i], syAddresses[j])) {
                         return [markets[i], markets[j]];
                     }
@@ -1199,8 +1229,10 @@ describeWrite('Router', () => {
             const markets = currentConfig.markets;
             const syAddresses = markets.map((x) => toAddress(x.SY));
             for (let i = 0; i < markets.length; i++) {
+                if (markets[i].expiry < Date.now() / 1000) continue;
                 // for down to find latest market
                 for (let j = markets.length - 1; j > i; j--) {
+                    if (markets[j].expiry < Date.now() / 1000) continue;
                     if (!areSameAddresses(syAddresses[i], syAddresses[j])) {
                         return [markets[i], markets[j]];
                     }

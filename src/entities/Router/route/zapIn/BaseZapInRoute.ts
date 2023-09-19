@@ -155,13 +155,20 @@ export abstract class BaseZapInRoute<
         return data?.intermediateSyAmount;
     }
 
+    getNeedScale() {
+        return false;
+    }
+
     @NoArgsCache
     async getAggregatorResult() {
         return this.aggregatorHelper.makeCall(
             this.sourceTokenAmount,
             this.tokenMintSy,
             this.context.aggregatorSlippage,
-            { aggregatorReceiver: this.routerExtraParams.aggregatorReceiver }
+            {
+                aggregatorReceiver: this.routerExtraParams.aggregatorReceiver,
+                needScale: this.getNeedScale(),
+            }
         );
     }
 
@@ -171,7 +178,7 @@ export abstract class BaseZapInRoute<
         if (aggregatorResult === undefined) {
             return undefined;
         }
-        const swapData = aggregatorResult.createSwapData({ needScale: false });
+        const swapData = aggregatorResult.createSwapData({ needScale: this.getNeedScale() });
         const pendleSwap = this.router.getPendleSwapAddress(swapData.swapType);
         const input: TokenInput = {
             tokenIn: this.sourceTokenAmount.token,

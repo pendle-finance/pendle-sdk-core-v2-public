@@ -5,11 +5,12 @@ import {
     Router,
     VoidAggregatorHelper,
     createTokenAmount,
+    OneInchAggregatorHelper,
 } from '../src';
-import { currentConfig } from './util/testEnv';
+import { currentConfig, networkConnection, describeIf, env } from './util/testEnv';
 import { BigNumber as BN } from 'ethers';
-import { networkConnection } from './util/testEnv';
 import { SLIPPAGE_TYPE2 } from './util/constants';
+import { print } from './util/testHelper';
 
 describe('VoidAggregatorHelper', () => {
     const usdcAmount = createTokenAmount({ token: currentConfig.tokens.USDC, amount: BN.from(10) });
@@ -30,5 +31,23 @@ describe('VoidAggregatorHelper', () => {
         await expect(
             router.aggregatorHelper.makeCall(nativeTokenAmount, usdcAddress, SLIPPAGE_TYPE2)
         ).rejects.toThrowError();
+    });
+});
+
+describeIf(env.AGGREGATOR_HELPER === 'ONEINCH', 'OneInchAggregatorHelper', () => {
+    const oneInchAggregatorHelper = currentConfig.aggregatorHelper as OneInchAggregatorHelper;
+    it('protocols for scale', async () => {
+        const protocols = await oneInchAggregatorHelper.getLiquiditySources({ needScale: true });
+        print(protocols);
+        for (const protocol of protocols) {
+            expect(protocol).not.toMatch(/LIMIT_ORDER/);
+            expect(protocol).not.toMatch(/PMM/);
+        }
+    });
+
+    it('default liquidity sources cache', async () => {
+        const firstCall = await OneInchAggregatorHelper.provideCachedLiquiditySources(oneInchAggregatorHelper);
+        const secondCall = await OneInchAggregatorHelper.provideCachedLiquiditySources(oneInchAggregatorHelper);
+        expect(Object.is(firstCall, secondCall)).toBe(true);
     });
 });

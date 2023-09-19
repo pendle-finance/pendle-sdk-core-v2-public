@@ -200,7 +200,7 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
             this.patchedSourceTokenAmount,
             this.tokenMintSy,
             this.context.aggregatorSlippage,
-            { aggregatorReceiver: this.routerExtraParams.aggregatorReceiver }
+            { aggregatorReceiver: this.routerExtraParams.aggregatorReceiver, needScale: this.getNeedScale() }
         );
     }
 

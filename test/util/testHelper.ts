@@ -72,11 +72,11 @@ export async function approveHelper(token: Address, user: Address, amount: BigNu
     if (isNativeToken(token)) {
         return;
     }
-    await ERC20_ENTITIES[token].approve(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
+    return ERC20_ENTITIES[token].approve(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 }
 
 export async function approveInfHelper(token: Address, user: Address) {
-    await approveHelper(token, user, INF);
+    return approveHelper(token, user, INF);
 }
 
 export async function transferHelper(token: Address, user: Address, amount: BN, signer?: Signer) {

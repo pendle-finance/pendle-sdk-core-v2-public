@@ -237,13 +237,9 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
     }
 
     private async makeKyberCall(
-        ...[
-            { token: tokenIn, amount: amountIn },
-            tokenOut,
-            slippage,
-            { aggregatorReceiver = this.routerAddress } = {},
-        ]: MakeCallParams
+        ...[{ token: tokenIn, amount: amountIn }, tokenOut, slippage, params]: MakeCallParams
     ): Promise<AggregatorResult> {
+        const { aggregatorReceiver = this.routerAddress } = params ?? {};
         KyberSwapAggregatorHelper.assertKyberSupportedChain(this.chainId);
         const slippageTolerance = Math.min(Math.trunc(10000 * slippage), 2000);
 
