@@ -99,6 +99,7 @@ export abstract class BaseRouter extends PendleEntity {
     readonly aggregatorHelper: AggregatorHelper<true>;
     readonly chainId: ChainId;
     readonly gasFeeEstimator: GasFeeEstimator;
+    readonly checkErrorOnSimulation: boolean;
 
     constructor(readonly address: Address, config: BaseRouterConfig) {
         super(address, { abi: IPAllActionABI, ...config });
@@ -108,6 +109,7 @@ export abstract class BaseRouter extends PendleEntity {
         );
         this.routerStatic = getRouterStatic(config);
         this.gasFeeEstimator = config.gasFeeEstimator ?? new GasFeeEstimator(this.provider!);
+        this.checkErrorOnSimulation = config.checkErrorOnSimulation ?? false;
     }
 
     @NoArgsCache

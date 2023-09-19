@@ -11,6 +11,7 @@ import {
     areSameAddresses,
     getContractAddresses,
     isNativeToken,
+    NoRouteFoundError,
 } from '../src';
 import {
     currentConfig,
@@ -1385,6 +1386,40 @@ describeWrite('Router', () => {
 
             // const callData = await metaCall.extractParams();
             // console.log(callData);
+        });
+    });
+
+    describeWrite('test route error', () => {
+        it('check simulation error for all routes', async () => {
+            const checkErrorRouter = Router.getRouter({ ...currentConfig.routerConfig, checkErrorOnSimulation: true });
+            const closedMarketAddress = toAddress('0xfcbae4635ca89866f83add208ecceec742678746');
+            const tokenIn = (await sySdk.getTokensIn())[0];
+            const tokenAddAmount = bnMinAsBn(
+                valueToTokenAmount(tokenIn, chainId),
+                await getBalance(tokenIn, signerAddress)
+            );
+
+            if (tokenAddAmount.eq(0)) {
+                throw new Error(
+                    `[${(await getERC20Name(tokenIn)) + ' ' + tokenIn}}] Skip test because tokenAddAmount is 0`
+                );
+            }
+
+            return sendTxWithInfApproval(
+                () =>
+                    checkErrorRouter.addLiquiditySingleToken(
+                        closedMarketAddress,
+                        tokenIn,
+                        tokenAddAmount,
+                        SLIPPAGE_TYPE2,
+                        {
+                            method: 'meta-method',
+                        }
+                    ),
+                [tokenIn]
+            ).catch((e) => {
+                expect(e).toBeInstanceOf(NoRouteFoundError);
+            });
         });
     });
 

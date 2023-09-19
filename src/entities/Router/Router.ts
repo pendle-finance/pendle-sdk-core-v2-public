@@ -1,5 +1,5 @@
 import { MetaMethodType } from '../../contracts';
-import { PendleSdkError, PendleSdkErrorParams } from '../../errors';
+import { GasEstimationError, PendleSdkError, PendleSdkErrorParams } from '../../errors';
 import { promiseAllWithErrors, zip } from '../../common';
 
 import {
@@ -189,6 +189,9 @@ export class Router extends BaseRouter {
             if (!netOutInEth) {
                 throw new PendleSdkError('Unable to estimate output in term of ETH');
             }
+            if (this.checkErrorOnSimulation) {
+                await this.checkSimulableRoute(route);
+            }
             return { route, netOutInEth };
         });
 
@@ -199,5 +202,15 @@ export class Router extends BaseRouter {
             throw new RoutingError(Array.from(zip(routes, errors), ([route, error]) => ({ route, error })));
         }
         return results.reduce((a, b) => (a.netOutInEth.gt(b.netOutInEth) ? a : b)).route;
+    }
+
+    private async checkSimulableRoute<Route extends BaseRoute<any, Route>>(route: Route): Promise<void> {
+        try {
+            await route.getGasUsedUnwrapped();
+        } catch (e: any) {
+            if (e instanceof GasEstimationError && (await route.signerHasApproved())) {
+                throw e;
+            }
+        }
     }
 }
