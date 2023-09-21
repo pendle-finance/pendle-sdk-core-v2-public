@@ -93,7 +93,12 @@ export abstract class BaseZapOutRoute<
             this.estimateMaxOutAmongAllRouteInEth(),
         ]);
 
-        if (curNetOut == undefined || maxNetOut == undefined || maxNetOutInEth == undefined) {
+        if (
+            curNetOut == undefined ||
+            maxNetOut == undefined ||
+            maxNetOutInEth == undefined ||
+            maxNetOutInEth.isZero()
+        ) {
             return undefined;
         }
 

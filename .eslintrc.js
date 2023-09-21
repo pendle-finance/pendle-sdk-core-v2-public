@@ -45,5 +45,7 @@ module.exports = {
         "@typescript-eslint/require-await": "off",
         
         "prefer-const": ["error", {"destructuring": "all"}],
+        "@typescript-eslint/no-unused-vars": "warn",
+        "@typescript-eslint/no-base-to-string": "off",
     },
 };

@@ -185,14 +185,14 @@ export class Router extends BaseRouter {
 
     async findBestGenericRoute<Route extends BaseRoute<any, Route>>(routes: Route[]): Promise<Route> {
         const routesData = routes.map(async (route) => {
-            const netOutInEth = await route.estimateActualReceivedInEth();
-            if (!netOutInEth) {
-                throw new PendleSdkError('Unable to estimate output in term of ETH');
+            const [netOut, netOutInEth] = await Promise.all([route.getNetOut(), route.estimateActualReceivedInEth()]);
+            if (!netOut) {
+                throw new PendleSdkError('Unable to estimate output');
             }
             if (this.checkErrorOnSimulation) {
                 await this.checkSimulableRoute(route);
             }
-            return { route, netOutInEth };
+            return { route, netOut, netOutInEth };
         });
 
         const [results, errors] = await promiseAllWithErrors(routesData);
@@ -201,7 +201,14 @@ export class Router extends BaseRouter {
         if (results.length === 0) {
             throw new RoutingError(Array.from(zip(routes, errors), ([route, error]) => ({ route, error })));
         }
-        return results.reduce((a, b) => (a.netOutInEth.gt(b.netOutInEth) ? a : b)).route;
+        const routesWithNetOutInEth = results.filter((route) => route.netOutInEth != undefined);
+
+        type Item = (typeof results)[number];
+        const reducer: (a: Item, b: Item) => Item =
+            routesWithNetOutInEth.length === results.length
+                ? (a, b) => (a.netOutInEth!.gt(b.netOutInEth!) ? a : b)
+                : (a, b) => (a.netOut.gt(b.netOut) ? a : b);
+        return results.reduce(reducer).route;
     }
 
     private async checkSimulableRoute<Route extends BaseRoute<any, Route>>(route: Route): Promise<void> {

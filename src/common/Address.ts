@@ -65,7 +65,7 @@ export const NATIVE_ADDRESS_0xEE = toAddress('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 /**
  * Union type of native tokens' address
  */
-export type NativeTokenAddress = typeof NATIVE_ADDRESS_0x00 | typeof NATIVE_ADDRESS_0xEE;
+export type NativeTokenAddress = typeof NATIVE_ADDRESS_0x00;
 
 /**
  * Check if an address is a native token (which are {@link NATIVE_ADDRESS_0x00} and {@link NATIVE_ADDRESS_0xEE})
