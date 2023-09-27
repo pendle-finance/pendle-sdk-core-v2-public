@@ -31,6 +31,8 @@ export const TEST_ENV_SCHEMA = z.object({
     AGGREGATOR_HELPER: z.enum(['KYBERSWAP', 'ONEINCH', 'VOID']),
     AGGREGATOR_ENDPOINT: z.string().optional(),
     AMOUNT_TO_TEST_IN_USD: z.coerce.number().default(100),
+
+    ONEINCH_API_KEY: z.string().default(''),
 });
 
 export type TestEnv = z.infer<typeof TEST_ENV_SCHEMA>;

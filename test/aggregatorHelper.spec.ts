@@ -36,6 +36,8 @@ describe('VoidAggregatorHelper', () => {
 
 describeIf(env.AGGREGATOR_HELPER === 'ONEINCH', 'OneInchAggregatorHelper', () => {
     const oneInchAggregatorHelper = currentConfig.aggregatorHelper as OneInchAggregatorHelper;
+    const usdcAmount = createTokenAmount({ token: currentConfig.tokens.USDC, amount: BN.from(10) });
+    const daiAddress = currentConfig.tokens.DAI;
     it('protocols for scale', async () => {
         const protocols = await oneInchAggregatorHelper.getLiquiditySources({ needScale: true });
         print(protocols);
@@ -43,6 +45,11 @@ describeIf(env.AGGREGATOR_HELPER === 'ONEINCH', 'OneInchAggregatorHelper', () =>
             expect(protocol).not.toMatch(/LIMIT_ORDER/);
             expect(protocol).not.toMatch(/PMM/);
         }
+    });
+
+    it('swap', async () => {
+        const swapResult = await oneInchAggregatorHelper.makeCall(usdcAmount, daiAddress, SLIPPAGE_TYPE2);
+        expect(swapResult).toBeDefined();
     });
 
     it('default liquidity sources cache', async () => {

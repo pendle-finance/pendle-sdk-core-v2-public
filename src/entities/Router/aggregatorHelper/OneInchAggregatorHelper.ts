@@ -9,6 +9,7 @@ import {
 } from './AggregatorHelper';
 import { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
+import rateLimit from 'axios-rate-limit';
 import { wrapMakeCall } from './wrapMakeCall';
 import { PendleSdkErrorParams, WrappedAxiosError } from '../../../errors';
 
@@ -31,19 +32,19 @@ copy(iface);
 iface;
  */
 export type OneInchSwapAPIQueryParams = {
-    fromTokenAddress: Address;
-    toTokenAddress: Address;
+    src: Address;
+    dst: Address;
     amount: string;
-    fromAddress: Address;
+    from: Address;
     slippage: number;
     protocols?: string;
-    destReceiver?: Address;
-    referrerAddress?: Address;
     fee?: string;
     disableEstimate?: boolean;
     permit?: string;
-    compatibilityMode?: boolean;
-    burnChi?: boolean;
+    // burnChi?: boolean;
+    includeTokensInfo?: boolean;
+    includeProtocols?: boolean;
+    compatibility?: boolean;
     allowPartialFill?: boolean;
     parts?: number;
     mainRouteParts?: number;
@@ -51,6 +52,8 @@ export type OneInchSwapAPIQueryParams = {
     complexityLevel?: number;
     gasLimit?: number;
     gasPrice?: number;
+    referrer?: Address;
+    receiver?: Address;
 };
 
 /**
@@ -72,8 +75,9 @@ export type OneInchSwapAPI200Result = {
         decimals: 0;
         logoURI: string;
     };
-    toTokenAmount: string;
-    fromTokenAmount: string;
+    // toTokenAmount: string;
+    // fromTokenAmount: string;
+    toAmount: string;
     protocols: string[];
     tx: {
         from: string;
@@ -95,6 +99,7 @@ export type OneInchSwapAPI400ErrorData = {
 
 export type OneInchAggregatorHelperParams = {
     chainId: ChainId;
+    customHeader?: Record<string, string>;
     apiParamsOverrides?: Partial<OneInchSwapAPIQueryParams>;
     axios?: AxiosInstance;
     apiUrl?: string;
@@ -144,7 +149,8 @@ export class OneInchAggregatorResult implements AggregatorResult {
             needScale: boolean;
         }
     ) {
-        this.outputAmount = BN.from(data.toTokenAmount);
+        // this.outputAmount = BN.from(data.toTokenAmount);
+        this.outputAmount = BN.from(data.toAmount);
         this.needScale = params.needScale;
     }
 
@@ -172,6 +178,7 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
 
     readonly chainId: ChainId;
     readonly axios: AxiosInstance;
+    readonly customHeader: Record<string, string>;
     readonly apiParamsOverrides?: Partial<OneInchSwapAPIQueryParams>;
     readonly apiUrl: string;
     readonly extRouter: Address;
@@ -180,11 +187,35 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
     constructor(params: OneInchAggregatorHelperParams) {
         this.chainId = params.chainId;
         this.axios = params.axios ?? axios;
+        this.customHeader = params.customHeader ?? {};
         this.apiParamsOverrides = params.apiParamsOverrides;
-        this.apiUrl = params.apiUrl ?? 'https://api.1inch.io/v5.0';
+        this.apiUrl = params.apiUrl ?? 'https://api.1inch.dev/swap/v5.2';
         this.extRouter = params.extRouter ?? OneInchAggregatorHelper.OneInchAggregationRouterV5;
         this.liquiditySourcesProvider =
             params.liquiditySourcesProvider?.bind(params) ?? OneInchAggregatorHelper.provideCachedLiquiditySources;
+    }
+
+    public static create(chainId: ChainId, apiKey: string, apiRPS = 1): OneInchAggregatorHelper {
+        return new OneInchAggregatorHelper(OneInchAggregatorHelper.buildCreateParams(chainId, apiKey, apiRPS));
+    }
+
+    public static buildCreateParams(
+        chainId: ChainId,
+        apiKey: string,
+        apiRPS: number,
+        optionalParams?: Partial<OneInchAggregatorHelperParams>
+    ): OneInchAggregatorHelperParams {
+        return {
+            chainId: chainId,
+            customHeader: {
+                Authorization: `Bearer ${apiKey}`,
+            },
+            axios: rateLimit(axios.create(), {
+                maxRequests: 1,
+                perMilliseconds: Math.max(1100, 1000 * (1 / apiRPS)), // TODO: Hack as exactly 1RPS didn't work during testing. Should be removed soon.
+            }),
+            ...optionalParams,
+        };
     }
 
     getSwapUrl() {
@@ -207,6 +238,7 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
             params: queryParams,
             url: this.getSwapUrl(),
             method: 'get',
+            headers: this.customHeader,
         };
 
         // if (process.env.NODE_ENV !== 'production') {
@@ -245,11 +277,11 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
             throw new OneInchAggregatorHelperError('1inch does not accept slippage greater than 50%');
         }
         return {
-            fromTokenAddress: tokenIn,
-            toTokenAddress: tokenOut,
+            src: tokenIn,
+            dst: tokenOut,
             amount: String(amountIn),
-            fromAddress: PENDLE_SWAP,
-            destReceiver: params?.aggregatorReceiver ?? ROUTER,
+            from: PENDLE_SWAP,
+            receiver: params?.aggregatorReceiver ?? ROUTER,
             slippage: slippage,
             disableEstimate: true,
             protocols: (await this.getLiquiditySources({ needScale: params?.needScale ?? false })).join(','),
@@ -294,6 +326,7 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
         const fetchLiquiditySourcesPromise = instance.axios
             .request<OneInchLiquidtySourcesResult>({
                 url: instance.getLiquiditySourcesUrl(),
+                headers: instance.customHeader,
             })
             .then(({ data }) => data.protocols.map(({ id }) => id));
         OneInchAggregatorHelper.cachedLiquiditySources.set(instance.chainId, fetchLiquiditySourcesPromise);
