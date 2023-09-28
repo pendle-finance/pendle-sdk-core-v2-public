@@ -1723,7 +1723,7 @@ export abstract class BaseRouter extends PendleEntity {
                         aggregatorReceiver: params.receiver,
                         needScale: false,
                     });
-                    return res.createSwapData({ needScale: true });
+                    return res.createSwapData({ needScale: false });
                 } catch (cause: unknown) {
                     return this.throwNoRouteFoundError('sell token', tokenAmount.token, tokenOut, { cause });
                 }
