@@ -24,10 +24,10 @@ export type AddLiquiditySingleTokenKeepYtRouteData = BaseZapInRouteData & {
     minYtOut: BN;
 };
 
-export type AddLiquiditySingleTokenKeepYtRouteConfig<T extends MetaMethodType> = BaseZapInRouteConfig<
-    T,
-    AddLiquiditySingleTokenKeepYtRoute<T>
->;
+export type AddLiquiditySingleTokenKeepYtRouteConfig<
+    T extends MetaMethodType,
+    SelfType extends BaseAddLiquiditySingleTokenKeepYtRoute<T, SelfType>
+> = BaseZapInRouteConfig<T, SelfType>;
 
 export type AddLiquiditySingleTokenKeepYtRouteDebugInfo = ZapInRouteDebugInfo & {
     marketAddress: Address;
@@ -38,11 +38,10 @@ export type AddLiquiditySingleTokenKeepYtRouteDebugInfo = ZapInRouteDebugInfo & 
     slippage: number;
 };
 
-export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extends BaseZapInRoute<
-    T,
-    AddLiquiditySingleTokenKeepYtRouteData,
-    AddLiquiditySingleTokenKeepYtRoute<T>
-> {
+export abstract class BaseAddLiquiditySingleTokenKeepYtRoute<
+    T extends MetaMethodType,
+    SelfType extends BaseAddLiquiditySingleTokenKeepYtRoute<T, SelfType>
+> extends BaseZapInRoute<T, AddLiquiditySingleTokenKeepYtRouteData, SelfType> {
     override readonly routeName = 'AddLiquiditySingleTokenKeepYt';
 
     constructor(
@@ -50,15 +49,19 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
         readonly tokenIn: Address,
         readonly netTokenIn: BigNumberish,
         readonly slippage: number,
-        params: AddLiquiditySingleTokenKeepYtRouteConfig<T>
+        params: AddLiquiditySingleTokenKeepYtRouteConfig<T, SelfType>
     ) {
         super(params);
         const other = params.cloneFrom;
         if (other != undefined) {
             if (this.withBulkSeller === other.withBulkSeller) {
                 /* eslint-disable @typescript-eslint/unbound-method */
-                NoArgsCache.copyValue(this, other, AddLiquiditySingleTokenKeepYtRoute.prototype.getAggregatorResult);
-                NoArgsCache.copyValue(this, other, AddLiquiditySingleTokenKeepYtRoute.prototype.buildTokenInput);
+                NoArgsCache.copyValue(
+                    this,
+                    other,
+                    BaseAddLiquiditySingleTokenKeepYtRoute.prototype.getAggregatorResult
+                );
+                NoArgsCache.copyValue(this, other, BaseAddLiquiditySingleTokenKeepYtRoute.prototype.buildTokenInput);
                 /* eslint-enable @typescript-eslint/unbound-method */
             }
         }
@@ -80,37 +83,27 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
         return { token: this.patchedTokenIn, amount: this.netTokenIn };
     }
 
-    override routeWithBulkSeller(withBulkSeller = true): AddLiquiditySingleTokenKeepYtRoute<T> {
-        return new AddLiquiditySingleTokenKeepYtRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
-            context: this.context,
-            tokenMintSy: this.tokenMintSy,
-            withBulkSeller,
-            cloneFrom: this,
-        });
-    }
-
-    override async getNetOut(syncAfterAggregatorCall?: () => Promise<void>): Promise<BN | undefined> {
-        return (await this.preview(syncAfterAggregatorCall))?.netLpOut;
+    override async getNetOut(): Promise<BN | undefined> {
+        return (await this.preview())?.netLpOut;
     }
 
     protected override async previewWithRouterStatic(): Promise<AddLiquiditySingleTokenKeepYtRouteData | undefined> {
-        const input = await this.buildTokenInput();
-        if (!input) {
+        const [input, mintedSyAmount] = await Promise.all([this.buildTokenInput(), this.getMintedSyAmount()]);
+        if (!input || !mintedSyAmount) {
             return undefined;
         }
 
-        const data = await this.routerStaticCall.addLiquiditySingleTokenKeepYtStatic(
+        const data = await this.routerStaticCall.addLiquiditySingleSyKeepYtStatic(
             this.market,
-            this.tokenMintSy,
-            await this.getTokenMintSyAmount(),
-            input.bulk,
+            mintedSyAmount,
             this.routerExtraParams.forCallStatic
         );
         const minLpOut = calcSlippedDownAmountSqrt(data.netLpOut, this.slippage);
         const minYtOut = calcSlippedDownAmountSqrt(data.netYtOut, this.slippage);
         return {
             ...data,
-            intermediateSyAmount: data.netSyMinted,
+            intermediateSyAmount: mintedSyAmount,
+            netSyMinted: mintedSyAmount,
             minLpOut,
             minYtOut,
         };
@@ -129,19 +122,22 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
               T,
               'addLiquiditySingleTokenKeepYt',
               AddLiquiditySingleTokenKeepYtRouteData & {
-                  route: AddLiquiditySingleTokenKeepYtRoute<T>;
+                  route: SelfType;
               }
           >
         | RouterHelperMetaMethodReturnType<
               T,
               'addLiquiditySingleTokenKeepYtWithEth',
               AddLiquiditySingleTokenKeepYtRouteData & {
-                  route: AddLiquiditySingleTokenKeepYtRoute<T>;
+                  route: SelfType;
               }
           >
     > {
         const previewResult = (await this.preview())!;
-        const res = await this.buildGenericCall({ ...previewResult, route: this }, this.routerExtraParams);
+        const res = await this.buildGenericCall(
+            { ...previewResult, route: this as unknown as SelfType },
+            this.routerExtraParams
+        );
         return res!;
     }
 
@@ -220,5 +216,18 @@ export class AddLiquiditySingleTokenKeepYtRoute<T extends MetaMethodType> extend
             slippage: this.slippage,
             tokenIn: this.tokenIn,
         };
+    }
+}
+
+export class AddLiquiditySingleTokenKeepYtRoute<
+    T extends MetaMethodType
+> extends BaseAddLiquiditySingleTokenKeepYtRoute<T, AddLiquiditySingleTokenKeepYtRoute<T>> {
+    override routeWithBulkSeller(withBulkSeller = true): AddLiquiditySingleTokenKeepYtRoute<T> {
+        return new AddLiquiditySingleTokenKeepYtRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
+            context: this.context,
+            tokenMintSy: this.tokenMintSy,
+            withBulkSeller,
+            cloneFrom: this,
+        });
     }
 }

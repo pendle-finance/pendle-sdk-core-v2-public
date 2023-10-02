@@ -1,14 +1,8 @@
 import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
-import {
-    Address,
-    BigNumberish,
-    BN,
-    isNativeToken,
-    calcSlippedDownAmountSqrt,
-    NATIVE_ADDRESS_0x00,
-} from '../../../../common';
+import { Address, BigNumberish, BN, calcSlippedDownAmountSqrt, NATIVE_ADDRESS_0x00 } from '../../../../common';
+import { txOverridesValueFromTokenInput } from '../helper';
 
 export type AddLiquiditySingleTokenRouteData = BaseZapInRouteData & {
     netLpOut: BN;
@@ -21,10 +15,10 @@ export type AddLiquiditySingleTokenRouteData = BaseZapInRouteData & {
     minLpOut: BN;
 };
 
-export type AddLiquiditySingleTokenRouteConfig<T extends MetaMethodType> = BaseZapInRouteConfig<
-    T,
-    AddLiquiditySingleTokenRoute<T>
->;
+export type AddLiquiditySingleTokenRouteConfig<
+    T extends MetaMethodType,
+    SelfType extends BaseAddLiquiditySingleTokenRoute<T, SelfType>
+> = BaseZapInRouteConfig<T, SelfType>;
 
 export type AddLiquiditySingleTokenRouteDebugInfo = ZapInRouteDebugInfo & {
     marketAddress: Address;
@@ -36,18 +30,17 @@ export type AddLiquiditySingleTokenRouteDebugInfo = ZapInRouteDebugInfo & {
     slippage: number;
 };
 
-export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
-    T,
-    AddLiquiditySingleTokenRouteData,
-    AddLiquiditySingleTokenRoute<T>
-> {
+export abstract class BaseAddLiquiditySingleTokenRoute<
+    T extends MetaMethodType,
+    SelfType extends BaseAddLiquiditySingleTokenRoute<T, SelfType>
+> extends BaseZapInRoute<T, AddLiquiditySingleTokenRouteData, SelfType> {
     override readonly routeName = 'AddLiquiditySingleToken';
     constructor(
         readonly market: Address,
         readonly tokenIn: Address,
         readonly netTokenIn: BigNumberish,
         readonly slippage: number,
-        params: AddLiquiditySingleTokenRouteConfig<T>
+        params: AddLiquiditySingleTokenRouteConfig<T, SelfType>
     ) {
         super(params);
     }
@@ -56,36 +49,26 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
         return { token: this.tokenIn, amount: this.netTokenIn };
     }
 
-    override routeWithBulkSeller(withBulkSeller = true): AddLiquiditySingleTokenRoute<T> {
-        return new AddLiquiditySingleTokenRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
-            context: this.context,
-            tokenMintSy: this.tokenMintSy,
-            withBulkSeller,
-            cloneFrom: this,
-        });
-    }
-
-    override async getNetOut(syncAfterAggregatorCall?: () => Promise<void>): Promise<BN | undefined> {
-        return (await this.preview(syncAfterAggregatorCall))?.netLpOut;
+    override async getNetOut(): Promise<BN | undefined> {
+        return (await this.preview())?.netLpOut;
     }
 
     protected override async previewWithRouterStatic(): Promise<AddLiquiditySingleTokenRouteData | undefined> {
-        const input = await this.buildTokenInput();
-        if (!input) {
+        const [input, mintedSyAmount] = await Promise.all([this.buildTokenInput(), this.getMintedSyAmount()]);
+        if (!input || !mintedSyAmount) {
             return undefined;
         }
 
-        const data = await this.routerStaticCall.addLiquiditySingleTokenStatic(
+        const data = await this.routerStaticCall.addLiquiditySingleSyStatic(
             this.market,
-            this.tokenMintSy,
-            await this.getTokenMintSyAmount(),
-            input.bulk,
+            mintedSyAmount,
             this.routerExtraParams.forCallStatic
         );
         const minLpOut = calcSlippedDownAmountSqrt(data.netLpOut, this.slippage);
         return {
             ...data,
-            intermediateSyAmount: data.netSyMinted,
+            intermediateSyAmount: mintedSyAmount,
+            netSyMinted: mintedSyAmount,
             minLpOut,
         };
     }
@@ -98,11 +81,14 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
         T,
         'addLiquiditySingleToken',
         AddLiquiditySingleTokenRouteData & {
-            route: AddLiquiditySingleTokenRoute<T>;
+            route: SelfType;
         }
     > {
         const previewResult = (await this.preview())!;
-        const res = await this.buildGenericCall({ ...previewResult, route: this }, this.routerExtraParams);
+        const res = await this.buildGenericCall(
+            { ...previewResult, route: this as unknown as SelfType },
+            this.routerExtraParams
+        );
         return res!;
     }
 
@@ -125,9 +111,9 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
             this.buildTokenInput(),
         ]);
         if (!previewResult || !approxParam || !input) return undefined;
-        const overrides = { value: isNativeToken(this.tokenIn) ? this.netTokenIn : undefined };
+        const overrides = txOverridesValueFromTokenInput(input);
         const { minLpOut } = previewResult;
-        return this.router.contract.metaCall.addLiquiditySingleToken(
+        const res = await this.router.contract.metaCall.addLiquiditySingleToken(
             params.receiver,
             this.market,
             minLpOut,
@@ -135,6 +121,7 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
             input,
             { ...data, ...mergeMetaMethodExtraParams({ overrides }, params) }
         );
+        return res;
     }
 
     async getApproxParam() {
@@ -158,5 +145,19 @@ export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends Base
             slippage: this.slippage,
             tokenIn: this.tokenIn,
         };
+    }
+}
+
+export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends BaseAddLiquiditySingleTokenRoute<
+    T,
+    AddLiquiditySingleTokenRoute<T>
+> {
+    override routeWithBulkSeller(withBulkSeller = true): AddLiquiditySingleTokenRoute<T> {
+        return new AddLiquiditySingleTokenRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
+            context: this.context,
+            tokenMintSy: this.tokenMintSy,
+            withBulkSeller,
+            cloneFrom: this,
+        });
     }
 }

@@ -57,17 +57,8 @@ export function describeWrite(...params: [fn: () => void] | [name: string, fn: (
     (env.INCLUDE_WRITE && USE_HARDHAT_RPC ? describe : describe.skip)(name, fnWithSnapshot);
 }
 
-export function describeIf(condition: boolean, ...params: [fn: () => void] | [name: string, fn: () => void]) {
-    let name = 'Write function';
-    let fn: () => void;
-
-    if (params.length === 1) {
-        [fn] = params;
-    } else {
-        [name, fn] = params;
-    }
-
-    (condition ? describe : describe.skip)(name, fn);
+export function describeIf(condition: boolean) {
+    return condition ? describe : describe.skip;
 }
 
 export const BLOCK_CONFIRMATION = USE_HARDHAT_RPC ? 1 : env.BLOCK_CONFIRMATION;

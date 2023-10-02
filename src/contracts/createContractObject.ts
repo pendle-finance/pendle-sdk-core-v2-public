@@ -55,7 +55,9 @@ export function wrapContractObject<C extends Contract>(
     const methods: any = {};
     const functionFragmentsMapping: any = {};
 
-    const uniqueFragNames: { [name: string]: Array<FunctionFragment> } = {};
+    // noPropertyAccessFromIndexSignature option is not turned on in tsconfig yet.
+    // To keep the code compatible, we explicitly said it might be undefined.
+    const uniqueFragNames: Record<string, Array<FunctionFragment> | undefined> = {};
 
     for (const fragment of contract.interface.fragments) {
         if (fragment.type !== 'function') {
@@ -63,14 +65,24 @@ export function wrapContractObject<C extends Contract>(
         }
 
         const { name } = fragment;
-        if (!uniqueFragNames[name]) uniqueFragNames[name] = [];
-        uniqueFragNames[name].push(fragment as FunctionFragment);
+        const group = uniqueFragNames[name];
+        if (!group) {
+            uniqueFragNames[name] = [fragment as FunctionFragment];
+        } else {
+            group.push(fragment as FunctionFragment);
+        }
     }
 
     const fragments: Array<FunctionFragment> = [];
     for (const name of Object.keys(uniqueFragNames)) {
-        if (uniqueFragNames[name].length > 1) {
-            for (const fragment of uniqueFragNames[name]) {
+        const group = uniqueFragNames[name];
+
+        if (!group) {
+            // Should not have happened tho. Continue to narrow to Non-nullable.
+            continue;
+        }
+        if (group.length > 1) {
+            for (const fragment of group) {
                 // A hack here, create new fragments with name equals to the signature
                 // For example, if there is 2 foo functions: foo(uint256) and foo(uint256, uint256)
                 // there will be 2 new fragments with name foo(uint256) and foo(uint256, uint256),
@@ -82,7 +94,7 @@ export function wrapContractObject<C extends Contract>(
                 fragments.push(newFragment);
             }
         } else {
-            fragments.push(uniqueFragNames[name][0]);
+            fragments.push(group[0]);
         }
     }
 

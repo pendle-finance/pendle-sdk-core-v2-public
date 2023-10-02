@@ -26,26 +26,39 @@ module.exports = {
         semi: ['error', 'always'],
         'spaced-comment': ['error', 'always', { exceptions: ['-', '+'] }],
         'unused-imports/no-unused-imports': 'error',
-        
-        "no-empty-function": "off",
-        "@typescript-eslint/no-empty-function": "off",
-        "@typescript-eslint/no-explicit-any": "warn",
-        "@typescript-eslint/no-unsafe-argument": "warn",
-        "@typescript-eslint/no-unsafe-assignment": "warn",
-        "@typescript-eslint/no-unsafe-call": "warn",
-        "@typescript-eslint/no-unsafe-member-access": "warn",
-        "@typescript-eslint/no-unsafe-return": "warn",
-        "@typescript-eslint/return-await": "error",
-        
+
+        'no-empty-function': 'off',
+        '@typescript-eslint/no-empty-function': 'off',
+        '@typescript-eslint/no-explicit-any': 'warn',
+        '@typescript-eslint/no-unsafe-argument': 'warn',
+        '@typescript-eslint/no-unsafe-assignment': 'warn',
+        '@typescript-eslint/no-unsafe-call': 'warn',
+        '@typescript-eslint/no-unsafe-member-access': 'warn',
+        '@typescript-eslint/no-unsafe-return': 'warn',
+        '@typescript-eslint/return-await': 'error',
+
         // There are cases we want an async function to have sync body, as we
         // still want the result to be a Promise.
         // This rule forse it to be written as `return Promise.resolve(...)`.
         // TypeScript type system is strong enough so there will not be
         // an useless `async` mark on the function.
-        "@typescript-eslint/require-await": "off",
-        
-        "prefer-const": ["error", {"destructuring": "all"}],
-        "@typescript-eslint/no-unused-vars": "warn",
-        "@typescript-eslint/no-base-to-string": "off",
+        '@typescript-eslint/require-await': 'off',
+
+        'prefer-const': ['error', { destructuring: 'all' }],
+        'no-unused-vars': 'off',
+        '@typescript-eslint/no-unused-vars': [
+            'error',
+            {
+                argsIgnorePattern: '^_',
+                varsIgnorePattern: '^_',
+            },
+        ],
+        '@typescript-eslint/no-base-to-string': 'off',
+        '@typescript-eslint/no-unnecessary-condition': [
+            'error',
+            {
+                allowConstantLoopConditions: true,
+            },
+        ],
     },
 };

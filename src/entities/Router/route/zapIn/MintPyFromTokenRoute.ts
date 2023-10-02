@@ -1,7 +1,8 @@
 import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
-import { Address, BigNumberish, BN, calcSlippedDownAmount, isNativeToken, ethersConstants } from '../../../../common';
+import { Address, BigNumberish, BN, calcSlippedDownAmount, ethersConstants } from '../../../../common';
+import { txOverridesValueFromTokenInput } from '../helper';
 
 export type MintPyFromTokenRouteData = BaseZapInRouteData & {
     netPyOut: BN;
@@ -45,21 +46,19 @@ export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
         });
     }
 
-    override async getNetOut(syncAfterAggregatorCall?: () => Promise<void>): Promise<BN | undefined> {
-        return (await this.preview(syncAfterAggregatorCall))?.netPyOut;
+    override async getNetOut(): Promise<BN | undefined> {
+        return (await this.preview())?.netPyOut;
     }
 
     protected override async previewWithRouterStatic(): Promise<MintPyFromTokenRouteData | undefined> {
-        const input = await this.buildTokenInput();
-        if (!input) {
+        const [input, mintedSyAmount] = await Promise.all([this.buildTokenInput(), this.getMintedSyAmount()]);
+        if (!input || !mintedSyAmount) {
             return undefined;
         }
 
-        const netPyOut = await this.routerStaticCall.mintPyFromTokenStatic(
+        const netPyOut = await this.routerStaticCall.mintPyFromSyStatic(
             this.yt,
-            this.tokenMintSy,
-            await this.getTokenMintSyAmount(),
-            input.bulk,
+            mintedSyAmount,
             this.routerExtraParams.forCallStatic
         );
         const minPyOut = calcSlippedDownAmount(netPyOut, this.slippage);
@@ -95,7 +94,7 @@ export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
     ) {
         const [input, previewResult] = await Promise.all([this.buildTokenInput(), this.preview()]);
         if (!input || !previewResult) return undefined;
-        const overrides = { value: isNativeToken(this.tokenIn) ? this.netTokenIn : undefined };
+        const overrides = txOverridesValueFromTokenInput(input);
         const { minPyOut } = previewResult;
         return this.router.contract.metaCall.mintPyFromToken(params.receiver, this.yt, minPyOut, input, {
             ...data,

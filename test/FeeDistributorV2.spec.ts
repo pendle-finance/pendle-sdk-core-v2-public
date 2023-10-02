@@ -1,6 +1,6 @@
-import { NATIVE_ADDRESS_0x00, FeeDistributorV2WithStaticProof, toAddress, BN, Address } from '../src';
+import { FeeDistributorV2WithStaticProof, toAddress, BN, Address } from '../src';
 import { currentConfig, networkConnection, describeWrite } from './util/testEnv';
-import { getUserBalances, print } from './util/testHelper';
+import { print } from './util/testHelper';
 import * as dummyRewardData from '@pendle/core-v2-testnet/deployments/vependle-rewards/2023-04-06.json';
 import { ethers } from 'ethers';
 
@@ -33,7 +33,7 @@ import { ethers } from 'ethers';
             const testData = data[1];
             const [receiver, amount] = testData;
             print(testData);
-            const [balanceBefore] = await getUserBalances(receiver, [NATIVE_ADDRESS_0x00]);
+            // const [balanceBefore] = await getUserBalances(receiver, [NATIVE_ADDRESS_0x00]);
 
             const proof = await feeDistributor.getProof(receiver, amount);
             console.log(

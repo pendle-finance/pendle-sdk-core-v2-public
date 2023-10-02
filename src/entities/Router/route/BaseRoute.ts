@@ -88,9 +88,14 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
     abstract signerHasApprovedImplement(signerAddress: Address): Promise<boolean>;
 
     @RouteContext.NoArgsSharedCache
-    async signerHasApproved(): Promise<boolean> {
+    async getSignerAddressIfApproved(): Promise<Address | undefined> {
         const signerAddress = await this.context.getSignerAddress();
-        return !!signerAddress && this.signerHasApprovedImplement(signerAddress);
+        if (!!signerAddress && (await this.signerHasApprovedImplement(signerAddress))) return signerAddress;
+    }
+
+    async signerHasApproved(): Promise<boolean> {
+        const signerAddressOrUndefined = await this.getSignerAddressIfApproved();
+        return !!signerAddressOrUndefined;
     }
 
     /**

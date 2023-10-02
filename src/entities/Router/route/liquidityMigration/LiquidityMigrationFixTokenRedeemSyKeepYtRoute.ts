@@ -3,7 +3,7 @@ import {
     BaseLiquidityMigrationFixTokenRedeemSyRouteConfig,
     PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper,
 } from './BaseLiquidityMigrationRoute';
-import { AddLiquiditySingleTokenKeepYtRoute, AddLiquiditySingleTokenKeepYtRouteConfig } from '../zapIn';
+import { BaseAddLiquiditySingleTokenKeepYtRoute, AddLiquiditySingleTokenKeepYtRouteConfig } from '../zapIn';
 import { RemoveLiquiditySingleTokenRoute } from '../zapOut';
 import { MetaMethodType } from '../../../../contracts';
 import { FixedRouterMetaMethodExtraParams, TokenOutput, RouterHelperMetaMethodReturnType } from '../../types';
@@ -13,7 +13,7 @@ export type LiquidityMigrationFixTokenRedeemSyKeepYtRouteConfig<T extends MetaMe
     BaseLiquidityMigrationFixTokenRedeemSyRouteConfig<T, LiquidityMigrationFixTokenRedeemSyKeepYtRoute<T>> & {
         addLiquidityRouteConfig: {
             destinationMarket: Address;
-            params: AddLiquiditySingleTokenKeepYtRouteConfig<T>;
+            params: AddLiquiditySingleTokenKeepYtRouteConfig<T, AddLiquiditySingleTokenKeepYtForMigrationRoute<T>>;
         };
         redeemRewards: boolean;
         slippage: number;
@@ -24,7 +24,7 @@ export class LiquidityMigrationFixTokenRedeemSyKeepYtRoute<
 > extends BaseLiquidityMigrationFixTokenRedeemSyRoute<
     T,
     LiquidityMigrationFixTokenRedeemSyKeepYtRoute<T>,
-    AddLiquiditySingleTokenKeepYtRoute<T>
+    AddLiquiditySingleTokenKeepYtForMigrationRoute<T>
 > {
     override readonly routeName = 'LiquidityMigrationFixTokenRedeemSyKeepYt';
     readonly redeemRewards: boolean;
@@ -42,12 +42,14 @@ export class LiquidityMigrationFixTokenRedeemSyKeepYtRoute<
         return this.addLiquidityRouteConfig.params.tokenMintSy;
     }
 
-    override async createAddLiquidityRouteImplement(): Promise<AddLiquiditySingleTokenKeepYtRoute<T> | undefined> {
+    override async createAddLiquidityRouteImplement(): Promise<
+        AddLiquiditySingleTokenKeepYtForMigrationRoute<T> | undefined
+    > {
         const netTokenToZap = await this.removeLiquidityRoute.getNetOut();
         if (!netTokenToZap) {
             return undefined;
         }
-        return new AddLiquiditySingleTokenKeepYtRoute(
+        return new AddLiquiditySingleTokenKeepYtForMigrationRoute(
             this.addLiquidityRouteConfig.destinationMarket,
             this.removeLiquidityRoute.tokenOut,
             netTokenToZap,
@@ -117,7 +119,7 @@ export class LiquidityMigrationFixTokenRedeemSyKeepYtRoute<
         'transferLiquidityDifferentSyKeepYt',
         {
             removeLiquidityRoute: RemoveLiquiditySingleTokenRoute<T>;
-            addLiquidityRoute: AddLiquiditySingleTokenKeepYtRoute<T>;
+            addLiquidityRoute: AddLiquiditySingleTokenKeepYtForMigrationRoute<T>;
             route: LiquidityMigrationFixTokenRedeemSyKeepYtRoute<T>;
         }
     > {
@@ -170,13 +172,7 @@ export class LiquidityMigrationFixTokenRedeemSyKeepYtRoute<
             addLiquidityRoute.getMinYtOut(),
             addLiquidityRoute.getUsedBulk(),
         ]);
-        if (
-            !removeLiqTokenOutputStruct ||
-            !addLiqAggregatorResult ||
-            !addLiqTokenInputStruct ||
-            !addLiqMinYtOut ||
-            !addLiqMinLpOut
-        ) {
+        if (!removeLiqTokenOutputStruct || !addLiqTokenInputStruct || !addLiqMinYtOut || !addLiqMinLpOut) {
             return;
         }
 
@@ -211,5 +207,33 @@ export class LiquidityMigrationFixTokenRedeemSyKeepYtRoute<
                 ...data,
             }
         );
+    }
+}
+
+/**
+ * @remarks
+ * This is specialization for AddLiquiditySingleTokenKeepYt route, to set `getNeedScale` to true.
+ * This is required for aggregatorHelper of this route if we want to use it for liquidity migration.
+ */
+export class AddLiquiditySingleTokenKeepYtForMigrationRoute<
+    T extends MetaMethodType
+> extends BaseAddLiquiditySingleTokenKeepYtRoute<T, AddLiquiditySingleTokenKeepYtForMigrationRoute<T>> {
+    override routeWithBulkSeller(withBulkSeller = true): AddLiquiditySingleTokenKeepYtForMigrationRoute<T> {
+        return new AddLiquiditySingleTokenKeepYtForMigrationRoute(
+            this.market,
+            this.tokenIn,
+            this.netTokenIn,
+            this.slippage,
+            {
+                context: this.context,
+                tokenMintSy: this.tokenMintSy,
+                withBulkSeller,
+                cloneFrom: this,
+            }
+        );
+    }
+
+    getNeedScale() {
+        return true;
     }
 }

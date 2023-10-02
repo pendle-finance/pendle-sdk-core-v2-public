@@ -1,4 +1,3 @@
-import { PendleSdkError } from '../../errors';
 import { ContractAddresses } from './types';
 import * as data from './data';
 import { ChainId, CHAIN_ID_MAPPING } from '../ChainId';
@@ -15,8 +14,11 @@ export const CONTRACT_ADDRESSES = {
 
 export function getContractAddresses<C extends ChainId>(chainId: C): (typeof CONTRACT_ADDRESSES)[C] {
     const res = CONTRACT_ADDRESSES[chainId];
-    if (res == undefined) {
-        throw new PendleSdkError(`There is no default contract addresses for chain ${chainId}`);
-    }
+
+    // // Not require here anymore, if we pass the correct type in TypeScript.
+    // // For JavaScript user, there might be error only when accessing field of undefined.
+    // if (res == undefined) {
+    //     throw new PendleSdkError(`There is no default contract addresses for chain ${chainId}`);
+    // }
     return res;
 }

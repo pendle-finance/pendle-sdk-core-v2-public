@@ -304,6 +304,9 @@ export class PendleContractError<
     static decodeEthersError(data: string, ethersJsError: Error) {
         try {
             const errorDescription = this.errorsInterface.parseError(data);
+
+            // ethers.js v5 does not have strict-mode turned on. `errorDescription` is actually nullable.
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (!errorDescription) {
                 return undefined;
             }

@@ -1,15 +1,14 @@
 import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
-import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmountSqrt } from '../../../../common';
+import { Address, BigNumberish, BN, calcSlippedDownAmountSqrt } from '../../../../common';
 import { MarketEntity } from '../../../MarketEntity';
+import { txOverridesValueFromTokenInput } from '../helper';
 
 export type AddLiquidityDualTokenAndPtRouteData = BaseZapInRouteData & {
     netLpOut: BN;
-    netTokenUsed: BN;
     netPtUsed: BN;
     netSyUsed: BN;
-    netSyDesired: BN;
     minLpOut: BN;
 };
 
@@ -71,28 +70,26 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
         return tokenIsApproved && ptIsApproved;
     }
 
-    override async getNetOut(syncAfterAggregatorCall?: () => Promise<void>): Promise<BN | undefined> {
-        return (await this.preview(syncAfterAggregatorCall))?.netLpOut;
+    override async getNetOut(): Promise<BN | undefined> {
+        return (await this.preview())?.netLpOut;
     }
 
     protected override async previewWithRouterStatic(): Promise<AddLiquidityDualTokenAndPtRouteData | undefined> {
-        const input = await this.buildTokenInput();
-        if (!input) {
+        const [input, mintedSyAmount] = await Promise.all([this.buildTokenInput(), this.getMintedSyAmount()]);
+        if (!input || !mintedSyAmount) {
             return undefined;
         }
-        const data = await this.routerStaticCall.addLiquidityDualTokenAndPtStatic(
+        const data = await this.routerStaticCall.addLiquidityDualSyAndPtStatic(
             this.market.address,
-            this.tokenMintSy,
-            await this.getTokenMintSyAmount(),
-            input.bulk,
+            mintedSyAmount,
             this.ptDesired,
             this.routerExtraParams.forCallStatic
         );
         const minLpOut = calcSlippedDownAmountSqrt(data.netLpOut, this.slippage);
         return {
             ...data,
-            intermediateSyAmount: data.netSyDesired,
             minLpOut,
+            intermediateSyAmount: mintedSyAmount,
         };
     }
 
@@ -127,7 +124,7 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
     ) {
         const [input, previewResult] = await Promise.all([this.buildTokenInput(), this.preview()]);
         if (!input || !previewResult) return undefined;
-        const overrides = { value: isNativeToken(this.tokenIn) ? this.tokenDesired : undefined };
+        const overrides = txOverridesValueFromTokenInput(input);
         const { minLpOut } = previewResult;
         return this.router.contract.metaCall.addLiquidityDualTokenAndPt(
             this.routerExtraParams.receiver,

@@ -59,7 +59,7 @@ describe(MarketEntity, () => {
         });
 
         it('#userMarketInfo', async () => {
-            const [marketInfo, userMarketInfo, userBalance, syInfo, syExchangeRate] = await Promise.all([
+            const [marketInfo, userMarketInfo, userBalance, _syInfo, _syExchangeRate] = await Promise.all([
                 market.getMarketInfo({ multicall }),
                 market.getUserMarketInfo(senderAddress, { multicall }),
                 Multicall.wrap(market.contract, multicall).callStatic.balanceOf(sender.address),

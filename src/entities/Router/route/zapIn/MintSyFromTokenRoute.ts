@@ -1,7 +1,8 @@
 import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
-import { Address, BigNumberish, BN, calcSlippedDownAmount, isNativeToken } from '../../../../common';
+import { Address, BigNumberish, BN, calcSlippedDownAmount } from '../../../../common';
+import { txOverridesValueFromTokenInput } from '../helper';
 
 export type MintSyFromTokenRouteData = BaseZapInRouteData & {
     netSyOut: BN;
@@ -49,23 +50,15 @@ export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
         });
     }
 
-    override async getNetOut(syncAfterAggregatorCall?: () => Promise<void>): Promise<BN | undefined> {
-        return (await this.preview(syncAfterAggregatorCall))?.netSyOut;
+    override async getNetOut(): Promise<BN | undefined> {
+        return (await this.preview())?.netSyOut;
     }
 
     protected override async previewWithRouterStatic(): Promise<MintSyFromTokenRouteData | undefined> {
-        const input = await this.buildTokenInput();
-        if (!input) {
-            return undefined;
-        }
-
-        const netSyOut = await this.context.syEntity.previewDeposit(
-            this.tokenMintSy,
-            await this.getTokenMintSyAmount(),
-            { ...this.routerExtraParams.forCallStatic, bulk: input.bulk }
-        );
-        const minSyOut = calcSlippedDownAmount(netSyOut, this.slippage);
-        return { netSyOut, minSyOut, intermediateSyAmount: netSyOut };
+        const mintedSyAmount = await this.getMintedSyAmount();
+        if (!mintedSyAmount) return;
+        const minSyOut = calcSlippedDownAmount(mintedSyAmount, this.slippage);
+        return { netSyOut: mintedSyAmount, minSyOut, intermediateSyAmount: mintedSyAmount };
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
@@ -98,7 +91,7 @@ export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
         const [input, previewResult] = await Promise.all([this.buildTokenInput(), this.preview()]);
         if (!input || !previewResult) return undefined;
         const { minSyOut } = previewResult;
-        const overrides = { value: isNativeToken(this.tokenIn) ? this.netTokenIn : undefined };
+        const overrides = txOverridesValueFromTokenInput(input);
         return this.router.contract.metaCall.mintSyFromToken(params.receiver, this.sy, minSyOut, input, {
             ...data,
             ...mergeMetaMethodExtraParams({ overrides }, params),

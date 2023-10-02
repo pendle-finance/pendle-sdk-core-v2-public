@@ -5,7 +5,7 @@ import {
     ZapOutRouteDebugInfo,
 } from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
-import { BN, Address } from '../../../../common';
+import { BN, Address, NoArgsCache } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 
 export type RedeemSyToTokenRouteIntermediateData = BaseZapOutRouteIntermediateData;
@@ -56,6 +56,22 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
 
     protected override async previewIntermediateSyImpl(): Promise<RedeemSyToTokenRouteIntermediateData | undefined> {
         return Promise.resolve({ intermediateSyAmount: this.netSyIn });
+    }
+
+    @NoArgsCache
+    override async getTokenRedeemSyAmountWithRouter(): Promise<BN | undefined> {
+        const [signerAddress, tokenRedeemSyOutputStruct] = await Promise.all([
+            this.getSignerAddressIfApproved(),
+            this.buildDummyTokenOutputForTokenRedeemSy(),
+        ]);
+        if (!signerAddress) return undefined;
+        const res = await this.router.contract.callStatic.redeemSyToToken(
+            signerAddress,
+            this.sy,
+            this.netSyIn,
+            tokenRedeemSyOutputStruct
+        );
+        return res;
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {

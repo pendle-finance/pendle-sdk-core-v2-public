@@ -5,13 +5,11 @@ import {
     ZapOutRouteDebugInfo,
 } from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
-import { BN, Address, BigNumberish, NATIVE_ADDRESS_0x00 } from '../../../../common';
+import { BN, Address, BigNumberish, NoArgsCache } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MarketEntity } from '../../../MarketEntity';
 
 export type SwapExactPtForTokenRouteIntermediateData = BaseZapOutRouteIntermediateData & {
-    netTokenOut: BN;
-    netSyToRedeem: BN;
     netSyFee: BN;
     priceImpact: BN;
     exchangeRateAfter: BN;
@@ -63,14 +61,28 @@ export class SwapExactPtForTokenRoute<T extends MetaMethodType> extends BaseZapO
     protected override async previewIntermediateSyImpl(): Promise<
         SwapExactPtForTokenRouteIntermediateData | undefined
     > {
-        const data = await this.routerStaticCall.swapExactPtForTokenStatic(
+        const data = await this.routerStaticCall.swapExactPtForSyStatic(
             this.market.address,
             this.exactPtIn,
-            this.tokenRedeemSy,
-            NATIVE_ADDRESS_0x00,
             this.routerExtraParams.forCallStatic
         );
-        return { ...data, intermediateSyAmount: data.netSyToRedeem };
+        return { ...data, intermediateSyAmount: data.netSyOut };
+    }
+
+    @NoArgsCache
+    override async getTokenRedeemSyAmountWithRouter(): Promise<BN | undefined> {
+        const [signerAddress, tokenRedeemSyOutputStruct] = await Promise.all([
+            this.getSignerAddressIfApproved(),
+            this.buildDummyTokenOutputForTokenRedeemSy(),
+        ]);
+        if (!signerAddress) return undefined;
+        const res = await this.router.contract.callStatic.swapExactPtForToken(
+            signerAddress,
+            this.market.address,
+            this.exactPtIn,
+            tokenRedeemSyOutputStruct
+        );
+        return res.netTokenOut;
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {

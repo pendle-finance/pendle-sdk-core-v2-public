@@ -91,7 +91,7 @@ export abstract class BaseRouter extends PendleEntity {
         guessMin: BaseRouter.MIN_AMOUNT,
         guessMax: BaseRouter.MAX_AMOUNT,
         guessOffchain: 0,
-        maxIteration: 20,
+        maxIteration: 256,
         eps: new BigNumber(BaseRouter.EPS).shiftedBy(18).toFixed(0),
     };
 
@@ -161,7 +161,7 @@ export abstract class BaseRouter extends PendleEntity {
         if (swapType !== SwapType.KYBERSWAP && swapType !== SwapType.ONE_INCH) {
             return NATIVE_ADDRESS_0x00;
         }
-        return getContractAddresses(this.chainId).PENDLE_SWAP ?? NATIVE_ADDRESS_0x00;
+        return getContractAddresses(this.chainId).PENDLE_SWAP;
     }
 
     getDefaultMetaMethodExtraParams<T extends MetaMethodType>(): FixedRouterMetaMethodExtraParams<T> {
@@ -1458,7 +1458,7 @@ export abstract class BaseRouter extends PendleEntity {
         'transferLiquidityDifferentSyNormal',
         {
             removeLiquidityRoute: RemoveLiquiditySingleTokenRoute<T>;
-            addLiquidityRoute: AddLiquiditySingleTokenRoute<T>;
+            addLiquidityRoute: liqMigrationRoutes.AddLiquiditySingleTokenForMigrationRoute<T>;
             route: liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyRoute<T>;
         }
     > {
@@ -1550,7 +1550,7 @@ export abstract class BaseRouter extends PendleEntity {
         'transferLiquidityDifferentSyKeepYt',
         {
             removeLiquidityRoute: RemoveLiquiditySingleTokenRoute<T>;
-            addLiquidityRoute: AddLiquiditySingleTokenKeepYtRoute<T>;
+            addLiquidityRoute: liqMigrationRoutes.AddLiquiditySingleTokenKeepYtForMigrationRoute<T>;
             route: liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyKeepYtRoute<T>;
         }
     > {

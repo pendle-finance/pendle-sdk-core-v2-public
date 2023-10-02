@@ -21,7 +21,7 @@ import { BigNumber as BN } from 'ethers';
 import { DEFAULT_EPSILON, INF } from './util/constants';
 import { TransactionReceipt } from '@ethersproject/abstract-provider';
 
-describeIf(isMainchain(ACTIVE_CHAIN_ID), 'VePendle', () => {
+describeIf(isMainchain(ACTIVE_CHAIN_ID))('VePendle', () => {
     const vePendle = new VePendleMainchain(currentConfig.veAddress, networkConnectionWithChainId);
 
     it('#constructor', () => {

@@ -13,10 +13,11 @@ import { MetaMethodType } from '../../../../contracts';
 import { TokenInput } from '../../types';
 import { BaseRoute, BaseRouteConfig, RouteDebugInfo } from '../BaseRoute';
 import { RouteContext } from '../RouteContext';
+import { txOverridesValueFromTokenInput } from '../helper';
 
 export type BaseZapInRouteConfig<
     T extends MetaMethodType,
-    SelfType extends BaseZapInRoute<T, any, SelfType>
+    SelfType extends BaseZapInRoute<T, BaseZapInRouteData, SelfType>
 > = BaseRouteConfig<T, SelfType> & {
     readonly tokenMintSy: Address;
 };
@@ -49,6 +50,8 @@ export abstract class BaseZapInRoute<
             if (this.withBulkSeller === other.withBulkSeller) {
                 NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.preview);
                 NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.buildTokenInput);
+                NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.getMintedSyAmountWithRouter);
+                NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.getMintedSyAmountWithRouterStatic);
             }
             /* eslint-disable @typescript-eslint/unbound-method */
         }
@@ -62,6 +65,13 @@ export abstract class BaseZapInRoute<
     }
     override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         return this.checkUserApproval(signerAddress, this.sourceTokenAmount);
+    }
+
+    /**
+     * Alias name
+     */
+    getIntermediateSyAmount() {
+        return this.getMintedSyAmount();
     }
 
     override async estimateNetOutInEth(): Promise<BN | undefined> {
@@ -105,9 +115,6 @@ export abstract class BaseZapInRoute<
 
     override async getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined> {
         const aggregatorResult = await this.getAggregatorResult();
-        if (!aggregatorResult) {
-            return undefined;
-        }
         return {
             netTokenIn: calcSlippedUpAmount(BN.from(aggregatorResult.outputAmount), this.context.getBulkBuffer()),
             netSyIn: BN.from(0),
@@ -119,43 +126,14 @@ export abstract class BaseZapInRoute<
     }
 
     /**
-     * @param syncAfterAggregatorCall Used for micro optimization in
-     * There are two steps in {@link preview}.
-     *
-     * 1. Call {@link buildTokenInput} to get the {@link TokenInput} struct for
-     *    contract call.
-     * 2. Call the corresponding contract function.
-     *
-     * To use {@link Multicall} effectively for the step 2, all simutenious
-     * calls should have synchronized after step 1. After every calls done with
-     * the step 1, they can call the contract function. Because of
-     * synchronization, these calls are being invoked **together**.
-     *
-     * So {@link preview} will call {@link buildTokenInput} first, then call
-     * `syncAfterAggregatorCall` for synchronization. The cached result from
-     * {@link buildTokenInput} can then be used to avoid recalculation.
-     *
      * @privateRemarks
      * The passing `syncAfterAggregatorCall` should not affect the preview logic
      * in order to be cached
      */
     @NoArgsCache
-    async preview(syncAfterAggregatorCall: () => Promise<void> = () => Promise.resolve()): Promise<Data | undefined> {
-        await this.buildTokenInput();
-        await syncAfterAggregatorCall();
-        const [res] = await Promise.all([
-            this.previewWithRouterStatic(),
-
-            // Currently unused for routing algorithm, but it is useful _elsewhere_.
-            // Calling it here to batch it with multicall, then cache it.
-            this.routerExtraParams.multicall != undefined ? this.getMintedSyAmount() : undefined,
-        ]);
+    async preview(): Promise<Data | undefined> {
+        const res = await this.previewWithRouterStatic();
         return res;
-    }
-
-    async getIntermediateSyAmount(): Promise<BN | undefined> {
-        const data = await this.preview();
-        return data?.intermediateSyAmount;
     }
 
     getNeedScale() {
@@ -178,9 +156,6 @@ export abstract class BaseZapInRoute<
     @NoArgsCache
     async buildTokenInput(): Promise<TokenInput | undefined> {
         const [aggregatorResult, bulk] = await Promise.all([this.getAggregatorResult(), this.getUsedBulk()]);
-        if (aggregatorResult === undefined) {
-            return undefined;
-        }
         const swapData = aggregatorResult.createSwapData({ needScale: this.getNeedScale() });
         const pendleSwap = this.router.getPendleSwapAddress(swapData.swapType);
         const input: TokenInput = {
@@ -203,16 +178,40 @@ export abstract class BaseZapInRoute<
      * code dealing with type assertion.
      */
     async getTokenMintSyAmount(): Promise<BigNumberish> {
-        return (await this.getAggregatorResult())?.outputAmount ?? ethersConstants.Zero;
+        return (await this.getAggregatorResult()).outputAmount;
     }
 
     @NoArgsCache
-    async getMintedSyAmount() {
+    async getMintedSyAmount(): Promise<BN | undefined> {
+        return this.getMintedSyAmountWithRouter().then((value) => value ?? this.getMintedSyAmountWithRouterStatic());
+    }
+
+    @NoArgsCache
+    async getMintedSyAmountWithRouter(): Promise<BN | undefined> {
+        const [signerAddress, tokenInput] = await Promise.all([
+            this.getSignerAddressIfApproved(),
+            this.buildTokenInput(),
+        ]);
+        if (!signerAddress || !tokenInput) return undefined;
+        return this.router.contract.callStatic.mintSyFromToken(
+            signerAddress,
+            this.syEntity.address,
+            ethersConstants.Zero,
+            tokenInput,
+            txOverridesValueFromTokenInput(tokenInput)
+        );
+    }
+
+    @NoArgsCache
+    async getMintedSyAmountWithRouterStatic(): Promise<BN | undefined> {
         const [tokenMintSyAmount, bulk] = await Promise.all([this.getTokenMintSyAmount(), this.getUsedBulk()]);
-        return this.syEntity.previewDeposit(this.tokenMintSy, tokenMintSyAmount, {
-            ...this.routerExtraParams,
-            bulk,
-        });
+        if (!tokenMintSyAmount) return undefined;
+        return this.routerStatic.multicallStatic.mintSyFromTokenStatic(
+            this.syEntity.address,
+            this.tokenMintSy,
+            tokenMintSyAmount,
+            bulk
+        );
     }
 
     override async gatherDebugInfo(): Promise<ZapInRouteDebugInfo> {

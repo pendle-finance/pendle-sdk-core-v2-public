@@ -11,7 +11,7 @@ import {
     networkConnectionWithChainId,
 } from './util/testEnv';
 
-describeIf(isMainchain(ACTIVE_CHAIN_ID), 'VotingController', () => {
+describeIf(isMainchain(ACTIVE_CHAIN_ID))('VotingController', () => {
     const votingController = new VotingController(currentConfig.votingController, networkConnection);
     const market = new MarketEntity(currentConfig.marketAddress, networkConnectionWithChainId);
     const signerAddress = networkConnection.signer.address;

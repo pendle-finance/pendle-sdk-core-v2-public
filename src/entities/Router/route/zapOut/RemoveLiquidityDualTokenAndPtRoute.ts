@@ -5,13 +5,11 @@ import {
     ZapOutRouteDebugInfo,
 } from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
-import { BN, Address, BigNumberish, calcSlippedDownAmount, NATIVE_ADDRESS_0x00 } from '../../../../common';
+import { BN, Address, BigNumberish, calcSlippedDownAmount, NoArgsCache } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 
 export type RemoveLiquidityDualTokenAndPtRouteIntermediateData = BaseZapOutRouteIntermediateData & {
     netPtOut: BN;
-    netTokenOut: BN;
-    netSyToRedeem: BN;
 };
 
 export type RemoveLiquidityDualTokenAndPtRouteDebugInfo = ZapOutRouteDebugInfo & {
@@ -60,14 +58,30 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
     protected override async previewIntermediateSyImpl(): Promise<
         RemoveLiquidityDualTokenAndPtRouteIntermediateData | undefined
     > {
-        const data = await this.routerStaticCall.removeLiquidityDualTokenAndPtStatic(
+        const data = await this.routerStaticCall.removeLiquidityDualSyAndPtStatic(
             this.market,
             this.lpToRemove,
-            this.tokenRedeemSy,
-            NATIVE_ADDRESS_0x00,
             this.routerExtraParams.forCallStatic
         );
-        return { ...data, intermediateSyAmount: data.netSyToRedeem };
+        return { ...data, intermediateSyAmount: data.netSyOut };
+    }
+
+    @NoArgsCache
+    override async getTokenRedeemSyAmountWithRouter(): Promise<BN | undefined> {
+        const [signerAddress, tokenRedeemSyOutputStruct] = await Promise.all([
+            this.getSignerAddressIfApproved(),
+            this.buildDummyTokenOutputForTokenRedeemSy(),
+        ]);
+        if (!signerAddress) return undefined;
+        const dummyMinPtOut = 0;
+        const res = await this.router.contract.callStatic.removeLiquidityDualTokenAndPt(
+            signerAddress,
+            this.market,
+            this.lpToRemove,
+            tokenRedeemSyOutputStruct,
+            dummyMinPtOut
+        );
+        return res.netTokenOut;
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {

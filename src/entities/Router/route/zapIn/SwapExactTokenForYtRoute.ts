@@ -1,7 +1,8 @@
 import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
-import { Address, BigNumberish, BN, isNativeToken, calcSlippedDownAmount } from '../../../../common';
+import { Address, BigNumberish, BN, calcSlippedDownAmount } from '../../../../common';
+import { txOverridesValueFromTokenInput } from '../helper';
 
 export type SwapExactTokenForYtRouteData = BaseZapInRouteData & {
     netYtOut: BN;
@@ -50,27 +51,26 @@ export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapI
         });
     }
 
-    override async getNetOut(syncAfterAggregatorCall?: () => Promise<void>): Promise<BN | undefined> {
-        return (await this.preview(syncAfterAggregatorCall))?.netYtOut;
+    override async getNetOut(): Promise<BN | undefined> {
+        return (await this.preview())?.netYtOut;
     }
 
     protected override async previewWithRouterStatic(): Promise<SwapExactTokenForYtRouteData | undefined> {
-        const input = await this.buildTokenInput();
-        if (!input) {
+        const [input, mintedSyAmount] = await Promise.all([this.buildTokenInput(), this.getMintedSyAmount()]);
+        if (!input || !mintedSyAmount) {
             return undefined;
         }
 
-        const data = await this.routerStaticCall.swapExactTokenForYtStatic(
+        const data = await this.routerStaticCall.swapExactSyForYtStatic(
             this.market,
-            this.tokenMintSy,
-            await this.getTokenMintSyAmount(),
-            input.bulk,
+            mintedSyAmount,
             this.routerExtraParams.forCallStatic
         );
         const minYtOut = calcSlippedDownAmount(data.netYtOut, this.slippage);
         return {
             ...data,
-            intermediateSyAmount: data.netSyMinted,
+            intermediateSyAmount: mintedSyAmount,
+            netSyMinted: mintedSyAmount,
             minYtOut,
         };
     }
@@ -104,7 +104,7 @@ export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapI
     ) {
         const [input, previewResult] = await Promise.all([this.buildTokenInput(), this.preview()]);
         if (!input || !previewResult) return undefined;
-        const overrides = { value: isNativeToken(this.tokenIn) ? this.netTokenIn : undefined };
+        const overrides = txOverridesValueFromTokenInput(input);
         const { minYtOut } = previewResult;
         const approxParam = this.context.getApproxParamsToPullPt(previewResult.netYtOut, this.slippage);
 

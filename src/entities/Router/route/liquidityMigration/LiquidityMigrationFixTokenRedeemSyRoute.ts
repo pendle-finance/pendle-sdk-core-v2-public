@@ -3,7 +3,7 @@ import {
     BaseLiquidityMigrationFixTokenRedeemSyRouteConfig,
     PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper,
 } from './BaseLiquidityMigrationRoute';
-import { AddLiquiditySingleTokenRoute, AddLiquiditySingleTokenRouteConfig } from '../zapIn';
+import { BaseAddLiquiditySingleTokenRoute, AddLiquiditySingleTokenRouteConfig } from '../zapIn';
 import { RemoveLiquiditySingleTokenRoute } from '../zapOut';
 import { MetaMethodType } from '../../../../contracts';
 import { FixedRouterMetaMethodExtraParams, TokenOutput, RouterHelperMetaMethodReturnType } from '../../types';
@@ -13,7 +13,7 @@ export type LiquidityMigrationFixTokenRedeemSyRouteConfig<T extends MetaMethodTy
     BaseLiquidityMigrationFixTokenRedeemSyRouteConfig<T, LiquidityMigrationFixTokenRedeemSyRoute<T>> & {
         addLiquidityRouteConfig: {
             destinationMarket: Address;
-            params: AddLiquiditySingleTokenRouteConfig<T>;
+            params: AddLiquiditySingleTokenRouteConfig<T, AddLiquiditySingleTokenForMigrationRoute<T>>;
         };
         redeemRewards: boolean;
         slippage: number;
@@ -24,7 +24,7 @@ export class LiquidityMigrationFixTokenRedeemSyRoute<
 > extends BaseLiquidityMigrationFixTokenRedeemSyRoute<
     T,
     LiquidityMigrationFixTokenRedeemSyRoute<T>,
-    AddLiquiditySingleTokenRoute<T>
+    AddLiquiditySingleTokenForMigrationRoute<T>
 > {
     override readonly routeName = 'LiquidityMigrationFixTokenRedeemSy';
     readonly redeemRewards: boolean;
@@ -42,12 +42,14 @@ export class LiquidityMigrationFixTokenRedeemSyRoute<
         return this.addLiquidityRouteConfig.params.tokenMintSy;
     }
 
-    override async createAddLiquidityRouteImplement(): Promise<AddLiquiditySingleTokenRoute<T> | undefined> {
+    override async createAddLiquidityRouteImplement(): Promise<
+        AddLiquiditySingleTokenForMigrationRoute<T> | undefined
+    > {
         const netTokenToZap = await this.removeLiquidityRoute.getNetOut();
         if (!netTokenToZap) {
             return undefined;
         }
-        return new AddLiquiditySingleTokenRoute(
+        return new AddLiquiditySingleTokenForMigrationRoute(
             this.addLiquidityRouteConfig.destinationMarket,
             this.removeLiquidityRoute.tokenOut,
             netTokenToZap,
@@ -116,7 +118,7 @@ export class LiquidityMigrationFixTokenRedeemSyRoute<
         'transferLiquidityDifferentSyNormal',
         {
             removeLiquidityRoute: RemoveLiquiditySingleTokenRoute<T>;
-            addLiquidityRoute: AddLiquiditySingleTokenRoute<T>;
+            addLiquidityRoute: AddLiquiditySingleTokenForMigrationRoute<T>;
             route: LiquidityMigrationFixTokenRedeemSyRoute<T>;
         }
     > {
@@ -169,13 +171,7 @@ export class LiquidityMigrationFixTokenRedeemSyRoute<
             addLiquidityRoute.getMinLpOut(),
             addLiquidityRoute.getUsedBulk(),
         ]);
-        if (
-            !removeLiqTokenOutputStruct ||
-            !addLiqAggregatorResult ||
-            !addLiqTokenInputStruct ||
-            !addLiqApproxParam ||
-            !addLiqMinLpOut
-        ) {
+        if (!removeLiqTokenOutputStruct || !addLiqTokenInputStruct || !addLiqApproxParam || !addLiqMinLpOut) {
             return;
         }
 
@@ -211,5 +207,22 @@ export class LiquidityMigrationFixTokenRedeemSyRoute<
                 ...data,
             }
         );
+    }
+}
+
+export class AddLiquiditySingleTokenForMigrationRoute<
+    T extends MetaMethodType
+> extends BaseAddLiquiditySingleTokenRoute<T, AddLiquiditySingleTokenForMigrationRoute<T>> {
+    override routeWithBulkSeller(withBulkSeller = true): AddLiquiditySingleTokenForMigrationRoute<T> {
+        return new AddLiquiditySingleTokenForMigrationRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
+            context: this.context,
+            tokenMintSy: this.tokenMintSy,
+            withBulkSeller,
+            cloneFrom: this,
+        });
+    }
+
+    getNeedScale() {
+        return true;
     }
 }

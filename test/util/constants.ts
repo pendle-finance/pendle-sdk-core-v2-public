@@ -49,7 +49,7 @@ export const SLIPPAGE_TYPE3 = 1;
 export const DEFAULT_MINT_AMOUNT = 100;
 
 // this map will be added over time
-export const BALANCE_OF_STORAGE_SLOT: Record<string, [number, boolean]> = {
+export const BALANCE_OF_STORAGE_SLOT: Record<string, [number, boolean] | undefined> = {
     '0x5ea8c8e02c2d413165c1adcbb6916b0851f6cd73': [9, false], // USDC on mumbai
     '0x76818c92936662e9b24f74395f38634c35604720': [14, false], // qiUSDC on mumbai
     '0xafc1ac698e9b54c240e6ebc7d64200bb84f2e4cd': [0, false], // USDT on mumbai

@@ -32,7 +32,7 @@ type EntitiesMapType = {
 const TOKEN_NAME_CACHE: Map<string, string> = new Map();
 
 const ERC20_CREATE_HANDLER = {
-    get: function (target: EntitiesMapType, address: Address) {
+    get: function (target: Partial<EntitiesMapType>, address: Address) {
         if (target[address] === undefined) {
             target[address] = new ERC20Entity(address, {
                 ...networkConnection,
@@ -43,7 +43,7 @@ const ERC20_CREATE_HANDLER = {
     },
 };
 
-const ERC20_ENTITIES: EntitiesMapType = new Proxy({}, ERC20_CREATE_HANDLER);
+const ERC20_ENTITIES = new Proxy({}, ERC20_CREATE_HANDLER) as EntitiesMapType;
 
 export async function getBalance(token: Address, user: Address): Promise<BN> {
     if (isNativeToken(token)) {

@@ -5,7 +5,7 @@ import {
     ZapOutRouteDebugInfo,
 } from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
-import { BN, Address, PyIndex } from '../../../../common';
+import { BN, Address, PyIndex, NoArgsCache } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { YtEntity } from '../../../YtEntity';
 
@@ -67,6 +67,22 @@ export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         const pyIndex = await this.ytEntity.pyIndexCurrent(this.routerExtraParams.forCallStatic);
         const intermediateSyAmount = new PyIndex(pyIndex).assetToSy(this.netPyIn);
         return { intermediateSyAmount, pyIndex };
+    }
+
+    @NoArgsCache
+    override async getTokenRedeemSyAmountWithRouter(): Promise<BN | undefined> {
+        const [signerAddress, tokenRedeemSyOutputStruct] = await Promise.all([
+            this.getSignerAddressIfApproved(),
+            this.buildDummyTokenOutputForTokenRedeemSy(),
+        ]);
+        if (!signerAddress) return undefined;
+        const res = await this.router.contract.callStatic.redeemPyToToken(
+            signerAddress,
+            this.ytEntity.address,
+            this.netPyIn,
+            tokenRedeemSyOutputStruct
+        );
+        return res;
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {

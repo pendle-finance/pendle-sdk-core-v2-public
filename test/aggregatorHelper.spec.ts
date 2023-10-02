@@ -34,7 +34,7 @@ describe('VoidAggregatorHelper', () => {
     });
 });
 
-describeIf(env.AGGREGATOR_HELPER === 'ONEINCH', 'OneInchAggregatorHelper', () => {
+describeIf(env.AGGREGATOR_HELPER === 'ONEINCH')('OneInchAggregatorHelper', () => {
     const oneInchAggregatorHelper = currentConfig.aggregatorHelper as OneInchAggregatorHelper;
     const usdcAmount = createTokenAmount({ token: currentConfig.tokens.USDC, amount: BN.from(10) });
     const daiAddress = currentConfig.tokens.DAI;

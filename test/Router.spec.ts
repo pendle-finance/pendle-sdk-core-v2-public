@@ -62,7 +62,8 @@ type BalanceSnapshot = {
 
 type MetaMethodCallback = () =>
     | AsyncOrSync<ContractMetaMethod<IPAllAction, any, any>>
-    | AsyncOrSync<ContractMetaMethod<PendleRouterHelper, any, any>>;
+    | AsyncOrSync<ContractMetaMethod<PendleRouterHelper, any, any>>
+    | AsyncOrSync<ContractMetaMethod<IPAllAction, any, any> | ContractMetaMethod<PendleRouterHelper, any, any>>;
 type SkipTxCheckCallback<T extends MetaMethodCallback> = (readerData: MetaMethodData<T>) => boolean;
 
 describeWrite('Router', () => {
@@ -84,7 +85,9 @@ describeWrite('Router', () => {
         await getAllAssets(chainId);
         const tokens = [syAddress, ptAddress, ytAddress, marketAddress];
         await Promise.all(
-            tokens.map(async (token) => setPendleERC20Balance(token, signerAddress, valueToTokenAmount(token, chainId)))
+            tokens.map(async (token) =>
+                setPendleERC20Balance(token, signerAddress, valueToTokenAmount(token, chainId).mul(2))
+            )
         );
         await increaseNativeBalance(signerAddress);
 
@@ -162,13 +165,13 @@ describeWrite('Router', () => {
             };
         }
     > {
+        const { gas: approvalGas } = await batchInfApprove(tokens);
+
         const metaCall = await callback();
 
         if (skipTxCheck && skipTxCheck(metaCall.data)) {
             return metaCall.data;
         }
-
-        const { gas: approvalGas } = await batchInfApprove(tokens);
 
         const txReceipt: TransactionReceipt = await metaCall
             .connect(signer)
@@ -205,14 +208,17 @@ describeWrite('Router', () => {
         });
 
         it('#addLiquidityDualSyAndPt', async () => {
-            const syAdd = bnMinAsBn(valueToTokenAmount(syAddress, chainId), await getBalance(syAddress, signerAddress));
-            const ptAdd = bnMinAsBn(valueToTokenAmount(ptAddress, chainId), await getBalance(ptAddress, signerAddress));
+            const [syBalance, ptBalance, lpBalanceBefore] = await Promise.all([
+                await getBalance(syAddress, signerAddress),
+                await getBalance(ptAddress, signerAddress),
+                await getBalance(marketAddress, signerAddress),
+            ]);
+            const syAdd = bnMinAsBn(valueToTokenAmount(syAddress, chainId), syBalance);
+            const ptAdd = bnMinAsBn(valueToTokenAmount(ptAddress, chainId), ptBalance);
 
             if (syAdd.eq(0) || ptAdd.eq(0)) {
                 throw new Error('skip test because syAdd or ptAdd is 0');
             }
-
-            const lpBalanceBefore = await getBalance(marketAddress, signerAddress);
 
             const readerData = await sendTxWithInfApproval(
                 () =>
@@ -309,8 +315,6 @@ describeWrite('Router', () => {
                 [syAddress]
             );
 
-            if (readerData === undefined) throw new Error('readerData is undefined');
-
             const [lpBalanceAfter, syBalanceAfter] = await getUserBalances(signerAddress, [marketAddress, syAddress]);
             expect(lpBalanceAfter.sub(lpBalanceBefore)).toEqBN(readerData.netLpOut, DEFAULT_EPSILON);
             expect(syBalanceBefore.sub(syBalanceAfter)).toEqBN(syAdd);
@@ -334,8 +338,6 @@ describeWrite('Router', () => {
                     }),
                 [syAddress]
             );
-
-            if (readerData === undefined) throw new Error('readerData is undefined');
 
             const [lpBalanceAfter, syBalanceAfter, ytBalanceAfter] = await getUserBalances(signerAddress, [
                 marketAddress,
@@ -425,19 +427,18 @@ describeWrite('Router', () => {
                     ytAddress,
                 ]);
 
-                const metaCall = await router.addLiquiditySingleTokenKeepYt(
-                    currentConfig.marketAddress,
-                    token,
-                    tokenAddAmount,
-                    SLIPPAGE_TYPE2,
-                    {
-                        method: 'meta-method',
-                    }
-                );
-                const readerData = await sendTxWithInfApproval(
-                    () => metaCall,
-                    [token, getContractAddresses(currentConfig.chainId).WRAPPED_NATIVE]
-                );
+                const readerData = await sendTxWithInfApproval(async () => {
+                    const metacall = await router.addLiquiditySingleTokenKeepYt(
+                        currentConfig.marketAddress,
+                        token,
+                        tokenAddAmount,
+                        SLIPPAGE_TYPE2,
+                        {
+                            method: 'meta-method',
+                        }
+                    );
+                    return metacall;
+                }, [token, getContractAddresses(currentConfig.chainId).WRAPPED_NATIVE]);
                 const [lpBalanceAfter, tokenBalanceAfter, ytBalanceAfter] = await getUserBalances(signerAddress, [
                     marketAddress,
                     token,
@@ -1469,7 +1470,7 @@ describeWrite('Router', () => {
             { sys, netSyIns },
             { receiver }
         );
-        const simplifiedResults = results.map((x) => ({
+        const _simplifiedResults = results.map((x) => ({
             kyberRouter: x.swapData.extRouter,
             tokenRedeemSy: x.tokenRedeemSy,
             minTokenOut: x.minTokenOut.toString(),

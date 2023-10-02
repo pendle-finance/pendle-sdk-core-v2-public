@@ -22,6 +22,13 @@ export interface AggregatorResult {
     createSwapData(params: { needScale: boolean }): SwapData;
 }
 
+export const EMPTY_SWAP_DATA = {
+    swapType: SwapType.NONE,
+    extRouter: NATIVE_ADDRESS_0x00,
+    extCalldata: [],
+    needScale: false, // aggregator is not used.
+} as const satisfies SwapData;
+
 export function createNoneAggregatorResult(amount: BigNumberish): AggregatorResult {
     return {
         amountInUsd: undefined,
@@ -29,12 +36,7 @@ export function createNoneAggregatorResult(amount: BigNumberish): AggregatorResu
         outputAmount: BN.from(amount),
 
         getSwapType: () => SwapType.NONE,
-        createSwapData: () => ({
-            swapType: SwapType.NONE,
-            extRouter: NATIVE_ADDRESS_0x00,
-            extCalldata: [],
-            needScale: false, // aggregator is not used.
-        }),
+        createSwapData: () => EMPTY_SWAP_DATA,
     };
 }
 

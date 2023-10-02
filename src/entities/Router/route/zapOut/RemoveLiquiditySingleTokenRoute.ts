@@ -5,11 +5,10 @@ import {
     ZapOutRouteDebugInfo,
 } from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
-import { BN, Address, BigNumberish, NATIVE_ADDRESS_0x00 } from '../../../../common';
+import { BN, Address, BigNumberish, NoArgsCache } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 
 export type RemoveLiquiditySingleTokenRouteIntermediateData = BaseZapOutRouteIntermediateData & {
-    netTokenOut: BN;
     netSyFee: BN;
     priceImpact: BN;
     exchangeRateAfter: BN;
@@ -58,14 +57,28 @@ export abstract class _RemoveLiquiditySingleTokenRoute<
     protected override async previewIntermediateSyImpl(): Promise<
         RemoveLiquiditySingleTokenRouteIntermediateData | undefined
     > {
-        const data = await this.routerStaticCall.removeLiquiditySingleTokenStatic(
+        const data = await this.routerStaticCall.removeLiquiditySingleSyStatic(
             this.market,
             this.lpToRemove,
-            this.tokenRedeemSy,
-            NATIVE_ADDRESS_0x00,
             this.routerExtraParams.forCallStatic
         );
         return { ...data, intermediateSyAmount: data.netSyOut };
+    }
+
+    @NoArgsCache
+    override async getTokenRedeemSyAmountWithRouter(): Promise<BN | undefined> {
+        const [signerAddress, tokenRedeemSyOutputStruct] = await Promise.all([
+            this.getSignerAddressIfApproved(),
+            this.buildDummyTokenOutputForTokenRedeemSy(),
+        ]);
+        if (!signerAddress) return undefined;
+        const res = await this.router.contract.callStatic.removeLiquiditySingleToken(
+            signerAddress,
+            this.market,
+            this.lpToRemove,
+            tokenRedeemSyOutputStruct
+        );
+        return res.netTokenOut;
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {

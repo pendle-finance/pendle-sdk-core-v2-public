@@ -10,7 +10,7 @@ import {
 import { FeeDistributor } from '../src/entities/FeeDistributor';
 
 // Test is disable. Use FeeDistributorV2 instead
-describeIf(false && isMainchain(ACTIVE_CHAIN_ID), 'FeeDistributor', () => {
+describeIf(isMainchain(ACTIVE_CHAIN_ID)).skip('FeeDistributor', () => {
     const feeDistributor = FeeDistributor.getFeeDistributor(networkConnectionWithChainId);
 
     it('#constructor', () => {
