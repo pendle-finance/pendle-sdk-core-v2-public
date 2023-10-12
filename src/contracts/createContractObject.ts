@@ -182,17 +182,20 @@ export function wrapContractObject<C extends Contract>(
 
 export type ContractObjectConfig = NetworkConnection & WrappedContractConfig & { doWrap?: boolean };
 
-export function createContractObject<T extends Contract = Contract>(
+export let createEthersContract = <T extends Contract>(...params: ConstructorParameters<typeof Contract>) =>
+    new Contract(...params) as T;
+
+export function createContractObjectImpl<T extends Contract = Contract>(
     address: Address,
     abi: ContractInterface,
     config: NetworkConnection & WrappedContractConfig & { doWrap: false }
 ): T;
-export function createContractObject<T extends Contract = Contract>(
+export function createContractObjectImpl<T extends Contract = Contract>(
     address: Address,
     abi: ContractInterface,
     config: ContractObjectConfig
 ): WrappedContract<T>;
-export function createContractObject<T extends Contract = Contract>(
+export function createContractObjectImpl<T extends Contract = Contract>(
     address: Address,
     abi: ContractInterface,
     config: ContractObjectConfig
@@ -200,16 +203,36 @@ export function createContractObject<T extends Contract = Contract>(
     const doWrap = config.doWrap ?? true;
     let result: WrappedContract<T> | T;
     if (config.signer == undefined) {
-        result = new Contract(address, abi, config.provider) as T;
+        result = createEthersContract<T>(address, abi, config.provider);
     } else if (config.provider != undefined && config.provider !== config.signer.provider) {
         throw new PendleSdkError(
             'For contract creation, networkConnection.provider should be the same as networkConnection.signer.provider'
         );
     } else {
-        result = new Contract(address, abi, config.signer) as T;
+        result = createEthersContract<T>(address, abi, config.signer);
     }
     if (doWrap) {
         result = wrapContractObject(result, { multicall: config.multicall });
     }
     return result;
+}
+
+export let createContractObject = createContractObjectImpl;
+
+/**
+ * Replacer for {@link createEthersContract}
+ * @remarks
+ * Can be use to do dynamic operations, such as hooks.
+ */
+export function replaceCreateEthersContractFunction(fn: typeof createEthersContract) {
+    createEthersContract = fn;
+}
+
+/**
+ * Replacer for {@link createContractObject}
+ * @remarks
+ * Can be use to do dynamic operations, such as hooks.
+ */
+export function replaceCreateContractObjectFunction(fn: typeof createContractObject) {
+    createContractObject = fn;
 }
