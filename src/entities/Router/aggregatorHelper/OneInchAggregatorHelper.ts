@@ -295,9 +295,9 @@ export class OneInchAggregatorHelper implements AggregatorHelper<true> {
         };
     }
 
-    async getLiquiditySources(params: { needScale: boolean }): Promise<string[]> {
+    async getLiquiditySources(_params: { needScale: boolean }): Promise<string[]> {
         const liquiditySources = await this.liquiditySourcesProvider(this);
-        return liquiditySources.filter(params.needScale ? this.testValidProtocolIdForScaling.bind(this) : () => true);
+        return liquiditySources.filter(this.testValidProtocolIdForScaling.bind(this));
     }
 
     protected testValidProtocolIdForScaling(liquiditySourceProtocolId: string): boolean {

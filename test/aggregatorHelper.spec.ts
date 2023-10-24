@@ -39,11 +39,13 @@ describeIf(env.AGGREGATOR_HELPER === 'ONEINCH')('OneInchAggregatorHelper', () =>
     const usdcAmount = createTokenAmount({ token: currentConfig.tokens.USDC, amount: BN.from(10) });
     const daiAddress = currentConfig.tokens.DAI;
     it('protocols for scale', async () => {
-        const protocols = await oneInchAggregatorHelper.getLiquiditySources({ needScale: true });
-        print(protocols);
-        for (const protocol of protocols) {
-            expect(protocol).not.toMatch(/LIMIT_ORDER/);
-            expect(protocol).not.toMatch(/PMM/);
+        for (const needScale of [false, true]) {
+            const protocols = await oneInchAggregatorHelper.getLiquiditySources({ needScale });
+            print(protocols);
+            for (const protocol of protocols) {
+                expect(protocol).not.toMatch(/LIMIT_ORDER/);
+                expect(protocol).not.toMatch(/PMM/);
+            }
         }
     });
 
