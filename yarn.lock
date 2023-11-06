@@ -1363,6 +1363,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@chainlink/contracts@npm:^0.8.0":
+  version: 0.8.0
+  resolution: "@chainlink/contracts@npm:0.8.0"
+  dependencies:
+    "@eth-optimism/contracts": ^0.5.21
+    "@openzeppelin/contracts": ~4.3.3
+    "@openzeppelin/contracts-upgradeable-4.7.3": "npm:@openzeppelin/contracts-upgradeable@v4.7.3"
+    "@openzeppelin/contracts-v0.7": "npm:@openzeppelin/contracts@v3.4.2"
+  checksum: 4165aa7fa5d28c2ebef4da72e117f78889da292cff03d736d5738e2a3842d5fd162718106c2c04e9acb41298813edc99a27c456217a00bfdd4b0dfb758802cd0
+  languageName: node
+  linkType: hard
+
 "@cnakazawa/watch@npm:^1.0.3":
   version: 1.0.4
   resolution: "@cnakazawa/watch@npm:1.0.4"
@@ -2522,7 +2534,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin/contracts-upgradeable@npm:4.7.3":
+"@openzeppelin/contracts-upgradeable-4.7.3@npm:@openzeppelin/contracts-upgradeable@v4.7.3, @openzeppelin/contracts-upgradeable@npm:4.7.3":
   version: 4.7.3
   resolution: "@openzeppelin/contracts-upgradeable@npm:4.7.3"
   checksum: c9ffb40cb847a975d440204fc6a811f43af960050242f707332b984d29bd16dc242ffa0935de61867aeb9e0357fadedb16b09b276deda5e9775582face831021
@@ -2568,14 +2580,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pendle/core-v2-mainnet@npm:@pendle/core-v2@2.27.0, @pendle/core-v2@npm:2.27.0":
-  version: 2.27.0
-  resolution: "@pendle/core-v2@npm:2.27.0"
+"@pendle/core-v2-mainnet@npm:@pendle/core-v2@2.29.2, @pendle/core-v2@npm:2.29.2":
+  version: 2.29.2
+  resolution: "@pendle/core-v2@npm:2.29.2"
   dependencies:
-    "@chainlink/contracts": ^0.6.1
+    "@chainlink/contracts": ^0.8.0
     "@openzeppelin/contracts": 4.7.3
     "@openzeppelin/contracts-upgradeable": 4.7.3
-  checksum: 2e7f05fb6242cea816582a9fae9c0bbc3a47364bbd03141e7e107ab6505844bf3769136bb24ebb3922af60fea39e8f4870fbe8168490f41d1955db4405e0be69
+  checksum: 6b2cd1ddd1374c93ab17466a56894e2540f92d819283782788249900700d6f60bd12c775cf1fc417ae2e6fcee1fb80aca0d8ffe34b109acdc7b6729974d1186f
   languageName: node
   linkType: hard
 
@@ -2594,9 +2606,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@pendle/sdk-v2@workspace:."
   dependencies:
-    "@pendle/core-v2": 2.27.0
+    "@pendle/core-v2": 2.29.2
     "@pendle/core-v2-for-legacy-fee-distributor": "npm:@pendle/core-v2@2.9.0-mainnet"
-    "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.27.0"
+    "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.29.2"
     "@pendle/core-v2-testnet": "npm:@pendle/core-v2@1.7.0-testnet"
     "@size-limit/preset-small-lib": ^8.1.0
     "@types/jest": ^29.4.0

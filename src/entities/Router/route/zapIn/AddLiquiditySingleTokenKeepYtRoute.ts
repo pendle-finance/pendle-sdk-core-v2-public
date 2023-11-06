@@ -14,6 +14,7 @@ import {
     getContractAddresses,
     NoArgsCache,
 } from '../../../../common';
+import { ethers } from 'ethers';
 
 export type AddLiquiditySingleTokenKeepYtRouteData = BaseZapInRouteData & {
     netLpOut: BN;
@@ -204,8 +205,27 @@ export abstract class BaseAddLiquiditySingleTokenKeepYtRoute<
     override async buildTokenInput() {
         const res = await super.buildTokenInput();
         if (!res) return res;
-        res.tokenIn = this.patchedTokenIn;
-        return res;
+        return { ...res, tokenIn: this.patchedTokenIn };
+    }
+
+    @NoArgsCache
+    override async getMintedSyAmountWithRouter(): Promise<BN | undefined> {
+        if (!this.needPatch()) return super.getMintedSyAmountWithRouter();
+        const [signerAddress, tokenInput] = await Promise.all([
+            this.getSignerAddressIfApproved(),
+            this.buildTokenInput(),
+        ]);
+        if (!signerAddress || !tokenInput) return undefined;
+        const overrides = { value: this.netTokenIn };
+        return this.router
+            .getRouterHelper2()
+            .callStatic.mintSyFromToken(
+                signerAddress,
+                this.syEntity.address,
+                ethers.constants.Zero,
+                tokenInput,
+                overrides
+            );
     }
 
     override async gatherDebugInfo(): Promise<AddLiquiditySingleTokenKeepYtRouteDebugInfo> {

@@ -40,7 +40,7 @@
         "release": "yarn npm publish --tag nightly"
     },
     "dependencies": {
-        "@pendle/core-v2": "2.27.0",
+        "@pendle/core-v2": "2.29.2",
         "@pendle/core-v2-for-legacy-fee-distributor": "npm:@pendle/core-v2@2.9.0-mainnet",
         "axios": "^0.27.2",
         "axios-rate-limit": "^1.3.0",
@@ -53,7 +53,7 @@
         "ulid": "^2.3.0"
     },
     "devDependencies": {
-        "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.27.0",
+        "@pendle/core-v2-mainnet": "npm:@pendle/core-v2@2.29.2",
         "@pendle/core-v2-testnet": "npm:@pendle/core-v2@1.7.0-testnet",
         "@size-limit/preset-small-lib": "^8.1.0",
         "@types/jest": "^29.4.0",

@@ -14,6 +14,7 @@ export type {
     PendleFeeDistributorV2,
     IWETH,
     PendleRouterHelper,
+    PendleRouterHelper2,
     PendleMulticallV1,
     PendleMulticallV2,
     Multicall2,

@@ -61,6 +61,10 @@ function transformData(data: CoreAddresses, offchainHelper: OffchainHelperAddres
         res.FEE_DISTRIBUTORV2 = toAddress(data.feeDistributorV2);
     }
 
+    if ('routerHelper2' in data) {
+        res.ROUTER_HELPER_2 = toAddress(data.routerHelper2);
+    }
+
     return res;
 }
 

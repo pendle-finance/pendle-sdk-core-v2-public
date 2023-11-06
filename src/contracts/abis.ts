@@ -15,6 +15,7 @@ export { abi as PendleFeeDistributorV2ABI } from '@pendle/core-v2/build/artifact
 export { abi as IWETH_ABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IWETH.sol/IWETH.json';
 export { abi as BulkSellerABI } from '@pendle/core-v2/build/artifacts/contracts/core/BulkSeller/BulkSeller.sol/BulkSeller.json';
 export { abi as PendleRouterHelperABI } from '@pendle/core-v2/build/artifacts/contracts/router/PendleRouterHelper.sol/PendleRouterHelper.json';
+export { abi as PendleRouterHelper2ABI } from '@pendle/core-v2/build/artifacts/contracts/router/PendleRouterHelper2.sol/PendleRouterHelper2.json';
 
 export { abi as Multicall2Abi } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/Multicall2.sol/Multicall2.json';
 export { abi as PendleMulticallV1Abi } from '@pendle/core-v2/build/artifacts/contracts/offchain-helpers/PendleMulticallV1.sol/PendleMulticallV1.json';

@@ -121,6 +121,19 @@ export abstract class BaseRouter extends PendleEntity {
         );
     }
 
+    @NoArgsCache
+    getRouterHelper2(): WrappedContract<typechain.PendleRouterHelper2> {
+        const addresses = getContractAddresses(this.chainId);
+        if (!('ROUTER_HELPER_2' in addresses)) {
+            throw new PendleSdkError(`RouterHelper2 is not deployed on chain ${this.chainId} yet`);
+        }
+        return createContractObject<typechain.PendleRouterHelper2>(
+            addresses.ROUTER_HELPER_2,
+            abis.PendleRouterHelper2ABI,
+            this.entityConfig
+        );
+    }
+
     abstract findBestZapInRoute<ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>>(
         routes: ZapInRoute[]
     ): Promise<ZapInRoute>;
