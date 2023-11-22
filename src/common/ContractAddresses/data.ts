@@ -1,5 +1,5 @@
 // This file is generated via `yarn generateContractAddresses`
-// Generated at Mon, 06 Nov 2023 04:23:34 GMT
+// Generated at Wed, 22 Nov 2023 09:41:04 GMT
 import { ContractAddresses } from './types';
 import { toAddress } from '../Address';
 
@@ -9,7 +9,7 @@ export const ETHEREUM_CORE_ADDRESSES = {
     PENDLE: toAddress('0x808507121b80c02388fad14726482e061b8da827'),
     PENDLE_MULTICALL: toAddress('0xfd6df9efacfefdf4e610d687a9c9b941d1b1bf75'),
     PENDLE_MULTICALLV2: toAddress('0x539fd510fe352cc81822a222f821c340133ed41c'),
-    PENDLE_SWAP: toAddress('0x10115a984d69b0a832239a26d1841f10a59e45d8'),
+    PENDLE_SWAP: toAddress('0x324d838b26eb73786bdbbc53bb0682f1ebb50603'),
     ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
     ROUTER_HELPER_2: toAddress('0x2ed3af0275a1fd0c53c39d70241a1c14e8ce37d3'),
@@ -22,7 +22,7 @@ export const ARBITRUM_CORE_ADDRESSES = {
     PENDLE: toAddress('0x0c880f6761f1af8d9aa9c466984b80dab9a8c9e8'),
     PENDLE_MULTICALL: toAddress('0xfd6df9efacfefdf4e610d687a9c9b941d1b1bf75'),
     PENDLE_MULTICALLV2: toAddress('0x539fd510fe352cc81822a222f821c340133ed41c'),
-    PENDLE_SWAP: toAddress('0x38812c3ac3563bf200482ac9d096952d7cb55f9b'),
+    PENDLE_SWAP: toAddress('0x8e09aa43885d99701ab047da2ac98aecc13807b0'),
     ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
     ROUTER_HELPER_2: toAddress('0x64e50365eb97a199d71b15e32761c4b9147cd0f0'),
@@ -37,7 +37,7 @@ export const BSC_CORE_ADDRESSES = {
     PENDLE: toAddress('0xb3ed0a426155b79b898849803e3b36552f7ed507'),
     PENDLE_MULTICALL: toAddress('0xfd6df9efacfefdf4e610d687a9c9b941d1b1bf75'),
     PENDLE_MULTICALLV2: toAddress('0x539fd510fe352cc81822a222f821c340133ed41c'),
-    PENDLE_SWAP: toAddress('0x59f0c4a186744b573f15fbbc3737014f7f3da835'),
+    PENDLE_SWAP: toAddress('0xd85d2f484df4329746325e7398f3fc3e1915a173'),
     ROUTER: toAddress('0x00000000025efadc0b8d17d3d87ab5056e3d2510'),
     ROUTER_HELPER: toAddress('0x09d65812dcd0f276e052583d41885ca5c7dd0086'),
     ROUTER_HELPER_2: toAddress('0x46acbe071f580bfc09c6f48326f01148991db107'),
@@ -66,7 +66,7 @@ export const OPTIMISM_CORE_ADDRESSES = {
     PENDLE: toAddress('0xbc7b1ff1c6989f006a1185318ed4e7b5796e66e1'),
     PENDLE_MULTICALL: toAddress('0xfd6df9efacfefdf4e610d687a9c9b941d1b1bf75'),
     PENDLE_MULTICALLV2: toAddress('0x539fd510fe352cc81822a222f821c340133ed41c'),
-    PENDLE_SWAP: toAddress('0x963ddbb35c1ae44e2a159e3b5fb5177e0b32660d'),
+    PENDLE_SWAP: toAddress('0x85d0c209fc632e6908d78be08646de3e39a58453'),
     ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
     ROUTER_HELPER_2: toAddress('0x25e5e9e134ddaf1d378fcb0ec8dbd3f148cb55fd'),

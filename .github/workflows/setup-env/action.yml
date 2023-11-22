@@ -8,10 +8,6 @@ runs:
     steps:
     - uses: actions/setup-node@v3
         
-    - name: Set yarn version to version 3.x
-      run: yarn set version 3.3.1
-      shell: bash
-        
     - name: Set authentication token
       run: 'yarn config set npmScopes.pendle.npmAuthToken "${NPM_AUTH_TOKEN}"'
       env:

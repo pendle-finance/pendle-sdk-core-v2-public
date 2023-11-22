@@ -82,4 +82,7 @@ export const BALANCE_OF_STORAGE_SLOT: Record<string, [number, boolean] | undefin
     '0xda10009cbd5d07dd0cecc66161fc93d7c9000da1': [2, false], // Optimism DAI
     '0x94b008aa00579c1307b0ef2c499ad98a8ce58e58': [0, false], // Optimism USDT
     '0x7f5c764cbc14f9669b88837ca1490cca17c31607': [0, false], // Optimism USDC
+
+    '0xd85e038593d7a098614721eae955ec2022b9b91b': [51, false], // GDAI on Arb
+    '0xff970a61a04b1ca14834a43f5de4533ebddb5cc8': [51, false], // USDC arb1
 };
