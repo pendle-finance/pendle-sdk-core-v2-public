@@ -18,6 +18,7 @@ export type {
     PendleMulticallV1,
     PendleMulticallV2,
     Multicall2,
+    PendleMerkleDistributor,
 } from '@pendle/core-v2/typechain-types';
 
 export type { IPRouterStatic, IPActionInfoStatic } from '@pendle/core-v2/typechain-types/IPRouterStatic';

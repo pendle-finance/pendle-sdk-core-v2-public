@@ -18,4 +18,5 @@ export type ContractAddresses = {
     ROUTER_HELPER_2?: Address;
     PENDLE_MULTICALL: Address | undefined;
     PENDLE_MULTICALLV2: Address | undefined;
+    ARB_MERKLE_DISTRIBUTION?: Address | undefined;
 };

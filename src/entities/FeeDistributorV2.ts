@@ -98,17 +98,40 @@ export type FeeDistributorV2WithStaticProofConfig = FeeDistributorV2Config & {
     merkleTreeData: MerkleLeafData[];
 };
 
-export class FeeDistributorV2WithStaticProof extends FeeDistributorV2 {
+export class MerkleTreeData {
     merkleTree: MerkleTree;
     lookupAccruedAmount = new Map<Address, BN>();
-
-    constructor(readonly address: Address, config: FeeDistributorV2WithStaticProofConfig) {
-        super(address, config);
-        config.merkleTreeData.forEach(([address, amount]) => this.lookupAccruedAmount.set(address, amount));
-        const leaves = config.merkleTreeData.map(([address, amount]) =>
-            ethers.utils.arrayify(FeeDistributorV2WithStaticProof.leaveHashHex(address, amount))
+    constructor(merkleTreeData: MerkleLeafData[]) {
+        merkleTreeData.forEach(([address, amount]) => this.lookupAccruedAmount.set(address, amount));
+        const leaves = merkleTreeData.map(([address, amount]) =>
+            ethers.utils.arrayify(MerkleTreeData.leaveHashHex(address, amount))
         );
         this.merkleTree = new MerkleTree(leaves, ethers.utils.keccak256, { sort: true });
+    }
+
+    static leaveHashHex(this: void, user: Address, amount: BN) {
+        return ethers.utils.solidityKeccak256(['address', 'uint256'], [user, amount]);
+    }
+
+    getProof(user: Address, totalAccruedAmount: BN): AsyncOrSync<ethers.BytesLike[]> {
+        const leaveHash = MerkleTreeData.leaveHashHex(user, totalAccruedAmount);
+        return this.merkleTree.getHexProof(leaveHash);
+    }
+
+    getAccruedRewards(user: Address) {
+        return this.lookupAccruedAmount.get(user);
+    }
+}
+
+export class FeeDistributorV2WithStaticProof extends FeeDistributorV2 {
+    merkleTreeData: MerkleTreeData;
+    constructor(readonly address: Address, config: FeeDistributorV2WithStaticProofConfig) {
+        super(address, config);
+        this.merkleTreeData = new MerkleTreeData(config.merkleTreeData);
+    }
+
+    get merkleTree() {
+        return this.merkleTreeData.merkleTree;
     }
 
     static getFeeDistributor(config: FeeDistributorV2WithStaticProofConfig & { chainId: ChainId }) {
@@ -120,11 +143,11 @@ export class FeeDistributorV2WithStaticProof extends FeeDistributorV2 {
     }
 
     static leaveHashHex(this: void, user: Address, amount: BN) {
-        return ethers.utils.solidityKeccak256(['address', 'uint256'], [user, amount]);
+        return MerkleTreeData.leaveHashHex(user, amount);
     }
 
     override getAccruedRewards(user: Address) {
-        const res = this.lookupAccruedAmount.get(user);
+        const res = this.merkleTreeData.getAccruedRewards(user);
         if (res == undefined) {
             throw new PendleSdkError('User does not have accrued rewards');
         }
@@ -132,7 +155,6 @@ export class FeeDistributorV2WithStaticProof extends FeeDistributorV2 {
     }
 
     override getProof(user: Address, totalAccruedAmount: BN): AsyncOrSync<ethers.BytesLike[]> {
-        const leaveHash = FeeDistributorV2WithStaticProof.leaveHashHex(user, totalAccruedAmount);
-        return this.merkleTree.getHexProof(leaveHash);
+        return this.merkleTreeData.getProof(user, totalAccruedAmount);
     }
 }

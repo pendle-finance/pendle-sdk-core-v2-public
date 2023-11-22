@@ -47,6 +47,7 @@ function transformData(data: CoreAddresses, offchainHelper: OffchainHelperAddres
         VOTING_CONTROLLER: undefined,
         FEE_DISTRIBUTOR: undefined,
         FEE_DISTRIBUTORV2: undefined,
+        ARB_MERKLE_DISTRIBUTION: undefined,
     };
 
     if ('votingController' in data) {
@@ -63,6 +64,10 @@ function transformData(data: CoreAddresses, offchainHelper: OffchainHelperAddres
 
     if ('routerHelper2' in data) {
         res.ROUTER_HELPER_2 = toAddress(data.routerHelper2);
+    }
+
+    if ('arbMerkleDistribution' in data) {
+        res.ARB_MERKLE_DISTRIBUTION = toAddress(data.arbMerkleDistribution);
     }
 
     return res;
