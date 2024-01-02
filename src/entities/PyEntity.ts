@@ -1,13 +1,14 @@
-import {
-    IPRouterStatic,
-    IPActionInfoStatic,
-    WrappedContract,
-    MulticallStaticParams,
-    getRouterStatic,
-} from '../contracts';
+import { IPActionInfoStatic, MulticallStaticParams } from '../contracts';
 import { BigNumber as BN } from 'ethers';
 import { ERC20Entity, ERC20EntityConfig } from './erc20';
 import { Address, RawTokenAmount, createTokenAmount, ChainId } from '../common';
+import { Multicall } from '../multicall';
+
+import { type PtEntity, type PtEntityConfig } from './PtEntity';
+import { type YtEntity, type YtEntityConfig } from './YtEntity';
+import { type SyEntity, type SyEntityConfig } from './SyEntity';
+
+import * as iters from 'itertools';
 
 export type UserPyInfo = {
     ytBalance: RawTokenAmount;
@@ -44,13 +45,39 @@ export type PyEntityConfig = ERC20EntityConfig & {
  * base ABI for both PT and YT. This should be done in the subclasses.
  */
 export abstract class PyEntity extends ERC20Entity {
-    protected readonly routerStatic: WrappedContract<IPRouterStatic>;
     readonly chainId: ChainId;
 
     constructor(readonly address: Address, config: PyEntityConfig) {
         super(address, { ...config });
         this.chainId = config.chainId;
-        this.routerStatic = getRouterStatic(config);
+    }
+
+    abstract PT(params?: MulticallStaticParams): Promise<Address>;
+    abstract YT(params?: MulticallStaticParams): Promise<Address>;
+    abstract SY(params?: MulticallStaticParams): Promise<Address>;
+    abstract ptEntity(params?: MulticallStaticParams & { entityConfig?: PtEntityConfig }): Promise<PtEntity>;
+    abstract ytEntity(params?: MulticallStaticParams & { entityConfig?: YtEntityConfig }): Promise<YtEntity>;
+    abstract syEntity(params?: MulticallStaticParams & { entityConfig?: SyEntityConfig }): Promise<SyEntity>;
+
+    /**
+     * Alias for {@link PyEntity#YT}
+     */
+    yt(params?: MulticallStaticParams) {
+        return this.YT(params);
+    }
+
+    /**
+     * Alias for {@link PyEntity#PT}
+     */
+    pt(params?: MulticallStaticParams) {
+        return this.PT(params);
+    }
+
+    /**
+     * Alias for {@link PtEntity#SY}
+     */
+    async sy(params?: MulticallStaticParams) {
+        return this.SY(params);
     }
 
     get entityConfig(): PyEntityConfig {
@@ -63,9 +90,34 @@ export abstract class PyEntity extends ERC20Entity {
      * @param params - the additional parameters for read method.
      * @returns
      */
-    async userInfo(user: Address, params?: MulticallStaticParams): Promise<UserPyInfo> {
-        const pyInfo = await this.routerStatic.multicallStatic.getUserPYInfo(this.address, user, params);
-        return PyEntity.toUserPyInfo(pyInfo);
+    async userInfo(
+        user: Address,
+        params?: MulticallStaticParams & {
+            multicallForSimulateRedeemDueInterestAndRewards?: Multicall;
+        }
+    ): Promise<UserPyInfo> {
+        const [ptEntity, ytEntity, syAddress] = await Promise.all([
+            this.ptEntity(params),
+            this.ytEntity(params),
+            this.SY(params),
+        ]);
+        const [ptBalance, ytBalance, rewardTokens, { interestOut, rewardsOut }] = await Promise.all([
+            ptEntity.balanceOf(user, params),
+            ytEntity.balanceOf(user, params),
+            ytEntity.getRewardTokens(),
+            ytEntity.redeemDueInterestAndRewards(user, {
+                method: 'multicallStatic',
+                multicall: params?.multicallForSimulateRedeemDueInterestAndRewards,
+                redeemInterest: true,
+                redeemRewards: true,
+            }),
+        ]);
+        return {
+            ptBalance: { token: ptEntity.address, amount: ptBalance },
+            ytBalance: { token: ytEntity.address, amount: ytBalance },
+            unclaimedInterest: { token: syAddress, amount: interestOut },
+            unclaimedRewards: iters.map(iters.izip(rewardTokens, rewardsOut), ([token, amount]) => ({ token, amount })),
+        };
     }
 
     /**

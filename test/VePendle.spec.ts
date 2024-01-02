@@ -11,17 +11,16 @@ import {
 import {
     ACTIVE_CHAIN_ID,
     currentConfig,
-    describeWrite,
     networkConnection,
     networkConnectionWithChainId,
     BLOCK_CONFIRMATION,
-    describeIf,
 } from './util/testEnv';
 import { BigNumber as BN } from 'ethers';
 import { DEFAULT_EPSILON, INF } from './util/constants';
 import { TransactionReceipt } from '@ethersproject/abstract-provider';
+import * as testHelper from './util/testHelper';
 
-describeIf(isMainchain(ACTIVE_CHAIN_ID))('VePendle', () => {
+testHelper.describeIf(isMainchain(ACTIVE_CHAIN_ID))('VePendle', () => {
     const vePendle = new VePendleMainchain(currentConfig.veAddress, networkConnectionWithChainId);
 
     it('#constructor', () => {
@@ -34,7 +33,8 @@ describeIf(isMainchain(ACTIVE_CHAIN_ID))('VePendle', () => {
         expect(contract.address).toBe(currentConfig.veAddress);
     });
 
-    describeWrite(() => {
+    describe('write functions', () => {
+        testHelper.useRestoreEvmSnapShotAfterEach();
         const pendle = new ERC20Entity(currentConfig.pendle, networkConnection);
         const signerAddress = networkConnection.signerAddress;
         const contract = vePendle.contract;

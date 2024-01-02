@@ -1,38 +1,13 @@
-import { BulkSeller } from '@pendle/core-v2/typechain-types';
 import BigNumber from 'bignumber.js';
 import { BigNumber as BN, ethers } from 'ethers';
-import {
-    Address,
-    BulkSellerABI,
-    NATIVE_ADDRESS_0x00,
-    Router,
-    createContractObject,
-    decimalFactor,
-    areSameAddresses,
-    toAddress,
-} from '../src';
+import { Address, NATIVE_ADDRESS_0x00, Router, decimalFactor, toAddress } from '../src';
 
 // TODO export classes
-import {
-    BALANCE_OF_STORAGE_SLOT,
-    DEFAULT_EPSILON,
-    EPSILON_FOR_AGGREGATOR,
-    INF,
-    SLIPPAGE_TYPE2,
-} from './util/constants';
-import { BLOCK_CONFIRMATION, currentConfig, describeWrite, networkConnectionWithChainId, signer } from './util/testEnv';
-import {
-    approveHelper,
-    approveInfHelper,
-    evm_revert,
-    evm_snapshot,
-    getERC20Decimals,
-    getERC20Name,
-    getUserBalances,
-    increaseNativeBalance,
-    print,
-    setERC20Balance,
-} from './util/testHelper';
+import { DEFAULT_EPSILON, EPSILON_FOR_AGGREGATOR, INF, SLIPPAGE_TYPE2 } from './util/constants';
+import { BLOCK_CONFIRMATION, currentConfig, networkConnectionWithChainId, signer } from './util/testEnv';
+import { evm_revert, evm_snapshot, increaseNativeBalance, print, setERC20Balance } from './util/testHelper';
+import * as tokenHelper from './util/tokenHelper';
+import * as testHelper from './util/testHelper';
 import { CsvWriter } from './util/CsvWriter';
 
 const { TOKENS_TO_TEST, MARKETS_TO_TEST, ETH_AMOUNTS_TO_TEST } =
@@ -58,7 +33,7 @@ const { TOKENS_TO_TEST, MARKETS_TO_TEST, ETH_AMOUNTS_TO_TEST } =
 // get token price by swap 1 ETH for token by kyber swap
 async function getTokenPriceEth(address: Address): Promise<BigNumber> {
     const kyber = currentConfig.aggregatorHelper;
-    const tokenDecimals = await getERC20Decimals(address);
+    const tokenDecimals = await tokenHelper.getERC20Decimals(address);
     const ethDecimals = 18;
     const amount = decimalFactor(ethDecimals);
 
@@ -81,7 +56,6 @@ const zapInData = new CsvWriter([
     'netLpOut',
     'estimateEthOut',
     'actualReceived',
-    'usedBulkSeller',
     'selected',
 ] as const);
 
@@ -96,11 +70,11 @@ const zapOutData = new CsvWriter([
     'netTokenOut',
     'estimateEthOut',
     'actualReceived',
-    'usedBulkSeller',
     'selected',
 ] as const);
 
-(currentConfig.chainId === 1 ? describeWrite : describe.skip)('Routing', () => {
+testHelper.describeIf(currentConfig.chainId === 1)('Routing', () => {
+    testHelper.useRestoreEvmSnapShotAfterEach();
     const router = Router.getRouter(currentConfig.routerConfig);
     const signerAddress = networkConnectionWithChainId.signerAddress;
 
@@ -123,19 +97,16 @@ const zapOutData = new CsvWriter([
             let snapshot: string;
 
             beforeAll(async () => {
-                tokenDecimal = await getERC20Decimals(token);
+                tokenDecimal = await tokenHelper.getERC20Decimals(token);
                 await increaseNativeBalance(signerAddress);
 
-                await approveHelper(token, router.address, 0);
-                await approveInfHelper(token, router.address);
-                await approveInfHelper(market.market, router.address);
+                await tokenHelper.approve(token, router.address, 0);
+                await tokenHelper.approveInf(token, router.address);
+                await tokenHelper.approveInf(market.market, router.address);
 
                 const balance = INF.div(10);
-                const slotInfo = BALANCE_OF_STORAGE_SLOT[token];
 
-                if (slotInfo !== undefined) {
-                    await setERC20Balance(token, signerAddress, balance, slotInfo[0], slotInfo[1]);
-                }
+                await setERC20Balance(token, signerAddress, balance);
                 snapshot = await evm_snapshot();
             });
 
@@ -171,7 +142,10 @@ const zapOutData = new CsvWriter([
         const currentTestId = testId++;
         async function addLiquidityPhase(): Promise<{ netLpOut: BN }> {
             const tokenAmount = tokenAmountToTest;
-            const [lpBalanceBefore, tokenBalanceBefore] = await getUserBalances(signerAddress, [market.market, token]);
+            const [lpBalanceBefore, tokenBalanceBefore] = await tokenHelper.getUserBalances(signerAddress, [
+                market.market,
+                token,
+            ]);
 
             if (tokenBalanceBefore.lt(tokenAmount)) {
                 throw new Error(
@@ -182,28 +156,15 @@ const zapOutData = new CsvWriter([
             const metaMethod = await router.addLiquiditySingleToken(market.market, token, tokenAmount, SLIPPAGE_TYPE2, {
                 method: 'meta-method',
             });
-            const tx = await metaMethod
+            const _tx = await metaMethod
                 .connect(signer)
                 .send()
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-            const [lpBalanceAfter, tokenBalanceAfter] = await getUserBalances(signerAddress, [market.market, token]);
-
-            const usedBulkSeller = !areSameAddresses(await metaMethod.data.route.getUsedBulk(), NATIVE_ADDRESS_0x00);
-
-            if (usedBulkSeller) {
-                // check if bulkseller is used by checking log
-                const bulkSellerContract = createContractObject<BulkSeller>(NATIVE_ADDRESS_0x00, BulkSellerABI, {
-                    provider: networkConnectionWithChainId.provider,
-                });
-
-                const filter = bulkSellerContract.filters.SwapExactTokenForSy();
-                const events = tx.logs.filter((log) =>
-                    areSameAddresses(toAddress(log.topics[0]), toAddress(filter.topics![0] as string))
-                );
-
-                expect(events.length).toBeGreaterThan(0);
-            }
+            const [lpBalanceAfter, tokenBalanceAfter] = await tokenHelper.getUserBalances(signerAddress, [
+                market.market,
+                token,
+            ]);
 
             const exactOut = lpBalanceAfter.sub(lpBalanceBefore);
             expect(exactOut).toEqBN(metaMethod.data.netLpOut, EPSILON_FOR_AGGREGATOR);
@@ -212,17 +173,14 @@ const zapOutData = new CsvWriter([
             const routes = [...metaMethod.data.route.context.routes];
 
             for (const route of routes) {
-                const selected =
-                    route.tokenMintSy == metaMethod.data.route.tokenMintSy &&
-                    route.withBulkSeller == metaMethod.data.route.withBulkSeller;
-                const usedBulkSeller = !areSameAddresses(await route.getUsedBulk(), NATIVE_ADDRESS_0x00);
+                const selected = route.tokenMintSy == metaMethod.data.route.tokenMintSy;
                 const gasUsedBN = await route.getGasUsed();
                 const gasUsedStr = gasUsedBN.eq(INF) ? 'null' : gasUsedBN.toString();
                 const netOut = await route.getNetOut().then(nullOrToEthAmount);
                 const actualReceived = await route.estimateActualReceivedInEth().then(nullOrToEthAmount);
                 const estimateEthOut = await route.estimateNetOutInEth().then(nullOrToEthAmount);
-                const tokenName = await getERC20Name(token);
-                const tokenMintSyName = await getERC20Name(route.tokenMintSy);
+                const tokenName = await tokenHelper.getERC20Name(token);
+                const tokenMintSyName = await tokenHelper.getERC20Name(route.tokenMintSy);
                 const actualAmountInEth = await route.estimateSourceTokenAmountInEth().then(nullOrToEthAmount);
                 const debugInfo = await route.gatherDebugInfo();
                 print({ debugInfo });
@@ -238,7 +196,6 @@ const zapOutData = new CsvWriter([
                     netLpOut: netOut,
                     estimateEthOut: estimateEthOut,
                     actualReceived: actualReceived,
-                    usedBulkSeller: usedBulkSeller,
                     selected: selected,
                 });
             }
@@ -246,7 +203,10 @@ const zapOutData = new CsvWriter([
         }
 
         async function removeLiquidityPhase(lpAmountToRemove: BN) {
-            const [lpBalanceBefore, tokenBalanceBefore] = await getUserBalances(signerAddress, [market.market, token]);
+            const [lpBalanceBefore, tokenBalanceBefore] = await tokenHelper.getUserBalances(signerAddress, [
+                market.market,
+                token,
+            ]);
             if (lpBalanceBefore.lt(lpAmountToRemove)) {
                 throw new Error(
                     `Not enough balance, expected: ${lpAmountToRemove.toString()}, got: ${lpBalanceBefore.toString()}`
@@ -263,27 +223,15 @@ const zapOutData = new CsvWriter([
                 }
             );
 
-            const tx = await metaMethod
+            const _tx = await metaMethod
                 .connect(signer)
                 .send()
                 .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-            const [lpBalanceAfter, tokenBalanceAfter] = await getUserBalances(signerAddress, [market.market, token]);
-            const usedBulkSeller = !areSameAddresses(await metaMethod.data.route.getUsedBulk(), NATIVE_ADDRESS_0x00);
-
-            if (usedBulkSeller) {
-                // check if bulkseller is used by checking log
-                const bulkSellerContract = createContractObject<BulkSeller>(NATIVE_ADDRESS_0x00, BulkSellerABI, {
-                    provider: networkConnectionWithChainId.provider,
-                });
-
-                const filter = bulkSellerContract.filters.SwapExactSyForToken();
-                const events = tx.logs.filter((log) =>
-                    areSameAddresses(toAddress(log.topics[0]), toAddress(filter.topics![0] as string))
-                );
-
-                expect(events.length).toBeGreaterThan(0);
-            }
+            const [lpBalanceAfter, tokenBalanceAfter] = await tokenHelper.getUserBalances(signerAddress, [
+                market.market,
+                token,
+            ]);
 
             const exactOut = lpBalanceBefore.sub(lpBalanceAfter);
             expect(exactOut).toEqBN(lpAmountToRemove, EPSILON_FOR_AGGREGATOR);
@@ -295,17 +243,14 @@ const zapOutData = new CsvWriter([
             const routes = [...metaMethod.data.route.context.routes];
 
             for (const route of routes) {
-                const selected =
-                    route.tokenRedeemSy == metaMethod.data.route.tokenRedeemSy &&
-                    route.withBulkSeller == metaMethod.data.route.withBulkSeller;
-                const usedBulkSeller = !areSameAddresses(await route.getUsedBulk(), NATIVE_ADDRESS_0x00);
+                const selected = route.tokenRedeemSy == metaMethod.data.route.tokenRedeemSy;
                 const gasUsedBN = await route.getGasUsed();
                 const gasUsedStr = gasUsedBN.eq(INF) ? 'null' : gasUsedBN.toString();
                 const netOut = await route.getNetOut().then(nullOrToEthAmount);
                 const actualReceived = await route.estimateActualReceivedInEth().then(nullOrToEthAmount);
                 const estimateEthOut = await route.estimateNetOutInEth().then(nullOrToEthAmount);
-                const tokenName = await getERC20Name(token);
-                const tokenRedeemSy = await getERC20Name(route.tokenRedeemSy);
+                const tokenName = await tokenHelper.getERC20Name(token);
+                const tokenRedeemSy = await tokenHelper.getERC20Name(route.tokenRedeemSy);
                 const debugInfo = await route.gatherDebugInfo();
                 print({ debugInfo });
 
@@ -320,7 +265,6 @@ const zapOutData = new CsvWriter([
                     netTokenOut: netOut,
                     estimateEthOut: estimateEthOut,
                     actualReceived: actualReceived,
-                    usedBulkSeller: usedBulkSeller,
                     selected: selected,
                 });
             }

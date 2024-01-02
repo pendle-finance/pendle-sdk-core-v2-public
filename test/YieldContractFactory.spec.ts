@@ -2,8 +2,7 @@ import { YieldContractFactory } from '../src';
 import { currentConfig, networkConnection } from './util/testEnv';
 
 describe(YieldContractFactory, () => {
-    const ptAddress = currentConfig.market.PT;
-    const ytAddress = currentConfig.market.YT;
+    const { ptAddress, ytAddress } = currentConfig.market;
     const yieldFactory = new YieldContractFactory(currentConfig.yieldContractFactory, networkConnection);
 
     it('#constructor', () => {

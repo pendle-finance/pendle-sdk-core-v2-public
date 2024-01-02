@@ -5,12 +5,13 @@ import {
     ZapOutRouteDebugInfo,
 } from './BaseZapOutRoute';
 import { MetaMethodType } from '../../../../contracts';
-import { BN, Address, PyIndex, NoArgsCache } from '../../../../common';
+import { BN, Address, NoArgsCache } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { YtEntity } from '../../../YtEntity';
+import * as offchainMath from '@pendle/core-v2-offchain-math';
 
 export type RedeemPyToTokenRouteIntermediateData = BaseZapOutRouteIntermediateData & {
-    pyIndex: BN;
+    pyIndex: offchainMath.PyIndex;
 };
 
 export type RedeemPyToTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
@@ -20,11 +21,7 @@ export type RedeemPyToTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
     tokenOut: Address;
 };
 
-export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRoute<
-    T,
-    RedeemPyToTokenRouteIntermediateData,
-    RedeemPyToTokenRoute<T>
-> {
+export class RedeemPyToTokenRoute extends BaseZapOutRoute<RedeemPyToTokenRouteIntermediateData, RedeemPyToTokenRoute> {
     override readonly routeName = 'RedeemPyToToken';
     readonly ytEntity: YtEntity;
     constructor(
@@ -32,7 +29,7 @@ export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         readonly netPyIn: BN,
         readonly tokenOut: Address,
         readonly slippage: number,
-        params: BaseZapOutRouteConfig<T, RedeemPyToTokenRoute<T>>
+        params: BaseZapOutRouteConfig<RedeemPyToTokenRoute>
     ) {
         super(params);
         this.ytEntity = typeof _yt === 'string' ? new YtEntity(_yt, this.router.entityConfig) : _yt;
@@ -46,26 +43,20 @@ export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         return this.tokenOut;
     }
 
-    override routeWithBulkSeller(withBulkSeller = true): RedeemPyToTokenRoute<T> {
-        return new RedeemPyToTokenRoute(this.ytEntity, this.netPyIn, this.tokenOut, this.slippage, {
-            context: this.context,
-            tokenRedeemSy: this.tokenRedeemSy,
-            withBulkSeller,
-        });
-    }
-
     override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         const pt = await this.ytEntity.pt();
-        const [ytApproved, ptApproved] = await Promise.all([
+        const [isExpired, ytApproved, ptApproved] = await Promise.all([
+            this.ytEntity.isExpired(this.routerExtraParams),
             this.checkUserApproval(signerAddress, { token: this.ytEntity.address, amount: this.netPyIn }),
             this.checkUserApproval(signerAddress, { token: pt, amount: this.netPyIn }),
         ]);
+        if (isExpired) return ptApproved;
         return ytApproved && ptApproved;
     }
 
     protected override async previewIntermediateSyImpl(): Promise<RedeemPyToTokenRouteIntermediateData | undefined> {
         const pyIndex = await this.ytEntity.pyIndexCurrent(this.routerExtraParams.forCallStatic);
-        const intermediateSyAmount = new PyIndex(pyIndex).assetToSy(this.netPyIn);
+        const intermediateSyAmount = BN.from(pyIndex.convert({ asset: this.netPyIn.toBigInt() }).sy);
         return { intermediateSyAmount, pyIndex };
     }
 
@@ -82,18 +73,19 @@ export class RedeemPyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
             this.netPyIn,
             tokenRedeemSyOutputStruct
         );
-        return res;
+        return res.netTokenOut;
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCall({}, this.routerExtraParams);
+        return mm?.estimateGas();
     }
 
     async buildCall(): RouterMetaMethodReturnType<
-        T,
+        'meta-method',
         'redeemPyToToken',
         RedeemPyToTokenRouteIntermediateData & {
-            route: RedeemPyToTokenRoute<T>;
+            route: RedeemPyToTokenRoute;
         }
     > {
         const res = await this.buildGenericCall(

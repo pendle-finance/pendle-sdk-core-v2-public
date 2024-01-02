@@ -10,9 +10,9 @@ import { describeWithMulticall } from './util/testHelper';
 
 describe(MarketEntity, () => {
     const currentMarket = currentConfig.market;
-    const market = new MarketEntity(currentMarket.market, networkConnectionWithChainId);
+    const market = new MarketEntity(currentMarket.marketAddress, networkConnectionWithChainId);
     const contract = market.contract;
-    const sy = new SyEntity(currentMarket.SY, networkConnectionWithChainId);
+    const sy = new SyEntity(currentMarket.syAddress, networkConnectionWithChainId);
     const routerStatic = getRouterStatic(networkConnectionWithChainId);
 
     it('#constructor', () => {
@@ -35,9 +35,9 @@ describe(MarketEntity, () => {
             ]);
 
             expect(totalSupply).toBeGteBN(0);
-            expect(toAddress(tokens._PT)).toBe(currentMarket.PT);
-            expect(toAddress(tokens._YT)).toBe(currentMarket.YT);
-            expect(toAddress(tokens._SY)).toBe(currentMarket.SY);
+            expect(toAddress(tokens._PT)).toBe(currentMarket.ptAddress);
+            expect(toAddress(tokens._YT)).toBe(currentMarket.ytAddress);
+            expect(toAddress(tokens._SY)).toBe(currentMarket.syAddress);
             expect(isExpired).toBe(false);
         });
 
@@ -47,12 +47,12 @@ describe(MarketEntity, () => {
                 Multicall.wrap(routerStatic, multicall).callStatic.getMarketState(market.address),
             ]);
 
-            expect(marketInfo.pt).toBe(currentMarket.PT);
-            expect(marketInfo.sy).toBe(currentMarket.SY);
-            expect(marketInfo.yt).toBe(currentMarket.YT);
+            expect(marketInfo.pt).toBe(currentMarket.ptAddress);
+            expect(marketInfo.sy).toBe(currentMarket.syAddress);
+            expect(marketInfo.yt).toBe(currentMarket.ytAddress);
 
             const eps = multicall ? 0 : 0.01; // if !multicall, requests might be in different block
-            expect(marketInfo.marketExchangeRateExcludeFee).toEqBN(
+            expect(marketInfo.marketExchangeRateExcludeFee.rate.value).toEqBN(
                 marketInfoFromCallStatic.marketExchangeRateExcludeFee,
                 eps
             );
@@ -68,8 +68,8 @@ describe(MarketEntity, () => {
             ]);
 
             // Verify addresses
-            expect(userMarketInfo.ptBalance.token).toBe(currentMarket.PT);
-            expect(userMarketInfo.syBalance.token).toBe(currentMarket.SY);
+            expect(userMarketInfo.ptBalance.token).toBe(currentMarket.ptAddress);
+            expect(userMarketInfo.syBalance.token).toBe(currentMarket.syAddress);
 
             // Verify lp balance
             expect(userMarketInfo.lpBalance.amount).toEqBN(userBalance);
@@ -85,8 +85,8 @@ describe(MarketEntity, () => {
 
         it('#getSY and #getPT', async () => {
             const [sy, pt] = await Promise.all([market.syEntity({ multicall }), market.ptEntity({ multicall })]);
-            expect(sy.address).toBe(currentMarket.SY);
-            expect(pt.address).toBe(currentMarket.PT);
+            expect(sy.address).toBe(currentMarket.syAddress);
+            expect(pt.address).toBe(currentMarket.ptAddress);
         });
     });
 });

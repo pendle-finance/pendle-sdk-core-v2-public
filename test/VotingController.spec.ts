@@ -5,13 +5,12 @@ import {
     ACTIVE_CHAIN_ID,
     BLOCK_CONFIRMATION,
     currentConfig,
-    describeIf,
-    describeWrite,
     networkConnection,
     networkConnectionWithChainId,
 } from './util/testEnv';
+import * as testHelper from './util/testHelper';
 
-describeIf(isMainchain(ACTIVE_CHAIN_ID))('VotingController', () => {
+testHelper.describeIf(isMainchain(ACTIVE_CHAIN_ID))('VotingController', () => {
     const votingController = new VotingController(currentConfig.votingController, networkConnection);
     const market = new MarketEntity(currentConfig.marketAddress, networkConnectionWithChainId);
     const signerAddress = networkConnection.signer.address;
@@ -21,7 +20,8 @@ describeIf(isMainchain(ACTIVE_CHAIN_ID))('VotingController', () => {
         expect(votingController.address).toBe(currentConfig.votingController);
     });
 
-    describeWrite(() => {
+    describe('Write function', () => {
+        testHelper.useRestoreEvmSnapShotAfterEach();
         it('#vote', async () => {
             const address = market.address;
             const isActive = await votingController.contract.callStatic

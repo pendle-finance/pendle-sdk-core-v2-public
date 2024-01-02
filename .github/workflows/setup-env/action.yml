@@ -1,3 +1,6 @@
+name: Setup node and yarn environment
+description: Setup node and yarn environment
+
 inputs:
     NPM_TOKEN:
         description: NPM token to pass to scope
@@ -6,7 +9,11 @@ inputs:
 runs:
     using: 'composite'
     steps:
-    - uses: actions/setup-node@v3
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: 'yarn'
         
     - name: Set authentication token
       run: 'yarn config set npmScopes.pendle.npmAuthToken "${NPM_AUTH_TOKEN}"'

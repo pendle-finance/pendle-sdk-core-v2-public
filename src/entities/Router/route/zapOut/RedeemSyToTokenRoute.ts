@@ -17,11 +17,7 @@ export type RedeemSyToTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
     tokenOut: Address;
 };
 
-export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRoute<
-    T,
-    RedeemSyToTokenRouteIntermediateData,
-    RedeemSyToTokenRoute<T>
-> {
+export class RedeemSyToTokenRoute extends BaseZapOutRoute<RedeemSyToTokenRouteIntermediateData, RedeemSyToTokenRoute> {
     override readonly routeName = 'RedeemSyToToken';
 
     constructor(
@@ -29,7 +25,7 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
         readonly netSyIn: BN,
         readonly tokenOut: Address,
         readonly slippage: number,
-        params: BaseZapOutRouteConfig<T, RedeemSyToTokenRoute<T>>
+        params: BaseZapOutRouteConfig<RedeemSyToTokenRoute>
     ) {
         super(params);
     }
@@ -40,14 +36,6 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
 
     override get targetToken() {
         return this.tokenOut;
-    }
-
-    override routeWithBulkSeller(withBulkSeller = true): RedeemSyToTokenRoute<T> {
-        return new RedeemSyToTokenRoute(this.sy, this.netSyIn, this.tokenOut, this.slippage, {
-            context: this.context,
-            tokenRedeemSy: this.tokenRedeemSy,
-            withBulkSeller,
-        });
     }
 
     override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
@@ -75,14 +63,15 @@ export class RedeemSyToTokenRoute<T extends MetaMethodType> extends BaseZapOutRo
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCall({}, this.routerExtraParams);
+        return mm?.estimateGas();
     }
 
     async buildCall(): RouterMetaMethodReturnType<
-        T,
+        'meta-method',
         'redeemSyToToken',
         RedeemSyToTokenRouteIntermediateData & {
-            route: RedeemSyToTokenRoute<T>;
+            route: RedeemSyToTokenRoute;
         }
     > {
         const res = await this.buildGenericCall(

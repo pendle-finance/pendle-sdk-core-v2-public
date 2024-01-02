@@ -1,140 +1,70 @@
-import { PendleERC20 } from '@pendle/core-v2/typechain-types';
-import { BigNumber as BN, BigNumberish, Signer, ethers } from 'ethers';
-import {
-    ERC20Entity,
-    Address,
-    MarketEntity,
-    WrappedContract,
-    bnMin,
-    Multicall,
-    isNativeToken,
-    ChainId,
-    areSameAddresses,
-    toAddress,
-} from '../../src';
-import { INF } from './constants';
-import {
-    networkConnection,
-    networkConnectionWithChainId,
-    BLOCK_CONFIRMATION,
-    USE_HARDHAT_RPC,
-    currentConfig,
-    AMOUNT_TO_TEST_IN_USD,
-} from './testEnv';
+import { BigNumber as BN, BigNumberish, ethers } from 'ethers';
+import { Address, bnMin, Multicall, ChainId, areSameAddresses, isNativeToken, toAddress } from '../../src';
+import * as pendleSDK from '../../src';
+import { networkConnection, USE_HARDHAT_RPC, currentConfig, AMOUNT_TO_TEST_IN_USD } from './testEnv';
+import * as testEnv from './testEnv';
 import { inspect } from 'util';
-import axios from 'axios';
 import BigNumber from 'bignumber.js';
+import * as pendleBackend from './pendleBackend';
+import * as erc20SlotScanner from './erc20SlotScanner';
+import * as tokenHelper from './tokenHelper';
 
-type EntitiesMapType = {
-    [entity: Address]: WrappedContract<PendleERC20>;
-};
-
-const TOKEN_NAME_CACHE: Map<string, string> = new Map();
-
-const ERC20_CREATE_HANDLER = {
-    get: function (target: Partial<EntitiesMapType>, address: Address) {
-        if (target[address] === undefined) {
-            target[address] = new ERC20Entity(address, {
-                ...networkConnection,
-                multicall: currentConfig.multicall,
-            }).contract;
-        }
-        return target[address];
-    },
-};
-
-const ERC20_ENTITIES = new Proxy({}, ERC20_CREATE_HANDLER) as EntitiesMapType;
-
-export async function getBalance(token: Address, user: Address): Promise<BN> {
-    if (isNativeToken(token)) {
-        return networkConnection.provider.getBalance(user);
-    }
-    return ERC20_ENTITIES[token].balanceOf(user);
-}
-
-export async function getTotalSupply(token: Address): Promise<BN> {
-    if (isNativeToken(token)) {
-        // throw an error here because this function should not be called
-        // if the tests are written correctly
-        throw new Error('Cannot get total supply of native token');
-    }
-    return ERC20_ENTITIES[token].totalSupply();
-}
-
-export async function getAllowance(token: Address, user: Address, spender: Address): Promise<BN> {
-    if (isNativeToken(token)) {
-        return INF;
-    }
-    return ERC20_ENTITIES[token].allowance(user, spender);
-}
-
-export async function approveHelper(token: Address, user: Address, amount: BigNumberish) {
-    if (isNativeToken(token)) {
-        return;
-    }
-    return ERC20_ENTITIES[token].approve(user, amount).then((tx) => tx.wait(BLOCK_CONFIRMATION));
-}
-
-export async function approveInfHelper(token: Address, user: Address) {
-    return approveHelper(token, user, INF);
-}
-
-export async function transferHelper(token: Address, user: Address, amount: BN, signer?: Signer) {
-    await ERC20_ENTITIES[token]
-        .connect(signer ?? networkConnection.signer)
-        .transfer(user, amount)
-        .then((tx) => tx.wait(BLOCK_CONFIRMATION));
+export function describeIf(condition: boolean) {
+    return condition ? describe : describe.skip;
 }
 
 export function bnMinAsBn(a: BigNumberish, b: BigNumberish): BN {
     return BN.from(bnMin(a, b));
 }
 
-export async function getERC20Name(token: Address): Promise<string> {
-    if (isNativeToken(token)) {
-        return 'Native';
-    }
-
-    if (TOKEN_NAME_CACHE.has(token)) {
-        return TOKEN_NAME_CACHE.get(token)!;
-    }
-
-    const name = await ERC20_ENTITIES[token].name();
-    TOKEN_NAME_CACHE.set(token, name);
-    return name;
-}
-
-export async function getERC20Decimals(token: Address): Promise<number> {
-    if (isNativeToken(token)) {
-        return 18;
-    }
-    return ERC20_ENTITIES[token].decimals();
-}
-
-export async function stalkAccount(user: Address, markets: any[]) {
-    for (const market of markets) {
-        console.log('Market: ', market.symbol);
-        console.log('Portfolio');
-
-        const marketEntity = new MarketEntity(market.market, networkConnectionWithChainId);
-
-        console.log('balanceOf');
-        console.log('market                 :', (await marketEntity.balanceOf(user)).toString());
-        console.log('market active balance  :', (await marketEntity.activeBalance(user)).toString());
-        console.log('yt                     :', (await getBalance(market.YT, user)).toString());
-        console.log('pt                     :', (await getBalance(market.PT, user)).toString());
-        console.log('sy                     :', (await getBalance(market.SY, user)).toString());
-    }
-}
-
 export async function evm_snapshot(): Promise<string> {
     if (!USE_HARDHAT_RPC) throw new Error('evm_snapshot is only available when using hardhat rpc');
-    return networkConnection.provider.send('evm_snapshot', []);
+    return networkConnection.provider.send('evm_snapshot', []) as Promise<string>;
 }
 
 export async function evm_revert(snapshotId: string): Promise<void> {
     if (!USE_HARDHAT_RPC) throw new Error('evm_revert is only available when using hardhat rpc');
-    return networkConnection.provider.send('evm_revert', [snapshotId]);
+    await networkConnection.provider.send('evm_revert', [snapshotId]);
+}
+
+export function useRestoreEvmSnapShotAfterEach(): {
+    getCurrentSnapshotId(): string;
+} {
+    let snapshotId = '';
+
+    beforeEach(async () => {
+        snapshotId = await evm_snapshot();
+    });
+
+    afterEach(async () => {
+        await evm_revert(snapshotId);
+    });
+
+    return {
+        getCurrentSnapshotId() {
+            return snapshotId;
+        },
+    };
+}
+
+export function useRestoreEvmSnapShotAfterAll(): {
+    getCurrentSnapshotId(): string;
+} {
+    let snapshotId = '';
+
+    beforeAll(async () => {
+        snapshotId = await evm_snapshot();
+    });
+
+    afterAll(async () => {
+        await evm_revert(snapshotId);
+    });
+
+    return {
+        getCurrentSnapshotId() {
+            return snapshotId;
+        },
+    };
 }
 
 export function print(message: any): void {
@@ -155,18 +85,33 @@ export function itWhen(condition: boolean) {
     return it;
 }
 
-export async function setERC20Balance(address: string, user: string, value: BN, slot: number, reverse = false) {
-    const order = reverse ? [slot, user] : [user, slot];
-    const index = ethers.utils.solidityKeccak256(['uint256', 'uint256'], order);
-    await networkConnection.provider.send('hardhat_setStorageAt', [
+export async function setERC20Balance(address: Address, user: Address, value: BN) {
+    if (isNativeToken(address)) {
+        await networkConnection.provider.send('hardhat_setBalance', [
+            user,
+            ethers.utils.hexStripZeros(value.toHexString()),
+        ]);
+        return;
+    }
+    const slot = await erc20SlotScanner.getSlot(
+        testEnv.currentConfig.chainId,
         address,
-        index,
-        ethers.utils.hexZeroPad(value.toHexString(), 32),
-    ]);
+        testEnv.networkConnection.provider
+    );
+    if (!slot) {
+        console.log(`Can not set user balance for token ${address}`);
+        return;
+    }
+    await erc20SlotScanner.setERC20Balance(address, user, value, slot, networkConnection.provider);
 }
 
-export async function setPendleERC20Balance(market: string, user: string, value: BN) {
-    return setERC20Balance(market, user, value, 0);
+export async function incERC20Balance(tokenAddress: Address, user: Address, additionalValue: BN) {
+    const curBalance = await tokenHelper.getBalance(tokenAddress, user);
+    await setERC20Balance(tokenAddress, user, curBalance.add(additionalValue));
+}
+
+export async function setPendleERC20Balance(market: Address, user: Address, value: BN) {
+    await erc20SlotScanner.setERC20Balance(market, user, value, [0, false], networkConnection.provider);
 }
 
 export async function increaseNativeBalance(userAddress: string) {
@@ -181,33 +126,14 @@ export async function increaseNativeBalance(userAddress: string) {
     ]);
 }
 
-export async function getUserBalances(userAddress: Address, tokens: Address[]): Promise<BN[]> {
-    return Promise.all(tokens.map((token) => getBalance(token, userAddress)));
-}
+const PENDLE_ALL_ASSETS_CACHE: Map<ChainId, pendleBackend.PendleAllAssetsResponse> = new Map();
 
-// const PENDLE_API_ALL_ASSETS_URL = (chainId: ChainId) => `https://staging-api.pendle.finance/core/v1/${chainId}/assets/all`;
-const PENDLE_API_ALL_ASSETS_URL = (chainId: ChainId) => `https://api-v2.pendle.finance/core/v1/${chainId}/assets/all`;
-
-type PendleAssetNarrowType = {
-    chainId: ChainId;
-    address: string;
-    decimals: number;
-    price: {
-        usd: number;
-        acc: number;
-    };
-    priceUpdatedAt: string;
-};
-type PendleAllAssetsResponse = PendleAssetNarrowType[];
-
-const PENDLE_ALL_ASSETS_CACHE: Map<ChainId, PendleAllAssetsResponse> = new Map();
-
-export async function getAllAssets(chainId: ChainId): Promise<PendleAllAssetsResponse> {
-    const resp = await axios.get<PendleAllAssetsResponse>(PENDLE_API_ALL_ASSETS_URL(chainId), {
-        headers: { 'Content-Type': 'application/json' },
-    });
-    PENDLE_ALL_ASSETS_CACHE.set(chainId, resp.data);
-    return resp.data;
+export async function prefetchAllAssetFromPendleBackend(
+    chainId: ChainId
+): Promise<pendleBackend.PendleAllAssetsResponse> {
+    const res = await pendleBackend.fetchAllAsset(chainId);
+    PENDLE_ALL_ASSETS_CACHE.set(chainId, res);
+    return res;
 }
 
 export function fetchPriceInfo(
@@ -217,9 +143,10 @@ export function fetchPriceInfo(
     price: number;
     decimals: number;
 } {
-    const token = PENDLE_ALL_ASSETS_CACHE.get(chainId)?.find((asset) =>
-        areSameAddresses(address, toAddress(asset.address))
-    );
+    const token = PENDLE_ALL_ASSETS_CACHE.get(chainId)?.find((asset) => {
+        if (isNativeToken(toAddress(asset.address)) && isNativeToken(address)) return true;
+        return areSameAddresses(address, toAddress(asset.address));
+    });
     if (!token) {
         throw new Error(`Cannot find token ${address} in the list of all assets`);
     }
@@ -240,11 +167,47 @@ export function valueToTokenAmount(token: Address, chainId: ChainId, value: numb
     return rawTokenAmount;
 }
 
+export function useSetTime(
+    targetTime: Date,
+    provider: ethers.providers.JsonRpcProvider = testEnv.networkConnection.provider
+) {
+    useRestoreEvmSnapShotAfterAll();
+
+    beforeAll(async () => {
+        jest.useFakeTimers().setSystemTime(targetTime);
+
+        const blk = await provider.getBlock('latest');
+        const timeToIncrease = Math.ceil(targetTime.getTime() / 1000) - blk.timestamp;
+        const param = ethers.utils.hexStripZeros(BN.from(timeToIncrease).toHexString());
+        await provider.send('evm_increaseTime', [param]);
+        await provider.send('evm_mine', []);
+    });
+
+    afterAll(() => {
+        jest.useRealTimers();
+    });
+}
+
+export function convertValueViaSpotPrice(
+    chainId: pendleSDK.ChainId,
+    input: pendleSDK.RawTokenAmount,
+    output: pendleSDK.Address
+) {
+    const inpInfo = fetchPriceInfo(input.token, chainId);
+    const outInfo = fetchPriceInfo(output, chainId);
+    const inpToOutRate = inpInfo.price / outInfo.price;
+
+    const D = 10 ** 6;
+    const num = 10n ** BigInt(outInfo.decimals) * BigInt(Math.floor(inpToOutRate * D));
+    const dem = 10n ** BigInt(inpInfo.decimals) * BigInt(D);
+    return pendleSDK.BN.from((input.amount.toBigInt() * num) / dem);
+}
+
 const registerCustomInspection = (BigNumber: any) => {
     const inspectCustomSymbol = Symbol.for('nodejs.util.inspect.custom');
 
-    BigNumber.prototype[inspectCustomSymbol] = function () {
-        const value = this.toString() as string;
+    BigNumber.prototype[inspectCustomSymbol] = function (this: pendleSDK.BN) {
+        const value = this.toString();
         return `BigNumber { value: "${value}" }`;
     };
 };

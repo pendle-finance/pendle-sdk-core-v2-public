@@ -5,3 +5,5 @@ export * from './Router';
 export * from './GasFeeEstimator';
 export * from './route';
 export * from './aggregatorHelper';
+export * from './limitOrder';
+export * as limitOrder from './limitOrder';

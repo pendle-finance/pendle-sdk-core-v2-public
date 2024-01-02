@@ -4,6 +4,8 @@
  *      const ONE = BN.from(10).pow(18);
  */
 import { BN, BigNumberish, ethersConstants } from './ethersjs';
+import * as iters from 'itertools';
+
 export const PERCENTAGE_DECIMALS = 6;
 export const PERCENTAGE_NUMBER_FACTOR = 10 ** PERCENTAGE_DECIMALS;
 
@@ -13,32 +15,37 @@ export function decimalFactor(decimals: number): BN {
 
 const ONE = decimalFactor(18);
 
-export function mulSmallNum(bn: BN, num: number): BN {
+export function mulSmallNum(bn: BN | bigint, num: number): BN {
+    bn = BN.from(bn);
     return bnSafeClamp(bn.mul(Math.floor(num * PERCENTAGE_NUMBER_FACTOR)).div(PERCENTAGE_NUMBER_FACTOR));
 }
 
-export function calcSlippedDownAmount(theoreticalAmount: BN, slippage: number): BN {
+export function calcSlippedDownAmount(theoreticalAmount: BN | bigint, slippage: number): BN {
     return mulSmallNum(theoreticalAmount, 1 - slippage);
 }
 
-export function calcSlippedDownAmountSqrt(theoreticalAmount: BN, slippage: number): BN {
+export function calcSlippedDownAmountSqrt(theoreticalAmount: BN | bigint, slippage: number): BN {
     return mulSmallNum(theoreticalAmount, Math.sqrt(1 - slippage));
 }
 
-export function calcSlippedUpAmount(theoreticalAmount: BN, slippage: number): BN {
+export function calcSlippedUpAmount(theoreticalAmount: BN | bigint, slippage: number): BN {
     return mulSmallNum(theoreticalAmount, 1 + slippage);
 }
 
-export function bnMax(a: BigNumberish, b: BigNumberish): BN {
-    a = BN.from(a);
-    b = BN.from(b);
-    return a.gt(b) ? a : b;
+export function bnMax(a: BigNumberish, ...rest: BigNumberish[]): BN {
+    return iters.reduce(
+        iters.imap(rest, (value) => BN.from(value)),
+        (a, b) => (a.gt(b) ? a : b),
+        BN.from(a)
+    );
 }
 
-export function bnMin(a: BigNumberish, b: BigNumberish): BN {
-    a = BN.from(a);
-    b = BN.from(b);
-    return a.lt(b) ? a : b;
+export function bnMin(a: BigNumberish, ...rest: BigNumberish[]): BN {
+    return iters.reduce(
+        iters.imap(rest, (value) => BN.from(value)),
+        (a, b) => (a.lt(b) ? a : b),
+        BN.from(a)
+    );
 }
 
 export function bnSafeDiv(a: BigNumberish, b: BigNumberish, fallback: BigNumberish = ethersConstants.Zero): BN {

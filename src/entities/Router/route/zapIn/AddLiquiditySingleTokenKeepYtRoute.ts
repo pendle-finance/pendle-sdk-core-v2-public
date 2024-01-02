@@ -1,20 +1,9 @@
 import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
-import {
-    RouterMetaMethodReturnType,
-    RouterHelperMetaMethodReturnType,
-    FixedRouterMetaMethodExtraParams,
-} from '../../types';
+import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
-import {
-    Address,
-    BigNumberish,
-    BN,
-    isNativeToken,
-    calcSlippedDownAmountSqrt,
-    getContractAddresses,
-    NoArgsCache,
-} from '../../../../common';
-import { ethers } from 'ethers';
+import { Address, BigNumberish, BN, calcSlippedDownAmountSqrt, NoArgsCache } from '../../../../common';
+import * as offchainMath from '@pendle/core-v2-offchain-math';
+import { txOverridesValueFromTokenInput } from '../helper';
 
 export type AddLiquiditySingleTokenKeepYtRouteData = BaseZapInRouteData & {
     netLpOut: BN;
@@ -23,12 +12,12 @@ export type AddLiquiditySingleTokenKeepYtRouteData = BaseZapInRouteData & {
     netSyToPY: BN;
     minLpOut: BN;
     minYtOut: BN;
+    afterMath: offchainMath.MarketStaticMath;
 };
 
 export type AddLiquiditySingleTokenKeepYtRouteConfig<
-    T extends MetaMethodType,
-    SelfType extends BaseAddLiquiditySingleTokenKeepYtRoute<T, SelfType>
-> = BaseZapInRouteConfig<T, SelfType>;
+    SelfType extends BaseAddLiquiditySingleTokenKeepYtRoute<SelfType>
+> = BaseZapInRouteConfig<SelfType>;
 
 export type AddLiquiditySingleTokenKeepYtRouteDebugInfo = ZapInRouteDebugInfo & {
     marketAddress: Address;
@@ -40,9 +29,8 @@ export type AddLiquiditySingleTokenKeepYtRouteDebugInfo = ZapInRouteDebugInfo & 
 };
 
 export abstract class BaseAddLiquiditySingleTokenKeepYtRoute<
-    T extends MetaMethodType,
-    SelfType extends BaseAddLiquiditySingleTokenKeepYtRoute<T, SelfType>
-> extends BaseZapInRoute<T, AddLiquiditySingleTokenKeepYtRouteData, SelfType> {
+    SelfType extends BaseAddLiquiditySingleTokenKeepYtRoute<SelfType>
+> extends BaseZapInRoute<AddLiquiditySingleTokenKeepYtRouteData, SelfType> {
     override readonly routeName = 'AddLiquiditySingleTokenKeepYt';
 
     constructor(
@@ -50,38 +38,20 @@ export abstract class BaseAddLiquiditySingleTokenKeepYtRoute<
         readonly tokenIn: Address,
         readonly netTokenIn: BigNumberish,
         readonly slippage: number,
-        params: AddLiquiditySingleTokenKeepYtRouteConfig<T, SelfType>
+        params: AddLiquiditySingleTokenKeepYtRouteConfig<SelfType>
     ) {
         super(params);
         const other = params.cloneFrom;
         if (other != undefined) {
-            if (this.withBulkSeller === other.withBulkSeller) {
-                /* eslint-disable @typescript-eslint/unbound-method */
-                NoArgsCache.copyValue(
-                    this,
-                    other,
-                    BaseAddLiquiditySingleTokenKeepYtRoute.prototype.getAggregatorResult
-                );
-                NoArgsCache.copyValue(this, other, BaseAddLiquiditySingleTokenKeepYtRoute.prototype.buildTokenInput);
-                /* eslint-enable @typescript-eslint/unbound-method */
-            }
+            /* eslint-disable @typescript-eslint/unbound-method */
+            NoArgsCache.copyValue(this, other, BaseAddLiquiditySingleTokenKeepYtRoute.prototype.getAggregatorResult);
+            NoArgsCache.copyValue(this, other, BaseAddLiquiditySingleTokenKeepYtRoute.prototype.buildTokenInput);
+            /* eslint-enable @typescript-eslint/unbound-method */
         }
-    }
-
-    needPatch() {
-        return isNativeToken(this.tokenIn);
-    }
-
-    get patchedTokenIn() {
-        return this.needPatch() ? getContractAddresses(this.router.chainId).WRAPPED_NATIVE : this.tokenIn;
     }
 
     override get sourceTokenAmount() {
         return { token: this.tokenIn, amount: this.netTokenIn };
-    }
-
-    get patchedSourceTokenAmount() {
-        return { token: this.patchedTokenIn, amount: this.netTokenIn };
     }
 
     override async getNetOut(): Promise<BN | undefined> {
@@ -89,29 +59,32 @@ export abstract class BaseAddLiquiditySingleTokenKeepYtRoute<
     }
 
     protected override async previewWithRouterStatic(): Promise<AddLiquiditySingleTokenKeepYtRouteData | undefined> {
-        const [input, mintedSyAmount] = await Promise.all([this.buildTokenInput(), this.getMintedSyAmount()]);
+        const [input, mintedSyAmount, marketStaticMath] = await Promise.all([
+            this.buildTokenInput(),
+            this.getMintedSyAmount(),
+            this.getMarketStaticMath(),
+        ]);
         if (!input || !mintedSyAmount) {
             return undefined;
         }
-
-        const data = await this.routerStaticCall.addLiquiditySingleSyKeepYtStatic(
-            this.market,
-            mintedSyAmount,
-            this.routerExtraParams.forCallStatic
-        );
+        const data = marketStaticMath.addLiquiditySingleSyKeepYtStatic(BN.from(mintedSyAmount).toBigInt());
         const minLpOut = calcSlippedDownAmountSqrt(data.netLpOut, this.slippage);
         const minYtOut = calcSlippedDownAmountSqrt(data.netYtOut, this.slippage);
         return {
-            ...data,
-            intermediateSyAmount: mintedSyAmount,
+            netLpOut: BN.from(data.netLpOut),
+            netYtOut: BN.from(data.netYtOut),
             netSyMinted: mintedSyAmount,
+            netSyToPY: BN.from(data.netSyToPY),
+            afterMath: data.afterMath,
+            intermediateSyAmount: mintedSyAmount,
             minLpOut,
             minYtOut,
         };
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCall({}, this.routerExtraParams);
+        return mm?.estimateGas();
     }
 
     /**
@@ -119,20 +92,13 @@ export abstract class BaseAddLiquiditySingleTokenKeepYtRoute<
      * explanation of the return type.
      */
     async buildCall(): Promise<
-        | RouterMetaMethodReturnType<
-              T,
-              'addLiquiditySingleTokenKeepYt',
-              AddLiquiditySingleTokenKeepYtRouteData & {
-                  route: SelfType;
-              }
-          >
-        | RouterHelperMetaMethodReturnType<
-              T,
-              'addLiquiditySingleTokenKeepYtWithEth',
-              AddLiquiditySingleTokenKeepYtRouteData & {
-                  route: SelfType;
-              }
-          >
+        RouterMetaMethodReturnType<
+            'meta-method',
+            'addLiquiditySingleTokenKeepYt',
+            AddLiquiditySingleTokenKeepYtRouteData & {
+                route: SelfType;
+            }
+        >
     > {
         const previewResult = (await this.preview())!;
         const res = await this.buildGenericCall(
@@ -152,10 +118,6 @@ export abstract class BaseAddLiquiditySingleTokenKeepYtRoute<
      *
      * The type binder somehow still work fine, so for now we can let tsc do
      * the typing for us.
-     *
-     * ### `PendleRouterHelper` patch
-     * See {@link BaseRouter#addLiquiditySingleTokenKeepYt} for the explanation
-     * of the return type.
      */
     protected async buildGenericCall<Data extends object, MT extends MetaMethodType>(
         data: Data,
@@ -163,24 +125,16 @@ export abstract class BaseAddLiquiditySingleTokenKeepYtRoute<
     ) {
         const [previewResult, input] = await Promise.all([this.preview(), this.buildTokenInput()]);
         if (!previewResult || !input) return undefined;
+        const overrides = txOverridesValueFromTokenInput(input);
         const { minLpOut, minYtOut } = previewResult;
-        if (!this.needPatch()) {
-            return this.router.contract.metaCall.addLiquiditySingleTokenKeepYt(
-                params.receiver,
-                this.market,
-                minLpOut,
-                minYtOut,
-                input,
-                { ...data, ...params }
-            );
-        }
-        const overrides = { value: this.netTokenIn };
-        return this.router
-            .getRouterHelper()
-            .metaCall.addLiquiditySingleTokenKeepYtWithEth(params.receiver, this.market, minLpOut, minYtOut, input, {
-                ...data,
-                ...mergeMetaMethodExtraParams({ overrides }, params),
-            });
+        return this.router.contract.metaCall.addLiquiditySingleTokenKeepYt(
+            params.receiver,
+            this.market,
+            minLpOut,
+            minYtOut,
+            input,
+            { ...data, ...mergeMetaMethodExtraParams(params, { overrides }) }
+        );
     }
 
     async getMinLpOut() {
@@ -189,43 +143,6 @@ export abstract class BaseAddLiquiditySingleTokenKeepYtRoute<
 
     async getMinYtOut() {
         return (await this.preview())?.minYtOut;
-    }
-
-    @NoArgsCache
-    async getAggregatorResult() {
-        return this.aggregatorHelper.makeCall(
-            this.patchedSourceTokenAmount,
-            this.tokenMintSy,
-            this.context.aggregatorSlippage,
-            { aggregatorReceiver: this.routerExtraParams.aggregatorReceiver, needScale: this.getNeedScale() }
-        );
-    }
-
-    @NoArgsCache
-    override async buildTokenInput() {
-        const res = await super.buildTokenInput();
-        if (!res) return res;
-        return { ...res, tokenIn: this.patchedTokenIn };
-    }
-
-    @NoArgsCache
-    override async getMintedSyAmountWithRouter(): Promise<BN | undefined> {
-        if (!this.needPatch()) return super.getMintedSyAmountWithRouter();
-        const [signerAddress, tokenInput] = await Promise.all([
-            this.getSignerAddressIfApproved(),
-            this.buildTokenInput(),
-        ]);
-        if (!signerAddress || !tokenInput) return undefined;
-        const overrides = { value: this.netTokenIn };
-        return this.router
-            .getRouterHelper2()
-            .callStatic.mintSyFromToken(
-                signerAddress,
-                this.syEntity.address,
-                ethers.constants.Zero,
-                tokenInput,
-                overrides
-            );
     }
 
     override async gatherDebugInfo(): Promise<AddLiquiditySingleTokenKeepYtRouteDebugInfo> {
@@ -239,15 +156,4 @@ export abstract class BaseAddLiquiditySingleTokenKeepYtRoute<
     }
 }
 
-export class AddLiquiditySingleTokenKeepYtRoute<
-    T extends MetaMethodType
-> extends BaseAddLiquiditySingleTokenKeepYtRoute<T, AddLiquiditySingleTokenKeepYtRoute<T>> {
-    override routeWithBulkSeller(withBulkSeller = true): AddLiquiditySingleTokenKeepYtRoute<T> {
-        return new AddLiquiditySingleTokenKeepYtRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
-            context: this.context,
-            tokenMintSy: this.tokenMintSy,
-            withBulkSeller,
-            cloneFrom: this,
-        });
-    }
-}
+export class AddLiquiditySingleTokenKeepYtRoute extends BaseAddLiquiditySingleTokenKeepYtRoute<AddLiquiditySingleTokenKeepYtRoute> {}

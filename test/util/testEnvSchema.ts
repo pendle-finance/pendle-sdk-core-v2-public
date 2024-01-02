@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import { CHAIN_ID_MAPPING } from '../../src';
+import { CHAIN_ID_MAPPING, toAddress } from '../../src';
 
 export const TEST_ENV_SCHEMA = z.object({
     INFURA_PROJECT_ID: z.string(),
@@ -13,6 +13,7 @@ export const TEST_ENV_SCHEMA = z.object({
         });
         return z.NEVER;
     }),
+    MARKET_ADDRESS: z.string().transform(toAddress),
     BLOCK_CONFIRMATION: z.coerce.number().default(1),
     PRIVATE_KEY: z.string(),
 
@@ -33,6 +34,16 @@ export const TEST_ENV_SCHEMA = z.object({
     AMOUNT_TO_TEST_IN_USD: z.coerce.number().default(100),
 
     ONEINCH_API_KEY: z.string().default(''),
+
+    INCLUDE_PENDLE_BACKEND_ZAPPABLE_TOKENS: z
+        .enum(['0', '1'])
+        .default('0')
+        .transform((value) => value === '1'),
+
+    EXCLUDE_SY_IO_TOKENS: z
+        .enum(['0', '1'])
+        .default('0')
+        .transform((value) => value === '1'),
 });
 
 export type TestEnv = z.infer<typeof TEST_ENV_SCHEMA>;

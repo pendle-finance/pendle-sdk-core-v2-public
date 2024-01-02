@@ -11,10 +11,12 @@ import {
     KyberSwapAggregatorHelperAxiosError,
     OneInchAggregatorHelperAxiosError,
 } from '../src';
-import { currentConfig, describeWrite, networkConnectionWithChainId, signer } from './util/testEnv';
+import { currentConfig, networkConnectionWithChainId, signer } from './util/testEnv';
+import * as testHelper from './util/testHelper';
 
-describeWrite('Custom error', () => {
-    const syAddress = currentConfig.market.SY;
+describe('Custom error', () => {
+    testHelper.useRestoreEvmSnapShotAfterEach();
+    const { syAddress } = currentConfig.market;
     const sy = new SyEntity(syAddress, networkConnectionWithChainId);
     const errorMessage = PendleContractError.errorMessageHandler['SYZeroDeposit']();
     const slippage = 0.1;
@@ -40,7 +42,7 @@ describeWrite('Custom error', () => {
 
     it('catch estimate gas without custom error', async () => {
         await expect(
-            sy.contract.estimateGas.transferFrom(currentConfig.market.market, signer.address, 1)
+            sy.contract.estimateGas.transferFrom(currentConfig.market.marketAddress, signer.address, 1)
         ).rejects.toThrow('Gas estimation error: ERC20: insufficient allowance');
     });
 

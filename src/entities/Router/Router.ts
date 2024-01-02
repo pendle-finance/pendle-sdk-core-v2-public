@@ -1,4 +1,3 @@
-import { MetaMethodType } from '../../contracts';
 import { GasEstimationError, PendleSdkError, PendleSdkErrorParams } from '../../errors';
 import { promiseAllWithErrors, zip } from '../../common';
 
@@ -28,7 +27,7 @@ export type RouterConfig = BaseRouterConfig;
 export class RoutingError extends PendleSdkError {
     constructor(
         readonly routeErrors: {
-            route: BaseRoute<any, any>;
+            route: BaseRoute<any>;
             error: unknown;
         }[],
         params?: PendleSdkErrorParams
@@ -64,102 +63,24 @@ export class Router extends BaseRouter {
         });
     }
 
-    override async findBestZapInRoute<
-        ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>
-    >(routes: ZapInRoute[]): Promise<ZapInRoute> {
-        const routesWithBulkSeller = await Promise.all(
-            routes.map(async (route) => {
-                try {
-                    if (!(await route.hasBulkSeller())) return [];
-                    const routeWithBulkSeller = await this.tryZapInRouteWithBulkSeller(route);
-                    return routeWithBulkSeller == undefined ? [] : [routeWithBulkSeller];
-                } catch {
-                    return [];
-                }
-            })
-        ).then((result) => result.flat());
-        routes = [...routes, ...routesWithBulkSeller];
-
-        // // syncup before use
-        // // TODO refactor mapPromisesToSyncUp
-        // await Promise.allSettled(
-        //     mapPromisesToSyncUp(1, routes, ([syncAfterAggregatorSwap], route: ZapInRoute, id: number) =>
-        //         route.preview(() => syncAfterAggregatorSwap(id))
-        //     )
-        // );
+    override async findBestZapInRoute<ZapInRoute extends BaseZapInRoute<BaseZapInRouteData, ZapInRoute>>(
+        routes: ZapInRoute[]
+    ): Promise<ZapInRoute> {
+        // Previously there was bulkseller, and there is a step to filter out the
+        // bulkseller. It is no longer exist in the system, so now we can just call find best generic route.
         return this.findBestGenericRoute(routes);
-    }
-
-    private async tryZapInRouteWithBulkSeller<
-        ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>
-    >(route: ZapInRoute): Promise<ZapInRoute | undefined> {
-        const bulkLimit = this.getBulkLimit();
-        if (bulkLimit.eq(BaseRouter.BULK_SELLER_NO_LIMIT)) {
-            return route.routeWithBulkSeller();
-        }
-
-        try {
-            const tradeValueInEth = await route.estimateSourceTokenAmountInEth();
-            const isBelowLimit = tradeValueInEth.lt(bulkLimit);
-            const shouldRouteThroughBulkSeller = isBelowLimit;
-            if (shouldRouteThroughBulkSeller) {
-                // TODO implicitly specify to clone the route with more cache info.
-                // Right now the aggregatorResult is copied from route. The above
-                // already get the aggregator result and cached, so there should be
-                // no problem. In the future, we might want to directly specify
-                // that we want to get some info first before cloning.
-                return route.routeWithBulkSeller();
-            }
-        } catch {
-            return undefined;
-        }
     }
 
     override async findBestZapOutRoute<
-        ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
+        ZapOutRoute extends BaseZapOutRoute<BaseZapOutRouteIntermediateData, ZapOutRoute>
     >(routes: ZapOutRoute[]): Promise<ZapOutRoute> {
-        const routesWithBulkSeller = await Promise.all(
-            routes.map(async (route) => {
-                try {
-                    if (!(await route.hasBulkSeller())) return [];
-                    const routeWithBulkSeller = await this.tryZapOutRouteWithBulkSeller(route);
-                    return routeWithBulkSeller == undefined ? [] : [routeWithBulkSeller];
-                } catch {
-                    return [];
-                }
-            })
-        ).then((result) => result.flat());
-        routes = [...routes, ...routesWithBulkSeller];
+        // Previously there was bulkseller, and there is a step to filter out the
+        // bulkseller. It is no longer exist in the system, so now we can just call find best generic route.
         return this.findBestGenericRoute(routes);
     }
 
-    private async tryZapOutRouteWithBulkSeller<
-        ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
-    >(route: ZapOutRoute): Promise<ZapOutRoute | undefined> {
-        const bulkLimit = this.getBulkLimit();
-        if (bulkLimit.eq(BaseRouter.BULK_SELLER_NO_LIMIT)) {
-            return route.routeWithBulkSeller();
-        }
-        try {
-            const tradeValueInEth = await route.estimateMaxOutAmongAllRouteInEth();
-            if (tradeValueInEth == undefined) return;
-            const isBelowLimit = tradeValueInEth.lt(bulkLimit);
-            const shouldRouteThroughBulkSeller = isBelowLimit;
-            if (shouldRouteThroughBulkSeller) {
-                // TODO implicitly specify to clone the route with more cache info.
-                // Right now the aggregatorResult is copied from route. The above
-                // already get the aggregator result and cached, so there should be
-                // no problem. In the future, we might want to directly specify
-                // that we want to get some info first before cloning.
-                return route.routeWithBulkSeller();
-            }
-        } catch {
-            return undefined;
-        }
-    }
-
     override async findBestLiquidityMigrationRoute<
-        LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<any, LiquidityMigrationRoute, any>
+        LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<LiquidityMigrationRoute, any>
     >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute> {
         if (routes.length === 0) {
             throw new PendleSdkError('Unexpected empty routes');
@@ -169,22 +90,13 @@ export class Router extends BaseRouter {
         const optimalRemoveLiquidityRoute = await this.findBestZapOutRoute([routes[0].removeLiquidityRoute]);
         routes = routes.map((route) => route.withRemoveLiquidityRoute(optimalRemoveLiquidityRoute));
 
-        const routesWithBulkSellerForAddLiq = await Promise.all(
-            routes.map(async (route) => {
-                try {
-                    if (!(await route.addLiquidityHasBulkSeller())) return [];
-                    return [route.addLiquidityRouteWithBulkSeller()];
-                } catch {
-                    return [];
-                }
-            })
-        ).then((res) => res.flat());
+        // Previously there was bulkseller, and there is a step to filter out the
+        // bulkseller. It is no longer exist in the system, so now we can just call find best generic route.
 
-        routes = [...routes, ...routesWithBulkSellerForAddLiq];
         return this.findBestGenericRoute(routes);
     }
 
-    async findBestGenericRoute<Route extends BaseRoute<any, Route>>(routes: Route[]): Promise<Route> {
+    async findBestGenericRoute<Route extends BaseRoute<Route>>(routes: Route[]): Promise<Route> {
         const routesData = routes.map(async (route) => {
             const [netOut, netOutInEth] = await Promise.all([route.getNetOut(), route.estimateActualReceivedInEth()]);
             if (!netOut) {
@@ -212,7 +124,7 @@ export class Router extends BaseRouter {
         return results.reduce(reducer).route;
     }
 
-    private async checkSimulableRoute<Route extends BaseRoute<any, Route>>(route: Route): Promise<void> {
+    private async checkSimulableRoute<Route extends BaseRoute<Route>>(route: Route): Promise<void> {
         try {
             await route.getGasUsedUnwrapped();
         } catch (e: any) {

@@ -66,6 +66,8 @@ export type RemoveLastOptional<T extends AnyArray> = T extends [...infer Head, u
  */
 export type AddOptional<T extends AnyArray, P> = [...T, P?];
 
+export type AssertHasSameField<Base extends object, Derived extends Record<keyof Base, unknown>> = Derived;
+
 /**
  * @remarks
  * The following are note for the implementation.
@@ -144,6 +146,10 @@ export type If<Condition extends boolean, TrueType, FalseType = undefined> = Con
     : Condition extends false
     ? FalseType
     : TrueType | FalseType;
+
+export type PropUnion<A extends object, B extends Record<keyof A, unknown>> = {
+    [key in keyof A]: A[key] | B[key];
+};
 
 // function helpers
 
@@ -403,3 +409,12 @@ export function filterUndefinedFields<T extends object>(obj: T): T {
     }
     return res;
 }
+
+// https://stackoverflow.com/a/66993210
+export const randomBytes = (numBytes: number) =>
+    Array(numBytes)
+        .fill(0n)
+        .map(() => Math.round(Math.random() * 0xff));
+
+export const randomBigInt = (numBytes: number) =>
+    randomBytes(numBytes).reduce((n, c, i) => n | (BigInt(c) << (BigInt(i) * 8n)), 0n);

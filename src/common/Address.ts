@@ -38,6 +38,10 @@ export function toAddresses(rawAddresses: string[]): Address[] {
     return rawAddresses.map(toAddress);
 }
 
+export function isAddress(str: unknown): str is Address {
+    return typeof str === 'string' && /^0x[0-9a-f]{40}$/.test(str);
+}
+
 /**
  * Convert a raw address to {@link Address} or undefined.
  * @returns
@@ -72,6 +76,6 @@ export type NativeTokenAddress = typeof NATIVE_ADDRESS_0x00;
  * @param address
  * @returns
  */
-export function isNativeToken(address: Address): address is NativeTokenAddress {
+export function isNativeToken(address: Address): boolean {
     return areSameAddresses(address, NATIVE_ADDRESS_0x00) || areSameAddresses(address, NATIVE_ADDRESS_0xEE);
 }

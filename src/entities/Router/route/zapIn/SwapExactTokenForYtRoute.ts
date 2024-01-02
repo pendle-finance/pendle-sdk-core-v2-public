@@ -3,13 +3,17 @@ import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '..
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
 import { Address, BigNumberish, BN, calcSlippedDownAmount } from '../../../../common';
 import { txOverridesValueFromTokenInput } from '../helper';
+import { MarketEntity } from '../../../MarketEntity';
+import * as limitOrder from '../../limitOrder';
+import * as offchainMath from '@pendle/core-v2-offchain-math';
 
 export type SwapExactTokenForYtRouteData = BaseZapInRouteData & {
     netYtOut: BN;
     netSyMinted: BN;
-    netSyFee: BN;
-    priceImpact: BN;
-    exchangeRateAfter: BN;
+    netSyFeeFromMarket: BN;
+    netSyFeeFromLimit: BN;
+    priceImpact: offchainMath.FixedX18;
+    exchangeRateAfter: offchainMath.MarketExchangeRate;
     minYtOut: BN;
 };
 
@@ -21,19 +25,15 @@ export type SwapExactTokenForYtRouteDebugInfo = ZapInRouteDebugInfo & {
     slippage: number;
 };
 
-export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapInRoute<
-    T,
-    SwapExactTokenForYtRouteData,
-    SwapExactTokenForYtRoute<T>
-> {
+export class SwapExactTokenForYtRoute extends BaseZapInRoute<SwapExactTokenForYtRouteData, SwapExactTokenForYtRoute> {
     override readonly routeName = 'SwapExactTokenForYt';
 
     constructor(
-        readonly market: Address,
+        readonly market: Address | MarketEntity,
         readonly tokenIn: Address,
         readonly netTokenIn: BigNumberish,
         readonly slippage: number,
-        params: BaseZapInRouteConfig<T, SwapExactTokenForYtRoute<T>>
+        params: BaseZapInRouteConfig<SwapExactTokenForYtRoute>
     ) {
         super(params);
     }
@@ -42,47 +42,43 @@ export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapI
         return { token: this.tokenIn, amount: this.netTokenIn };
     }
 
-    override routeWithBulkSeller(withBulkSeller = true): SwapExactTokenForYtRoute<T> {
-        return new SwapExactTokenForYtRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
-            context: this.context,
-            tokenMintSy: this.tokenMintSy,
-            withBulkSeller,
-            cloneFrom: this,
-        });
-    }
-
     override async getNetOut(): Promise<BN | undefined> {
         return (await this.preview())?.netYtOut;
     }
 
     protected override async previewWithRouterStatic(): Promise<SwapExactTokenForYtRouteData | undefined> {
-        const [input, mintedSyAmount] = await Promise.all([this.buildTokenInput(), this.getMintedSyAmount()]);
+        const [input, mintedSyAmount, marketStaticMath] = await Promise.all([
+            this.buildTokenInput(),
+            this.getMintedSyAmount(),
+            this.getMarketStaticMath(),
+        ]);
         if (!input || !mintedSyAmount) {
             return undefined;
         }
 
-        const data = await this.routerStaticCall.swapExactSyForYtStatic(
-            this.market,
-            mintedSyAmount,
-            this.routerExtraParams.forCallStatic
-        );
+        const data = marketStaticMath.swapExactSyForYtStatic(mintedSyAmount.toBigInt());
         const minYtOut = calcSlippedDownAmount(data.netYtOut, this.slippage);
         return {
-            ...data,
             intermediateSyAmount: mintedSyAmount,
             netSyMinted: mintedSyAmount,
+            netYtOut: BN.from(data.netYtOut),
+            netSyFeeFromMarket: BN.from(data.netSyFee),
+            netSyFeeFromLimit: BN.from(0),
+            priceImpact: data.priceImpact,
+            exchangeRateAfter: data.exchangeRateAfter,
             minYtOut,
         };
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCall({}, this.routerExtraParams);
+        return mm?.estimateGas();
     }
 
     async buildCall(): RouterMetaMethodReturnType<
-        T,
+        'meta-method',
         'swapExactTokenForYt',
-        SwapExactTokenForYtRouteData & { route: SwapExactTokenForYtRoute<T> }
+        SwapExactTokenForYtRouteData & { route: SwapExactTokenForYtRoute }
     > {
         const previewResult = (await this.preview())!;
         const res = await this.buildGenericCall({ ...previewResult, route: this }, this.routerExtraParams);
@@ -110,10 +106,11 @@ export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapI
 
         return this.router.contract.metaCall.swapExactTokenForYt(
             params.receiver,
-            this.market,
+            this.getMarketAddress(),
             minYtOut,
             approxParam,
             input,
+            limitOrder.LimitOrderMatchedResult.EMPTY.toRawLimitOrderDataStructForChain(this.router.chainId),
             { ...data, ...mergeMetaMethodExtraParams({ overrides }, params) }
         );
     }
@@ -121,7 +118,7 @@ export class SwapExactTokenForYtRoute<T extends MetaMethodType> extends BaseZapI
     override async gatherDebugInfo(): Promise<SwapExactTokenForYtRouteDebugInfo> {
         return {
             ...(await super.gatherDebugInfo()),
-            market: this.market,
+            market: this.getMarketAddress(),
             tokenIn: this.tokenIn,
             netTokenIn: String(this.netTokenIn),
             slippage: this.slippage,

@@ -1,6 +1,6 @@
-import BSC_CORE_ADDRESSES from '@pendle/core-v2-mainnet/deployments/56-core.json';
-import THENA_FRXETH_ETH_JUNE2024 from '@pendle/core-v2-mainnet/deployments/56-markets/THENA-FRXETH-ETH-JUNE2024.json';
-import WBETH_DEC_2024 from '@pendle/core-v2-mainnet/deployments/56-markets/WBETH-DEC2024.json';
+import BSC_CORE_ADDRESSES from '@pendle/core-v2/deployments/56-core.json';
+import THENA_FRXETH_ETH_JUNE2024 from '@pendle/core-v2/deployments/56-markets/THENA-FRXETH-ETH-JUNE2024.json';
+import WBETH_DEC_2024 from '@pendle/core-v2/deployments/56-markets/WBETH-DEC2024.json';
 
 import { DUMMY_ADDRESS } from '../constants';
 import { shallowToAddress } from './helper';

@@ -1,0 +1,33 @@
+{
+  "marketAddress": "0xa0192f6567f8f5dc38c53323235fd08b318d2dca",
+  "expiry_ms": 1711584000000,
+  "ptAddress": "0x1684b747cd46858ae6312a7074353d2101154ef7",
+  "syAddress": "0xaf699fb0d9f12bf7b14474ae5c9bea688888df73",
+  "ytAddress": "0x4a8e64c3a66ce0830e3bf2ea7863b013aa592114",
+  "rewardTokens": [
+    {
+      "name": "Pendle",
+      "decimals": 18,
+      "address": "0x0c880f6761f1af8d9aa9c466984b80dab9a8c9e8"
+    }
+  ],
+  "tokensIn": [
+    {
+      "name": "Dai Stablecoin",
+      "decimals": 18,
+      "address": "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1"
+    },
+    {
+      "name": "Gains Network DAI",
+      "decimals": 18,
+      "address": "0xd85e038593d7a098614721eae955ec2022b9b91b"
+    }
+  ],
+  "tokensOut": [
+    {
+      "name": "Gains Network DAI",
+      "decimals": 18,
+      "address": "0xd85e038593d7a098614721eae955ec2022b9b91b"
+    }
+  ]
+}

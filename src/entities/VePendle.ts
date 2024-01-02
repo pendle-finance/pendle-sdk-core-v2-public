@@ -1,5 +1,4 @@
 import {
-    IPRouterStatic,
     VotingEscrowTokenBase,
     VotingEscrowPendleMainchain,
     VotingEscrowTokenBaseABI,
@@ -9,13 +8,14 @@ import {
     MetaMethodExtraParams,
     MulticallStaticParams,
     ContractMethodNames,
-    getRouterStatic,
     MetaMethodReturnType,
     ContractMetaMethod,
 } from '../contracts';
 import { BigNumber as BN, BigNumberish } from 'ethers';
 import { PendleEntity, PendleEntityConfigOptionalAbi } from './PendleEntity';
 import { Address, getContractAddresses, ChainId, MainchainId, NetworkConnection, calcSlippedUpAmount } from '../common';
+import * as errors from '../errors';
+import * as offchainMath from '@pendle/core-v2-offchain-math';
 
 /**
  * Configuration for {@link VePendle}
@@ -23,6 +23,11 @@ import { Address, getContractAddresses, ChainId, MainchainId, NetworkConnection,
 export type VePendleConfig = PendleEntityConfigOptionalAbi;
 
 export class VePendle extends PendleEntity {
+    static readonly ONE_DAY_s = 24 * 60 * 60;
+    static readonly ONE_WEEK_s = 7 * VePendle.ONE_DAY_s;
+    static readonly MAX_LOCK_TIME_s = 104 * VePendle.ONE_WEEK_s;
+    static readonly MIN_LOCK_TIME_s = VePendle.ONE_WEEK_s;
+
     constructor(readonly address: Address, config: VePendleConfig) {
         super(address, { abi: VotingEscrowTokenBaseABI, ...config });
     }
@@ -67,6 +72,10 @@ export class VePendle extends PendleEntity {
     async totalSupplyCurrent(params?: MulticallStaticParams) {
         return this.contract.multicallStatic.totalSupplyStored(params);
     }
+
+    static isValidWTime(timestamp_s: BigNumberish): boolean {
+        return BN.from(timestamp_s).mod(VePendle.ONE_WEEK_s).isZero();
+    }
 }
 
 export type VePendleMainchainMetaMethodReturnType<
@@ -84,13 +93,15 @@ export type VePendleMainchainConfig = VePendleConfig & {
 
 export class VePendleMainchain extends VePendle {
     static BROADCAST_FEE_BUFFER = 0.02; // 2%
-    protected readonly routerStatic: WrappedContract<IPRouterStatic>;
     readonly chainId: ChainId;
 
     constructor(readonly address: Address, config: VePendleMainchainConfig) {
         super(address, { abi: VotingEscrowPendleMainchainABI, ...config });
         this.chainId = config.chainId;
-        this.routerStatic = getRouterStatic(config);
+    }
+
+    get entityConfig(): VePendleMainchainConfig {
+        return { ...super.entityConfig, chainId: this.chainId };
     }
 
     /**
@@ -129,12 +140,32 @@ export class VePendleMainchain extends VePendle {
         newExpiry_s: BigNumberish,
         params?: MulticallStaticParams
     ): Promise<BN> {
-        return this.routerStatic.multicallStatic.increaseLockPositionStatic(
-            userAddress,
-            additionalRawAmountToLock,
-            newExpiry_s,
-            params
-        );
+        // TODO add custom errors
+        newExpiry_s = BN.from(newExpiry_s);
+        if (!VePendle.isValidWTime(newExpiry_s)) throw new errors.PendleSdkError('InvalidWTime');
+
+        const [oldPosition, blockData] = await Promise.all([
+            this.contract.multicallStatic.positionData(userAddress, params),
+            this.contract.provider.getBlock(params?.overrides?.blockTag ?? 'latest'),
+        ]);
+        const blockTime = BN.from(blockData.timestamp);
+
+        if (newExpiry_s.lt(blockTime)) throw new errors.PendleSdkError('ExpiryInThePast');
+        if (newExpiry_s.gt(blockTime.add(VePendle.MAX_LOCK_TIME_s)))
+            throw new errors.PendleSdkError('VEExceededMaxLockTime');
+        if (newExpiry_s.lt(blockTime.add(VePendle.MIN_LOCK_TIME_s)))
+            throw new errors.PendleSdkError('VEInsufficientLockTime');
+
+        if (newExpiry_s.lt(oldPosition.expiry)) throw new errors.PendleSdkError('VENotAllowedReduceExpiry');
+        const newTotalAmountLocked = oldPosition.amount.add(additionalRawAmountToLock);
+        if (newTotalAmountLocked.lte(0)) throw new errors.PendleSdkError('VEZeroAmountLocked');
+
+        const veBalance = offchainMath.VeBalance.fromLockedPosition({
+            expiryTimestamp_s: newExpiry_s.toBigInt(),
+            lockedPendleRawAmount: newTotalAmountLocked.toBigInt(),
+        });
+
+        return BN.from(veBalance.getValueAt(blockTime.toBigInt()));
     }
 
     async increaseLockPosition<T extends MetaMethodType>(

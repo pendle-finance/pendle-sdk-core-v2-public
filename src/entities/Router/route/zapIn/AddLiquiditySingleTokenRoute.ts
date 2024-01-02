@@ -1,24 +1,26 @@
 import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
-import { Address, BigNumberish, BN, calcSlippedDownAmountSqrt, NATIVE_ADDRESS_0x00 } from '../../../../common';
+import { Address, BigNumberish, BN, calcSlippedDownAmountSqrt } from '../../../../common';
 import { txOverridesValueFromTokenInput } from '../helper';
+import * as offchainMath from '@pendle/core-v2-offchain-math';
+import * as limitOrder from '../../limitOrder';
+import { MarketEntity } from '../../../MarketEntity';
 
 export type AddLiquiditySingleTokenRouteData = BaseZapInRouteData & {
     netLpOut: BN;
     netPtFromSwap: BN;
-    netSyFee: BN;
-    priceImpact: BN;
-    exchangeRateAfter: BN;
+    netSyFeeFromMarket: BN;
+    netSyFeeFromLimit: BN;
     netSyMinted: BN;
     netSyToSwap: BN;
+    priceImpact: offchainMath.FixedX18;
+    exchangeRateAfter: offchainMath.MarketExchangeRate;
     minLpOut: BN;
 };
 
-export type AddLiquiditySingleTokenRouteConfig<
-    T extends MetaMethodType,
-    SelfType extends BaseAddLiquiditySingleTokenRoute<T, SelfType>
-> = BaseZapInRouteConfig<T, SelfType>;
+export type AddLiquiditySingleTokenRouteConfig<SelfType extends BaseAddLiquiditySingleTokenRoute<SelfType>> =
+    BaseZapInRouteConfig<SelfType>;
 
 export type AddLiquiditySingleTokenRouteDebugInfo = ZapInRouteDebugInfo & {
     marketAddress: Address;
@@ -31,16 +33,15 @@ export type AddLiquiditySingleTokenRouteDebugInfo = ZapInRouteDebugInfo & {
 };
 
 export abstract class BaseAddLiquiditySingleTokenRoute<
-    T extends MetaMethodType,
-    SelfType extends BaseAddLiquiditySingleTokenRoute<T, SelfType>
-> extends BaseZapInRoute<T, AddLiquiditySingleTokenRouteData, SelfType> {
+    SelfType extends BaseAddLiquiditySingleTokenRoute<SelfType>
+> extends BaseZapInRoute<AddLiquiditySingleTokenRouteData, SelfType> {
     override readonly routeName = 'AddLiquiditySingleToken';
     constructor(
-        readonly market: Address,
+        readonly market: Address | MarketEntity,
         readonly tokenIn: Address,
         readonly netTokenIn: BigNumberish,
         readonly slippage: number,
-        params: AddLiquiditySingleTokenRouteConfig<T, SelfType>
+        params: AddLiquiditySingleTokenRouteConfig<SelfType>
     ) {
         super(params);
     }
@@ -54,31 +55,37 @@ export abstract class BaseAddLiquiditySingleTokenRoute<
     }
 
     protected override async previewWithRouterStatic(): Promise<AddLiquiditySingleTokenRouteData | undefined> {
-        const [input, mintedSyAmount] = await Promise.all([this.buildTokenInput(), this.getMintedSyAmount()]);
-        if (!input || !mintedSyAmount) {
-            return undefined;
-        }
+        const [input, mintedSyAmount, marketStaticMath] = await Promise.all([
+            this.buildTokenInput(),
+            this.getMintedSyAmount(),
+            this.getMarketStaticMath(),
+        ]);
+        if (!input || !mintedSyAmount) return undefined;
 
-        const data = await this.routerStaticCall.addLiquiditySingleSyStatic(
-            this.market,
-            mintedSyAmount,
-            this.routerExtraParams.forCallStatic
-        );
+        const data = marketStaticMath.addLiquiditySingleSyStatic(mintedSyAmount.toBigInt());
         const minLpOut = calcSlippedDownAmountSqrt(data.netLpOut, this.slippage);
         return {
-            ...data,
             intermediateSyAmount: mintedSyAmount,
+
+            netLpOut: BN.from(data.netLpOut),
+            netPtFromSwap: BN.from(data.netPtFromSwap),
+            netSyFeeFromMarket: BN.from(data.netSyFee),
+            netSyFeeFromLimit: BN.from(0),
+            priceImpact: data.priceImpact,
+            exchangeRateAfter: data.exchangeRateAfter,
             netSyMinted: mintedSyAmount,
+            netSyToSwap: BN.from(data.netSyToSwap),
             minLpOut,
         };
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCall({}, { ...this.routerExtraParams });
+        return mm?.estimateGas();
     }
 
     async buildCall(): RouterMetaMethodReturnType<
-        T,
+        'meta-method',
         'addLiquiditySingleToken',
         AddLiquiditySingleTokenRouteData & {
             route: SelfType;
@@ -105,20 +112,22 @@ export abstract class BaseAddLiquiditySingleTokenRoute<
         data: Data,
         params: FixedRouterMetaMethodExtraParams<MT>
     ) {
-        const [previewResult, approxParam, input] = await Promise.all([
+        const [previewResult, approxParams, input] = await Promise.all([
             this.preview(),
             this.getApproxParam(),
             this.buildTokenInput(),
         ]);
-        if (!previewResult || !approxParam || !input) return undefined;
+        if (!previewResult || !approxParams || !input) return undefined;
         const overrides = txOverridesValueFromTokenInput(input);
         const { minLpOut } = previewResult;
         const res = await this.router.contract.metaCall.addLiquiditySingleToken(
             params.receiver,
-            this.market,
+            this.getMarketAddress(),
             minLpOut,
-            approxParam,
+            approxParams,
             input,
+            // we don't handle limit order here
+            limitOrder.LimitOrderMatchedResult.EMPTY.toRawLimitOrderDataStructForChain(this.router.chainId),
             { ...data, ...mergeMetaMethodExtraParams({ overrides }, params) }
         );
         return res;
@@ -139,8 +148,7 @@ export abstract class BaseAddLiquiditySingleTokenRoute<
             type: 'zapIn',
             name: 'AddLiquiditySingleToken',
             tokenMintSy: this.tokenMintSy,
-            bulk: await this.getUsedBulk().catch(() => NATIVE_ADDRESS_0x00),
-            marketAddress: this.market,
+            marketAddress: this.getMarketAddress(),
             netTokenIn: String(this.netTokenIn),
             slippage: this.slippage,
             tokenIn: this.tokenIn,
@@ -148,16 +156,4 @@ export abstract class BaseAddLiquiditySingleTokenRoute<
     }
 }
 
-export class AddLiquiditySingleTokenRoute<T extends MetaMethodType> extends BaseAddLiquiditySingleTokenRoute<
-    T,
-    AddLiquiditySingleTokenRoute<T>
-> {
-    override routeWithBulkSeller(withBulkSeller = true): AddLiquiditySingleTokenRoute<T> {
-        return new AddLiquiditySingleTokenRoute(this.market, this.tokenIn, this.netTokenIn, this.slippage, {
-            context: this.context,
-            tokenMintSy: this.tokenMintSy,
-            withBulkSeller,
-            cloneFrom: this,
-        });
-    }
-}
+export class AddLiquiditySingleTokenRoute extends BaseAddLiquiditySingleTokenRoute<AddLiquiditySingleTokenRoute> {}

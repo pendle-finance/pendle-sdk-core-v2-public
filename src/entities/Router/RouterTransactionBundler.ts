@@ -2,11 +2,11 @@ import { type BaseRouter } from './BaseRouter';
 import { BytesLike, PopulatedTransaction } from 'ethers';
 import { ContractMetaMethodUtilFunction, ContractMetaMethod, MetaMethodType } from '../../contracts';
 import { PendleSdkError } from '../../errors';
-import { IPAllAction, RouterMetaMethodExtraParams, RouterMetaMethodReturnType } from './types';
+import { IPAllActionV3, RouterMetaMethodExtraParams, RouterMetaMethodReturnType } from './types';
 
 export type RouterTransactionBundlerItem = {
     allowFailure: boolean;
-    callData: BytesLike | ContractMetaMethodUtilFunction<Promise<BytesLike>, IPAllAction>;
+    callData: BytesLike | ContractMetaMethodUtilFunction<Promise<BytesLike>, IPAllActionV3>;
 };
 
 /**
@@ -61,7 +61,7 @@ export class RouterTransactionBundler {
      * to get the other information right before sending (e.g the signer address). The callback
      * here has the same principle (hence it has the type {@link ContractMetaMethodUtilFunction}).
      */
-    addContractMetaMethod(contractMetaMethod: ContractMetaMethod<IPAllAction, any, any>, allowFailure = false): this {
+    addContractMetaMethod(contractMetaMethod: ContractMetaMethod<IPAllActionV3, any, any>, allowFailure = false): this {
         this.items.push({
             allowFailure,
             callData: async (mainContractMetaMethod) => {
@@ -85,8 +85,8 @@ export class RouterTransactionBundler {
      */
     execute<T extends MetaMethodType>(
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<T, 'batchExec'> {
-        return this.router.contract.metaCall.batchExec(
+    ): RouterMetaMethodReturnType<T, 'multicall'> {
+        return this.router.contract.metaCall.multicall(
             (mainContractMetaMethod) =>
                 Promise.all(
                     this.items.map(async (item) => ({

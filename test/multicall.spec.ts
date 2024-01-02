@@ -106,7 +106,7 @@ describe('Multicall', () => {
 
     itWhen(!USE_HARDHAT_RPC)('by block tags', async () => {
         const currentBlock = await networkConnection.provider.getBlockNumber();
-        const syContract = new SyEntity(currentConfig.market.SY, networkConnectionWithChainId).contract;
+        const syContract = new SyEntity(currentConfig.market.syAddress, networkConnectionWithChainId).contract;
 
         const tokensIn = (await syContract.getTokensIn()).map(toAddress).filter((addr) => !isNativeToken(addr));
         const tokensOut = (await syContract.getTokensOut()).map(toAddress).filter((addr) => !isNativeToken(addr));
@@ -153,7 +153,7 @@ describe('Multicall', () => {
         it('Claim user rewards', async () => {
             const currentMarket = currentConfig.market;
             const userAddress = currentConfig.userAddress;
-            const yt = new YtEntity(currentMarket.YT, networkConnectionWithChainId);
+            const yt = new YtEntity(currentMarket.ytAddress, networkConnectionWithChainId);
 
             const [firstSimulateInterestAndRewards, secondSimulateInterestAndRewards] = await Promise.all([
                 multicall.wrap(yt.contract).callStatic.redeemDueInterestAndRewards(userAddress, true, true),

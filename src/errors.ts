@@ -420,3 +420,23 @@ export class WrappedAxiosError extends PendleSdkError {
 }
 
 EthersJsError.MAKE_ERROR_CALLBACKS.push(PendleContractError.factory, BuiltinContractError.factory);
+
+export class SignerRequired extends PendleSdkError {
+    constructor(readonly operationName: string, message: string, options?: ErrorOptions) {
+        super(message, options);
+    }
+
+    static create(this: void, operationName: string, options?: ErrorOptions): SignerRequired {
+        return new SignerRequired(operationName, `Ether.js signer is required for ${operationName}`, options);
+    }
+}
+
+export class TypedDataSignerRequired extends SignerRequired {
+    static create(this: void, operationName: string, options?: ErrorOptions): TypedDataSignerRequired {
+        return new TypedDataSignerRequired(
+            operationName,
+            `Ether.js TypedDataSigner is required for ${operationName}`,
+            options
+        );
+    }
+}

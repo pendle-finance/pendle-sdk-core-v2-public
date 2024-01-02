@@ -2,27 +2,25 @@ import { RouteContext } from './RouteContext';
 import {
     Address,
     BN,
-    toAddress,
-    NATIVE_ADDRESS_0x00,
-    areSameAddresses,
     NoArgsCache,
     ethersConstants,
     RawTokenAmount,
     BigNumberish,
+    assertDefined,
 } from '../../../common';
-import { MetaMethodType } from '../../../contracts';
+import * as common from '../../../common';
 import { GasEstimationError } from '../../../errors';
 import { createERC20 } from '../../erc20';
+import { MarketEntity } from '../../MarketEntity';
+import * as offchainMath from '@pendle/core-v2-offchain-math';
 
-export type BaseRouteConfig<T extends MetaMethodType, SelfType extends BaseRoute<T, SelfType>> = {
-    readonly context: RouteContext<T, SelfType>;
-    readonly withBulkSeller?: boolean;
-    readonly cloneFrom?: BaseRoute<T, SelfType>;
+export type BaseRouteConfig<SelfType extends BaseRoute<SelfType>> = {
+    readonly context: RouteContext<SelfType>;
+    readonly cloneFrom?: BaseRoute<SelfType>;
 };
 
 export type RouteDebugInfo = {
     name: string;
-    bulk: Address;
 };
 
 /**
@@ -44,19 +42,30 @@ export type RouteDebugInfo = {
  *   parameters. They can just use the existing method inside this class.
  *   Need more params? Create another function!
  */
-export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseRoute<T, SelfType>> {
-    readonly context: RouteContext<T, SelfType>;
-    readonly withBulkSeller: boolean;
+export abstract class BaseRoute<SelfType extends BaseRoute<SelfType>> {
+    readonly context: RouteContext<SelfType>;
 
-    constructor(params: BaseRouteConfig<T, SelfType>) {
-        ({ context: this.context, withBulkSeller: this.withBulkSeller = false } = params);
+    constructor(params: BaseRouteConfig<SelfType>) {
+        ({ context: this.context } = params);
         if (params.cloneFrom != undefined) {
             /* eslint-disable @typescript-eslint/unbound-method */
-            NoArgsCache.copyValue(this, params.cloneFrom, BaseRoute.prototype.getBulkSellerInfo);
             NoArgsCache.copyValue(this, params.cloneFrom, BaseRoute.prototype.getGasUsedUnwrapped);
             /* eslint-enable @typescript-eslint/unbound-method */
         }
         this.addSelfToContext();
+    }
+
+    /**
+     * Will be called when this route is added to the routeContext.
+     * That is, will be invoked when {@link RouteContext#addRoute} is called with `this`.
+     * @remarks
+     * Should not failed.
+     * For promises, remember to add catch.
+     */
+    prefetch() {
+        if (this.hasMarket()) {
+            void this.getMarketStaticMath().catch(() => {});
+        }
     }
 
     protected addSelfToContext() {
@@ -72,19 +81,11 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
     }
 
     abstract readonly routeName: string;
-    abstract get tokenBulk(): Address;
     abstract getSourceTokenAmount(): Promise<RawTokenAmount<BigNumberish>>;
 
-    /**
-     * _Clone_ the current object but set {@link withBulkSeller} to `true`.
-     * @privateRemarks
-     * Can we have a better name for this function
-     */
-    abstract routeWithBulkSeller(withBulkSeller?: boolean): SelfType;
     abstract getNetOut(): Promise<BN | undefined>;
     abstract estimateNetOutInEth(): Promise<BN | undefined>;
     abstract getGasUsedImplement(): Promise<BN | undefined>;
-    abstract getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined>;
     abstract signerHasApprovedImplement(signerAddress: Address): Promise<boolean>;
 
     @RouteContext.NoArgsSharedCache
@@ -113,7 +114,7 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
     async getGasUsed(): Promise<BN> {
         try {
             return (await this.getGasUsedUnwrapped()) ?? ethersConstants.MaxUint256;
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (e instanceof GasEstimationError) {
                 return ethersConstants.MaxUint256;
             }
@@ -140,14 +141,6 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
         return this.context.router;
     }
 
-    get routerStatic() {
-        return this.router.routerStatic;
-    }
-
-    protected get routerStaticCall() {
-        return this.routerStatic.multicallStatic;
-    }
-
     get syEntity() {
         return this.context.syEntity;
     }
@@ -158,42 +151,6 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
 
     get aggregatorHelper() {
         return this.router.aggregatorHelper;
-    }
-
-    @NoArgsCache
-    async getBulkSellerInfo(): Promise<{
-        bulk: Address;
-        totalToken: BN;
-        totalSy: BN;
-    }> {
-        const tokenAmountForBulkTrade = await this.getTokenAmountForBulkTrade();
-        if (tokenAmountForBulkTrade === undefined) {
-            return { bulk: NATIVE_ADDRESS_0x00, totalToken: ethersConstants.Zero, totalSy: ethersConstants.Zero };
-        }
-        const { bulk, totalToken, totalSy } = await this.router.routerStatic.multicallStatic.getBulkSellerInfo(
-            this.tokenBulk,
-            this.syEntity.address,
-            tokenAmountForBulkTrade.netTokenIn,
-            tokenAmountForBulkTrade.netSyIn,
-            this.routerExtraParams
-        );
-        return {
-            bulk: toAddress(bulk),
-            totalToken,
-            totalSy,
-        };
-    }
-
-    async hasBulkSeller(): Promise<boolean> {
-        return !areSameAddresses((await this.getBulkSellerInfo()).bulk, NATIVE_ADDRESS_0x00);
-    }
-
-    async getUsedBulk(): Promise<Address> {
-        if (!this.withBulkSeller) {
-            return NATIVE_ADDRESS_0x00;
-        }
-        const { bulk } = await this.getBulkSellerInfo();
-        return bulk;
     }
 
     async estimateActualReceivedInEth(): Promise<BN | undefined> {
@@ -227,7 +184,28 @@ export abstract class BaseRoute<T extends MetaMethodType, SelfType extends BaseR
     async gatherDebugInfo(): Promise<RouteDebugInfo> {
         return {
             name: this.routeName,
-            bulk: await this.getUsedBulk().catch(() => NATIVE_ADDRESS_0x00),
         };
+    }
+
+    // Optional typed helpers.
+    // The helper must have the corresponding required fields from `this` before used.
+    // Otherwise tsc will complain (and it should to avoid misuse of these functions).
+
+    getMarketAddress(this: BaseRoute<SelfType> & { market: Address | MarketEntity }) {
+        return this.router.getMarketAddress(this.market);
+    }
+
+    getMarketStaticMath(
+        this: BaseRoute<SelfType> & { market: Address | MarketEntity }
+    ): Promise<offchainMath.MarketStaticMath>;
+    @RouteContext.NoArgsSharedCache
+    async getMarketStaticMath(
+        this: BaseRoute<SelfType> & { market?: Address | MarketEntity | undefined }
+    ): Promise<offchainMath.MarketStaticMath> {
+        return this.router.getMarketStaticMathWithParams(assertDefined(this.market), this.routerExtraParams);
+    }
+
+    protected hasMarket(): this is BaseRoute<SelfType> & { market: Address | MarketEntity } {
+        return 'market' in this && (common.isAddress(this.market) || this.market instanceof MarketEntity);
     }
 }

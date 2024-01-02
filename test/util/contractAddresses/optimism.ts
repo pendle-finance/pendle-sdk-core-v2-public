@@ -1,6 +1,6 @@
-import OPTIMISM_CORE_ADDRESSES from '@pendle/core-v2-mainnet/deployments/10-core.json';
-import RETH_OPTIMISM_JUNE2024 from '@pendle/core-v2-mainnet/deployments/10-markets/RETH-OPTIMISM-JUNE2024.json';
-import WSTETH_OPTIMISM_SEP2024 from '@pendle/core-v2-mainnet/deployments/10-markets/WSTETH-OPTIMISM-SEP2024.json';
+import OPTIMISM_CORE_ADDRESSES from '@pendle/core-v2/deployments/10-core.json';
+import RETH_OPTIMISM_JUNE2024 from '@pendle/core-v2/deployments/10-markets/RETH-OPTIMISM-JUNE2024.json';
+import WSTETH_OPTIMISM_SEP2024 from '@pendle/core-v2/deployments/10-markets/WSTETH-OPTIMISM-SEP2024.json';
 
 import { DUMMY_ADDRESS } from '../constants';
 import { shallowToAddress } from './helper';

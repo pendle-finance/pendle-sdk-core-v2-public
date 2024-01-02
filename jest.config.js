@@ -1,5 +1,7 @@
-import { Config } from 'jest';
-export default {
+// @ts-check
+
+/** @type { import('jest').Config */
+const config = {
     coveragePathIgnorePatterns: ['dist/', '/node_modules/', 'test/'],
     coverageProvider: 'v8',
     moduleDirectories: ['node_modules'],
@@ -19,4 +21,6 @@ export default {
     testTimeout: 300000,
     notify: true,
     maxWorkers: 1,
-} satisfies Config;
+};
+
+module.exports = config;

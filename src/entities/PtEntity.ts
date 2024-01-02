@@ -33,17 +33,9 @@ export class PtEntity extends PyEntity {
      * @param params - the additional parameters for read method.
      * @returns
      */
-    async SY(params?: MulticallStaticParams): Promise<Address> {
+    override async SY(params?: MulticallStaticParams): Promise<Address> {
         return this.contract.multicallStatic.SY(params).then(toAddress);
     }
-
-    /**
-     * Alias for {@link PtEntity#SY}
-     */
-    async sy(params?: MulticallStaticParams) {
-        return this.SY(params);
-    }
-
     /**
      * Get the address of the YT token, correspond to this PT token.
      * @remarks
@@ -51,15 +43,19 @@ export class PtEntity extends PyEntity {
      * @param params - the additional parameters for read method.
      * @returns
      */
-    async YT(params?: MulticallStaticParams): Promise<Address> {
+    override async YT(params?: MulticallStaticParams): Promise<Address> {
         return this.contract.multicallStatic.YT(params).then(toAddress);
     }
 
     /**
-     * Alias for {@link PtEntity#YT}
+     * Return `this` address.
+     * @remarks
+     * The naming is in uppercase to reflect the same function of the contract.
+     * @param params - the additional parameters for read method.
+     * @returns
      */
-    async yt(params?: MulticallStaticParams) {
-        return this.YT(params);
+    override PT(_params?: MulticallStaticParams): Promise<Address> {
+        return Promise.resolve(this.address);
     }
 
     /**
@@ -69,7 +65,7 @@ export class PtEntity extends PyEntity {
      * @param params.entityConfig - the additional config for the SY token.
      * @returns
      */
-    async syEntity(params?: MulticallStaticParams & { entityConfig?: SyEntityConfig }) {
+    override async syEntity(params?: MulticallStaticParams & { entityConfig?: SyEntityConfig }) {
         const syAddr = await this.SY(params);
         return new SyEntity(syAddr, params?.entityConfig ?? this.entityConfig);
     }
@@ -81,8 +77,13 @@ export class PtEntity extends PyEntity {
      * @param params.entityConfig - the additional config for the YT token.
      * @returns
      */
-    async ytEntity(params?: MulticallStaticParams & { entityConfig?: YtEntityConfig }) {
+    override async ytEntity(params?: MulticallStaticParams & { entityConfig?: YtEntityConfig }) {
         const ytAddr = await this.YT(params);
         return new YtEntity(ytAddr, params?.entityConfig ?? this.entityConfig);
+    }
+
+    override ptEntity(params?: MulticallStaticParams & { entityConfig?: PtEntityConfig }) {
+        const res = params?.entityConfig ? new PtEntity(this.address, params.entityConfig) : this;
+        return Promise.resolve(res);
     }
 }

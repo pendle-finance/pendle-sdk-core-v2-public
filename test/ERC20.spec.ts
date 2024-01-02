@@ -9,8 +9,9 @@ import {
     isNativeToken,
 } from '../src';
 import { INF } from './util/constants';
-import { currentConfig, describeWrite, networkConnection, BLOCK_CONFIRMATION, signerAddress } from './util/testEnv';
+import { currentConfig, networkConnection, BLOCK_CONFIRMATION, signerAddress } from './util/testEnv';
 import { describeWithMulticall } from './util/testHelper';
+import * as testHelper from './util/testHelper';
 
 describe('ERC20Like', () => {
     console.log('signer address', networkConnection.signerAddress);
@@ -80,7 +81,9 @@ describe('ERC20Like', () => {
                 });
             }
 
-            describeWrite(() => {
+            describe('write functions', () => {
+                testHelper.useRestoreEvmSnapShotAfterEach();
+
                 it('#allowance & #approve', async () => {
                     const approveAmount = decimalFactor(17);
                     await token

@@ -1,26 +1,18 @@
 import { SyEntity, Multicall, toAddresses, BN, isNativeToken, decimalFactor } from '../src';
+import { ACTIVE_CHAIN_ID, currentConfig, networkConnectionWithChainId, BLOCK_CONFIRMATION } from './util/testEnv';
 import {
-    ACTIVE_CHAIN_ID,
-    currentConfig,
-    describeWrite,
-    networkConnectionWithChainId,
-    BLOCK_CONFIRMATION,
-} from './util/testEnv';
-import {
-    getBalance,
-    approveHelper,
     describeWithMulticall,
-    getERC20Name,
     setPendleERC20Balance,
     increaseNativeBalance,
     setERC20Balance,
     bnMinAsBn,
-    getERC20Decimals,
 } from './util/testHelper';
-import { BALANCE_OF_STORAGE_SLOT, DEFAULT_EPSILON, INF, MAX_TOKEN_ADD_AMOUNT, SLIPPAGE_TYPE2 } from './util/constants';
+import * as testHelper from './util/testHelper';
+import * as tokenHelper from './util/tokenHelper';
+import { DEFAULT_EPSILON, INF, MAX_TOKEN_ADD_AMOUNT, SLIPPAGE_TYPE2 } from './util/constants';
 
 describe(SyEntity, () => {
-    const syAddress = currentConfig.market.SY;
+    const { syAddress } = currentConfig.market;
     const sy = new SyEntity(syAddress, networkConnectionWithChainId);
     const signerAddress = networkConnectionWithChainId.signerAddress;
     let syDecimals: number;
@@ -29,17 +21,12 @@ describe(SyEntity, () => {
         const balance = BN.from(10).pow(18).mul(1_000);
         await setPendleERC20Balance(syAddress, signerAddress, balance);
         await increaseNativeBalance(signerAddress);
-        syDecimals = await getERC20Decimals(syAddress);
+        syDecimals = await tokenHelper.getERC20Decimals(syAddress);
 
         const tokensIn = await sy.getTokensIn();
         await Promise.all(
             tokensIn.map(async (token) => {
-                const slotInfo = BALANCE_OF_STORAGE_SLOT[token];
-                if (!slotInfo) {
-                    console.log(`No balanceOf slot info for ${await getERC20Name(token)} ${token}`);
-                    return;
-                }
-                return setERC20Balance(token, signerAddress, balance, ...slotInfo);
+                return setERC20Balance(token, signerAddress, balance);
             })
         );
     });
@@ -69,24 +56,30 @@ describe(SyEntity, () => {
         });
     });
 
-    describeWrite(() => {
+    describe('write functions', () => {
+        testHelper.useRestoreEvmSnapShotAfterEach();
         it('#deposit & #previewDeposit', async () => {
             const tokensMintSy = (await sy.getTokensIn()).filter((token) => isNativeToken(token));
             for (const tokenMintSyAddr of tokensMintSy) {
-                await approveHelper(tokenMintSyAddr, syAddress, INF);
+                await tokenHelper.approve(tokenMintSyAddr, syAddress, INF);
 
-                const syBalanceBefore = await getBalance(syAddress, signerAddress);
-                const amountIn = bnMinAsBn(await getBalance(tokenMintSyAddr, signerAddress), MAX_TOKEN_ADD_AMOUNT);
+                const syBalanceBefore = await tokenHelper.getBalance(syAddress, signerAddress);
+                const amountIn = bnMinAsBn(
+                    await tokenHelper.getBalance(tokenMintSyAddr, signerAddress),
+                    MAX_TOKEN_ADD_AMOUNT
+                );
 
                 if (amountIn.eq(0)) {
-                    console.warn(`[${await getERC20Name(tokenMintSyAddr)}] No balance to deposit to sy contract.`);
+                    console.warn(
+                        `[${await tokenHelper.getERC20Name(tokenMintSyAddr)}] No balance to deposit to sy contract.`
+                    );
                     continue;
                 }
 
                 const previewDeposit = await sy.previewDeposit(tokenMintSyAddr, amountIn);
                 await sy.deposit(tokenMintSyAddr, amountIn, SLIPPAGE_TYPE2).then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-                const syBalanceAfter = await getBalance(syAddress, signerAddress);
+                const syBalanceAfter = await tokenHelper.getBalance(syAddress, signerAddress);
                 expect(syBalanceAfter.sub(syBalanceBefore)).toEqBN(previewDeposit, DEFAULT_EPSILON);
             }
         });
@@ -94,22 +87,22 @@ describe(SyEntity, () => {
         it('#redeem & #previewRedeem', async () => {
             const tokensRedeemSy = await sy.getTokensOut();
             for (const tokenRedeemSyAddr of tokensRedeemSy) {
-                await approveHelper(syAddress, tokenRedeemSyAddr, INF);
+                await tokenHelper.approve(syAddress, tokenRedeemSyAddr, INF);
 
-                const syBalance = await getBalance(syAddress, signerAddress);
+                const syBalance = await tokenHelper.getBalance(syAddress, signerAddress);
                 const syInAmount = bnMinAsBn(syBalance, decimalFactor(syDecimals).mul(MAX_TOKEN_ADD_AMOUNT)).div(100);
                 if (syBalance.eq(0)) {
                     console.warn('No sy balance to redeem');
                     return;
                 }
-                const tokenBalanceBefore = await getBalance(tokenRedeemSyAddr, signerAddress);
+                const tokenBalanceBefore = await tokenHelper.getBalance(tokenRedeemSyAddr, signerAddress);
 
                 const previewRedeem = await sy.previewRedeem(tokenRedeemSyAddr, syInAmount);
                 await sy
                     .redeem(tokenRedeemSyAddr, syInAmount, SLIPPAGE_TYPE2)
                     .then((tx) => tx.wait(BLOCK_CONFIRMATION));
 
-                const tokenBalanceAfter = await getBalance(tokenRedeemSyAddr, signerAddress);
+                const tokenBalanceAfter = await tokenHelper.getBalance(tokenRedeemSyAddr, signerAddress);
                 expect(tokenBalanceAfter.sub(tokenBalanceBefore)).toEqBN(previewRedeem, DEFAULT_EPSILON);
             }
         });

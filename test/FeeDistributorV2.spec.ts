@@ -1,22 +1,26 @@
 import { FeeDistributorV2WithStaticProof, toAddress, BN, Address } from '../src';
-import { currentConfig, networkConnection, describeWrite } from './util/testEnv';
+import { currentConfig, networkConnection } from './util/testEnv';
 import { print } from './util/testHelper';
 import * as dummyRewardData from '@pendle/core-v2-testnet/deployments/vependle-rewards/2023-04-06.json';
 import { ethers } from 'ethers';
+import * as testHelper from './util/testHelper';
 
 (currentConfig.chainId === 43113 ? describe : describe.skip)('FeeDistributorV2', () => {
     const data = Object.entries(dummyRewardData.usersLeafData).map(
         ([addr, { amount }]) => [toAddress(addr), BN.from(amount)] satisfies [Address, BN]
     );
 
-    const feeDistributor = FeeDistributorV2WithStaticProof.getFeeDistributor({
-        ...networkConnection,
-        chainId: currentConfig.chainId,
-        merkleTreeData: data,
-        multicall: currentConfig.multicall,
-    });
+    let feeDistributor: FeeDistributorV2WithStaticProof;
+    beforeAll(() => {
+        feeDistributor = FeeDistributorV2WithStaticProof.getFeeDistributor({
+            ...networkConnection,
+            chainId: currentConfig.chainId,
+            merkleTreeData: data,
+            multicall: currentConfig.multicall,
+        });
 
-    console.log(feeDistributor.merkleTree.toString());
+        console.log(feeDistributor.merkleTree.toString());
+    });
 
     it('merkle root check', () => {
         expect(ethers.utils.hexlify(feeDistributor.merkleTree.getHexRoot())).toBe(dummyRewardData.merkleRoot);
@@ -28,7 +32,8 @@ import { ethers } from 'ethers';
         expect(ethers.utils.hexlify(feeDistributor.merkleTree.getHexRoot())).toBe(onchainMerkleRoot);
     });
 
-    describeWrite(() => {
+    describe('write functions', () => {
+        testHelper.useRestoreEvmSnapShotAfterEach();
         it('claimRetail', async () => {
             const testData = data[1];
             const [receiver, amount] = testData;

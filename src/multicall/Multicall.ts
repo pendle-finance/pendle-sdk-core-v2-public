@@ -3,7 +3,8 @@ import type { Provider } from '@ethersproject/providers';
 import { Contract, CallOverrides } from 'ethers';
 import { FunctionFragment, Interface } from 'ethers/lib/utils';
 import { EthersJsError, PendleSdkError } from '../errors';
-import { Address, toAddress, ChainId, RemoveLastOptionalParam, AddParams, zip } from '../common';
+import { Address, toAddress, ChainId, RemoveLastOptionalParam, AddParams } from '../common';
+import * as batcher from '../common/Batcher';
 import { ContractLike } from '../contracts/types';
 import {
     MulticallAggregateCaller,
@@ -11,6 +12,7 @@ import {
     MulticallAggregateCallerWithGasLimit,
     MulticallV2AggregateCallerWithGasLimit,
 } from './MulticallAggregateCaller';
+import * as iters from 'itertools';
 
 /**
  * Multicall implementation, allowing to call function of contract.callStatic functions
@@ -58,7 +60,7 @@ export type MulticallOverrides = {
     blockTag?: BlockTag | Promise<BlockTag>;
 };
 
-export type MulticallStatic<T extends Contract> = {
+export type MulticallStatic<T extends Pick<Contract, 'callStatic'>> = {
     callStatic: {
         [P in keyof T['callStatic']]: AddParams<
             RemoveLastOptionalParam<T['callStatic'][P]>,
@@ -80,10 +82,85 @@ export class Multicall {
         return true;
     }
 
-    private multicallAggregateCaller: MulticallAggregateCaller;
-    public readonly batchMap = new Map<BlockTag, MulticallBatch>();
+    readonly batchMap = new Map<BlockTag, MulticallBatch>();
     public readonly cacheWrappedContract = new WeakMap<ContractLike, MulticallStatic<Contract>>();
-    readonly callLimit: number;
+    constructor(readonly callLimit: number, private multicallAggregateCaller: MulticallAggregateCaller) {}
+
+    static create(params: {
+        chainId: ChainId;
+        provider: Provider;
+        callLimit?: number;
+        withGasLimit?: boolean;
+        usePendleMulticallV2?: boolean;
+    }): Multicall {
+        const {
+            callLimit = DEFAULT_CALL_LIMIT,
+            withGasLimit = true,
+            chainId,
+            provider,
+            usePendleMulticallV2 = true,
+        } = params;
+        let multicallAggregateCaller: MulticallAggregateCaller;
+
+        const AggregateCallerGasLimitClass = usePendleMulticallV2
+            ? MulticallV2AggregateCallerWithGasLimit
+            : MulticallAggregateCallerWithGasLimit;
+        if (withGasLimit && AggregateCallerGasLimitClass.isSupportedChain(chainId)) {
+            multicallAggregateCaller = AggregateCallerGasLimitClass.createInstance({
+                chainId,
+                provider,
+            });
+        } else {
+            if (withGasLimit) {
+                console.info(`Multicall with gas limit is not supported on chain ${chainId}. Fallback to Multicall3`);
+            }
+            multicallAggregateCaller = new MulticallAggregateCallerNoGasLimit({ chainId, provider });
+        }
+        return new Multicall(callLimit, multicallAggregateCaller);
+    }
+
+    async doAggregateCalls(
+        calls: readonly ContractCall[],
+        blockTag: BlockTag
+    ): Promise<batcher.BatchExecutionResult[]> {
+        const callRequests = iters.map(calls, (call) => ({
+            target: call.address,
+            callData: TRANSFORMER.encodeFunctionData(call.fragment, call.params),
+        }));
+
+        const responses = await Promise.all(
+            iters.map(iters.chunked(callRequests, this.callLimit), async (chunkedCallRequests) =>
+                this.multicallAggregateCaller.tryAggregate(chunkedCallRequests, { blockTag })
+            )
+        ).then((res) => res.flat());
+
+        const result = iters.map(
+            iters.zip3(calls, responses, callRequests),
+            ([call, { success, returnData }, callRequest]) => {
+                try {
+                    const outputs: unknown[] = call.fragment.outputs!;
+                    const params = TRANSFORMER.decodeFunctionResult(call.fragment, returnData);
+
+                    // If we do the !success check before the decode, we cannot get the error message of
+                    // decodeFunctionResult. So we always decode first, then check the success later.
+                    if (!success) {
+                        const callId = FunctionFragment.from(call.fragment).format();
+                        throw new Error(`Call ${call.address}:${callId} failed`);
+                    }
+
+                    const data: unknown = outputs.length === 1 ? params[0] : params;
+                    return { type: 'success' as const, data };
+                } catch (e: any) {
+                    if (e.reason == null) {
+                        e.reason = 'Call failed for unknown reason';
+                    }
+                    e.calldata = callRequest.callData;
+                    return { type: 'failed' as const, error: EthersJsError.handleEthersJsError(e) };
+                }
+            }
+        );
+        return result;
+    }
 
     /**
      * Perform _soft_ wrapping. If muticall is presented, multicall.wrap(contract) will be returned.
@@ -96,66 +173,6 @@ export class Multicall {
      */
     static wrap<T extends Contract>(contract: ContractLike<T>, multicall: Multicall | undefined): MulticallStatic<T> {
         return multicall ? multicall.wrap(contract) : (contract as unknown as MulticallStatic<T>);
-    }
-
-    constructor(params: {
-        chainId: ChainId;
-        provider: Provider;
-        callLimit?: number;
-        withGasLimit?: boolean;
-        usePendleMulticallV2?: boolean;
-    }) {
-        const { callLimit, withGasLimit = true, chainId, provider, usePendleMulticallV2 = true } = params;
-        this.callLimit = callLimit ?? DEFAULT_CALL_LIMIT;
-        const AggregateCallerGasLimitClass = usePendleMulticallV2
-            ? MulticallV2AggregateCallerWithGasLimit
-            : MulticallAggregateCallerWithGasLimit;
-        if (withGasLimit && AggregateCallerGasLimitClass.isSupportedChain(chainId)) {
-            this.multicallAggregateCaller = AggregateCallerGasLimitClass.createInstance({
-                chainId,
-                provider,
-            });
-        } else {
-            if (withGasLimit) {
-                console.info(`Multicall with gas limit is not supported on chain ${chainId}. Fallback to Multicall3`);
-            }
-            this.multicallAggregateCaller = new MulticallAggregateCallerNoGasLimit({ chainId, provider });
-        }
-    }
-
-    async doAggregateCalls(calls: readonly ContractCall[], blockTag: BlockTag) {
-        const callRequests = calls.map((call) => ({
-            target: call.address,
-            callData: TRANSFORMER.encodeFunctionData(call.fragment, call.params),
-        }));
-
-        const responses = await this.multicallAggregateCaller.tryAggregate(callRequests, { blockTag });
-        const result = Array.from(
-            zip(calls, responses, callRequests),
-            ([call, { success, returnData }, callRequest]) => {
-                try {
-                    const outputs: any[] = call.fragment.outputs!;
-                    const params = TRANSFORMER.decodeFunctionResult(call.fragment, returnData);
-
-                    // If we do the !success check before the decode, we cannot get the error message of
-                    // decodeFunctionResult. So we always decode first, then check the success later.
-                    if (!success) {
-                        const callId = FunctionFragment.from(call.fragment).format();
-                        throw new Error(`Call ${call.address}:${callId} failed`);
-                    }
-
-                    return outputs.length === 1 ? params[0] : params;
-                } catch (e: any) {
-                    if (e.reason == null) {
-                        e.reason = 'Call failed for unknown reason';
-                    }
-                    e.calldata = callRequest.callData;
-                    return EthersJsError.handleEthersJsError(e);
-                }
-            }
-        );
-
-        return result;
     }
 
     wrap<T extends Contract>(contract_: ContractLike<T>): MulticallStatic<T> {
@@ -182,27 +199,8 @@ export class Multicall {
                     address: toAddress(contract_.address),
                     params,
                 });
-                const res = new Promise((resolve, reject) => {
-                    let currentBatch = this.batchMap.get(blockTag);
-                    if (currentBatch === undefined) {
-                        currentBatch = new MulticallBatch(this, blockTag);
-                        this.batchMap.set(blockTag, currentBatch);
-                    }
-                    const dataPos = currentBatch.pendingContractCalls.length;
-                    currentBatch.pendingContractCalls.push(contractCall);
-                    currentBatch.promise
-                        .then((currentResult) =>
-                            currentResult[dataPos] instanceof Error
-                                ? reject(currentResult[dataPos])
-                                : resolve(currentResult[dataPos])
-                        )
-                        .catch(reject);
-                    if (currentBatch.pendingContractCalls.length >= this.callLimit) {
-                        this.batchMap.delete(blockTag);
-                    }
-                });
 
-                return res;
+                return this.getBatch(blockTag).execute(contractCall);
             };
         }
 
@@ -212,23 +210,26 @@ export class Multicall {
 
         return res;
     }
+
+    getBatch(blockTag: BlockTag) {
+        return this.batchMap.get(blockTag) ?? new MulticallBatch(this, blockTag);
+    }
 }
 
-class MulticallBatch {
-    readonly pendingContractCalls: ContractCall[] = [];
-    readonly promise: Promise<any[]>;
-
+class MulticallBatch extends batcher.StaticStorageBatcher<ContractCall> {
     constructor(private readonly multicallInstance: Multicall, readonly blockTag: BlockTag = 'latest') {
-        this.promise = Promise.resolve().then(async () => {
-            // effects
+        super();
+        this.multicallInstance.batchMap.set(this.blockTag, this);
+    }
 
-            // instance comparison
-            if (this.multicallInstance.batchMap.get(this.blockTag) === this) {
-                this.multicallInstance.batchMap.delete(this.blockTag);
-            }
+    override getMessageQueue(): batcher.BatchMessageEntry<ContractCall>[] {
+        if (this.queue.length >= this.multicallInstance.callLimit) {
+            this.queue = [];
+        }
+        return this.queue;
+    }
 
-            // interactions
-            return this.multicallInstance.doAggregateCalls(this.pendingContractCalls, this.blockTag);
-        });
+    override async batchExecute(params: ContractCall[]): Promise<batcher.BatchExecutionResult[]> {
+        return this.multicallInstance.doAggregateCalls(params, this.blockTag);
     }
 }

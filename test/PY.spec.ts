@@ -6,8 +6,8 @@ import { describeWithMulticall } from './util/testHelper';
 describe('PY', () => {
     const currentMarket = currentConfig.market;
     const userAddress = currentConfig.userAddress;
-    const pt = new PtEntity(currentMarket.PT, networkConnectionWithChainId);
-    const yt = new YtEntity(currentMarket.YT, networkConnectionWithChainId);
+    const pt = new PtEntity(currentMarket.ptAddress, networkConnectionWithChainId);
+    const yt = new YtEntity(currentMarket.ytAddress, networkConnectionWithChainId);
 
     describeWithMulticall((multicall) => {
         it('#userInfo & #contract', async () => {
@@ -24,10 +24,10 @@ describe('PY', () => {
                     ),
                 ]);
 
-            expect(userInfo.ptBalance.token).toBe(currentMarket.PT);
+            expect(userInfo.ptBalance.token).toBe(currentMarket.ptAddress);
             expect(userInfo.ptBalance.amount).toEqBN(userPtBalance);
 
-            expect(userInfo.ytBalance.token).toBe(currentMarket.YT);
+            expect(userInfo.ytBalance.token).toBe(currentMarket.ytAddress);
             expect(userInfo.ytBalance.amount).toEqBN(userYtBalance);
 
             const interest = userInfo.unclaimedInterest;

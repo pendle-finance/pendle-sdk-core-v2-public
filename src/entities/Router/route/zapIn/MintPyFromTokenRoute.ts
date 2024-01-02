@@ -1,7 +1,8 @@
+import { YtEntity } from '../../../YtEntity';
 import { BaseZapInRoute, BaseZapInRouteConfig, BaseZapInRouteData, ZapInRouteDebugInfo } from './BaseZapInRoute';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contracts';
-import { Address, BigNumberish, BN, calcSlippedDownAmount, ethersConstants } from '../../../../common';
+import { Address, BigNumberish, BN, calcSlippedDownAmount } from '../../../../common';
 import { txOverridesValueFromTokenInput } from '../helper';
 
 export type MintPyFromTokenRouteData = BaseZapInRouteData & {
@@ -16,34 +17,23 @@ export type MintPyFromTokenRouteDebugInfo = ZapInRouteDebugInfo & {
     slippage: number;
 };
 
-export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
-    T,
-    MintPyFromTokenRouteData,
-    MintPyFromTokenRoute<T>
-> {
+export class MintPyFromTokenRoute extends BaseZapInRoute<MintPyFromTokenRouteData, MintPyFromTokenRoute> {
     override readonly routeName = 'MintPyFromToken';
+    readonly yt: Address;
 
     constructor(
-        readonly yt: Address,
+        readonly ytEntity: YtEntity,
         readonly tokenIn: Address,
         readonly netTokenIn: BigNumberish,
         readonly slippage: number,
-        params: BaseZapInRouteConfig<T, MintPyFromTokenRoute<T>>
+        params: BaseZapInRouteConfig<MintPyFromTokenRoute>
     ) {
         super(params);
+        this.yt = ytEntity.address;
     }
 
     override get sourceTokenAmount() {
         return { token: this.tokenIn, amount: this.netTokenIn };
-    }
-
-    override routeWithBulkSeller(withBulkSeller = true): MintPyFromTokenRoute<T> {
-        return new MintPyFromTokenRoute(this.yt, this.tokenIn, this.netTokenIn, this.slippage, {
-            context: this.context,
-            tokenMintSy: this.tokenMintSy,
-            withBulkSeller,
-            cloneFrom: this,
-        });
     }
 
     override async getNetOut(): Promise<BN | undefined> {
@@ -56,23 +46,20 @@ export class MintPyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
             return undefined;
         }
 
-        const netPyOut = await this.routerStaticCall.mintPyFromSyStatic(
-            this.yt,
-            mintedSyAmount,
-            this.routerExtraParams.forCallStatic
-        );
+        const netPyOut = await this.ytEntity.previewMintPyFromSy(mintedSyAmount, this.routerExtraParams.forCallStatic);
         const minPyOut = calcSlippedDownAmount(netPyOut, this.slippage);
-        return { netPyOut, minPyOut, intermediateSyAmount: ethersConstants.Zero };
+        return { netPyOut, minPyOut, intermediateSyAmount: mintedSyAmount };
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCall({}, this.routerExtraParams);
+        return mm?.estimateGas();
     }
 
     async buildCall(): RouterMetaMethodReturnType<
-        T,
+        'meta-method',
         'mintPyFromToken',
-        MintPyFromTokenRouteData & { route: MintPyFromTokenRoute<T> }
+        MintPyFromTokenRouteData & { route: MintPyFromTokenRoute }
     > {
         const previewResult = (await this.preview())!;
         const res = await this.buildGenericCall({ ...previewResult, route: this }, this.routerExtraParams);

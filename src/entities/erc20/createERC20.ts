@@ -4,10 +4,9 @@ import { sGLP_ERC20Entity } from './sGLP_ERC20Entity';
 import { NativeERC20, NativeERC20Config } from './NativeERC20';
 import { isNativeToken, Address, ChainId, CHAIN_ID_MAPPING, areSameAddresses, toAddress } from '../../common';
 
-export type ERC20Config = ERC20EntityConfig &
-    NativeERC20Config & {
-        chainId: ChainId;
-    };
+export type ERC20Config = (ERC20EntityConfig | NativeERC20Config) & {
+    chainId: ChainId;
+};
 
 export function createERC20(tokenAddress: Address, config: ERC20Config): ERC20Like {
     if (

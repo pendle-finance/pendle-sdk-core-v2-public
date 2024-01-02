@@ -7,9 +7,11 @@ import {
 import { MetaMethodType } from '../../../../contracts';
 import { BN, Address, BigNumberish, calcSlippedDownAmount, NoArgsCache } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
+import * as offchainMath from '@pendle/core-v2-offchain-math';
 
 export type RemoveLiquidityDualTokenAndPtRouteIntermediateData = BaseZapOutRouteIntermediateData & {
     netPtOut: BN;
+    afterMath: offchainMath.MarketStaticMath;
 };
 
 export type RemoveLiquidityDualTokenAndPtRouteDebugInfo = ZapOutRouteDebugInfo & {
@@ -19,10 +21,9 @@ export type RemoveLiquidityDualTokenAndPtRouteDebugInfo = ZapOutRouteDebugInfo &
     tokenOut: Address;
 };
 
-export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends BaseZapOutRoute<
-    T,
+export class RemoveLiquidityDualTokenAndPtRoute extends BaseZapOutRoute<
     RemoveLiquidityDualTokenAndPtRouteIntermediateData,
-    RemoveLiquidityDualTokenAndPtRoute<T>
+    RemoveLiquidityDualTokenAndPtRoute
 > {
     override readonly routeName = 'RemoveLiquidityDualTokenAndPt';
     constructor(
@@ -30,7 +31,7 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
         readonly lpToRemove: BigNumberish,
         readonly tokenOut: Address,
         readonly slippage: number,
-        params: BaseZapOutRouteConfig<T, RemoveLiquidityDualTokenAndPtRoute<T>>
+        params: BaseZapOutRouteConfig<RemoveLiquidityDualTokenAndPtRoute>
     ) {
         super(params);
     }
@@ -43,14 +44,6 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
         return this.tokenOut;
     }
 
-    override routeWithBulkSeller(withBulkSeller = true): RemoveLiquidityDualTokenAndPtRoute<T> {
-        return new RemoveLiquidityDualTokenAndPtRoute(this.market, this.lpToRemove, this.tokenOut, this.slippage, {
-            context: this.context,
-            tokenRedeemSy: this.tokenRedeemSy,
-            withBulkSeller,
-        });
-    }
-
     override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         return this.checkUserApproval(signerAddress, { token: this.market, amount: this.lpToRemove });
     }
@@ -58,12 +51,13 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
     protected override async previewIntermediateSyImpl(): Promise<
         RemoveLiquidityDualTokenAndPtRouteIntermediateData | undefined
     > {
-        const data = await this.routerStaticCall.removeLiquidityDualSyAndPtStatic(
-            this.market,
-            this.lpToRemove,
-            this.routerExtraParams.forCallStatic
-        );
-        return { ...data, intermediateSyAmount: data.netSyOut };
+        const marketStaticMath = await this.getMarketStaticMath();
+        const data = marketStaticMath.removeLiquidityDualSyAndPtStatic(BN.from(this.lpToRemove).toBigInt());
+        return {
+            netPtOut: BN.from(data.netPtOut),
+            afterMath: data.afterMath,
+            intermediateSyAmount: BN.from(data.netSyOut),
+        };
     }
 
     @NoArgsCache
@@ -85,14 +79,15 @@ export class RemoveLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extend
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCall({}, this.routerExtraParams);
+        return mm?.estimateGas();
     }
 
     async buildCall(): RouterMetaMethodReturnType<
-        T,
+        'meta-method',
         'removeLiquidityDualTokenAndPt',
         RemoveLiquidityDualTokenAndPtRouteIntermediateData & {
-            route: RemoveLiquidityDualTokenAndPtRoute<T>;
+            route: RemoveLiquidityDualTokenAndPtRoute;
         }
     > {
         const res = await this.buildGenericCall(

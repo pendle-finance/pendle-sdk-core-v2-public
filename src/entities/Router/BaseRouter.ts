@@ -1,17 +1,16 @@
 import { PendleEntity } from '../PendleEntity';
 import {
-    IPRouterStatic,
     WrappedContract,
     MetaMethodType,
     ContractMetaMethod,
     MetaMethodExtraParams,
     mergeMetaMethodExtraParams as mergeParams,
-    getRouterStatic,
     createContractObject,
     abis,
     typechain,
+    mergeMetaMethodExtraParams,
 } from '../../contracts';
-import { abi as IPAllActionABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllAction.sol/IPAllAction.json';
+import { abi as IPAllActionV3ABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllActionV3.sol/IPAllActionV3.json';
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN, constants as etherConstants } from 'ethers';
 import { MarketEntity } from '../MarketEntity';
@@ -36,6 +35,8 @@ import {
     calcSlippedDownAmountSqrt,
     areSameAddresses,
     NoArgsCache,
+    assertDefined,
+    bnMax,
 } from '../../common';
 import { BigNumber } from 'bignumber.js';
 
@@ -48,12 +49,14 @@ import {
     BaseRouterConfig,
     FixedRouterMetaMethodExtraParams,
     ApproxParamsStruct,
-    IPAllAction,
+    IPAllActionV3,
     SwapData,
+    TokenInput,
 } from './types';
+import * as routerTypes from './types';
 
 import { BaseRoute, RouteContext } from './route';
-
+import { txOverridesValueFromTokenInput } from './route/helper';
 import {
     BaseZapInRoute,
     BaseZapInRouteData,
@@ -83,6 +86,10 @@ import * as zapOutRoutes from './route/zapOut';
 import { GasFeeEstimator } from './GasFeeEstimator';
 import { RouterTransactionBundler } from './RouterTransactionBundler';
 
+import * as offchainMath from '@pendle/core-v2-offchain-math';
+import * as limitOrder from './limitOrder';
+import * as EE from 'eventemitter3';
+
 export abstract class BaseRouter extends PendleEntity {
     static readonly MIN_AMOUNT = 0;
     static readonly MAX_AMOUNT = etherConstants.MaxUint256;
@@ -95,21 +102,22 @@ export abstract class BaseRouter extends PendleEntity {
         eps: new BigNumber(BaseRouter.EPS).shiftedBy(18).toFixed(0),
     };
 
-    readonly routerStatic: WrappedContract<IPRouterStatic>;
     readonly aggregatorHelper: AggregatorHelper<true>;
     readonly chainId: ChainId;
     readonly gasFeeEstimator: GasFeeEstimator;
     readonly checkErrorOnSimulation: boolean;
+    readonly limitOrderMatcher: limitOrder.LimitOrderMatcher;
+    readonly events = new EE.EventEmitter<routerTypes.RouterEvents, BaseRouter>();
 
     constructor(readonly address: Address, config: BaseRouterConfig) {
-        super(address, { abi: IPAllActionABI, ...config });
+        super(address, { abi: IPAllActionV3ABI, ...config });
         this.chainId = config.chainId;
         this.aggregatorHelper = forceAggregatorHelperToCheckResult(
             config.aggregatorHelper ?? new VoidAggregatorHelper()
         );
-        this.routerStatic = getRouterStatic(config);
         this.gasFeeEstimator = config.gasFeeEstimator ?? new GasFeeEstimator(this.provider!);
         this.checkErrorOnSimulation = config.checkErrorOnSimulation ?? false;
+        this.limitOrderMatcher = config.limitOrderMatcher ?? limitOrder.VoidLimitOrderMatcher.INSTANCE;
     }
 
     @NoArgsCache
@@ -121,27 +129,14 @@ export abstract class BaseRouter extends PendleEntity {
         );
     }
 
-    @NoArgsCache
-    getRouterHelper2(): WrappedContract<typechain.PendleRouterHelper2> {
-        const addresses = getContractAddresses(this.chainId);
-        if (!('ROUTER_HELPER_2' in addresses)) {
-            throw new PendleSdkError(`RouterHelper2 is not deployed on chain ${this.chainId} yet`);
-        }
-        return createContractObject<typechain.PendleRouterHelper2>(
-            addresses.ROUTER_HELPER_2,
-            abis.PendleRouterHelper2ABI,
-            this.entityConfig
-        );
-    }
-
-    abstract findBestZapInRoute<ZapInRoute extends BaseZapInRoute<MetaMethodType, BaseZapInRouteData, ZapInRoute>>(
+    abstract findBestZapInRoute<ZapInRoute extends BaseZapInRoute<BaseZapInRouteData, ZapInRoute>>(
         routes: ZapInRoute[]
     ): Promise<ZapInRoute>;
-    abstract findBestZapOutRoute<
-        ZapOutRoute extends BaseZapOutRoute<MetaMethodType, BaseZapOutRouteIntermediateData, ZapOutRoute>
-    >(routes: ZapOutRoute[]): Promise<ZapOutRoute>;
+    abstract findBestZapOutRoute<ZapOutRoute extends BaseZapOutRoute<BaseZapOutRouteIntermediateData, ZapOutRoute>>(
+        routes: ZapOutRoute[]
+    ): Promise<ZapOutRoute>;
     abstract findBestLiquidityMigrationRoute<
-        LiquidityMigrationRoute extends liqMigrationRoutes.BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any, any>
+        LiquidityMigrationRoute extends liqMigrationRoutes.BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any>
     >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute>;
 
     get provider() {
@@ -149,15 +144,46 @@ export abstract class BaseRouter extends PendleEntity {
     }
 
     get contract() {
-        return this._contract as WrappedContract<IPAllAction>;
+        return this._contract as WrappedContract<IPAllActionV3>;
     }
 
     override get entityConfig(): BaseRouterConfig {
         return { ...super.entityConfig, chainId: this.chainId, aggregatorHelper: this.aggregatorHelper };
     }
 
-    protected get routerStaticCall() {
-        return this.routerStatic.multicallStatic;
+    // async _getMarketStaticMath(params: {
+    //     market: Address | MarketEntity;
+    //     yt?: Address | YtEntity;
+    //     pyIndex?: offchainMath.PyIndex;
+    //     blockTimestamp?: number;
+    //     blockTag?: number | string | Promise<number | string>;
+    // }): Promise<offchainMath.MarketStaticMath> {
+    //     const market =
+    //         typeof params.market === 'string' ? new MarketEntity(params.market, this.entityConfig) : params.market;
+    //     const { marketStaticMath } = await market.getMarketInfo({});
+    //     const [marketState, pyIndex, blockTimestamp] = await Promise.all([
+    //         market.readState(),
+    //         params.pyIndex ??
+    //             (async () => {
+    //                 if (!params.yt) return market.ytEntity();
+    //                 if (typeof params.yt === 'string') return new YtEntity(params.yt, this.entityConfig);
+    //                 return params.yt;
+    //             })().then((yt) => yt.pyIndexCurrent()),
+    //         params.blockTimestamp ?? provider.getBlock(params.blockTag ?? 'latest').then((block) => block.timestamp),
+    //     ]);
+    //     return marketStaticMath;
+    // }
+
+    async getMarketStaticMathWithParams(
+        market: Address | MarketEntity,
+        params: FixedRouterMetaMethodExtraParams<MetaMethodType> & {
+            pyIndex?: offchainMath.PyIndex;
+            blockTimestamp?: number;
+        }
+    ) {
+        market = typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
+        const { marketStaticMath } = await market.getMarketInfo(params);
+        return marketStaticMath;
     }
 
     /**
@@ -184,7 +210,6 @@ export abstract class BaseRouter extends PendleEntity {
         const baseResult = {
             ...superParams,
             receiver: ContractMetaMethod.utils.getContractSignerAddress,
-            useBulk: 'auto',
             entityConfig: this.entityConfig,
             method: undefined,
             aggregatorReceiver: this.address,
@@ -211,15 +236,15 @@ export abstract class BaseRouter extends PendleEntity {
         return mergeParams(this.getDefaultMetaMethodExtraParams(), params);
     }
 
-    createRouteContext<T extends MetaMethodType, RouteType extends BaseRoute<T, RouteType>>({
+    createRouteContext<RouteType extends BaseRoute<RouteType>>({
         params,
         syEntity,
         slippage,
     }: {
-        readonly params: FixedRouterMetaMethodExtraParams<T>;
+        readonly params: FixedRouterMetaMethodExtraParams<'meta-method'>;
         readonly syEntity: SyEntity;
         readonly slippage: number;
-    }): RouteContext<T, RouteType> {
+    }): RouteContext<RouteType> {
         return new RouteContext({
             router: this,
             syEntity,
@@ -228,7 +253,7 @@ export abstract class BaseRouter extends PendleEntity {
         });
     }
 
-    getApproxParamsToPullPt(guessAmountOut: BN, slippage: number): ApproxParamsStruct {
+    getApproxParamsToPullPt(guessAmountOut: BN | bigint, slippage: number): ApproxParamsStruct {
         return {
             ...BaseRouter.STATIC_APPROX_PARAMS,
             guessMin: calcSlippedDownAmount(guessAmountOut, 1 * slippage),
@@ -238,7 +263,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
     }
 
-    getApproxParamsToPushPt(guessAmountIn: BN, slippage: number): ApproxParamsStruct {
+    getApproxParamsToPushPt(guessAmountIn: BN | bigint, slippage: number): ApproxParamsStruct {
         return {
             ...BaseRouter.STATIC_APPROX_PARAMS,
             guessMin: calcSlippedDownAmount(guessAmountIn, 5 * slippage),
@@ -254,17 +279,6 @@ export abstract class BaseRouter extends PendleEntity {
         return Math.ceil(Math.log2(x)) + 3;
     }
 
-    static readonly BULK_SELLER_NO_LIMIT = BN.from(-1);
-    // bulk seller parameters for routing algorithm
-
-    getBulkLimit(): BN {
-        return BaseRouter.BULK_SELLER_NO_LIMIT;
-    }
-
-    getBulkBuffer(): number {
-        return 3 / 100;
-    }
-
     async addLiquidityDualSyAndPt<T extends MetaMethodType = 'send'>(
         market: Address | MarketEntity,
         syDesired: BigNumberish,
@@ -274,26 +288,36 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'addLiquidityDualSyAndPt',
-        { netLpOut: BN; netSyUsed: BN; netPtUsed: BN; minLpOut: BN }
+        { netLpOut: BN; netSyUsed: BN; netPtUsed: BN; minLpOut: BN; afterMath: offchainMath.MarketStaticMath }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.addLiquidityDualSyAndPtStatic(
-            marketAddr,
-            syDesired,
-            ptDesired,
-            params.forCallStatic
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketAddr = this.getMarketAddress(market);
+
+        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
+
+        const res = marketStaticMath.addLiquidityDualSyAndPtStatic(
+            BN.from(syDesired).toBigInt(),
+            BN.from(ptDesired).toBigInt()
         );
         const { netLpOut } = res;
         const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage); // note: different slip down amount function
-        return this.contract.metaCall.addLiquidityDualSyAndPt(
+        const metaMethod = await this.contract.metaCall.addLiquidityDualSyAndPt(
             params.receiver,
             marketAddr,
             syDesired,
             ptDesired,
             minLpOut,
-            { ..._params, ...res, minLpOut }
+            {
+                ...params,
+                netLpOut: BN.from(res.netLpOut),
+                netPtUsed: BN.from(res.netPtUsed),
+                netSyUsed: BN.from(res.netSyUsed),
+                afterMath: res.afterMath,
+                minLpOut,
+            }
         );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async addLiquidityDualTokenAndPt<T extends MetaMethodType>(
@@ -307,14 +331,14 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'addLiquidityDualTokenAndPt',
         zapInRoutes.AddLiquidityDualTokenAndPtRouteData & {
-            route: AddLiquidityDualTokenAndPtRoute<T>;
+            route: AddLiquidityDualTokenAndPtRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketEntity = typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketEntity = this.getMarketEntity(market);
         const marketAddr = marketEntity.address;
         const syEntity = await marketEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<T, AddLiquidityDualTokenAndPtRoute<T>>({
+        const routeContext = this.createRouteContext<AddLiquidityDualTokenAndPtRoute>({
             params,
             syEntity,
             slippage,
@@ -330,7 +354,9 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
             this.throwNoRouteFoundError('add liquidity', tokenIn, marketAddr, { cause })
         );
-        return bestRoute.buildCall();
+        const metaMethod = await bestRoute.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async addLiquiditySinglePt<T extends MetaMethodType>(
@@ -344,28 +370,65 @@ export abstract class BaseRouter extends PendleEntity {
         {
             netLpOut: BN;
             netPtToSwap: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
             netSyFromSwap: BN;
             approxParam: ApproxParamsStruct;
             minLpOut: BN;
+            marketStaticMathBefore: offchainMath.MarketStaticMath;
+            marketStaticMathAfter: offchainMath.MarketStaticMath;
+            limitOrderMatchedResult: limitOrder.LimitOrderMatchedResult;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.addLiquiditySinglePtStatic(marketAddr, netPtIn, params.forCallStatic);
-        const { netLpOut, netPtToSwap } = res;
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+
+        const marketAddr = this.getMarketAddress(market);
+        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
+        const pureMarketAddLiqResult = marketStaticMath.addLiquiditySinglePtStatic(BN.from(netPtIn).toBigInt());
+
+        let netPtRemains = BN.from(netPtIn);
+        let netSyHolding = BN.from(0);
+        const limitOrderMatchedResult = await this.limitOrderMatcher.swapPtForSy(
+            market,
+            BN.from(pureMarketAddLiqResult.netPtToSwap),
+            { routerMethod: 'addLiquiditySinglePt' }
+        );
+        netPtRemains = bnMax(0, netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker));
+        netSyHolding = netSyHolding.add(limitOrderMatchedResult.netOutputToTaker);
+
+        const marketResult = marketStaticMath.addLiquiditySinglePtStatic(netPtRemains.toBigInt(), {
+            netSyHolding: netSyHolding.toBigInt(),
+        });
+        const netLpOut = BN.from(marketResult.netLpOut);
+        const netPtToSwap = BN.from(marketResult.netPtToSwap);
         const approxParam = this.getApproxParamsToPushPt(netPtToSwap, slippage);
         const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage); // note: different slip down amount function
-        return this.contract.metaCall.addLiquiditySinglePt(
+        const metaMethod = await this.contract.metaCall.addLiquiditySinglePt(
             params.receiver,
             marketAddr,
             netPtIn,
             minLpOut,
             approxParam,
-            { ...res, ...params, approxParam, minLpOut }
+            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+            {
+                ...params,
+                ...marketResult,
+                netLpOut,
+                netPtToSwap,
+                netSyFromSwap: BN.from(marketResult.netSyFromSwap),
+                netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                marketStaticMathBefore: marketStaticMath,
+                marketStaticMathAfter: marketResult.afterMath,
+                approxParam,
+                minLpOut,
+                limitOrderMatchedResult,
+            }
         );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async addLiquiditySingleSy<T extends MetaMethodType>(
@@ -379,29 +442,61 @@ export abstract class BaseRouter extends PendleEntity {
         {
             netLpOut: BN;
             netPtFromSwap: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
             netSyToSwap: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
             approxParam: ApproxParamsStruct;
             minLpOut: BN;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.addLiquiditySingleSyStatic(marketAddr, netSyIn, params.forCallStatic);
-        const { netPtFromSwap, netLpOut } = res;
-        const approxParam = this.getApproxParamsToPullPt(netPtFromSwap, slippage);
-        const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage); // note: different slip down amount function
+        netSyIn = BN.from(netSyIn);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketAddr = this.getMarketAddress(market);
 
-        return this.contract.metaCall.addLiquiditySingleSy(
+        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
+        const pureMarketAddLiqResult = marketStaticMath.addLiquiditySingleSyStatic(netSyIn.toBigInt());
+
+        let netSyRemains = BN.from(netSyIn);
+        let netPtHolding = BN.from(0);
+
+        const limitOrderMatchedResult = await this.limitOrderMatcher.swapSyForPt(
+            market,
+            BN.from(pureMarketAddLiqResult.netSyToSwap),
+            { routerMethod: 'addLiquiditySingleSy' }
+        );
+        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+        netPtHolding = netPtHolding.add(limitOrderMatchedResult.netOutputToTaker);
+
+        const marketResult = marketStaticMath.addLiquiditySingleSyStatic(netSyRemains.toBigInt(), {
+            netPtHolding: netPtHolding.toBigInt(),
+        });
+        const approxParam = this.getApproxParamsToPullPt(marketResult.netPtFromSwap, slippage);
+        const minLpOut = calcSlippedDownAmountSqrt(marketResult.netLpOut, slippage); // note: different slip down amount function
+
+        const metaMethod = await this.contract.metaCall.addLiquiditySingleSy(
             params.receiver,
             marketAddr,
             netSyIn,
             minLpOut,
-            this.getApproxParamsToPullPt(netPtFromSwap, slippage),
-            { ...res, ...params, approxParam, minLpOut }
+            approxParam,
+            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+            {
+                ...params,
+                netLpOut: BN.from(marketResult.netLpOut),
+                netPtFromSwap: BN.from(marketResult.netPtFromSwap),
+                netSyToSwap: BN.from(marketResult.netSyToSwap),
+                netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                priceImpact: marketResult.priceImpact,
+                exchangeRateAfter: marketResult.exchangeRateAfter,
+                approxParam,
+                minLpOut,
+            }
         );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async addLiquiditySingleSyKeepYt<T extends MetaMethodType>(
@@ -420,27 +515,33 @@ export abstract class BaseRouter extends PendleEntity {
             minYtOut: BN;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.addLiquiditySingleSyKeepYtStatic(
-            marketAddr,
-            netSyIn,
-            params.forCallStatic
-        );
-        const { netLpOut, netYtOut } = res;
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketAddr = this.getMarketAddress(market);
+        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
+        const marketResult = marketStaticMath.addLiquiditySingleSyKeepYtStatic(BN.from(netSyIn).toBigInt());
+        const { netLpOut, netYtOut } = marketResult;
 
         // note: different slip down amount function
         const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage);
         const minYtOut = calcSlippedDownAmountSqrt(netYtOut, slippage);
 
-        return this.contract.metaCall.addLiquiditySingleSyKeepYt(
+        const metaMethod = await this.contract.metaCall.addLiquiditySingleSyKeepYt(
             params.receiver,
             marketAddr,
             netSyIn,
             minLpOut,
             minYtOut,
-            { ...res, ...params, minLpOut, minYtOut }
+            {
+                ...params,
+                netLpOut: BN.from(marketResult.netLpOut),
+                netYtOut: BN.from(marketResult.netYtOut),
+                netSyToPY: BN.from(marketResult.netSyToPY),
+                minLpOut,
+                minYtOut,
+            }
         );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async addLiquiditySingleToken<T extends MetaMethodType>(
@@ -453,16 +554,14 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'addLiquiditySingleToken',
         zapInRoutes.AddLiquiditySingleTokenRouteData & {
-            route: AddLiquiditySingleTokenRoute<T>;
+            route: AddLiquiditySingleTokenRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
-        if (typeof market === 'string') {
-            market = new MarketEntity(market, this.entityConfig);
-        }
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        market = this.getMarketEntity(market);
         const marketAddr = market.address;
         const syEntity = await market.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<T, AddLiquiditySingleTokenRoute<T>>({
+        const routeContext = this.createRouteContext<AddLiquiditySingleTokenRoute>({
             params,
             syEntity,
             slippage,
@@ -471,7 +570,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const routes = tokenMintSyList.map(
             (tokenMintSy) =>
-                new AddLiquiditySingleTokenRoute(marketAddr, tokenIn, netTokenIn, slippage, {
+                new AddLiquiditySingleTokenRoute(market, tokenIn, netTokenIn, slippage, {
                     context: routeContext,
                     tokenMintSy,
                 })
@@ -480,7 +579,56 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
             this.throwNoRouteFoundError('add liquidity', tokenIn, marketAddr, { cause })
         );
-        return bestRoute.buildCall();
+
+        const [marketStaticMath, input, noLimitOrderPreviewResult] = await Promise.all([
+            bestRoute.getMarketStaticMath(),
+            bestRoute.buildTokenInput().then(assertDefined),
+            bestRoute.preview().then(assertDefined),
+            bestRoute.getMintedSyAmount().then(assertDefined),
+        ]);
+        const limitOrderMatchedResult = await this.limitOrderMatcher.swapSyForPt(
+            market,
+            noLimitOrderPreviewResult.netSyToSwap,
+            { routerMethod: 'addLiquiditySingleToken' }
+        );
+        const netSyAfterLimit = noLimitOrderPreviewResult.netSyMinted.sub(limitOrderMatchedResult.netInputFromTaker);
+        const netPtReceivedAfterLimit = BN.from(limitOrderMatchedResult.netOutputToTaker);
+        const marketResult = marketStaticMath.addLiquiditySingleSyStatic(netSyAfterLimit.toBigInt(), {
+            netPtHolding: netPtReceivedAfterLimit.toBigInt(),
+        });
+        const approxParams = this.getApproxParamsToPullPt(marketResult.netPtFromSwap, slippage);
+        const netLpOut = BN.from(marketResult.netLpOut);
+        const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage); // note: sqrtthe slipdown function
+
+        const overrides = txOverridesValueFromTokenInput(input);
+        const metaMethod = await this.contract.metaCall.addLiquiditySingleToken(
+            params.receiver,
+            marketAddr,
+            minLpOut,
+            approxParams,
+            input,
+            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+            {
+                ...mergeMetaMethodExtraParams({ overrides }, params),
+
+                netLpOut,
+                netPtFromSwap: BN.from(marketResult.netPtFromSwap),
+                netPtReceivedAfterLimit,
+                netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                priceImpact: marketResult.priceImpact,
+                exchangeRateAfter: marketResult.exchangeRateAfter,
+                netSyToSwap: BN.from(marketResult.netSyToSwap),
+                netSyMinted: noLimitOrderPreviewResult.netSyMinted,
+                intermediateSyAmount: noLimitOrderPreviewResult.netSyMinted,
+
+                minLpOut,
+                route: bestRoute,
+            }
+        );
+
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     /**
@@ -513,28 +661,19 @@ export abstract class BaseRouter extends PendleEntity {
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
     ): Promise<
-        | RouterMetaMethodReturnType<
-              T,
-              'addLiquiditySingleTokenKeepYt',
-              zapInRoutes.AddLiquiditySingleTokenKeepYtRouteData & {
-                  route: AddLiquiditySingleTokenKeepYtRoute<T>;
-              }
-          >
-        | RouterHelperMetaMethodReturnType<
-              T,
-              'addLiquiditySingleTokenKeepYtWithEth',
-              zapInRoutes.AddLiquiditySingleTokenKeepYtRouteData & {
-                  route: AddLiquiditySingleTokenKeepYtRoute<T>;
-              }
-          >
+        RouterMetaMethodReturnType<
+            T,
+            'addLiquiditySingleTokenKeepYt',
+            zapInRoutes.AddLiquiditySingleTokenKeepYtRouteData & {
+                route: AddLiquiditySingleTokenKeepYtRoute;
+            }
+        >
     > {
-        const params = this.addExtraParams(_params);
-        if (typeof market === 'string') {
-            market = new MarketEntity(market, this.entityConfig);
-        }
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        market = this.getMarketEntity(market);
         const marketAddr = market.address;
         const syEntity = await market.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<T, AddLiquiditySingleTokenKeepYtRoute<T>>({
+        const routeContext = this.createRouteContext<AddLiquiditySingleTokenKeepYtRoute>({
             params,
             syEntity,
             slippage,
@@ -552,7 +691,9 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
             this.throwNoRouteFoundError('add liquidity', tokenIn, marketAddr, { cause })
         );
-        return bestRoute.buildCall();
+        const metaMethod = await bestRoute.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async removeLiquidityDualSyAndPt<T extends MetaMethodType>(
@@ -568,26 +709,33 @@ export abstract class BaseRouter extends PendleEntity {
             netPtOut: BN;
             minSyOut: BN;
             minPtOut: BN;
+            afterMath: offchainMath.MarketStaticMath;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.removeLiquidityDualSyAndPtStatic(
-            marketAddr,
-            lpToRemove,
-            params.forCallStatic
-        );
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketAddr = this.getMarketAddress(market);
+        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
+        const res = marketStaticMath.removeLiquidityDualSyAndPtStatic(BN.from(lpToRemove).toBigInt());
         const { netSyOut, netPtOut } = res;
         const minSyOut = calcSlippedDownAmount(netSyOut, slippage);
         const minPtOut = calcSlippedDownAmount(netPtOut, slippage);
-        return this.contract.metaCall.removeLiquidityDualSyAndPt(
+        const metaMethod = await this.contract.metaCall.removeLiquidityDualSyAndPt(
             params.receiver,
             marketAddr,
             lpToRemove,
             minSyOut,
             minPtOut,
-            { ...res, ...params, minSyOut, minPtOut }
+            {
+                ...params,
+                netPtOut: BN.from(res.netPtOut),
+                netSyOut: BN.from(res.netSyOut),
+                afterMath: res.afterMath,
+                minSyOut,
+                minPtOut,
+            }
         );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async removeLiquidityDualTokenAndPt<T extends MetaMethodType>(
@@ -600,17 +748,15 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'removeLiquidityDualTokenAndPt',
         zapOutRoutes.RemoveLiquidityDualTokenAndPtRouteIntermediateData & {
-            route: RemoveLiquidityDualTokenAndPtRoute<T>;
+            route: RemoveLiquidityDualTokenAndPtRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
-        if (typeof market === 'string') {
-            market = new MarketEntity(market, this.entityConfig);
-        }
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        market = this.getMarketEntity(market);
 
         const marketAddr = market.address;
         const syEntity = await market.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<T, RemoveLiquidityDualTokenAndPtRoute<T>>({
+        const routeContext = this.createRouteContext<RemoveLiquidityDualTokenAndPtRoute>({
             params,
             syEntity,
             slippage,
@@ -629,7 +775,9 @@ export abstract class BaseRouter extends PendleEntity {
             this.throwNoRouteFoundError('remove liquidity', marketAddr, tokenOut, { cause })
         );
 
-        return bestRoute.buildCall();
+        const metaMethod = await bestRoute.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async removeLiquiditySinglePt<T extends MetaMethodType>(
@@ -643,31 +791,58 @@ export abstract class BaseRouter extends PendleEntity {
         {
             netPtOut: BN;
             netPtFromSwap: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
             netSyFromBurn: BN;
             netPtFromBurn: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
             minPtOut: BN;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.removeLiquiditySinglePtStatic(
-            marketAddr,
-            lpToRemove,
-            params.forCallStatic
-        );
-        const { netPtOut, netPtFromSwap } = res;
-        const minPtOut = calcSlippedDownAmount(netPtOut, slippage);
-        return this.contract.metaCall.removeLiquiditySinglePt(
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketAddr = this.getMarketAddress(market);
+
+        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
+        const removeLiqResult = marketStaticMath.removeLiquidityDualSyAndPtStatic(BN.from(lpToRemove).toBigInt());
+        let totalPtOut = BN.from(removeLiqResult.netPtOut);
+        let netSyRemains = BN.from(removeLiqResult.netSyOut);
+
+        const afterLiqRemovalMarketStaticMath = removeLiqResult.afterMath;
+        const limitOrderMatchedResult = await this.limitOrderMatcher.swapSyForPt(market, netSyRemains, {
+            routerMethod: 'removeLiquiditySinglePt',
+        });
+        totalPtOut = totalPtOut.add(limitOrderMatchedResult.netOutputToTaker);
+        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+
+        const swapSyForPtResult = afterLiqRemovalMarketStaticMath.swapExactSyForPtStatic(netSyRemains.toBigInt());
+        totalPtOut = totalPtOut.add(swapSyForPtResult.netPtOut);
+        // netSyRemains should be zero by now
+
+        const minPtOut = calcSlippedDownAmount(totalPtOut, slippage);
+
+        const metaMethod = await this.contract.metaCall.removeLiquiditySinglePt(
             params.receiver,
             marketAddr,
             lpToRemove,
             minPtOut,
-            this.getApproxParamsToPullPt(netPtFromSwap, slippage),
-            { ...res, ...params, minPtOut }
+            this.getApproxParamsToPullPt(swapSyForPtResult.netPtOut, slippage),
+            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+            {
+                ...params,
+                netPtOut: totalPtOut,
+                netPtFromSwap: BN.from(swapSyForPtResult.netPtOut),
+                netSyFeeFromMarket: BN.from(swapSyForPtResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                netSyFromBurn: BN.from(removeLiqResult.netSyOut),
+                netPtFromBurn: BN.from(removeLiqResult.netPtOut),
+                priceImpact: swapSyForPtResult.priceImpact,
+                exchangeRateAfter: swapSyForPtResult.exchangeRateAfter,
+                minPtOut,
+            }
         );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async removeLiquiditySingleSy<T extends MetaMethodType>(
@@ -680,29 +855,60 @@ export abstract class BaseRouter extends PendleEntity {
         'removeLiquiditySingleSy',
         {
             netSyOut: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
+            netSyFromSwap: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
             netSyFromBurn: BN;
             netPtFromBurn: BN;
-            netSyFromSwap: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
             minSyOut: BN;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.removeLiquiditySingleSyStatic(
-            marketAddr,
-            lpToRemove,
-            params.forCallStatic
-        );
-        const { netSyOut } = res;
-        const minSyOut = calcSlippedDownAmount(netSyOut, slippage);
-        return this.contract.metaCall.removeLiquiditySingleSy(params.receiver, marketAddr, lpToRemove, minSyOut, {
-            ...res,
-            ...params,
-            minSyOut,
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketEntity = this.getMarketEntity(market);
+
+        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
+        const removeLiqResult = marketStaticMath.removeLiquidityDualSyAndPtStatic(BN.from(lpToRemove).toBigInt());
+        let totalSyOut = BN.from(removeLiqResult.netSyOut);
+        let netPtRemains = BN.from(removeLiqResult.netPtOut);
+
+        const afterLiqRemovalMarketStaticMath = removeLiqResult.afterMath;
+        const limitOrderMatchedResult = await this.limitOrderMatcher.swapPtForSy(market, netPtRemains, {
+            routerMethod: 'removeLiquiditySingleSy',
         });
+        totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
+        netPtRemains = netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+
+        const swapPtToSyResult = afterLiqRemovalMarketStaticMath.swapExactPtForSyStaticAllowExpired(
+            netPtRemains.toBigInt()
+        );
+        totalSyOut = totalSyOut.add(swapPtToSyResult.netSyOut);
+        // netPtRemains should be zero by now
+
+        const minSyOut = calcSlippedDownAmount(totalSyOut, slippage);
+
+        const metaMethod = await this.contract.metaCall.removeLiquiditySingleSy(
+            params.receiver,
+            marketEntity.address,
+            lpToRemove,
+            minSyOut,
+            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+            {
+                ...params,
+                netSyOut: totalSyOut,
+                netSyFromSwap: BN.from(swapPtToSyResult.netSyOut),
+                netSyFeeFromMarket: BN.from(swapPtToSyResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                netSyFromBurn: BN.from(removeLiqResult.netSyOut),
+                netPtFromBurn: BN.from(removeLiqResult.netPtOut),
+                priceImpact: swapPtToSyResult.priceImpact,
+                exchangeRateAfter: swapPtToSyResult.exchangeRateAfter,
+                minSyOut,
+            }
+        );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async removeLiquiditySingleToken<T extends MetaMethodType>(
@@ -715,16 +921,14 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'removeLiquiditySingleToken',
         zapOutRoutes.RemoveLiquiditySingleTokenRouteIntermediateData & {
-            route: RemoveLiquiditySingleTokenRoute<T>;
+            route: RemoveLiquiditySingleTokenRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
-        if (typeof market === 'string') {
-            market = new MarketEntity(market, this.entityConfig);
-        }
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        market = this.getMarketEntity(market);
         const marketAddr = market.address;
         const syEntity = await market.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<T, RemoveLiquiditySingleTokenRoute<T>>({
+        const routeContext = this.createRouteContext<RemoveLiquiditySingleTokenRoute>({
             params,
             syEntity,
             slippage,
@@ -732,7 +936,7 @@ export abstract class BaseRouter extends PendleEntity {
         const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
         const routes = tokenRedeemSyList.map(
             (tokenRedeemSy) =>
-                new RemoveLiquiditySingleTokenRoute(marketAddr, lpToRemove, tokenOut, slippage, {
+                new RemoveLiquiditySingleTokenRoute(market, lpToRemove, tokenOut, slippage, {
                     context: routeContext,
                     tokenRedeemSy,
                 })
@@ -740,7 +944,10 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapOutRoute(routes).catch((cause: unknown) =>
             this.throwNoRouteFoundError('zap out', marketAddr, tokenOut, { cause })
         );
-        return bestRoute.buildCall();
+
+        const metaMethod = await bestRoute.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async swapExactPtForSy<T extends MetaMethodType>(
@@ -753,81 +960,49 @@ export abstract class BaseRouter extends PendleEntity {
         'swapExactPtForSy',
         {
             netSyOut: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
             minSyOut: BN;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactPtForSyStatic(marketAddr, exactPtIn, params.forCallStatic);
-        const { netSyOut } = res;
-        const minSyOut = calcSlippedDownAmount(netSyOut, slippage);
-        return this.contract.metaCall.swapExactPtForSy(params.receiver, marketAddr, exactPtIn, minSyOut, {
-            ...res,
-            ...params,
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketAddr = this.getMarketAddress(market);
+
+        let netPtRemains = BN.from(exactPtIn);
+        let totalSyOut = BN.from(0);
+
+        const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+            this.limitOrderMatcher.swapPtForSy(market, netPtRemains, { routerMethod: 'swapExactPtForSy' }),
+            this.getMarketStaticMathWithParams(market, params),
+        ]);
+        netPtRemains = netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+        totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
+
+        const marketResult = marketStaticMath.swapExactPtForSyStatic(netPtRemains.toBigInt());
+        totalSyOut = totalSyOut.add(marketResult.netSyOut);
+        // netPtRemains should be zero by now
+
+        const minSyOut = calcSlippedDownAmount(totalSyOut, slippage);
+        const metaMethod = await this.contract.metaCall.swapExactPtForSy(
+            params.receiver,
+            marketAddr,
+            exactPtIn,
             minSyOut,
-        });
-    }
-
-    async swapPtForExactSy<T extends MetaMethodType>(
-        market: Address | MarketEntity,
-        exactSyOut: BigNumberish,
-        slippage: number,
-        _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<
-        T,
-        'swapPtForExactSy',
-        {
-            netPtIn: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
-            approxParam: ApproxParamsStruct;
-            maxPtIn: BN;
-        }
-    > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapPtForExactSyStatic(marketAddr, exactSyOut, params.forCallStatic);
-        const { netPtIn } = res;
-        const approxParam = this.getApproxParamsToPushPt(netPtIn, slippage);
-        const maxPtIn = calcSlippedUpAmount(netPtIn, slippage);
-        return this.contract.metaCall.swapPtForExactSy(params.receiver, marketAddr, exactSyOut, maxPtIn, approxParam, {
-            ...res,
-            ...params,
-            approxParam,
-            maxPtIn,
-        });
-    }
-
-    async swapSyForExactPt<T extends MetaMethodType>(
-        market: Address | MarketEntity,
-        exactPtOut: BigNumberish,
-        slippage: number,
-        _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<
-        T,
-        'swapSyForExactPt',
-        {
-            netSyIn: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
-            maxSyIn: BN;
-        }
-    > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapSyForExactPtStatic(marketAddr, exactPtOut, params.forCallStatic);
-        const { netSyIn } = res;
-        const maxSyIn = calcSlippedUpAmount(netSyIn, slippage);
-        return this.contract.metaCall.swapSyForExactPt(params.receiver, marketAddr, exactPtOut, maxSyIn, {
-            ...res,
-            ...params,
-            maxSyIn,
-        });
+            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+            {
+                ...params,
+                netSyOut: totalSyOut,
+                netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                priceImpact: marketResult.priceImpact,
+                exchangeRateAfter: marketResult.exchangeRateAfter,
+                minSyOut,
+            }
+        );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async swapExactTokenForPt<T extends MetaMethodType>(
@@ -840,17 +1015,21 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'swapExactTokenForPt',
         zapInRoutes.SwapExactTokenForPtRouteData & {
-            route: SwapExactTokenForPtRoute<T>;
+            route: SwapExactTokenForPtRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketEntity = typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketEntity = this.getMarketEntity(market);
         const syEntity = await marketEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<T, SwapExactTokenForPtRoute<T>>({ params, syEntity, slippage });
+        const routeContext = this.createRouteContext<SwapExactTokenForPtRoute>({
+            params,
+            syEntity,
+            slippage,
+        });
         const tokenMintSyList = await routeContext.getTokensMintSy();
         const routes = tokenMintSyList.map(
             (tokenMintSy) =>
-                new SwapExactTokenForPtRoute(marketEntity.address, tokenIn, netTokenIn, slippage, {
+                new SwapExactTokenForPtRoute(marketEntity, tokenIn, netTokenIn, slippage, {
                     context: routeContext,
                     tokenMintSy,
                 })
@@ -859,7 +1038,51 @@ export abstract class BaseRouter extends PendleEntity {
             this.throwNoRouteFoundError('swap', tokenIn, await marketEntity.pt(), { cause })
         );
 
-        return bestRoute.buildCall();
+        const [marketStaticMath, input, mintedSyAmount] = await Promise.all([
+            bestRoute.getMarketStaticMath(),
+            bestRoute.buildTokenInput().then(assertDefined),
+            bestRoute.getMintedSyAmount().then(assertDefined),
+        ]);
+        let totalPtOut = BN.from(0);
+        let netSyRemains = mintedSyAmount;
+
+        const limitOrderMatchedResult = await this.limitOrderMatcher.swapSyForPt(market, netSyRemains, {
+            routerMethod: 'swapExactTokenForPt',
+        });
+        totalPtOut = totalPtOut.add(limitOrderMatchedResult.netOutputToTaker);
+        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+
+        const marketResult = marketStaticMath.swapExactSyForPtStatic(netSyRemains.toBigInt());
+        totalPtOut = totalPtOut.add(marketResult.netPtOut);
+        // netSyRemains should be zero by now
+
+        const approxParams = this.getApproxParamsToPullPt(marketResult.netPtOut, slippage);
+        const minPtOut = calcSlippedDownAmount(totalPtOut, slippage);
+        const overrides = txOverridesValueFromTokenInput(input);
+
+        const metaMethod = await this.contract.metaCall.swapExactTokenForPt(
+            params.receiver,
+            marketEntity.address,
+            minPtOut,
+            approxParams,
+            input,
+            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+            {
+                ...mergeMetaMethodExtraParams({ overrides }, params),
+                intermediateSyAmount: mintedSyAmount,
+                netPtOut: totalPtOut,
+                netSyMinted: mintedSyAmount,
+                netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                priceImpact: marketResult.priceImpact,
+                exchangeRateAfter: marketResult.exchangeRateAfter,
+                minPtOut,
+                route: bestRoute,
+                limitOrderMatchedResult,
+            }
+        );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async swapExactSyForPt<T extends MetaMethodType>(
@@ -872,25 +1095,51 @@ export abstract class BaseRouter extends PendleEntity {
         'swapExactSyForPt',
         {
             netPtOut: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
             minPtOut: BN;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactSyForPtStatic(marketAddr, exactSyIn, params.forCallStatic);
-        const { netPtOut } = res;
-        const minPtOut = calcSlippedDownAmount(netPtOut, slippage);
-        return this.contract.metaCall.swapExactSyForPt(
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketEntity = this.getMarketEntity(market);
+        const marketAddr = marketEntity.address;
+
+        let netSyRemains = BN.from(exactSyIn);
+        let totalPtOut = BN.from(0);
+
+        const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+            this.limitOrderMatcher.swapSyForPt(market, netSyRemains, { routerMethod: 'swapExactSyForPt' }),
+            this.getMarketStaticMathWithParams(market, params),
+        ]);
+        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+        totalPtOut = totalPtOut.add(limitOrderMatchedResult.netOutputToTaker);
+
+        const marketResult = marketStaticMath.swapExactSyForPtStatic(netSyRemains.toBigInt());
+        totalPtOut = totalPtOut.add(marketResult.netPtOut);
+        // netSyRemains should be zero by now
+
+        const minPtOut = calcSlippedDownAmount(totalPtOut, slippage);
+        const metaMethod = await this.contract.metaCall.swapExactSyForPt(
             params.receiver,
             marketAddr,
             exactSyIn,
             minPtOut,
-            this.getApproxParamsToPullPt(netPtOut, slippage),
-            { ...res, ...params, minPtOut }
+            this.getApproxParamsToPullPt(marketResult.netPtOut, slippage),
+            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+            {
+                ...params,
+                netPtOut: totalPtOut,
+                netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                priceImpact: marketResult.priceImpact,
+                exchangeRateAfter: marketResult.exchangeRateAfter,
+                minPtOut,
+            }
         );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async mintSyFromToken<T extends MetaMethodType>(
@@ -903,16 +1152,20 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'mintSyFromToken',
         zapInRoutes.MintSyFromTokenRouteData & {
-            route: MintSyFromTokenRoute<T>;
+            route: MintSyFromTokenRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         if (typeof sy === 'string') {
             sy = new SyEntity(sy, this.entityConfig);
         }
         const syAddr = sy.address;
         const syEntity = sy; // force type here
-        const routeContext = this.createRouteContext<T, MintSyFromTokenRoute<T>>({ params, syEntity, slippage });
+        const routeContext = this.createRouteContext<MintSyFromTokenRoute>({
+            params,
+            syEntity,
+            slippage,
+        });
         const tokenMintSyList = await routeContext.getTokensMintSy();
         const routes = tokenMintSyList.map(
             (tokenMintSy) =>
@@ -924,7 +1177,9 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
             this.throwNoRouteFoundError('mint', tokenIn, syAddr, { cause })
         );
-        return bestRoute.buildCall();
+        const metaMethod = await bestRoute.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async redeemSyToToken<T extends MetaMethodType>(
@@ -937,13 +1192,17 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'redeemSyToToken',
         zapOutRoutes.RedeemSyToTokenRouteIntermediateData & {
-            route: RedeemSyToTokenRoute<T>;
+            route: RedeemSyToTokenRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const syEntity = typeof sy === 'string' ? new SyEntity(sy, this.entityConfig) : sy;
         const syAddr = syEntity.address;
-        const routeContext = this.createRouteContext<T, RedeemSyToTokenRoute<T>>({ params, syEntity, slippage });
+        const routeContext = this.createRouteContext<RedeemSyToTokenRoute>({
+            params,
+            syEntity,
+            slippage,
+        });
         const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
         const routes = tokenRedeemSyList.map(
             (tokenRedeemSy) =>
@@ -955,7 +1214,9 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapOutRoute(routes).catch((cause: unknown) =>
             this.throwNoRouteFoundError('redeem', syAddr, tokenOut, { cause })
         );
-        return bestRoute.buildCall();
+        const metaMethod = await bestRoute.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async mintPyFromToken<T extends MetaMethodType>(
@@ -968,28 +1229,31 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'mintPyFromToken',
         zapInRoutes.MintPyFromTokenRouteData & {
-            route: MintPyFromTokenRoute<T>;
+            route: MintPyFromTokenRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
-        if (typeof yt === 'string') {
-            yt = new YtEntity(yt, this.entityConfig);
-        }
-        const ytAddr = yt.address;
-        const syEntity = await yt.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<T, MintPyFromTokenRoute<T>>({ params, syEntity, slippage });
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const ytEntity = typeof yt === 'string' ? new YtEntity(yt, this.entityConfig) : yt;
+        const syEntity = await ytEntity.syEntity(params.forCallStatic);
+        const routeContext = this.createRouteContext<MintPyFromTokenRoute>({
+            params,
+            syEntity,
+            slippage,
+        });
         const tokenMintSyList = await routeContext.getTokensMintSy();
         const routes = tokenMintSyList.map(
             (tokenMintSy) =>
-                new MintPyFromTokenRoute(ytAddr, tokenIn, netTokenIn, slippage, {
+                new MintPyFromTokenRoute(ytEntity, tokenIn, netTokenIn, slippage, {
                     context: routeContext,
                     tokenMintSy,
                 })
         );
         const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('mint', tokenIn, ytAddr, { cause })
+            this.throwNoRouteFoundError('mint', tokenIn, ytEntity.address, { cause })
         );
-        return bestRoute.buildCall();
+        const metaMethod = await bestRoute.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async mintPyFromSy<T extends MetaMethodType>(
@@ -998,15 +1262,23 @@ export abstract class BaseRouter extends PendleEntity {
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
     ): RouterMetaMethodReturnType<T, 'mintPyFromSy', { netPyOut: BN; minPyOut: BN }> {
-        const params = this.addExtraParams(_params);
-        const ytAddr = typeof yt === 'string' ? yt : yt.address;
-        const netPyOut = await this.routerStaticCall.mintPyFromSyStatic(ytAddr, amountSyToMint);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const ytEntity = typeof yt === 'string' ? new YtEntity(yt, this.entityConfig) : yt;
+        const netPyOut = await ytEntity.previewMintPyFromSy(amountSyToMint);
         const minPyOut = calcSlippedDownAmount(netPyOut, slippage);
-        return this.contract.metaCall.mintPyFromSy(params.receiver, ytAddr, amountSyToMint, minPyOut, {
-            ...params,
-            netPyOut,
+        const metaMethod = await this.contract.metaCall.mintPyFromSy(
+            params.receiver,
+            ytEntity.address,
+            amountSyToMint,
             minPyOut,
-        });
+            {
+                ...params,
+                netPyOut,
+                minPyOut,
+            }
+        );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async redeemPyToToken<T extends MetaMethodType>(
@@ -1019,14 +1291,18 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'redeemPyToToken',
         zapOutRoutes.RedeemPyToTokenRouteIntermediateData & {
-            route: RedeemPyToTokenRoute<T>;
+            route: RedeemPyToTokenRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const ytEntity = typeof yt === 'string' ? new YtEntity(yt, this.entityConfig) : yt;
         const ytAddr = ytEntity.address;
         const syEntity = await ytEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<T, RedeemPyToTokenRoute<T>>({ params, syEntity, slippage });
+        const routeContext = this.createRouteContext<RedeemPyToTokenRoute>({
+            params,
+            syEntity,
+            slippage,
+        });
         const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
 
         const routes = tokenRedeemSyList.map(
@@ -1039,7 +1315,9 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapOutRoute(routes).catch((cause: unknown) =>
             this.throwNoRouteFoundError('redeem', ytAddr, tokenOut, { cause })
         );
-        return bestRoute.buildCall();
+        const metaMethod = await bestRoute.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async redeemPyToSy<T extends MetaMethodType>(
@@ -1048,15 +1326,24 @@ export abstract class BaseRouter extends PendleEntity {
         slippage: number,
         _params: RouterMetaMethodExtraParams<T>
     ): RouterMetaMethodReturnType<T, 'redeemPyToSy', { netSyOut: BN; minSyOut: BN }> {
-        const params = this.addExtraParams(_params);
-        const ytAddr = typeof yt === 'string' ? yt : yt.address;
-        const netSyOut = await this.routerStaticCall.redeemPyToSyStatic(ytAddr, amountPyToRedeem);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const ytEntity = typeof yt === 'string' ? new YtEntity(yt, this.entityConfig) : yt;
+        const netSyOut = await ytEntity.previewRedeemPyToSy(amountPyToRedeem);
         const minSyOut = calcSlippedDownAmount(netSyOut, slippage);
-        return this.contract.metaCall.redeemPyToSy(params.receiver, ytAddr, amountPyToRedeem, minSyOut, {
-            ...params,
-            netSyOut,
+        const metaMethod = await this.contract.metaCall.redeemPyToSy(
+            params.receiver,
+            ytEntity.address,
+            amountPyToRedeem,
             minSyOut,
-        });
+            {
+                ...params,
+                netSyOut,
+                minSyOut,
+            }
+        );
+
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async swapExactSyForYt<T extends MetaMethodType>(
@@ -1069,58 +1356,54 @@ export abstract class BaseRouter extends PendleEntity {
         'swapExactSyForYt',
         {
             netYtOut: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
-            approxParam: ApproxParamsStruct;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
+            approxParams: ApproxParamsStruct;
             minYtOut: BN;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactSyForYtStatic(marketAddr, exactSyIn, params.forCallStatic);
-        const { netYtOut } = res;
-        const approxParam = this.getApproxParamsToPullPt(netYtOut, slippage);
-        const minYtOut = calcSlippedDownAmount(netYtOut, slippage);
-        return this.contract.metaCall.swapExactSyForYt(
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketEntity = this.getMarketEntity(market);
+
+        let netSyRemains = BN.from(exactSyIn);
+        let totalYtOut = BN.from(0);
+
+        const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+            this.limitOrderMatcher.swapSyForYt(market, netSyRemains, { routerMethod: 'swapExactSyForYt' }),
+            this.getMarketStaticMathWithParams(market, params),
+        ]);
+        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+        totalYtOut = totalYtOut.add(limitOrderMatchedResult.netOutputToTaker);
+
+        const marketResult = marketStaticMath.swapExactSyForYtStatic(netSyRemains.toBigInt());
+        totalYtOut = totalYtOut.add(marketResult.netYtOut);
+        // netSyRemains should be zero by now
+
+        const approxParams = this.getApproxParamsToPullPt(marketResult.netYtOut, slippage);
+        const minYtOut = calcSlippedDownAmount(totalYtOut, slippage);
+        const metaMethod = await this.contract.metaCall.swapExactSyForYt(
             params.receiver,
-            marketAddr,
+            marketEntity.address,
             exactSyIn,
             minYtOut,
-            this.getApproxParamsToPullPt(netYtOut, slippage),
-            { ...res, ...params, approxParam, minYtOut }
+            approxParams,
+            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+            {
+                ...params,
+                netYtOut: totalYtOut,
+                netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                priceImpact: marketResult.priceImpact,
+                exchangeRateAfter: marketResult.exchangeRateAfter,
+                approxParams,
+                minYtOut,
+            }
         );
-    }
 
-    async swapYtForExactSy<T extends MetaMethodType>(
-        market: Address | MarketEntity,
-        exactSyOut: BigNumberish,
-        slippage: number,
-        _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<
-        T,
-        'swapYtForExactSy',
-        {
-            netYtIn: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
-            approxParam: ApproxParamsStruct;
-            maxYtIn: BN;
-        }
-    > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapYtForExactSyStatic(marketAddr, exactSyOut, params.forCallStatic);
-        const { netYtIn } = res;
-        const approxParam = this.getApproxParamsToPushPt(netYtIn, slippage);
-        const maxYtIn = calcSlippedUpAmount(netYtIn, slippage);
-        return this.contract.metaCall.swapYtForExactSy(params.receiver, marketAddr, exactSyOut, maxYtIn, approxParam, {
-            ...res,
-            ...params,
-            approxParam,
-            maxYtIn,
-        });
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async swapExactPtForToken<T extends MetaMethodType>(
@@ -1133,13 +1416,17 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'swapExactPtForToken',
         zapOutRoutes.SwapExactPtForTokenRouteIntermediateData & {
-            route: SwapExactPtForTokenRoute<T>;
+            route: SwapExactPtForTokenRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketEntity = typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketEntity = this.getMarketEntity(market);
         const syEntity = await marketEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<T, SwapExactPtForTokenRoute<T>>({ params, syEntity, slippage });
+        const routeContext = this.createRouteContext<SwapExactPtForTokenRoute>({
+            params,
+            syEntity,
+            slippage,
+        });
         const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
         const routes = tokenRedeemSyList.map(
             (tokenRedeemSy) =>
@@ -1151,7 +1438,9 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapOutRoute(routes).catch(async (cause: unknown) =>
             this.throwNoRouteFoundError('swap', await marketEntity.pt(params.forCallStatic), tokenOut, { cause })
         );
-        return bestRoute.buildCall();
+        const metaMethod = await bestRoute.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async swapExactYtForSy<T extends MetaMethodType>(
@@ -1164,55 +1453,48 @@ export abstract class BaseRouter extends PendleEntity {
         'swapExactYtForSy',
         {
             netSyOut: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
-            netSyOwedInt: BN;
-            netPYToRepaySyOwedInt: BN;
-            netPYToRedeemSyOutInt: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
             minSyOut: BN;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactYtForSyStatic(marketAddr, exactYtIn, params.forCallStatic);
-        const { netSyOut } = res;
-        const minSyOut = calcSlippedDownAmount(netSyOut, slippage);
-        return this.contract.metaCall.swapExactYtForSy(params.receiver, marketAddr, exactYtIn, minSyOut, {
-            ...res,
-            ...params,
-            minSyOut,
-        });
-    }
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketEntity = this.getMarketEntity(market);
+        let totalSyOut = BN.from(0);
+        let netYtRemains = BN.from(exactYtIn);
 
-    async swapSyForExactYt<T extends MetaMethodType>(
-        market: Address | MarketEntity,
-        exactYtOut: BigNumberish,
-        slippage: number,
-        _params: RouterMetaMethodExtraParams<T> = {}
-    ): RouterMetaMethodReturnType<
-        T,
-        'swapSyForExactYt',
-        {
-            netSyIn: BN;
-            netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
-            netSyReceivedInt: BN;
-            totalSyNeedInt: BN;
-            maxSyIn: BN;
-        }
-    > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapSyForExactYtStatic(marketAddr, exactYtOut, params.forCallStatic);
-        const { netSyIn } = res;
-        const maxSyIn = calcSlippedUpAmount(netSyIn, slippage);
-        return this.contract.metaCall.swapSyForExactYt(params.receiver, marketAddr, exactYtOut, maxSyIn, {
-            ...res,
-            ...params,
-            maxSyIn,
-        });
+        const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+            this.limitOrderMatcher.swapYtForSy(market, netYtRemains, { routerMethod: 'swapExactYtForSy' }),
+            this.getMarketStaticMathWithParams(market, params),
+        ]);
+        totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
+        netYtRemains = netYtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+
+        const marketResult = marketStaticMath.swapExactYtForSyStatic(netYtRemains.toBigInt());
+        totalSyOut = totalSyOut.add(marketResult.netSyOut);
+        // netYtRemains should be zero by now.
+
+        const minSyOut = calcSlippedDownAmount(totalSyOut, slippage);
+        const metaMethod = await this.contract.metaCall.swapExactYtForSy(
+            params.receiver,
+            marketEntity.address,
+            exactYtIn,
+            minSyOut,
+            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+            {
+                ...params,
+                netSyOut: totalSyOut,
+                netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                priceImpact: marketResult.priceImpact,
+                exchangeRateAfter: marketResult.exchangeRateAfter,
+                minSyOut,
+            }
+        );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async swapExactTokenForYt<T extends MetaMethodType>(
@@ -1225,17 +1507,21 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'swapExactTokenForYt',
         zapInRoutes.SwapExactTokenForYtRouteData & {
-            route: SwapExactTokenForYtRoute<T>;
+            route: SwapExactTokenForYtRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketEntity = typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketEntity = this.getMarketEntity(market);
         const syEntity = await marketEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<T, SwapExactTokenForYtRoute<T>>({ params, syEntity, slippage });
+        const routeContext = this.createRouteContext<SwapExactTokenForYtRoute>({
+            params,
+            syEntity,
+            slippage,
+        });
         const tokenMintSyList = await routeContext.getTokensMintSy();
         const routes = tokenMintSyList.map(
             (tokenMintSy) =>
-                new SwapExactTokenForYtRoute(marketEntity.address, tokenIn, netTokenIn, slippage, {
+                new SwapExactTokenForYtRoute(marketEntity, tokenIn, netTokenIn, slippage, {
                     context: routeContext,
                     tokenMintSy,
                 })
@@ -1243,7 +1529,50 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapInRoute(routes).catch(async (cause: unknown) =>
             this.throwNoRouteFoundError('swap', tokenIn, await marketEntity.yt(params.forCallStatic), { cause })
         );
-        return bestRoute.buildCall();
+
+        const [marketStaticMath, input, mintedSyAmount] = await Promise.all([
+            bestRoute.getMarketStaticMath(),
+            bestRoute.buildTokenInput().then(assertDefined),
+            bestRoute.getMintedSyAmount().then(assertDefined),
+        ]);
+        let netSyRemains = mintedSyAmount;
+        let totalYtOut = BN.from(0);
+
+        const limitOrderMatchedResult = await this.limitOrderMatcher.swapSyForYt(market, netSyRemains, {
+            routerMethod: 'swapExactTokenForYt',
+        });
+        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+        totalYtOut = totalYtOut.add(limitOrderMatchedResult.netOutputToTaker);
+
+        const marketResult = marketStaticMath.swapExactSyForYtStatic(netSyRemains.toBigInt());
+        totalYtOut = totalYtOut.add(marketResult.netYtOut);
+
+        const approxParams = this.getApproxParamsToPullPt(marketResult.netYtOut, slippage);
+        const minYtOut = calcSlippedDownAmount(totalYtOut, slippage);
+        const overrides = txOverridesValueFromTokenInput(input);
+
+        const metaMethod = await this.contract.metaCall.swapExactTokenForYt(
+            params.receiver,
+            marketEntity.address,
+            minYtOut,
+            approxParams,
+            input,
+            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+            {
+                ...mergeMetaMethodExtraParams({ overrides }, params),
+                intermediateSyAmount: mintedSyAmount,
+                netYtOut: totalYtOut,
+                netSyMinted: mintedSyAmount,
+                netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                priceImpact: marketResult.priceImpact,
+                exchangeRateAfter: marketResult.exchangeRateAfter,
+                minYtOut,
+                route: bestRoute,
+            }
+        );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async swapExactYtForToken<T extends MetaMethodType>(
@@ -1256,13 +1585,17 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'swapExactYtForToken',
         zapOutRoutes.SwapExactYtForTokenRouteIntermediateData & {
-            route: SwapExactYtForTokenRoute<T>;
+            route: SwapExactYtForTokenRoute;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketEntity = typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketEntity = this.getMarketEntity(market);
         const syEntity = await marketEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<T, SwapExactYtForTokenRoute<T>>({ params, syEntity, slippage });
+        const routeContext = this.createRouteContext<SwapExactYtForTokenRoute>({
+            params,
+            syEntity,
+            slippage,
+        });
         const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
         const routes = tokenRedeemSyList.map(
             (tokenRedeemSy) =>
@@ -1274,7 +1607,9 @@ export abstract class BaseRouter extends PendleEntity {
         const bestRoute = await this.findBestZapOutRoute(routes).catch(async (cause: unknown) =>
             this.throwNoRouteFoundError('swap', await marketEntity.yt(params.forCallStatic), tokenOut, { cause })
         );
-        return bestRoute.buildCall();
+        const metaMethod = await bestRoute.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async swapExactYtForPt<T extends MetaMethodType>(
@@ -1289,24 +1624,40 @@ export abstract class BaseRouter extends PendleEntity {
             netPtOut: BN;
             totalPtSwapped: BN;
             netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
             approxParam: ApproxParamsStruct;
             minPtOut: BN;
+            afterMath: offchainMath.MarketStaticMath;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactYtForPtStatic(marketAddr, exactYtIn, params.forCallStatic);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketAddr = this.getMarketAddress(market);
+        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
+        const res = marketStaticMath.swapExactYtForPtStatic(BN.from(exactYtIn).toBigInt());
         const { netPtOut, totalPtSwapped } = res;
         const approxParam = this.getApproxParamsToPushPt(totalPtSwapped, slippage);
         const minPtOut = calcSlippedDownAmount(netPtOut, slippage);
-        return this.contract.metaCall.swapExactYtForPt(params.receiver, marketAddr, exactYtIn, minPtOut, approxParam, {
-            ...res,
-            approxParam,
-            ...params,
+        const metaMethod = await this.contract.metaCall.swapExactYtForPt(
+            params.receiver,
+            marketAddr,
+            exactYtIn,
             minPtOut,
-        });
+            approxParam,
+            {
+                netPtOut: BN.from(netPtOut),
+                totalPtSwapped: BN.from(res.totalPtSwapped),
+                netSyFee: BN.from(res.netSyFee),
+                priceImpact: res.priceImpact,
+                exchangeRateAfter: res.exchangeRateAfter,
+                afterMath: res.afterMath,
+                approxParam,
+                minPtOut,
+                ...params,
+            }
+        );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async swapExactPtForYt<T extends MetaMethodType>(
@@ -1321,24 +1672,40 @@ export abstract class BaseRouter extends PendleEntity {
             netYtOut: BN;
             totalPtToSwap: BN;
             netSyFee: BN;
-            priceImpact: BN;
-            exchangeRateAfter: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
             approxParam: ApproxParamsStruct;
             minYtOut: BN;
+            afterMath: offchainMath.MarketStaticMath;
         }
     > {
-        const params = this.addExtraParams(_params);
-        const marketAddr = typeof market === 'string' ? market : market.address;
-        const res = await this.routerStaticCall.swapExactPtForYtStatic(marketAddr, exactPtIn, params.forCallStatic);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const marketAddr = this.getMarketAddress(market);
+        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
+        const res = marketStaticMath.swapExactPtForYtStatic(BN.from(exactPtIn).toBigInt());
         const { netYtOut, totalPtToSwap } = res;
         const approxParam = this.getApproxParamsToPushPt(totalPtToSwap, slippage);
         const minYtOut = calcSlippedDownAmount(netYtOut, slippage);
-        return this.contract.metaCall.swapExactPtForYt(params.receiver, marketAddr, exactPtIn, minYtOut, approxParam, {
-            ...res,
-            ...params,
-            approxParam,
+        const metaMethod = await this.contract.metaCall.swapExactPtForYt(
+            params.receiver,
+            marketAddr,
+            exactPtIn,
             minYtOut,
-        });
+            approxParam,
+            {
+                netYtOut: BN.from(netYtOut),
+                totalPtToSwap: BN.from(totalPtToSwap),
+                netSyFee: BN.from(res.netSyFee),
+                priceImpact: res.priceImpact,
+                exchangeRateAfter: res.exchangeRateAfter,
+                approxParam,
+                minYtOut,
+                afterMath: res.afterMath,
+                ...params,
+            }
+        );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async redeemDueInterestAndRewards<T extends MetaMethodType>(
@@ -1349,11 +1716,20 @@ export abstract class BaseRouter extends PendleEntity {
         },
         _params: RouterMetaMethodExtraParams<T> = {}
     ): RouterMetaMethodReturnType<T, 'redeemDueInterestAndRewards'> {
-        const params = this.addExtraParams(_params);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const sys = redeemingSources.sys?.map(BaseRouter.extractAddress) ?? [];
         const yts = redeemingSources.yts?.map(BaseRouter.extractAddress) ?? [];
         const markets = redeemingSources.markets?.map(BaseRouter.extractAddress) ?? [];
-        return this.contract.metaCall.redeemDueInterestAndRewards(params.receiver, sys, yts, markets, params);
+        const metaMethod = await this.contract.metaCall.redeemDueInterestAndRewards(
+            params.receiver,
+            sys,
+            yts,
+            markets,
+            params
+        );
+
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async migrateLiquidityViaSharedSy<T extends MetaMethodType>(
@@ -1371,27 +1747,26 @@ export abstract class BaseRouter extends PendleEntity {
         }
     > {
         const doRedeemRewards = _params.redeemRewards ?? false;
-        const params = this.addExtraParams(_params);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         srcMarket = typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
         dstMarket = typeof dstMarket === 'string' ? new MarketEntity(dstMarket, this.entityConfig) : dstMarket;
         const [srcSy, dstSy] = await Promise.all([srcMarket.sy(), dstMarket.sy()]);
         if (!areSameAddresses(srcSy, dstSy)) {
             throw new PendleSdkError('Source and destination market should share the same SY');
         }
-        const removeLiquidityMetaMethod = await this.removeLiquiditySingleSy(srcMarket, netLpToMigrate, slippage, {
-            ...params,
-            method: 'meta-method',
-        });
+        const removeLiquidityMetaMethod = await this.removeLiquiditySingleSy(
+            srcMarket,
+            netLpToMigrate,
+            slippage,
+            params
+        );
         const netSyToZapIn = removeLiquidityMetaMethod.data.netSyOut;
-        const addLiquidityMetaMethod = await this.addLiquiditySingleSy(dstMarket, netSyToZapIn, slippage, {
-            ...params,
-            method: 'meta-method',
-        });
+        const addLiquidityMetaMethod = await this.addLiquiditySingleSy(dstMarket, netSyToZapIn, slippage, params);
         const netLpOut = addLiquidityMetaMethod.data.netLpOut;
         const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage);
 
         const routerHelper = this.getRouterHelper();
-        return routerHelper.metaCall.transferLiquiditySameSyNormal(
+        const metaMethod = await routerHelper.metaCall.transferLiquiditySameSyNormal(
             {
                 market: srcMarket.address,
                 netLpToRemove: netLpToMigrate,
@@ -1405,6 +1780,8 @@ export abstract class BaseRouter extends PendleEntity {
             },
             { ...params, removeLiquidityMetaMethod, addLiquidityMetaMethod }
         );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async migrateLiquidityViaSharedSyKeepYt<T extends MetaMethodType>(
@@ -1422,29 +1799,28 @@ export abstract class BaseRouter extends PendleEntity {
         }
     > {
         const doRedeemRewards = _params.redeemRewards ?? false;
-        const params = this.addExtraParams(_params);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         srcMarket = typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
         dstMarket = typeof dstMarket === 'string' ? new MarketEntity(dstMarket, this.entityConfig) : dstMarket;
         const [srcSy, dstSy] = await Promise.all([srcMarket.sy(), dstMarket.sy()]);
         if (!areSameAddresses(srcSy, dstSy)) {
             throw new PendleSdkError('Source and destination market should share the same SY');
         }
-        const removeLiquidityMetaMethod = await this.removeLiquiditySingleSy(srcMarket, netLpToMigrate, slippage, {
-            ...params,
-            method: 'meta-method',
-        });
+        const removeLiquidityMetaMethod = await this.removeLiquiditySingleSy(
+            srcMarket,
+            netLpToMigrate,
+            slippage,
+            params
+        );
         const netSyToZapIn = removeLiquidityMetaMethod.data.netSyOut;
-        const addLiquidityMetaMethod = await this.addLiquiditySingleSyKeepYt(dstMarket, netSyToZapIn, slippage, {
-            ...params,
-            method: 'meta-method',
-        });
+        const addLiquidityMetaMethod = await this.addLiquiditySingleSyKeepYt(dstMarket, netSyToZapIn, slippage, params);
         const netLpOut = addLiquidityMetaMethod.data.netLpOut;
         const netYtOut = addLiquidityMetaMethod.data.netYtOut;
         const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage);
         const minYtOut = calcSlippedDownAmountSqrt(netYtOut, slippage);
 
         const routerHelper = this.getRouterHelper();
-        return routerHelper.metaCall.transferLiquiditySameSyKeepYt(
+        const metaMethod = await routerHelper.metaCall.transferLiquiditySameSyKeepYt(
             {
                 market: srcMarket.address,
                 netLpToRemove: netLpToMigrate,
@@ -1457,6 +1833,9 @@ export abstract class BaseRouter extends PendleEntity {
             },
             { ...params, removeLiquidityMetaMethod, addLiquidityMetaMethod }
         );
+
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async migrateLiquidityViaTokenRedeemSy<T extends MetaMethodType>(
@@ -1470,13 +1849,13 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'transferLiquidityDifferentSyNormal',
         {
-            removeLiquidityRoute: RemoveLiquiditySingleTokenRoute<T>;
-            addLiquidityRoute: liqMigrationRoutes.AddLiquiditySingleTokenForMigrationRoute<T>;
-            route: liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyRoute<T>;
+            removeLiquidityRoute: RemoveLiquiditySingleTokenRoute;
+            addLiquidityRoute: liqMigrationRoutes.AddLiquiditySingleTokenForMigrationRoute;
+            route: liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyRoute;
         }
     > {
         const redeemRewards = _params.redeemRewards ?? false;
-        const params = this.addExtraParams(_params);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const srcMarketEntity =
             typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
         const dstMarketEntity =
@@ -1486,15 +1865,13 @@ export abstract class BaseRouter extends PendleEntity {
             dstMarketEntity.syEntity({ entityConfig: this.entityConfig }),
         ]);
 
-        const removeLiqContext = this.createRouteContext<
-            T,
-            liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T>
-        >({
-            params,
-            syEntity: srcSyEntity,
-            slippage,
-        });
-        const addLiqContext = this.createRouteContext<T, AddLiquiditySingleTokenRoute<T>>({
+        const removeLiqContext =
+            this.createRouteContext<liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper>({
+                params,
+                syEntity: srcSyEntity,
+                slippage,
+            });
+        const addLiqContext = this.createRouteContext<AddLiquiditySingleTokenRoute>({
             params,
             syEntity: dstSyEntity,
             slippage,
@@ -1509,14 +1886,12 @@ export abstract class BaseRouter extends PendleEntity {
             throw new PendleSdkError('A token redeem Sy from the source market should be used.');
         }
 
-        const liquidityMigrationContext = this.createRouteContext<
-            T,
-            liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyRoute<T>
-        >({
-            params,
-            syEntity: srcSyEntity, // This one does not matter tho
-            slippage,
-        });
+        const liquidityMigrationContext =
+            this.createRouteContext<liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyRoute>({
+                params,
+                syEntity: srcSyEntity, // This one does not matter tho
+                slippage,
+            });
 
         const removeLiquidityRoute = new liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper(
             srcMarketEntity.address,
@@ -1548,7 +1923,9 @@ export abstract class BaseRouter extends PendleEntity {
                 cause,
             })
         );
-        return route.buildCall();
+        const metaMethod = await route.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     async migrateLiquidityViaTokenRedeemSyKeepYt<T extends MetaMethodType>(
@@ -1562,13 +1939,13 @@ export abstract class BaseRouter extends PendleEntity {
         T,
         'transferLiquidityDifferentSyKeepYt',
         {
-            removeLiquidityRoute: RemoveLiquiditySingleTokenRoute<T>;
-            addLiquidityRoute: liqMigrationRoutes.AddLiquiditySingleTokenKeepYtForMigrationRoute<T>;
-            route: liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyKeepYtRoute<T>;
+            removeLiquidityRoute: RemoveLiquiditySingleTokenRoute;
+            addLiquidityRoute: liqMigrationRoutes.AddLiquiditySingleTokenKeepYtForMigrationRoute;
+            route: liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyKeepYtRoute;
         }
     > {
         const redeemRewards = _params.redeemRewards ?? false;
-        const params = this.addExtraParams(_params);
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const srcMarketEntity =
             typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
         const dstMarketEntity =
@@ -1582,15 +1959,13 @@ export abstract class BaseRouter extends PendleEntity {
             }),
         ]);
 
-        const removeLiqContext = this.createRouteContext<
-            T,
-            liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T>
-        >({
-            params,
-            syEntity: srcSyEntity,
-            slippage,
-        });
-        const addLiqContext = this.createRouteContext<T, AddLiquiditySingleTokenKeepYtRoute<T>>({
+        const removeLiqContext =
+            this.createRouteContext<liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper>({
+                params,
+                syEntity: srcSyEntity,
+                slippage,
+            });
+        const addLiqContext = this.createRouteContext<AddLiquiditySingleTokenKeepYtRoute>({
             params,
             syEntity: dstSyEntity,
             slippage,
@@ -1605,14 +1980,12 @@ export abstract class BaseRouter extends PendleEntity {
             throw new PendleSdkError('A token redeem Sy from the source market should be used.');
         }
 
-        const liquidityMigrationContext = this.createRouteContext<
-            T,
-            liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyKeepYtRoute<T>
-        >({
-            params,
-            syEntity: srcSyEntity, // This one does not matter tho
-            slippage,
-        });
+        const liquidityMigrationContext =
+            this.createRouteContext<liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyKeepYtRoute>({
+                params,
+                syEntity: srcSyEntity, // This one does not matter tho
+                slippage,
+            });
 
         const removeLiquidityRoute = new liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper(
             srcMarketEntity.address,
@@ -1644,7 +2017,52 @@ export abstract class BaseRouter extends PendleEntity {
                 cause,
             })
         );
-        return route.buildCall();
+        const metaMethod = await route.buildCall();
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
+    }
+
+    async swapTokenToToken<T extends MetaMethodType>(
+        input: RawTokenAmount,
+        outputToken: Address,
+        slippage: number,
+        _params: RouterMetaMethodExtraParams<T> = {}
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapTokenToToken',
+        {
+            netTokenOut: BN;
+            minTokenOut: BN;
+            tokenInputStruct: TokenInput;
+        }
+    > {
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const res = await this.aggregatorHelper.makeCall(input, outputToken, slippage);
+        const swapData = res.createSwapData({ needScale: false });
+        const pendleSwap = this.getPendleSwapAddress(swapData.swapType);
+        const tokenInputStruct: TokenInput = {
+            tokenIn: input.token,
+            netTokenIn: input.amount,
+            tokenMintSy: outputToken,
+            pendleSwap,
+            swapData,
+        };
+        const netTokenOut = res.outputAmount;
+        const minTokenOut = calcSlippedDownAmount(netTokenOut, slippage);
+        const valueOverrides = txOverridesValueFromTokenInput(tokenInputStruct);
+        const metaMethod = await this.contract.metaCall.swapTokenToToken(
+            params.receiver,
+            minTokenOut,
+            tokenInputStruct,
+            {
+                ...mergeMetaMethodExtraParams(params, { overrides: valueOverrides }),
+                netTokenOut,
+                minTokenOut,
+                tokenInputStruct,
+            }
+        );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
     }
 
     /**
@@ -1749,8 +2167,17 @@ export abstract class BaseRouter extends PendleEntity {
         actionName: string,
         from: Address,
         to: Address,
-        params?: PendleSdkErrorParams
+        errorOptions?: PendleSdkErrorParams
     ): Promise<never> {
-        throw new NoRouteFoundError(actionName, from, to, params);
+        this.events.emit('noRouteFound', { actionName, from, to, errorOptions });
+        throw new NoRouteFoundError(actionName, from, to, errorOptions);
+    }
+
+    getMarketAddress(market: Address | MarketEntity): Address {
+        return typeof market === 'string' ? market : market.address;
+    }
+
+    getMarketEntity(market: Address | MarketEntity): MarketEntity {
+        return typeof market === 'string' ? new MarketEntity(market, this.entityConfig) : market;
     }
 }

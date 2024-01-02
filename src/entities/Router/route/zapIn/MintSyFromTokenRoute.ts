@@ -17,12 +17,9 @@ export type MintSyFromTokenRouteDebugInfo = ZapInRouteDebugInfo & {
     slippage: number;
 };
 
-export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRoute<
-    T,
-    MintSyFromTokenRouteData,
-    MintSyFromTokenRoute<T>
-> {
+export class MintSyFromTokenRoute extends BaseZapInRoute<MintSyFromTokenRouteData, MintSyFromTokenRoute> {
     override readonly routeName = 'MintSyFromToken';
+
     /**
      * @param sy Should be the same as params.context.syEntity.address.
      * This field is redundant to keep the same signature as the correesponding method of {@link Router}.
@@ -32,22 +29,13 @@ export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
         readonly tokenIn: Address,
         readonly netTokenIn: BigNumberish,
         readonly slippage: number,
-        params: BaseZapInRouteConfig<T, MintSyFromTokenRoute<T>>
+        params: BaseZapInRouteConfig<MintSyFromTokenRoute>
     ) {
         super(params);
     }
 
     override get sourceTokenAmount() {
         return { token: this.tokenIn, amount: this.netTokenIn };
-    }
-
-    override routeWithBulkSeller(withBulkSeller = true): MintSyFromTokenRoute<T> {
-        return new MintSyFromTokenRoute(this.sy, this.tokenIn, this.netTokenIn, this.slippage, {
-            context: this.context,
-            tokenMintSy: this.tokenMintSy,
-            withBulkSeller,
-            cloneFrom: this,
-        });
     }
 
     override async getNetOut(): Promise<BN | undefined> {
@@ -62,13 +50,14 @@ export class MintSyFromTokenRoute<T extends MetaMethodType> extends BaseZapInRou
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCall({}, this.routerExtraParams);
+        return mm?.estimateGas();
     }
 
     async buildCall(): RouterMetaMethodReturnType<
-        T,
+        'meta-method',
         'mintSyFromToken',
-        MintSyFromTokenRouteData & { route: MintSyFromTokenRoute<T> }
+        MintSyFromTokenRouteData & { route: MintSyFromTokenRoute }
     > {
         const previewResult = (await this.preview())!;
         const res = await this.buildGenericCall({ ...previewResult, route: this }, this.routerExtraParams);

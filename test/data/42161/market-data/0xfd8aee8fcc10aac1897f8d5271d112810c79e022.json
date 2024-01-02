@@ -1,0 +1,28 @@
+{
+  "marketAddress": "0xfd8aee8fcc10aac1897f8d5271d112810c79e022",
+  "expiry_ms": 1719446400000,
+  "ptAddress": "0x9741cac1a22ff3615fa074fd0b439975a5e137e9",
+  "syAddress": "0x80c12d5b6cc494632bf11b03f09436c8b61cc5df",
+  "ytAddress": "0x0052b6096f8c1dcbefb9ba381eb6b67479b5c56b",
+  "rewardTokens": [
+    {
+      "name": "Pendle",
+      "decimals": 18,
+      "address": "0x0c880f6761f1af8d9aa9c466984b80dab9a8c9e8"
+    }
+  ],
+  "tokensIn": [
+    {
+      "name": "Wrapped liquid staked Ether 2.0",
+      "decimals": 18,
+      "address": "0x5979d7b546e38e414f7e9822514be443a4800529"
+    }
+  ],
+  "tokensOut": [
+    {
+      "name": "Wrapped liquid staked Ether 2.0",
+      "decimals": 18,
+      "address": "0x5979d7b546e38e414f7e9822514be443a4800529"
+    }
+  ]
+}

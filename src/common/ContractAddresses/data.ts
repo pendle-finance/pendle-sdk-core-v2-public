@@ -1,18 +1,18 @@
 // This file is generated via `yarn generateContractAddresses`
-// Generated at Wed, 22 Nov 2023 10:11:55 GMT
+// Generated at Tue, 19 Dec 2023 02:59:33 GMT
 import { ContractAddresses } from './types';
 import { toAddress } from '../Address';
 
 export const ETHEREUM_CORE_ADDRESSES = {
     FEE_DISTRIBUTOR: toAddress('0xd7b34a6fdcb2a7ced2115ff7f5fdd72aa6aa4de2'),
     FEE_DISTRIBUTORV2: toAddress('0x8c237520a8e14d658170a633d96f8e80764433b9'),
+    LIMIT_ROUTER: toAddress('0x000000000000c9b3e2c3ec88b1b4c0cd853f4321'),
     PENDLE: toAddress('0x808507121b80c02388fad14726482e061b8da827'),
     PENDLE_MULTICALL: toAddress('0xfd6df9efacfefdf4e610d687a9c9b941d1b1bf75'),
     PENDLE_MULTICALLV2: toAddress('0x539fd510fe352cc81822a222f821c340133ed41c'),
     PENDLE_SWAP: toAddress('0x324d838b26eb73786bdbbc53bb0682f1ebb50603'),
-    ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
+    ROUTER: toAddress('0x00000000005bbb0ef59571e58418f9a4357b68a0'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
-    ROUTER_HELPER_2: toAddress('0x2ed3af0275a1fd0c53c39d70241a1c14e8ce37d3'),
     ROUTER_STATIC: toAddress('0x263833d47ea3fa4a30f269323aba6a107f9eb14c'),
     VEPENDLE: toAddress('0x4f30a9d41b80ecc5b94306ab4364951ae3170210'),
     VOTING_CONTROLLER: toAddress('0x44087e105137a5095c008aab6a6530182821f2f0'),
@@ -21,13 +21,13 @@ export const ETHEREUM_CORE_ADDRESSES = {
 } as const satisfies ContractAddresses;
 export const ARBITRUM_CORE_ADDRESSES = {
     ARB_MERKLE_DISTRIBUTION: toAddress('0x23a102e78d1ff1645a3666691495174764a5fcaf'),
+    LIMIT_ROUTER: toAddress('0x000000000000c9b3e2c3ec88b1b4c0cd853f4321'),
     PENDLE: toAddress('0x0c880f6761f1af8d9aa9c466984b80dab9a8c9e8'),
     PENDLE_MULTICALL: toAddress('0xfd6df9efacfefdf4e610d687a9c9b941d1b1bf75'),
     PENDLE_MULTICALLV2: toAddress('0x539fd510fe352cc81822a222f821c340133ed41c'),
     PENDLE_SWAP: toAddress('0x8e09aa43885d99701ab047da2ac98aecc13807b0'),
-    ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
+    ROUTER: toAddress('0x00000000005bbb0ef59571e58418f9a4357b68a0'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
-    ROUTER_HELPER_2: toAddress('0x64e50365eb97a199d71b15e32761c4b9147cd0f0'),
     ROUTER_STATIC: toAddress('0xadb09f65bd90d19e3148d9ccb693f3161c6db3e8'),
     VEPENDLE: toAddress('0x3209e9412cca80b18338f2a56ada59c484c39644'),
     WRAPPED_NATIVE: toAddress('0x82af49447d8a07e3bd95bd0d56f35241523fbab1'),
@@ -36,13 +36,13 @@ export const ARBITRUM_CORE_ADDRESSES = {
     VOTING_CONTROLLER: undefined,
 } as const satisfies ContractAddresses;
 export const BSC_CORE_ADDRESSES = {
+    LIMIT_ROUTER: toAddress('0x000000000000c9b3e2c3ec88b1b4c0cd853f4321'),
     PENDLE: toAddress('0xb3ed0a426155b79b898849803e3b36552f7ed507'),
     PENDLE_MULTICALL: toAddress('0xfd6df9efacfefdf4e610d687a9c9b941d1b1bf75'),
     PENDLE_MULTICALLV2: toAddress('0x539fd510fe352cc81822a222f821c340133ed41c'),
     PENDLE_SWAP: toAddress('0xd85d2f484df4329746325e7398f3fc3e1915a173'),
-    ROUTER: toAddress('0x00000000025efadc0b8d17d3d87ab5056e3d2510'),
+    ROUTER: toAddress('0x00000000005bbb0ef59571e58418f9a4357b68a0'),
     ROUTER_HELPER: toAddress('0x09d65812dcd0f276e052583d41885ca5c7dd0086'),
-    ROUTER_HELPER_2: toAddress('0x46acbe071f580bfc09c6f48326f01148991db107'),
     ROUTER_STATIC: toAddress('0x2700adb035f82a11899ce1d3f1bf8451c296eabb'),
     VEPENDLE: toAddress('0x8a09574b0401a856d89d1b583ee22e8cb0c5530b'),
     WRAPPED_NATIVE: toAddress('0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c'),
@@ -62,18 +62,19 @@ export const MANTLE_CORE_ADDRESSES = {
     ARB_MERKLE_DISTRIBUTION: undefined,
     FEE_DISTRIBUTOR: undefined,
     FEE_DISTRIBUTORV2: undefined,
+    LIMIT_ROUTER: undefined,
     PENDLE_MULTICALL: undefined,
     PENDLE_MULTICALLV2: undefined,
     VOTING_CONTROLLER: undefined,
 } as const satisfies ContractAddresses;
 export const OPTIMISM_CORE_ADDRESSES = {
+    LIMIT_ROUTER: toAddress('0x000000000000c9b3e2c3ec88b1b4c0cd853f4321'),
     PENDLE: toAddress('0xbc7b1ff1c6989f006a1185318ed4e7b5796e66e1'),
     PENDLE_MULTICALL: toAddress('0xfd6df9efacfefdf4e610d687a9c9b941d1b1bf75'),
     PENDLE_MULTICALLV2: toAddress('0x539fd510fe352cc81822a222f821c340133ed41c'),
     PENDLE_SWAP: toAddress('0x85d0c209fc632e6908d78be08646de3e39a58453'),
-    ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
+    ROUTER: toAddress('0x00000000005bbb0ef59571e58418f9a4357b68a0'),
     ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
-    ROUTER_HELPER_2: toAddress('0x25e5e9e134ddaf1d378fcb0ec8dbd3f148cb55fd'),
     ROUTER_STATIC: toAddress('0x704478dd72fd7f9b83d1f1e0fc18c14b54f034d0'),
     VEPENDLE: toAddress('0xd5c47d2383fddc19596489280c0a33ac42b2bb18'),
     WRAPPED_NATIVE: toAddress('0x4200000000000000000000000000000000000006'),
@@ -94,6 +95,7 @@ export const FUJI_CORE_ADDRESSES = {
     VOTING_CONTROLLER: toAddress('0x40ea97a7e9a4a0520229d1bbdf4d82e36b1a5475'),
     WRAPPED_NATIVE: toAddress('0xe43a7ad7c09d8fae3ade7361f0b847b23add5094'),
     ARB_MERKLE_DISTRIBUTION: undefined,
+    LIMIT_ROUTER: undefined,
     PENDLE_MULTICALL: undefined,
     PENDLE_MULTICALLV2: undefined,
 } as const satisfies ContractAddresses;
@@ -108,6 +110,7 @@ export const MUMBAI_CORE_ADDRESSES = {
     ARB_MERKLE_DISTRIBUTION: undefined,
     FEE_DISTRIBUTOR: undefined,
     FEE_DISTRIBUTORV2: undefined,
+    LIMIT_ROUTER: undefined,
     PENDLE_MULTICALL: undefined,
     PENDLE_MULTICALLV2: undefined,
     VOTING_CONTROLLER: undefined,

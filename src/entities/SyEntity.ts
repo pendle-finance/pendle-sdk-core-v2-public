@@ -1,5 +1,4 @@
 import {
-    IPRouterStatic,
     SYBase,
     SYBaseABI,
     WrappedContract,
@@ -7,7 +6,6 @@ import {
     mergeMetaMethodExtraParams as mergeParams,
     MetaMethodExtraParams,
     MulticallStaticParams,
-    getRouterStatic,
     MetaMethodReturnType,
     ContractMethodNames,
     ContractMetaMethod,
@@ -15,16 +13,10 @@ import {
 import type { BigNumberish } from 'ethers';
 import { BigNumber as BN } from 'ethers';
 import { ERC20Entity, ERC20EntityConfig } from './erc20';
-import {
-    Address,
-    toAddress,
-    isNativeToken,
-    ChainId,
-    RawTokenAmount,
-    createTokenAmount,
-    NATIVE_ADDRESS_0x00,
-} from '../common';
+import { Address, toAddress, isNativeToken, ChainId, RawTokenAmount } from '../common';
 import { calcSlippedDownAmount } from '../common/math';
+import { Multicall } from '../multicall';
+import * as iters from 'itertools';
 
 export type UserSyInfo = {
     syBalance: RawTokenAmount;
@@ -48,13 +40,11 @@ export type SyEntityMetaMethodReturnType<
  * This class represent a Standardized Yield (SY) token.
  */
 export class SyEntity extends ERC20Entity {
-    protected readonly routerStatic: WrappedContract<IPRouterStatic>;
     readonly chainId: ChainId;
 
     constructor(readonly address: Address, config: SyEntityConfig) {
         super(address, { abi: SYBaseABI, ...config });
         this.chainId = config.chainId;
-        this.routerStatic = getRouterStatic(config);
     }
 
     get contract() {
@@ -103,7 +93,6 @@ export class SyEntity extends ERC20Entity {
         const amountSyOut = await this.previewDeposit(baseAssetIn, amountBaseToPull, {
             ...params,
         });
-        // TODO deposit with bulk seller?
         return this.contract.metaCall.deposit(
             params?.receiver ?? ContractMetaMethod.utils.getContractSignerAddress,
             baseAssetIn,
@@ -153,7 +142,6 @@ export class SyEntity extends ERC20Entity {
     ): SyEntityMetaMethodReturnType<T, 'redeem', { amountBaseOut: BN }> {
         const burnFromInternalBalance = params?.burnFromInternalBalance ?? false;
         const amountBaseOut = await this.previewRedeem(baseAssetOut, amountSyToPull, { ...params });
-        // TODO redeem with bulk seller
         return this.contract.metaCall.redeem(
             params?.receiver ?? ContractMetaMethod.utils.getContractSignerAddress,
             amountSyToPull,
@@ -170,13 +158,26 @@ export class SyEntity extends ERC20Entity {
      * @param params - the additional parameters for read method.
      * @returns
      */
-    async userInfo(user: Address, params?: MulticallStaticParams): Promise<UserSyInfo> {
-        const { syBalance, unclaimedRewards } = await this.routerStatic.multicallStatic.getUserSYInfo(
-            this.address,
-            user,
-            params
-        );
-        return { syBalance: createTokenAmount(syBalance), unclaimedRewards: unclaimedRewards.map(createTokenAmount) };
+    async userInfo(
+        user: Address,
+        params?: MulticallStaticParams & { multicallForSimulateClaimRewards?: Multicall }
+    ): Promise<UserSyInfo> {
+        const [syBalance, rewardTokens, rewardsOut] = await Promise.all([
+            this.contract.multicallStatic.balanceOf(user, params),
+            this.getRewardTokens(params),
+            this.contract.multicallStatic.claimRewards(user, {
+                ...params,
+                multicall: params?.multicallForSimulateClaimRewards,
+            }),
+        ]);
+        const unclaimedRewards = iters.map(iters.izip(rewardTokens, rewardsOut), ([token, amount]) => ({
+            token,
+            amount,
+        }));
+        return {
+            syBalance: { token: this.address, amount: syBalance },
+            unclaimedRewards,
+        };
     }
 
     /**
@@ -215,25 +216,14 @@ export class SyEntity extends ERC20Entity {
      * @param tokenOut
      * @param amountSharesToRedeem
      * @param params - the additional parameters for read method.
-     * @param params.bulk - specify bulk seller address. Default is {@link NATIVE_ADDRESS_0x00}
-     *          (for not using bulk seller)
      * @returns the redeemed raw amount of `tokenOut`
      */
     async previewRedeem(
         tokenOut: Address,
         amountSharesToRedeem: BigNumberish,
-        params: MulticallStaticParams & {
-            bulk?: Address;
-        } = {}
+        params: MulticallStaticParams = {}
     ): Promise<BN> {
-        const { bulk = NATIVE_ADDRESS_0x00 } = params;
-        return this.routerStatic.multicallStatic.redeemSyToTokenStatic(
-            this.address,
-            tokenOut,
-            amountSharesToRedeem,
-            bulk,
-            params
-        );
+        return this.contract.multicallStatic.previewRedeem(tokenOut, amountSharesToRedeem, params);
     }
 
     /**
@@ -241,24 +231,13 @@ export class SyEntity extends ERC20Entity {
      * @param tokenIn
      * @param amountTokenToDeposit
      * @param params - the additional parameters for read method.
-     * @param params.bulk - specify bulk seller address. Default is {@link NATIVE_ADDRESS_0x00} (for not using
-     *  bulk seller).
      * @returns the deposited raw amount of SY
      */
     async previewDeposit(
         tokenIn: Address,
         amountTokenToDeposit: BigNumberish,
-        params: MulticallStaticParams & {
-            bulk?: Address;
-        } = {}
+        params: MulticallStaticParams = {}
     ): Promise<BN> {
-        const { bulk = NATIVE_ADDRESS_0x00 } = params;
-        return this.routerStatic.multicallStatic.mintSyFromTokenStatic(
-            this.address,
-            tokenIn,
-            amountTokenToDeposit,
-            bulk,
-            params
-        );
+        return this.contract.multicallStatic.previewDeposit(tokenIn, amountTokenToDeposit, params);
     }
 }

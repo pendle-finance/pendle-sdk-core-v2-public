@@ -8,6 +8,7 @@ export {
     BigNumber as BN,
     BigNumberish,
     constants as ethersConstants,
+    BytesLike,
 } from 'ethers';
 
 export { TransactionResponse } from '@ethersproject/abstract-provider';

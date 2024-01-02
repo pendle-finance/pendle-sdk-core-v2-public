@@ -8,11 +8,15 @@ import { MetaMethodType } from '../../../../contracts';
 import { BN, Address, BigNumberish, NoArgsCache } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
 import { MarketEntity } from '../../../MarketEntity';
+import * as offchainMath from '@pendle/core-v2-offchain-math';
+import * as limitOrder from '../../limitOrder';
 
 export type SwapExactPtForTokenRouteIntermediateData = BaseZapOutRouteIntermediateData & {
-    netSyFee: BN;
-    priceImpact: BN;
-    exchangeRateAfter: BN;
+    netSyFeeFromMarket: BN;
+    netSyFeeFromLimit: BN;
+    priceImpact: offchainMath.FixedX18;
+    exchangeRateAfter: offchainMath.MarketExchangeRate;
+    limitOrderMatchedResult: limitOrder.LimitOrderMatchedResult;
 };
 
 export type SwapExactPtForTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
@@ -21,10 +25,9 @@ export type SwapExactPtForTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
     tokenOut: Address;
 };
 
-export class SwapExactPtForTokenRoute<T extends MetaMethodType> extends BaseZapOutRoute<
-    T,
+export class SwapExactPtForTokenRoute extends BaseZapOutRoute<
     SwapExactPtForTokenRouteIntermediateData,
-    SwapExactPtForTokenRoute<T>
+    SwapExactPtForTokenRoute
 > {
     override readonly routeName = 'SwapExactPtForToken';
     constructor(
@@ -32,7 +35,7 @@ export class SwapExactPtForTokenRoute<T extends MetaMethodType> extends BaseZapO
         readonly exactPtIn: BigNumberish,
         readonly tokenOut: Address,
         readonly slippage: number,
-        params: BaseZapOutRouteConfig<T, SwapExactPtForTokenRoute<T>>
+        params: BaseZapOutRouteConfig<SwapExactPtForTokenRoute>
     ) {
         super(params);
     }
@@ -45,14 +48,6 @@ export class SwapExactPtForTokenRoute<T extends MetaMethodType> extends BaseZapO
         return this.tokenOut;
     }
 
-    override routeWithBulkSeller(withBulkSeller = true): SwapExactPtForTokenRoute<T> {
-        return new SwapExactPtForTokenRoute(this.market, this.exactPtIn, this.tokenOut, this.slippage, {
-            context: this.context,
-            tokenRedeemSy: this.tokenRedeemSy,
-            withBulkSeller,
-        });
-    }
-
     override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
         const pt = await this.market.pt();
         return this.checkUserApproval(signerAddress, { token: pt, amount: this.exactPtIn });
@@ -61,39 +56,61 @@ export class SwapExactPtForTokenRoute<T extends MetaMethodType> extends BaseZapO
     protected override async previewIntermediateSyImpl(): Promise<
         SwapExactPtForTokenRouteIntermediateData | undefined
     > {
-        const data = await this.routerStaticCall.swapExactPtForSyStatic(
-            this.market.address,
-            this.exactPtIn,
-            this.routerExtraParams.forCallStatic
-        );
-        return { ...data, intermediateSyAmount: data.netSyOut };
+        // TODO combine with swapExactPtForSy
+        let totalSyOut = BN.from(0);
+        let netPtRemains = BN.from(this.exactPtIn);
+
+        const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+            this.router.limitOrderMatcher.swapPtForSy(this.getMarketAddress(), netPtRemains, {
+                routerMethod: 'swapExactPtForToken',
+            }),
+            this.getMarketStaticMath(),
+        ]);
+        netPtRemains = netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+        totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
+
+        const marketResult = marketStaticMath.swapExactPtForSyStatic(netPtRemains.toBigInt());
+        totalSyOut = totalSyOut.add(marketResult.netSyOut);
+        // netPtRemains should be zero by now
+
+        return {
+            intermediateSyAmount: totalSyOut,
+            netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+            netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+            priceImpact: marketResult.priceImpact,
+            exchangeRateAfter: marketResult.exchangeRateAfter,
+            limitOrderMatchedResult,
+        };
     }
 
     @NoArgsCache
     override async getTokenRedeemSyAmountWithRouter(): Promise<BN | undefined> {
-        const [signerAddress, tokenRedeemSyOutputStruct] = await Promise.all([
+        const [signerAddress, tokenRedeemSyOutputStruct, intermediateResult] = await Promise.all([
             this.getSignerAddressIfApproved(),
             this.buildDummyTokenOutputForTokenRedeemSy(),
+            this.previewIntermediateSy(),
         ]);
-        if (!signerAddress) return undefined;
+        if (!signerAddress || !intermediateResult) return undefined;
         const res = await this.router.contract.callStatic.swapExactPtForToken(
             signerAddress,
             this.market.address,
             this.exactPtIn,
-            tokenRedeemSyOutputStruct
+            tokenRedeemSyOutputStruct,
+            intermediateResult.limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.router.chainId)
         );
         return res.netTokenOut;
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCall({}, this.routerExtraParams);
+        return mm?.estimateGas();
     }
 
     async buildCall(): RouterMetaMethodReturnType<
-        T,
+        'meta-method',
         'swapExactPtForToken',
         SwapExactPtForTokenRouteIntermediateData & {
-            route: SwapExactPtForTokenRoute<T>;
+            route: SwapExactPtForTokenRoute;
         }
     > {
         const res = await this.buildGenericCall(
@@ -120,6 +137,7 @@ export class SwapExactPtForTokenRoute<T extends MetaMethodType> extends BaseZapO
             this.market.address,
             this.exactPtIn,
             output,
+            intermediateResult.limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.router.chainId),
             {
                 ...data,
                 ...params,

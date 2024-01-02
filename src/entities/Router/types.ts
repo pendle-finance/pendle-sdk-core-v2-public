@@ -11,11 +11,13 @@ import { BytesLike } from 'ethers';
 import { PendleEntityConfigOptionalAbi } from '../PendleEntity';
 import { GasFeeEstimator } from './GasFeeEstimator';
 
-import type { IPAllAction } from '@pendle/core-v2/typechain-types/IPAllAction';
+import type { IPAllActionV3 } from '@pendle/core-v2/typechain-types/IPAllActionV3';
 import { AggregatorHelper } from './aggregatorHelper';
+import { LimitOrderMatcher } from './limitOrder';
 
-export type { ApproxParamsStruct, IPAllAction } from '@pendle/core-v2/typechain-types/IPAllAction';
+export type { ApproxParamsStruct, IPAllActionV3 } from '@pendle/core-v2/typechain-types/IPAllActionV3';
 import * as tsEssentials from 'ts-essentials';
+import * as errors from '../../errors';
 
 /**
  * Reflecting [`AGGREGATOR`](https://github.com/pendle-finance/pendle-core-v2/blob/c6f6000a6f682a2bff41b7a7cce78e36fb497e8e/contracts/router/swap-aggregator/ISwapAggregator.sol#L10) type.
@@ -44,7 +46,6 @@ export type TokenInput = {
     tokenIn: Address;
     netTokenIn: BigNumberish;
     tokenMintSy: Address;
-    bulk: Address;
     pendleSwap: Address;
     swapData: SwapData;
 };
@@ -56,7 +57,6 @@ export type TokenOutput = {
     tokenOut: Address;
     minTokenOut: BigNumberish;
     tokenRedeemSy: Address;
-    bulk: Address;
     pendleSwap: Address;
     swapData: SwapData;
 };
@@ -66,6 +66,7 @@ export type BaseRouterConfig = PendleEntityConfigOptionalAbi & {
     gasFeeEstimator?: GasFeeEstimator;
     aggregatorHelper?: AggregatorHelper;
     checkErrorOnSimulation?: boolean;
+    limitOrderMatcher?: LimitOrderMatcher;
 };
 
 export type RouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtraParams<T> & {
@@ -75,9 +76,9 @@ export type RouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodEx
 
 export type RouterMetaMethodReturnType<
     T extends MetaMethodType,
-    M extends ContractMethodNames<IPAllAction>,
+    M extends ContractMethodNames<IPAllActionV3>,
     Data extends object = object
-> = MetaMethodReturnType<T, IPAllAction, M, Data & RouterMetaMethodExtraParams<T>>;
+> = MetaMethodReturnType<T, IPAllActionV3, M, Data & RouterMetaMethodExtraParams<T>>;
 
 export type RouterHelperMetaMethodReturnType<
     T extends MetaMethodType,
@@ -99,4 +100,23 @@ export type FixedRouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMet
 
     // this is a copy of this type, but used for the inner callStatic to calculate stuff
     forCallStatic: Omit<FixedRouterMetaMethodExtraParams<T>, 'forCallStatic' | 'method'>;
+};
+
+export type RouterEvents = {
+    calculationFinalized: (params: {
+        metaMethod:
+            | ContractMetaMethod<IPAllActionV3, ContractMethodNames<IPAllActionV3>, object>
+            | ContractMetaMethod<
+                  typechain.PendleRouterHelper,
+                  ContractMethodNames<typechain.PendleRouterHelper>,
+                  object
+              >;
+    }) => void;
+
+    noRouteFound: (params: {
+        actionName: string;
+        from: Address;
+        to: Address;
+        errorOptions?: errors.PendleSdkErrorParams;
+    }) => void;
 };

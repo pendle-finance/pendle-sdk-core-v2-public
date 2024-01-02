@@ -1,0 +1,48 @@
+{
+  "marketAddress": "0x65819e4ee91923499934c86e93357f633033cb0b",
+  "expiry_ms": 1711584000000,
+  "ptAddress": "0xf0a219e14d4c058022a828b16af9888b143ab5ad",
+  "syAddress": "0x4b3f79ce3d5d752064288fd2be968a1c21b3ba37",
+  "ytAddress": "0xf31b528d724354575c0c65ab17d6decde29d2900",
+  "rewardTokens": [
+    {
+      "name": "Wrapped Ether",
+      "decimals": 18,
+      "address": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+    },
+    {
+      "name": "Arbitrum",
+      "decimals": 18,
+      "address": "0x912ce59144191c1204e64559fe8253a0e49e6548"
+    },
+    {
+      "name": "Pendle",
+      "decimals": 18,
+      "address": "0x0c880f6761f1af8d9aa9c466984b80dab9a8c9e8"
+    }
+  ],
+  "tokensIn": [
+    {
+      "name": "MUX LP",
+      "decimals": 18,
+      "address": "0x7cbaf5a14d953ff896e5b3312031515c858737c8"
+    },
+    {
+      "name": "Staked MLP",
+      "decimals": 18,
+      "address": "0x0a9bbf8299fed2441009a7bb44874ee453de8e5d"
+    }
+  ],
+  "tokensOut": [
+    {
+      "name": "MUX LP",
+      "decimals": 18,
+      "address": "0x7cbaf5a14d953ff896e5b3312031515c858737c8"
+    },
+    {
+      "name": "Staked MLP",
+      "decimals": 18,
+      "address": "0x0a9bbf8299fed2441009a7bb44874ee453de8e5d"
+    }
+  ]
+}

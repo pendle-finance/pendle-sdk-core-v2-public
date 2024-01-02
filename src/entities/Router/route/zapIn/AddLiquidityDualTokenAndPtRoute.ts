@@ -4,12 +4,14 @@ import { MetaMethodType, mergeMetaMethodExtraParams } from '../../../../contract
 import { Address, BigNumberish, BN, calcSlippedDownAmountSqrt } from '../../../../common';
 import { MarketEntity } from '../../../MarketEntity';
 import { txOverridesValueFromTokenInput } from '../helper';
+import * as offchainMath from '@pendle/core-v2-offchain-math';
 
 export type AddLiquidityDualTokenAndPtRouteData = BaseZapInRouteData & {
     netLpOut: BN;
     netPtUsed: BN;
     netSyUsed: BN;
     minLpOut: BN;
+    afterMath: offchainMath.MarketStaticMath;
 };
 
 export type AddLiquidityDualTokenAndPtRouteDebugInfo = ZapInRouteDebugInfo & {
@@ -23,10 +25,9 @@ export type AddLiquidityDualTokenAndPtRouteDebugInfo = ZapInRouteDebugInfo & {
     slippage: number;
 };
 
-export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends BaseZapInRoute<
-    T,
+export class AddLiquidityDualTokenAndPtRoute extends BaseZapInRoute<
     AddLiquidityDualTokenAndPtRouteData,
-    AddLiquidityDualTokenAndPtRoute<T>
+    AddLiquidityDualTokenAndPtRoute
 > {
     override readonly routeName = 'AddLiquidityDualTokenAndPt';
 
@@ -36,29 +37,13 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
         readonly tokenDesired: BigNumberish,
         readonly ptDesired: BigNumberish,
         readonly slippage: number,
-        params: BaseZapInRouteConfig<T, AddLiquidityDualTokenAndPtRoute<T>>
+        params: BaseZapInRouteConfig<AddLiquidityDualTokenAndPtRoute>
     ) {
         super(params);
     }
 
     override get sourceTokenAmount() {
         return { token: this.tokenIn, amount: this.tokenDesired };
-    }
-
-    override routeWithBulkSeller(withBulkSeller = true): AddLiquidityDualTokenAndPtRoute<T> {
-        return new AddLiquidityDualTokenAndPtRoute(
-            this.market,
-            this.tokenIn,
-            this.tokenDesired,
-            this.ptDesired,
-            this.slippage,
-            {
-                context: this.context,
-                tokenMintSy: this.tokenMintSy,
-                withBulkSeller,
-                cloneFrom: this,
-            }
-        );
     }
 
     override async signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
@@ -75,33 +60,40 @@ export class AddLiquidityDualTokenAndPtRoute<T extends MetaMethodType> extends B
     }
 
     protected override async previewWithRouterStatic(): Promise<AddLiquidityDualTokenAndPtRouteData | undefined> {
-        const [input, mintedSyAmount] = await Promise.all([this.buildTokenInput(), this.getMintedSyAmount()]);
+        const [input, mintedSyAmount, marketStaticMath] = await Promise.all([
+            this.buildTokenInput(),
+            this.getMintedSyAmount(),
+            this.getMarketStaticMath(),
+        ]);
         if (!input || !mintedSyAmount) {
             return undefined;
         }
-        const data = await this.routerStaticCall.addLiquidityDualSyAndPtStatic(
-            this.market.address,
-            mintedSyAmount,
-            this.ptDesired,
-            this.routerExtraParams.forCallStatic
+        const data = marketStaticMath.addLiquidityDualSyAndPtStatic(
+            BN.from(mintedSyAmount).toBigInt(),
+            BN.from(this.ptDesired).toBigInt()
         );
         const minLpOut = calcSlippedDownAmountSqrt(data.netLpOut, this.slippage);
         return {
-            ...data,
+            netLpOut: BN.from(data.netLpOut),
+            netPtUsed: BN.from(data.netPtUsed),
+            netSyUsed: BN.from(data.netSyUsed),
+            afterMath: data.afterMath,
+
             minLpOut,
             intermediateSyAmount: mintedSyAmount,
         };
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCall({}, this.routerExtraParams);
+        return mm?.estimateGas();
     }
 
     async buildCall(): RouterMetaMethodReturnType<
-        T,
+        'meta-method',
         'addLiquidityDualTokenAndPt',
         AddLiquidityDualTokenAndPtRouteData & {
-            route: AddLiquidityDualTokenAndPtRoute<T>;
+            route: AddLiquidityDualTokenAndPtRoute;
         }
     > {
         const previewResult = (await this.preview())!;

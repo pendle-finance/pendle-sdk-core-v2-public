@@ -2,32 +2,32 @@ import { BaseRouter } from '../BaseRouter';
 import { BN, Address, toAddress, ethersConstants, NoArgsCache, createNoArgsCache, bnMax } from '../../../common';
 import { SyEntity } from '../../SyEntity';
 import { FixedRouterMetaMethodExtraParams, ApproxParamsStruct } from '../types';
-import { MetaMethodType } from '../../../contracts';
 import { BaseRoute } from './BaseRoute';
+import * as iters from 'itertools';
 
-export type RouteContextConfig<T extends MetaMethodType> = {
+export type RouteContextConfig = {
     readonly router: BaseRouter;
     readonly syEntity: SyEntity;
-    readonly routerExtraParams: FixedRouterMetaMethodExtraParams<T>;
+    readonly routerExtraParams: FixedRouterMetaMethodExtraParams<'meta-method'>;
     readonly aggregatorSlippage: number;
 };
 
-export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<T, any>> {
+export class RouteContext<RouteType extends BaseRoute<any>> {
     readonly router: BaseRouter;
     readonly syEntity: SyEntity;
-    readonly routerExtraParams: FixedRouterMetaMethodExtraParams<T>;
+    readonly routerExtraParams: FixedRouterMetaMethodExtraParams<'meta-method'>;
     readonly aggregatorSlippage: number;
     readonly routes: RouteType[] = [];
     private readonly sharedCacheData = new Map();
 
-    static readonly NoArgsSharedCache = createNoArgsCache<{ context: RouteContext<any, any> }>(
+    static readonly NoArgsSharedCache = createNoArgsCache<{ context: RouteContext<any> }>(
         (obj, propertyKey) => obj.context.sharedCacheData.has(propertyKey),
         (obj, propertyKey, value) => obj.context.sharedCacheData.set(propertyKey, value),
         (obj, propertyKey) => obj.context.sharedCacheData.get(propertyKey),
         (obj, propertyKey) => obj.context.sharedCacheData.delete(propertyKey)
     );
 
-    constructor(params: RouteContextConfig<T>) {
+    constructor(params: RouteContextConfig) {
         ({
             router: this.router,
             syEntity: this.syEntity,
@@ -38,6 +38,7 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
 
     addRoute(route: RouteType) {
         this.routes.push(route);
+        route.prefetch();
         /* eslint-disable @typescript-eslint/unbound-method */
         NoArgsCache.invalidate(this, RouteContext.prototype.getMaxOutAmongAllRoutes);
         /* eslint-enable @typescript-eslint/unbound-method */
@@ -71,18 +72,15 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
     @NoArgsCache
     async getMaxOutAmongAllRoutes(): Promise<BN | undefined> {
         const routeOut = await Promise.all(
-            this.routes.map(async (route) => {
-                try {
-                    if (route.withBulkSeller) return [];
-                    const result = await route.getNetOut();
-                    return result != undefined ? [result] : [];
-                } catch {
-                    return [];
-                }
-            })
+            this.routes.map((route) =>
+                route.getNetOut().then(
+                    (res) => res ?? [],
+                    () => []
+                )
+            )
         ).then((results) => results.flat());
         if (routeOut.length === 0) return undefined;
-        return routeOut.reduce(bnMax);
+        return iters.reduce(routeOut, (a, b) => bnMax(a, b));
     }
 
     getApproxParamsToPullPt(guessAmountOut: BN, slippage: number): ApproxParamsStruct {
@@ -91,10 +89,6 @@ export class RouteContext<T extends MetaMethodType, RouteType extends BaseRoute<
 
     getApproxParamsToPushPt(guessAmountIn: BN, slippage: number): ApproxParamsStruct {
         return this.router.getApproxParamsToPushPt(guessAmountIn, slippage);
-    }
-
-    getBulkBuffer() {
-        return this.router.getBulkBuffer();
     }
 
     /**

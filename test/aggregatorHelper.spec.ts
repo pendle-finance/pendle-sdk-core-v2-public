@@ -7,10 +7,10 @@ import {
     createTokenAmount,
     OneInchAggregatorHelper,
 } from '../src';
-import { currentConfig, networkConnection, describeIf, env } from './util/testEnv';
+import { currentConfig, networkConnection, env } from './util/testEnv';
 import { BigNumber as BN } from 'ethers';
 import { SLIPPAGE_TYPE2 } from './util/constants';
-import { print } from './util/testHelper';
+import * as testHelper from './util/testHelper';
 
 describe('VoidAggregatorHelper', () => {
     const usdcAmount = createTokenAmount({ token: currentConfig.tokens.USDC, amount: BN.from(10) });
@@ -34,14 +34,14 @@ describe('VoidAggregatorHelper', () => {
     });
 });
 
-describeIf(env.AGGREGATOR_HELPER === 'ONEINCH')('OneInchAggregatorHelper', () => {
+testHelper.describeIf(env.AGGREGATOR_HELPER === 'ONEINCH')('OneInchAggregatorHelper', () => {
     const oneInchAggregatorHelper = currentConfig.aggregatorHelper as OneInchAggregatorHelper;
     const usdcAmount = createTokenAmount({ token: currentConfig.tokens.USDC, amount: BN.from(10) });
     const daiAddress = currentConfig.tokens.DAI;
     it('protocols for scale', async () => {
         for (const needScale of [false, true]) {
             const protocols = await oneInchAggregatorHelper.getLiquiditySources({ needScale });
-            print(protocols);
+            testHelper.print(protocols);
             for (const protocol of protocols) {
                 expect(protocol).not.toMatch(/LIMIT_ORDER/);
                 expect(protocol).not.toMatch(/PMM/);

@@ -9,15 +9,16 @@ export type {
     PendleVotingControllerUpg,
     PendleYieldContractFactory,
     PendleYieldToken,
+    PendleYieldTokenV2,
     PendleFeeDistributor,
     IPFeeDistributorV2 as IPendleFeeDistributorV2,
     PendleFeeDistributorV2,
     IWETH,
     PendleRouterHelper,
-    PendleRouterHelper2,
     PendleMulticallV1,
     PendleMulticallV2,
     Multicall2,
+    IPLimitRouter,
     PendleMerkleDistributor,
 } from '@pendle/core-v2/typechain-types';
 

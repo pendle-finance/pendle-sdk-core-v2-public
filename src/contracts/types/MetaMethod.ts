@@ -117,3 +117,11 @@ export type MetaMethodData<T> = T extends (..._params: any[]) => infer R
     : T extends ContractMetaMethod<infer _C, any, infer D>
     ? D
     : never;
+
+export function metaMethodExtraParamsIsType<T extends MetaMethodType>(
+    x: MetaMethodExtraParams<MetaMethodType>,
+    t: T
+): x is MetaMethodExtraParams<T> {
+    if (t == 'send' && x.method == undefined) return true;
+    return x.method == t;
+}

@@ -1,13 +1,11 @@
 import {
     PendleMarket,
-    IPRouterStatic,
     IPActionInfoStatic,
     PendleMarketABI,
     WrappedContract,
     MetaMethodType,
     MetaMethodExtraParams,
     MulticallStaticParams,
-    getRouterStatic,
     ContractMethodNames,
     MetaMethodReturnType,
 } from '../contracts';
@@ -25,26 +23,24 @@ import {
     zip,
     NATIVE_ADDRESS_0x00,
 } from '../common';
+import { Multicall } from '../multicall';
+export { MarketState } from '@pendle/core-v2-offchain-math';
+import { MarketStateStructOutput } from '@pendle/core-v2/typechain-types/PendleMarket';
 
-export type MarketState = {
-    totalPt: BN;
-    totalSy: BN;
-    totalLp: BN;
-    treasury: Address;
-    scalarRoot: BN;
-    lnFeeRateRoot: BN;
-    expiry: BN;
-    reserveFeePercent: BN;
-    lastLnImpliedRate: BN;
-};
+import * as offchainMath from '@pendle/core-v2-offchain-math';
+import * as iters from 'itertools';
+
+type MarketState = offchainMath.MarketState;
 
 export type MarketInfo = {
+    expiry: Date;
     pt: Address;
     yt: Address;
     sy: Address;
-    marketExchangeRateExcludeFee: BN;
-    impliedYield: BN;
+    marketExchangeRateExcludeFee: offchainMath.MarketExchangeRate;
+    impliedYield: offchainMath.FixedX18;
     state: MarketState;
+    marketStaticMath: offchainMath.MarketStaticMath;
 };
 
 export type AssetAmount = {
@@ -77,16 +73,11 @@ export type MarketEntityConfig = ERC20EntityConfig & {
 };
 
 export class MarketEntity extends ERC20Entity {
-    protected readonly routerStatic: WrappedContract<IPRouterStatic>;
-    protected _ptAddress: Address | undefined;
-    protected _syAddress: Address | undefined;
-    protected _ytAddress: Address | undefined;
     readonly chainId: ChainId;
 
     constructor(readonly address: Address, config: MarketEntityConfig) {
         super(address, { abi: PendleMarketABI, ...config });
         this.chainId = config.chainId;
-        this.routerStatic = getRouterStatic(config);
     }
 
     /**
@@ -98,22 +89,61 @@ export class MarketEntity extends ERC20Entity {
         return this._contract as WrappedContract<PendleMarket>;
     }
 
+    private readTokensCacheResult:
+        | Promise<{
+              ptAddress: Address;
+              ytAddress: Address;
+              syAddress: Address;
+          }>
+        | undefined = undefined;
+    readTokens(params?: MulticallStaticParams): Promise<{
+        ptAddress: Address;
+        ytAddress: Address;
+        syAddress: Address;
+    }> {
+        return (this.readTokensCacheResult ??= this.contract.multicallStatic
+            .readTokens(params)
+            .then(({ _PT, _YT, _SY }) => ({
+                ptAddress: toAddress(_PT),
+                ytAddress: toAddress(_YT),
+                syAddress: toAddress(_SY),
+            })));
+    }
+
     /**
      * Get the info of the market.
      * @param params - the additional parameters for read method.
      * @returns
      */
-    async getMarketInfo(params?: MulticallStaticParams): Promise<MarketInfo> {
-        const res = await this.routerStatic.multicallStatic.getMarketState(this.address, params);
-        this._ptAddress = toAddress(res.pt);
-        this._syAddress = toAddress(res.sy);
-        this._ytAddress = toAddress(res.yt);
+    async getMarketInfo(
+        params?: MulticallStaticParams & {
+            pyIndex?: offchainMath.PyIndex;
+            blockTimestamp?: number;
+        }
+    ): Promise<MarketInfo> {
+        const [{ ptAddress, ytAddress, syAddress }, state, pyIndex, blockTimestamp] = await Promise.all([
+            this.readTokens(params),
+            this.readState(params),
+            params?.pyIndex ?? this.ytEntity().then((ytEntity) => ytEntity.pyIndexCurrent(params)),
+            params?.blockTimestamp ??
+                this.contract.provider
+                    .getBlock(params?.overrides?.blockTag ?? 'latest')
+                    .then((block) => block.timestamp),
+        ]);
+        const marketStaticMath = offchainMath.MarketStaticMath.from({
+            marketState: state,
+            blockTime_s: BigInt(blockTimestamp),
+            pyIndex,
+        });
         return {
-            ...res,
-            pt: this._ptAddress,
-            sy: this._syAddress,
-            yt: this._ytAddress,
-            state: { ...res.state, treasury: toAddress(res.state.treasury) },
+            expiry: new Date(Number(state.expiry * 1000n)),
+            impliedYield: state.impliedYield,
+            marketExchangeRateExcludeFee: marketStaticMath.getTradeExchangeRateExcludeFee(state),
+            pt: ptAddress,
+            sy: syAddress,
+            yt: ytAddress,
+            state,
+            marketStaticMath,
         };
     }
 
@@ -121,12 +151,35 @@ export class MarketEntity extends ERC20Entity {
      * Get the market info of an user.
      * @param user
      * @param params - the additional parameters for read method.
-     * @returns
+     *
+     * @deprecated use the individual functions that returns the corresponding fields instead.
      */
-    async getUserMarketInfo(user: Address, params?: MulticallStaticParams): Promise<UserMarketInfo> {
-        return this.routerStatic.multicallStatic
-            .getUserMarketInfo(this.address, user, params)
-            .then(MarketEntity.toUserMarketInfo);
+    async getUserMarketInfo(
+        userAddress: Address,
+        params?: MulticallStaticParams & { multicallForSimulateRedeemRewards?: Multicall }
+    ): Promise<UserMarketInfo> {
+        const [tokens, state, userLp, rewardTokens, unclaimedRewards] = await Promise.all([
+            this.readTokens(params),
+            this.readState(params),
+            this.balanceOf(userAddress, params),
+            this.getRewardTokens(params),
+            this.redeemRewards(userAddress, {
+                method: 'multicallStatic',
+                ...params,
+                multicall: params?.multicallForSimulateRedeemRewards,
+            }),
+        ]);
+        const userPt = userLp.mul(state.totalPt).div(state.totalLp);
+        const userSy = userLp.mul(state.totalSy).div(state.totalLp);
+        return {
+            lpBalance: createTokenAmount({ token: this.address, amount: userLp }),
+            ptBalance: createTokenAmount({ token: tokens.ptAddress, amount: userPt }),
+            syBalance: createTokenAmount({ token: tokens.syAddress, amount: userSy }),
+            unclaimedRewards: iters.map(iters.zip(rewardTokens, unclaimedRewards), ([token, amount]) => ({
+                token,
+                amount,
+            })),
+        };
     }
 
     /**
@@ -154,7 +207,7 @@ export class MarketEntity extends ERC20Entity {
      * @returns
      */
     async SY(params?: MulticallStaticParams): Promise<Address> {
-        return this._syAddress ?? this.getMarketInfo(params).then(({ sy }) => sy);
+        return this.readTokens(params).then(({ syAddress }) => syAddress);
     }
 
     /**
@@ -172,7 +225,7 @@ export class MarketEntity extends ERC20Entity {
      * @returns
      */
     async PT(params?: MulticallStaticParams): Promise<Address> {
-        return this._ptAddress ?? this.getMarketInfo(params).then(({ pt }) => pt);
+        return this.readTokens(params).then(({ ptAddress }) => ptAddress);
     }
 
     /**
@@ -183,7 +236,7 @@ export class MarketEntity extends ERC20Entity {
     }
 
     async YT(params?: MulticallStaticParams): Promise<Address> {
-        return this._ytAddress ?? this.getMarketInfo(params).then(({ yt }) => yt);
+        return this.readTokens(params).then(({ ytAddress }) => ytAddress);
     }
 
     /**
@@ -323,6 +376,20 @@ export class MarketEntity extends ERC20Entity {
     async readState(params?: MulticallStaticParams & { routerAddress?: Address }): Promise<MarketState> {
         const router = params?.routerAddress ?? NATIVE_ADDRESS_0x00;
         const res = await this.contract.multicallStatic.readState(router, params);
-        return { ...res, treasury: toAddress(res.treasury) };
+        return MarketEntity.createMarketStateFromContractResult(res);
+    }
+
+    static createMarketStateFromContractResult(rawState: MarketStateStructOutput): MarketState {
+        return offchainMath.MarketState.fromRaw({
+            expiry: rawState.expiry.toBigInt(),
+            lastLnImpliedRate: rawState.lastLnImpliedRate.toBigInt(),
+            lnFeeRateRoot: rawState.lnFeeRateRoot.toBigInt(),
+            reserveFeePercent: rawState.reserveFeePercent.toBigInt(),
+            scalarRoot: rawState.scalarRoot.toBigInt(),
+            totalLp: rawState.totalLp.toBigInt(),
+            totalPt: rawState.totalPt.toBigInt(),
+            totalSy: rawState.totalSy.toBigInt(),
+            treasury: toAddress(rawState.treasury),
+        });
     }
 }

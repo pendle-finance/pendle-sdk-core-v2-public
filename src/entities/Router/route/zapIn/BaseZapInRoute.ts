@@ -4,23 +4,19 @@ import {
     Address,
     ethersConstants,
     NoArgsCache,
-    calcSlippedUpAmount,
     BN,
     NATIVE_ADDRESS_0xEE,
     bnSafeDiv,
 } from '../../../../common';
-import { MetaMethodType } from '../../../../contracts';
 import { TokenInput } from '../../types';
 import { BaseRoute, BaseRouteConfig, RouteDebugInfo } from '../BaseRoute';
 import { RouteContext } from '../RouteContext';
 import { txOverridesValueFromTokenInput } from '../helper';
 
-export type BaseZapInRouteConfig<
-    T extends MetaMethodType,
-    SelfType extends BaseZapInRoute<T, BaseZapInRouteData, SelfType>
-> = BaseRouteConfig<T, SelfType> & {
-    readonly tokenMintSy: Address;
-};
+export type BaseZapInRouteConfig<SelfType extends BaseZapInRoute<BaseZapInRouteData, SelfType>> =
+    BaseRouteConfig<SelfType> & {
+        readonly tokenMintSy: Address;
+    };
 
 export type ZapInRouteDebugInfo = RouteDebugInfo & {
     type: 'zapIn';
@@ -32,13 +28,12 @@ export type BaseZapInRouteData = {
 };
 
 export abstract class BaseZapInRoute<
-    T extends MetaMethodType,
     Data extends BaseZapInRouteData,
-    SelfType extends BaseZapInRoute<T, Data, SelfType>
-> extends BaseRoute<T, SelfType> {
+    SelfType extends BaseZapInRoute<Data, SelfType>
+> extends BaseRoute<SelfType> {
     readonly tokenMintSy: Address;
 
-    constructor(params: BaseZapInRouteConfig<T, SelfType>) {
+    constructor(params: BaseZapInRouteConfig<SelfType>) {
         super(params);
         ({ tokenMintSy: this.tokenMintSy } = params);
         const other = params.cloneFrom;
@@ -47,12 +42,10 @@ export abstract class BaseZapInRoute<
             // Can we somehow automate this?
             NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.getAggregatorResult);
 
-            if (this.withBulkSeller === other.withBulkSeller) {
-                NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.preview);
-                NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.buildTokenInput);
-                NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.getMintedSyAmountWithRouter);
-                NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.getMintedSyAmountWithRouterStatic);
-            }
+            NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.preview);
+            NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.buildTokenInput);
+            NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.getMintedSyAmountWithRouter);
+            NoArgsCache.copyValue(this, other, BaseZapInRoute.prototype.getMintedSyAmountViaSyPreviewDeposit);
             /* eslint-disable @typescript-eslint/unbound-method */
         }
     }
@@ -112,19 +105,6 @@ export abstract class BaseZapInRoute<
             return BN.from(0);
         }
     }
-
-    override async getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined> {
-        const aggregatorResult = await this.getAggregatorResult();
-        return {
-            netTokenIn: calcSlippedUpAmount(BN.from(aggregatorResult.outputAmount), this.context.getBulkBuffer()),
-            netSyIn: BN.from(0),
-        };
-    }
-
-    override get tokenBulk(): Address {
-        return this.tokenMintSy;
-    }
-
     /**
      * @privateRemarks
      * The passing `syncAfterAggregatorCall` should not affect the preview logic
@@ -155,14 +135,13 @@ export abstract class BaseZapInRoute<
 
     @NoArgsCache
     async buildTokenInput(): Promise<TokenInput | undefined> {
-        const [aggregatorResult, bulk] = await Promise.all([this.getAggregatorResult(), this.getUsedBulk()]);
+        const aggregatorResult = await this.getAggregatorResult();
         const swapData = aggregatorResult.createSwapData({ needScale: this.getNeedScale() });
         const pendleSwap = this.router.getPendleSwapAddress(swapData.swapType);
         const input: TokenInput = {
             tokenIn: this.sourceTokenAmount.token,
             netTokenIn: this.sourceTokenAmount.amount,
             tokenMintSy: this.tokenMintSy,
-            bulk,
             pendleSwap,
             swapData,
         };
@@ -183,7 +162,7 @@ export abstract class BaseZapInRoute<
 
     @NoArgsCache
     async getMintedSyAmount(): Promise<BN | undefined> {
-        return this.getMintedSyAmountWithRouter().then((value) => value ?? this.getMintedSyAmountWithRouterStatic());
+        return this.getMintedSyAmountWithRouter().then((value) => value ?? this.getMintedSyAmountViaSyPreviewDeposit());
     }
 
     @NoArgsCache
@@ -203,15 +182,10 @@ export abstract class BaseZapInRoute<
     }
 
     @NoArgsCache
-    async getMintedSyAmountWithRouterStatic(): Promise<BN | undefined> {
-        const [tokenMintSyAmount, bulk] = await Promise.all([this.getTokenMintSyAmount(), this.getUsedBulk()]);
+    async getMintedSyAmountViaSyPreviewDeposit(): Promise<BN | undefined> {
+        const tokenMintSyAmount = await this.getTokenMintSyAmount();
         if (!tokenMintSyAmount) return undefined;
-        return this.routerStatic.multicallStatic.mintSyFromTokenStatic(
-            this.syEntity.address,
-            this.tokenMintSy,
-            tokenMintSyAmount,
-            bulk
-        );
+        return this.syEntity.previewDeposit(this.tokenMintSy, tokenMintSyAmount, this.routerExtraParams);
     }
 
     override async gatherDebugInfo(): Promise<ZapInRouteDebugInfo> {

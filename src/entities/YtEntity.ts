@@ -1,8 +1,17 @@
-import { PendleYieldToken, PendleYieldTokenABI, WrappedContract, MulticallStaticParams } from '../contracts';
-import { Address, toAddress } from '../common';
+import {
+    PendleYieldTokenV2,
+    PendleYieldTokenV2ABI,
+    WrappedContract,
+    MulticallStaticParams,
+    MetaMethodExtraParams,
+    MetaMethodType,
+    MetaMethodReturnType,
+} from '../contracts';
+import { Address, toAddress, BigNumberish, BN } from '../common';
 import { PtEntity, PtEntityConfig } from './PtEntity';
 import { SyEntity, SyEntityConfig } from './SyEntity';
 import { PyEntity, PyEntityConfig } from './PyEntity';
+import * as offchainMath from '@pendle/core-v2-offchain-math';
 
 /**
  * Configuration for a {@link YtEntity}
@@ -14,7 +23,7 @@ export type YtEntityConfig = PyEntityConfig;
  */
 export class YtEntity extends PyEntity {
     constructor(readonly address: Address, config: YtEntityConfig) {
-        super(address, { abi: PendleYieldTokenABI, ...config });
+        super(address, { abi: PendleYieldTokenV2ABI, ...config });
     }
 
     /**
@@ -23,7 +32,7 @@ export class YtEntity extends PyEntity {
      * @see PendleEntity#_contract
      */
     get contract() {
-        return this._contract as WrappedContract<PendleYieldToken>;
+        return this._contract as WrappedContract<PendleYieldTokenV2>;
     }
 
     /**
@@ -33,15 +42,8 @@ export class YtEntity extends PyEntity {
      * @param params - the additional parameters for read method.
      * @returns
      */
-    async SY(params?: MulticallStaticParams): Promise<Address> {
+    override async SY(params?: MulticallStaticParams): Promise<Address> {
         return this.contract.multicallStatic.SY(params).then(toAddress);
-    }
-
-    /**
-     * Alias for {@link YtEntity#SY}
-     */
-    async sy(params?: MulticallStaticParams) {
-        return this.SY(params);
     }
 
     /**
@@ -51,15 +53,19 @@ export class YtEntity extends PyEntity {
      * @param params - the additional parameters for read method.
      * @returns
      */
-    async PT(params?: MulticallStaticParams): Promise<Address> {
+    override async PT(params?: MulticallStaticParams): Promise<Address> {
         return this.contract.multicallStatic.PT(params).then(toAddress);
     }
 
     /**
-     * Alias for {@link YtEntity#PT}
+     * Return `this` address.
+     * @remarks
+     * The naming is in uppercase to reflect the same function of the contract.
+     * @param params - the additional parameters for read method.
+     * @returns
      */
-    async pt(params?: MulticallStaticParams) {
-        return this.PT(params);
+    override YT(_params?: MulticallStaticParams): Promise<Address> {
+        return Promise.resolve(this.address);
     }
 
     /**
@@ -69,7 +75,7 @@ export class YtEntity extends PyEntity {
      * @param params.entityConfig - the additional config for the SY token.
      * @returns
      */
-    async syEntity(params?: MulticallStaticParams & { entityConfig?: SyEntityConfig }) {
+    override async syEntity(params?: MulticallStaticParams & { entityConfig?: SyEntityConfig }) {
         const syAddr = await this.SY(params);
         return new SyEntity(syAddr, params?.entityConfig ?? this.entityConfig);
     }
@@ -81,9 +87,14 @@ export class YtEntity extends PyEntity {
      * @param params.entityConfig - the additional config for the SY token.
      * @returns
      */
-    async ptEntity(params?: MulticallStaticParams & { entityConfig?: PtEntityConfig }) {
+    override async ptEntity(params?: MulticallStaticParams & { entityConfig?: PtEntityConfig }) {
         const ptAddr = await this.PT(params);
         return new PtEntity(ptAddr, params?.entityConfig ?? this.entityConfig);
+    }
+
+    override ytEntity(params?: MulticallStaticParams & { entityConfig?: YtEntityConfig }) {
+        const res = params?.entityConfig ? new YtEntity(this.address, params.entityConfig) : this;
+        return Promise.resolve(res);
     }
 
     /**
@@ -94,8 +105,9 @@ export class YtEntity extends PyEntity {
     // TODO remove multicall usage (???)
     // pyIndexCurrent is not a views function. It can affect the other multicall
     // that come after this call.
-    async pyIndexCurrent(params?: MulticallStaticParams) {
-        return this.contract.multicallStatic.pyIndexCurrent(params);
+    async pyIndexCurrent(params?: MulticallStaticParams): Promise<offchainMath.PyIndex> {
+        const rawPyIndex = await this.contract.multicallStatic.pyIndexCurrent(params);
+        return offchainMath.PyIndex.create(rawPyIndex.toBigInt());
     }
 
     /**
@@ -106,5 +118,41 @@ export class YtEntity extends PyEntity {
     async getRewardTokens(params?: MulticallStaticParams): Promise<Address[]> {
         const results = await this.contract.multicallStatic.getRewardTokens(params);
         return results.map(toAddress);
+    }
+
+    async previewMintPyFromSy(netSyIn: BigNumberish, params?: MulticallStaticParams): Promise<BN> {
+        const pyIndex = await this.pyIndexCurrent(params);
+        const netPYMinted = pyIndex.convert({ sy: BN.from(netSyIn).toBigInt() }).asset;
+        return BN.from(netPYMinted);
+    }
+
+    async previewRedeemPyToSy(netPYIn: BigNumberish, params?: MulticallStaticParams): Promise<BN> {
+        const pyIndex = await this.pyIndexCurrent(params);
+        const netSyOut = pyIndex.convert({ asset: BN.from(netPYIn).toBigInt() }).sy;
+        return BN.from(netSyOut);
+    }
+
+    async redeemDueInterestAndRewards<T extends MetaMethodType>(
+        userAddress: Address,
+        params?: MetaMethodExtraParams<T> & {
+            redeemInterest?: boolean;
+            redeemRewards?: boolean;
+        }
+    ): MetaMethodReturnType<T, PendleYieldTokenV2, 'redeemDueInterestAndRewards', object> {
+        return this.contract.metaCall.redeemDueInterestAndRewards(
+            userAddress,
+            params?.redeemInterest ?? false,
+            params?.redeemInterest ?? false,
+            params
+        );
+    }
+
+    async getExpiry(params?: MulticallStaticParams): Promise<Date> {
+        const expiryBN = await this.contract.multicallStatic.expiry(params);
+        return new Date(expiryBN.mul(1000).toNumber());
+    }
+
+    async isExpired(params?: MulticallStaticParams): Promise<boolean> {
+        return this.contract.multicallStatic.isExpired(params);
     }
 }

@@ -1,6 +1,6 @@
-import ARBITRUM_CORE_ADDRESSES from '@pendle/core-v2-mainnet/deployments/42161-core.json';
-import ARBITRUM_GLP_MAR28_2024_ADDRESSES from '@pendle/core-v2-mainnet/deployments/42161-markets/GLP-28MARCH2024.json';
-import ARBITRUM_GDAI_MAR28_2024_ADDRESSES from '@pendle/core-v2-mainnet/deployments/42161-markets/GDAI-28MARCH2024.json';
+import ARBITRUM_CORE_ADDRESSES from '@pendle/core-v2/deployments/42161-core.json';
+import ARBITRUM_GLP_MAR28_2024_ADDRESSES from '@pendle/core-v2/deployments/42161-markets/GLP-28MARCH2024.json';
+import ARBITRUM_GDAI_MAR28_2024_ADDRESSES from '@pendle/core-v2/deployments/42161-markets/GDAI-28MARCH2024.json';
 
 import { DUMMY_ADDRESS } from '../constants';
 import { shallowToAddress } from './helper';

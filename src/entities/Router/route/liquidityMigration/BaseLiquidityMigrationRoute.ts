@@ -3,14 +3,12 @@ import { MetaMethodType } from '../../../../contracts';
 import { _RemoveLiquiditySingleTokenRoute, BaseZapOutRouteConfig, ZapOutRouteDebugInfo } from '../zapOut';
 import { BaseZapInRoute, ZapInRouteDebugInfo } from '../zapIn';
 import { BN, Address, NoArgsCache, BigNumberish } from '../../../../common';
-import { RouteContext } from '../RouteContext';
 import { FixedRouterMetaMethodExtraParams } from '../../types';
 
 export type BaseLiquidityMigrationFixTokenRedeemSyRouteConfig<
-    T extends MetaMethodType,
-    SelfType extends BaseLiquidityMigrationFixTokenRedeemSyRoute<T, any>
-> = BaseRouteConfig<T, SelfType> & {
-    removeLiquidityRoute: PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T>;
+    SelfType extends BaseLiquidityMigrationFixTokenRedeemSyRoute<any>
+> = BaseRouteConfig<SelfType> & {
+    removeLiquidityRoute: PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper;
 };
 
 export type LiquidityMigrationFixTokenRedeemSyRouteDebugInfo = RouteDebugInfo & {
@@ -20,13 +18,12 @@ export type LiquidityMigrationFixTokenRedeemSyRouteDebugInfo = RouteDebugInfo & 
 };
 
 export abstract class BaseLiquidityMigrationFixTokenRedeemSyRoute<
-    T extends MetaMethodType,
-    SelfType extends BaseLiquidityMigrationFixTokenRedeemSyRoute<T, SelfType>,
-    AddLiquidityRouteType extends BaseZapInRoute<T, any, any> = BaseZapInRoute<T, any, any>
-> extends BaseRoute<T, SelfType> {
-    readonly removeLiquidityRoute: PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T>;
+    SelfType extends BaseLiquidityMigrationFixTokenRedeemSyRoute<SelfType>,
+    AddLiquidityRouteType extends BaseZapInRoute<any, any> = BaseZapInRoute<any, any>
+> extends BaseRoute<SelfType> {
+    readonly removeLiquidityRoute: PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper;
 
-    constructor(params: BaseLiquidityMigrationFixTokenRedeemSyRouteConfig<T, SelfType>) {
+    constructor(params: BaseLiquidityMigrationFixTokenRedeemSyRouteConfig<SelfType>) {
         super(params);
         this.removeLiquidityRoute = params.removeLiquidityRoute;
     }
@@ -44,48 +41,13 @@ export abstract class BaseLiquidityMigrationFixTokenRedeemSyRoute<
     abstract createAddLiquidityRouteImplement(): Promise<AddLiquidityRouteType | undefined>;
     abstract getGasUsedImplement(): Promise<BN | undefined>;
 
-    abstract addLiquidityRouteWithBulkSeller(withBulkSeller?: boolean): SelfType;
-    abstract removeLiquidityRouteWithBulkSeller(withBulkSeller?: boolean): SelfType;
-
     abstract withRemoveLiquidityRoute(
-        newRemoveLiquidityRoute: PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T>
+        newRemoveLiquidityRoute: PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper
     ): SelfType;
-
-    /**
-     * @remarks
-     * **Premature optimization**. Cache the remove liquidity route **with* bulk seller so
-     * it won't be created twice.
-     */
-    @RouteContext.NoArgsSharedCache
-    protected getRemoveLiquidityRouteWithBulkSeller() {
-        return this.removeLiquidityRoute.withBulkSeller
-            ? this.removeLiquidityRoute
-            : this.removeLiquidityRoute.routeWithBulkSeller(true);
-    }
-
-    /**
-     * @remarks
-     * **Premature optimization**. Cache the remove liquidity route **without** bulk seller so
-     * it won't be created twice.
-     */
-    @RouteContext.NoArgsSharedCache
-    protected getRemoveLiquidityRouteWithoutBulkSeller() {
-        return this.removeLiquidityRoute.withBulkSeller
-            ? this.removeLiquidityRoute.routeWithBulkSeller(false)
-            : this.removeLiquidityRoute;
-    }
-
-    override routeWithBulkSeller(withBulkSeller?: boolean) {
-        return this.removeLiquidityRouteWithBulkSeller(withBulkSeller);
-    }
 
     @NoArgsCache
     async createAddLiquidityRoute(): Promise<AddLiquidityRouteType | undefined> {
         return this.createAddLiquidityRouteImplement();
-    }
-
-    override get tokenBulk() {
-        return this.removeLiquidityRoute.tokenBulk;
     }
 
     override async getNetOut() {
@@ -96,20 +58,6 @@ export abstract class BaseLiquidityMigrationFixTokenRedeemSyRoute<
     override async estimateNetOutInEth() {
         const addLiquidityRoute = await this.createAddLiquidityRoute();
         return addLiquidityRoute?.estimateNetOutInEth();
-    }
-
-    override async getTokenAmountForBulkTrade() {
-        const addLiquidityRoute = await this.createAddLiquidityRoute();
-        return addLiquidityRoute?.getTokenAmountForBulkTrade();
-    }
-
-    async addLiquidityHasBulkSeller(): Promise<boolean> {
-        const addLiquidityRoute = await this.createAddLiquidityRoute();
-        return addLiquidityRoute?.hasBulkSeller() ?? false;
-    }
-
-    async removeLiquidityHasBulkSeller(): Promise<boolean> {
-        return this.removeLiquidityRoute.hasBulkSeller();
     }
 
     override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
@@ -127,9 +75,7 @@ export abstract class BaseLiquidityMigrationFixTokenRedeemSyRoute<
     }
 }
 
-export class PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<
-    T extends MetaMethodType
-> extends _RemoveLiquiditySingleTokenRoute<T, PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T>> {
+export class PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper extends _RemoveLiquiditySingleTokenRoute<PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper> {
     readonly redeemRewards: boolean;
 
     constructor(
@@ -137,7 +83,7 @@ export class PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<
         readonly lpToRemove: BigNumberish,
         readonly tokenOut: Address,
         readonly slippage: number,
-        params: BaseZapOutRouteConfig<T, PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T>> & {
+        params: BaseZapOutRouteConfig<PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper> & {
             redeemRewards?: boolean;
         }
     ) {
@@ -145,23 +91,9 @@ export class PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<
         this.redeemRewards = params.redeemRewards ?? false;
     }
 
-    override routeWithBulkSeller(withBulkSeller = true): PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<T> {
-        return new PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper(
-            this.market,
-            this.lpToRemove,
-            this.tokenOut,
-            this.slippage,
-            {
-                context: this.context,
-                tokenRedeemSy: this.tokenRedeemSy,
-                withBulkSeller,
-                redeemRewards: this.redeemRewards,
-            }
-        );
-    }
-
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCallForRouterHelper({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCallForRouterHelper({}, this.routerExtraParams);
+        return mm?.estimateGas();
     }
 
     /**
@@ -194,6 +126,14 @@ export class PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper<
     }
 
     protected override getSpenderAddress() {
-        return this.router.getRouterHelper().address;
+        /**
+         * The user only need to approve the routerHelper, not the router.
+         * However, the _precise_ calculation required the router to be approved in order
+         * to do the contract simulation.
+         *
+         * Now we return the router address instead.
+         */
+        return this.router.address;
+        // return this.router.getRouterHelper().address;
     }
 }

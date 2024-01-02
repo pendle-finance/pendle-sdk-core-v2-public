@@ -3,23 +3,19 @@ import {
     BN,
     NoArgsCache,
     calcSlippedDownAmount,
-    calcSlippedUpAmount,
     NATIVE_ADDRESS_0xEE,
     NATIVE_ADDRESS_0x00,
     bnSafeDiv,
 } from '../../../../common';
-import { MetaMethodType } from '../../../../contracts';
 import { TokenOutput } from '../../types';
 import { BaseRoute, BaseRouteConfig, RouteDebugInfo } from '../BaseRoute';
 import { RouteContext } from '../RouteContext';
 import { EMPTY_SWAP_DATA } from '../../aggregatorHelper';
 
-export type BaseZapOutRouteConfig<
-    T extends MetaMethodType,
-    SelfType extends BaseZapOutRoute<T, BaseZapOutRouteIntermediateData, SelfType>
-> = BaseRouteConfig<T, SelfType> & {
-    readonly tokenRedeemSy: Address;
-};
+export type BaseZapOutRouteConfig<SelfType extends BaseZapOutRoute<BaseZapOutRouteIntermediateData, SelfType>> =
+    BaseRouteConfig<SelfType> & {
+        readonly tokenRedeemSy: Address;
+    };
 
 export type ZapOutRouteDebugInfo = RouteDebugInfo & {
     type: 'zapOut';
@@ -32,27 +28,24 @@ export type BaseZapOutRouteIntermediateData = {
 };
 
 export abstract class BaseZapOutRoute<
-    T extends MetaMethodType,
     IntermediateSyData extends BaseZapOutRouteIntermediateData,
-    SelfType extends BaseZapOutRoute<T, IntermediateSyData, SelfType>
-> extends BaseRoute<T, SelfType> {
+    SelfType extends BaseZapOutRoute<IntermediateSyData, SelfType>
+> extends BaseRoute<SelfType> {
     readonly tokenRedeemSy: Address;
     abstract readonly targetToken: Address;
     abstract readonly slippage: number;
 
-    constructor(params: BaseZapOutRouteConfig<T, SelfType>) {
+    constructor(params: BaseZapOutRouteConfig<SelfType>) {
         super(params);
         ({ tokenRedeemSy: this.tokenRedeemSy } = params);
         const other = params.cloneFrom;
         if (other != undefined) {
-            if (other.withBulkSeller === this.withBulkSeller) {
-                /* eslint-disable @typescript-eslint/unbound-method */
-                NoArgsCache.copyValue(this, other, BaseZapOutRoute.prototype.buildTokenOutput);
-                NoArgsCache.copyValue(this, other, BaseZapOutRoute.prototype.getTokenRedeemSyAmount);
-                NoArgsCache.copyValue(this, other, BaseZapOutRoute.prototype.getTokenRedeemSyAmountWithRouter);
-                NoArgsCache.copyValue(this, other, BaseZapOutRoute.prototype.getTokenRedeemSyAmountWithRouterStatic);
-                /* eslint-enable @typescript-eslint/unbound-method */
-            }
+            /* eslint-disable @typescript-eslint/unbound-method */
+            NoArgsCache.copyValue(this, other, BaseZapOutRoute.prototype.buildTokenOutput);
+            NoArgsCache.copyValue(this, other, BaseZapOutRoute.prototype.getTokenRedeemSyAmount);
+            NoArgsCache.copyValue(this, other, BaseZapOutRoute.prototype.getTokenRedeemSyAmountWithRouter);
+            NoArgsCache.copyValue(this, other, BaseZapOutRoute.prototype.getTokenRedeemSyViaSyPreviewRedeem);
+            /* eslint-enable @typescript-eslint/unbound-method */
         }
     }
 
@@ -64,21 +57,6 @@ export abstract class BaseZapOutRoute<
     /* eslint-enable @typescript-eslint/unbound-method */
 
     protected abstract previewIntermediateSyImpl(): Promise<IntermediateSyData | undefined>;
-
-    override async getTokenAmountForBulkTrade(): Promise<{ netTokenIn: BN; netSyIn: BN } | undefined> {
-        const previewData = await this.previewIntermediateSy();
-        if (previewData == undefined) {
-            return undefined;
-        }
-        return {
-            netTokenIn: BN.from(0),
-            netSyIn: calcSlippedUpAmount(BN.from(previewData.intermediateSyAmount), this.context.getBulkBuffer()),
-        };
-    }
-
-    override get tokenBulk(): Address {
-        return this.tokenRedeemSy;
-    }
 
     override async getNetOut(): Promise<BN | undefined> {
         const aggregatorResult = await this.getAggregatorResult();
@@ -153,22 +131,17 @@ export abstract class BaseZapOutRoute<
     @NoArgsCache
     async getTokenRedeemSyAmount(): Promise<BN | undefined> {
         return this.getTokenRedeemSyAmountWithRouter().then(
-            (value) => value ?? this.getTokenRedeemSyAmountWithRouterStatic()
+            (value) => value ?? this.getTokenRedeemSyViaSyPreviewRedeem()
         );
     }
 
     abstract getTokenRedeemSyAmountWithRouter(): Promise<BN | undefined>;
 
     @NoArgsCache
-    async getTokenRedeemSyAmountWithRouterStatic(): Promise<BN | undefined> {
-        const [syToRedeemAmount, bulk] = await Promise.all([this.getIntermediateSyAmount(), this.getUsedBulk()]);
+    async getTokenRedeemSyViaSyPreviewRedeem(): Promise<BN | undefined> {
+        const [syToRedeemAmount] = await Promise.all([this.getIntermediateSyAmount()]);
         if (!syToRedeemAmount) return undefined;
-        return this.routerStatic.multicallStatic.redeemSyToTokenStatic(
-            this.syEntity.address,
-            this.tokenRedeemSy,
-            syToRedeemAmount,
-            bulk
-        );
+        return this.syEntity.previewRedeem(this.tokenRedeemSy, syToRedeemAmount);
     }
 
     getNeedScale() {
@@ -191,7 +164,7 @@ export abstract class BaseZapOutRoute<
 
     @NoArgsCache
     async buildTokenOutput(): Promise<TokenOutput | undefined> {
-        const [aggregatorResult, bulk] = await Promise.all([this.getAggregatorResult(), this.getUsedBulk()]);
+        const [aggregatorResult] = await Promise.all([this.getAggregatorResult()]);
         if (aggregatorResult === undefined) {
             return undefined;
         }
@@ -201,7 +174,6 @@ export abstract class BaseZapOutRoute<
             tokenOut: this.targetToken,
             minTokenOut: calcSlippedDownAmount((await this.getNetOut())!, this.slippage),
             tokenRedeemSy: this.tokenRedeemSy,
-            bulk,
             pendleSwap,
             swapData,
         };
@@ -214,12 +186,10 @@ export abstract class BaseZapOutRoute<
      */
     @NoArgsCache
     async buildDummyTokenOutputForTokenRedeemSy(): Promise<TokenOutput> {
-        const bulk = await this.getUsedBulk();
         return {
             tokenOut: this.tokenRedeemSy,
             tokenRedeemSy: this.tokenRedeemSy,
             minTokenOut: 0, // No slippage control here, we are simply doing simulation.
-            bulk,
             pendleSwap: NATIVE_ADDRESS_0x00,
             swapData: EMPTY_SWAP_DATA,
         };

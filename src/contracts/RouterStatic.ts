@@ -10,6 +10,9 @@ export type RouterStaticConfig = ContractObjectConfig & {
     chainId: ChainId;
 };
 
+/**
+ * @deprecated RouterStatic is longer supported. Use PendleSDK's functionalities instead.
+ */
 export function getRouterStatic(config: RouterStaticConfig): WrappedContract<IPRouterStatic> {
     return createContractObject<IPRouterStatic>(
         getContractAddresses(config.chainId).ROUTER_STATIC,

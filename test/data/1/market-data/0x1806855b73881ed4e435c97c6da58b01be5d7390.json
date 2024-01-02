@@ -1,0 +1,38 @@
+{
+  "marketAddress": "0x1806855b73881ed4e435c97c6da58b01be5d7390",
+  "expiry_ms": 1711584000000,
+  "ptAddress": "0xbf44fbcc181e297e1532b72c6ca500fe150c5b9e",
+  "syAddress": "0xb359f0a97ca269ae5574dc75be48b0e81efd1da2",
+  "ytAddress": "0xde364a895d4ec08c05a34f6883a8e41c15619ed8",
+  "rewardTokens": [
+    {
+      "name": "Pendle",
+      "decimals": 18,
+      "address": "0x808507121b80c02388fad14726482e061b8da827"
+    }
+  ],
+  "tokensIn": [
+    {
+      "name": "Frax",
+      "decimals": 18,
+      "address": "0x853d955acef822db058eb8505911ed77f175b99e"
+    },
+    {
+      "name": "Staked FRAX",
+      "decimals": 18,
+      "address": "0xa663b02cf0a4b149d2ad41910cb81e23e1c41c32"
+    }
+  ],
+  "tokensOut": [
+    {
+      "name": "Frax",
+      "decimals": 18,
+      "address": "0x853d955acef822db058eb8505911ed77f175b99e"
+    },
+    {
+      "name": "Staked FRAX",
+      "decimals": 18,
+      "address": "0xa663b02cf0a4b149d2ad41910cb81e23e1c41c32"
+    }
+  ]
+}

@@ -95,7 +95,7 @@ export class ContractMetaMethod<
         return this.attachExtraData(res, extraData);
     }
 
-    private addOverridesToData(dataOverrides?: MetaMethodExtraParams): Data {
+    private addOverridesToData(dataOverrides?: MetaMethodExtraParams<MetaMethodType>): Data {
         return {
             ...this.data,
             ...dataOverrides,
@@ -115,15 +115,21 @@ export class ContractMetaMethod<
         return this.withContract(newContract);
     }
 
-    async send(dataOverrides?: MetaMethodExtraParams): MetaMethodReturnType<'send', C, M, Data> {
+    async send(dataOverrides?: MetaMethodExtraParams<'send'>): MetaMethodReturnType<'send', C, M, Data> {
         const data = this.addOverridesToData(dataOverrides);
         const gas = await (data.overrides?.gasLimit ??
-            this.estimateGas({ ...dataOverrides, overrides: { ...dataOverrides?.overrides, gasLimit: undefined } }));
+            this.estimateGas({
+                ...dataOverrides,
+                method: 'estimateGas',
+                overrides: { ...dataOverrides?.overrides, gasLimit: undefined },
+            }));
 
         const calcBufferedGas = data.calcBufferedGas ?? ContractMetaMethod.calcBufferedGas;
         const bufferedGas = await calcBufferedGas(BN.from(gas), this);
 
         data.overrides = { ...data.overrides, gasLimit: bufferedGas };
+
+        // console.log(await this.populateTransaction(dataOverrides));
 
         return this.callback(
             'send',
@@ -133,7 +139,7 @@ export class ContractMetaMethod<
         );
     }
 
-    callStatic(dataOverrides?: MetaMethodExtraParams): MetaMethodReturnType<'callStatic', C, M, Data> {
+    callStatic(dataOverrides?: MetaMethodExtraParams<'callStatic'>): MetaMethodReturnType<'callStatic', C, M, Data> {
         return this.callback(
             'callStatic',
             this.contract.callStatic[this.methodName as string] as EthersContractMethod<C, 'callStatic', M>,
@@ -164,7 +170,7 @@ export class ContractMetaMethod<
         return this.callback('multicallStatic', callback, data, this);
     }
 
-    estimateGas(dataOverrides?: MetaMethodExtraParams): MetaMethodReturnType<'estimateGas', C, M, Data> {
+    estimateGas(dataOverrides?: MetaMethodExtraParams<'estimateGas'>): MetaMethodReturnType<'estimateGas', C, M, Data> {
         return this.callback(
             'estimateGas',
             this.contract.estimateGas[this.methodName as string] as EthersContractMethod<C, 'estimateGas', M>,
@@ -174,7 +180,7 @@ export class ContractMetaMethod<
     }
 
     populateTransaction(
-        dataOverrides?: MetaMethodExtraParams
+        dataOverrides?: MetaMethodExtraParams<'populateTransaction'>
     ): MetaMethodReturnType<'populateTransaction', C, M, Data> {
         return this.callback(
             'populateTransaction',
@@ -188,13 +194,49 @@ export class ContractMetaMethod<
         );
     }
 
-    extractParams(dataOverrides?: MetaMethodExtraParams): MetaMethodReturnType<'extractParams', C, M, Data> {
+    extractParams(
+        dataOverrides?: MetaMethodExtraParams<'extractParams'>
+    ): MetaMethodReturnType<'extractParams', C, M, Data> {
         return this.callback(
             'extractParams',
             ((...args: any[]) => args) as any,
             this.addOverridesToData(dataOverrides),
             this
         );
+    }
+
+    // Currently this one does not support adding data to meta method.
+    // Tho a better way is to call attachExtraData first.
+    executeWithMethod<T extends MetaMethodType>(params?: {
+        method?: T;
+    }): MetaMethodReturnType<T, C, M, Data & { method: T }>;
+    executeWithMethod(params?: {
+        method?: MetaMethodType;
+    }):
+        | MetaMethodReturnType<'meta-method', C, M, Data>
+        | MetaMethodReturnType<'callStatic', C, M, Data>
+        | MetaMethodReturnType<'estimateGas', C, M, Data>
+        | MetaMethodReturnType<'multicallStatic', C, M, Data>
+        | MetaMethodReturnType<'populateTransaction', C, M, Data>
+        | MetaMethodReturnType<'extractParams', C, M, Data>
+        | MetaMethodReturnType<'send', C, M, Data> {
+        if (params?.method === 'meta-method') return Promise.resolve(this);
+        const mm = this.attachExtraData(params ?? {});
+        switch (params?.method) {
+            case 'callStatic':
+                return mm.callStatic();
+            case 'estimateGas':
+                return mm.estimateGas();
+            case 'multicallStatic':
+                return mm.multicallStatic();
+            case 'populateTransaction':
+                return mm.populateTransaction();
+            case 'extractParams':
+                return mm.extractParams();
+            case undefined:
+            case 'send':
+                return mm.send();
+        }
     }
 
     static utils: {
@@ -215,14 +257,7 @@ export function callMetaMethod<
     methodName: M,
     callback: ContractMetaMethodCallback,
     data?: Data
-): MetaMethodReturnType<NonNullable<T>, C, M, Data> {
-    const method = data?.method ?? 'send';
-    const metaMethod = new ContractMetaMethod(contract, methodName, callback, { ...data });
-    if (method === 'meta-method') return metaMethod as any;
-    if (method === 'callStatic') return metaMethod.callStatic() as any;
-    if (method === 'estimateGas') return metaMethod.estimateGas() as any;
-    if (method === 'multicallStatic') return metaMethod.multicallStatic() as any;
-    if (method === 'populateTransaction') return metaMethod.populateTransaction() as any;
-    if (method === 'extractParams') return metaMethod.extractParams() as any;
-    return metaMethod.send() as any;
+): MetaMethodReturnType<T, C, M, Data> {
+    const metaMethod = new ContractMetaMethod<C, M, Data>(contract, methodName, callback, { ...data } as Data);
+    return metaMethod.executeWithMethod(data);
 }

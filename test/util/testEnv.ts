@@ -16,9 +16,10 @@ import {
     Address,
 } from '../../src';
 import './bigNumberMatcher';
-import { evm_revert, evm_snapshot } from './testHelper';
-import { CONTRACT_ADDRESSES, MARKET_TO_TEST } from './contractAddresses';
+import { CONTRACT_ADDRESSES } from './contractAddresses';
 import { TEST_ENV_SCHEMA } from './testEnvSchema';
+import * as marketData from './marketData';
+import * as zappableTokens from './zappableTokens';
 
 config();
 export const env = TEST_ENV_SCHEMA.parse(process.env);
@@ -29,37 +30,6 @@ const LOCAL_CHAIN_ID = 31337;
 export const USE_HARDHAT_RPC = env.USE_LOCAL;
 
 export const AMOUNT_TO_TEST_IN_USD = env.AMOUNT_TO_TEST_IN_USD;
-
-export function describeWrite(...params: [fn: () => void] | [name: string, fn: () => void]) {
-    let name = 'Write function';
-    let fn: () => void;
-
-    if (params.length === 1) {
-        [fn] = params;
-    } else {
-        [name, fn] = params;
-    }
-
-    const fnWithSnapshot = () => {
-        let globalSnapshotId = '';
-
-        beforeAll(async () => {
-            globalSnapshotId = await evm_snapshot();
-        });
-
-        afterAll(async () => {
-            await evm_revert(globalSnapshotId);
-        });
-
-        fn();
-    };
-
-    (env.INCLUDE_WRITE && USE_HARDHAT_RPC ? describe : describe.skip)(name, fnWithSnapshot);
-}
-
-export function describeIf(condition: boolean) {
-    return condition ? describe : describe.skip;
-}
 
 export const BLOCK_CONFIRMATION = USE_HARDHAT_RPC ? 1 : env.BLOCK_CONFIRMATION;
 
@@ -136,6 +106,12 @@ export const testConfig = (chainId: ChainId) => {
             networkConnectionWithChainId.provider
         ),
     };
+
+    const currentMarketData = marketData.lookup(env.MARKET_ADDRESS, chainId, env.EXCLUDE_SY_IO_TOKENS);
+
+    const unfilteredZappableTokensToTest = zappableTokens.lookup(chainId, !env.INCLUDE_PENDLE_BACKEND_ZAPPABLE_TOKENS);
+    const zappableTokensToTest = unfilteredZappableTokensToTest.filter(({ disableTesting }) => !disableTesting);
+
     return {
         chainId,
         deployer: contractAddresses.CORE.DEPLOYER,
@@ -152,18 +128,20 @@ export const testConfig = (chainId: ChainId) => {
         tokens: contractAddresses.TOKENS,
         markets: contractAddresses.MARKETS,
 
-        market: MARKET_TO_TEST[chainId],
-        marketAddress: MARKET_TO_TEST[chainId].market,
+        market: currentMarketData,
+        marketAddress: currentMarketData.marketAddress,
         // choose the token to test for swap from raw token -> py
         tokenToSwap: contractAddresses.TOKENS.USDT,
 
         userAddress: signerAddress,
-        multicall: new Multicall({
+        multicall: Multicall.create({
             chainId,
             provider: networkConnection.provider,
         }),
         aggregatorHelper,
         routerConfig,
+        zappableTokensToTest,
+        unfilteredZappableTokensToTest,
     };
 };
 

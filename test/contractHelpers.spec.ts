@@ -1,16 +1,17 @@
 import { ERC20Entity, ContractMetaMethod } from '../src';
-import { BLOCK_CONFIRMATION, currentConfig, describeWrite, networkConnection } from './util/testEnv';
-import { evm_revert, evm_snapshot } from './util/testHelper';
+import { BLOCK_CONFIRMATION, currentConfig, networkConnection } from './util/testEnv';
+import * as testHelper from './util/testHelper';
 import { DUMMY_ADDRESS } from './util/constants';
 import { BigNumber as BN } from 'ethers';
 
-describeWrite('Contract Helpers', () => {
+describe('Contract Helpers', () => {
+    testHelper.useRestoreEvmSnapShotAfterEach();
+
     const signer = networkConnection.signer;
     const signerAddress = networkConnection.signerAddress;
     const pendle = new ERC20Entity(currentConfig.pendle, { provider: networkConnection.provider });
     const approveAmount = 69;
 
-    let localSnapshotId = '';
     const metaCallPromise = pendle.approve(DUMMY_ADDRESS, approveAmount, {
         method: 'meta-method',
     });
@@ -24,13 +25,6 @@ describeWrite('Contract Helpers', () => {
             .connect(signer)
             .approve(DUMMY_ADDRESS, 0)
             .then((tx) => tx.wait(BLOCK_CONFIRMATION));
-
-        localSnapshotId = await evm_snapshot();
-    });
-
-    afterEach(async () => {
-        await evm_revert(localSnapshotId);
-        localSnapshotId = await evm_snapshot();
     });
 
     it('#send method', async () => {
@@ -66,7 +60,7 @@ describeWrite('Contract Helpers', () => {
             .connect(signer)
             .send()
             .then((tx) => tx.wait(BLOCK_CONFIRMATION));
-        expect(gasLimit).toEqBN(tx.gasUsed);
+        expect(gasLimit).toEqBN(tx.cumulativeGasUsed);
     });
 
     it('#send with overrides', async () => {

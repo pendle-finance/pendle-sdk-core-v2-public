@@ -1,0 +1,43 @@
+{
+  "marketAddress": "0x9bc62257ffe7d0f7c52a019e6fc0af3102f8f44e",
+  "expiry_ms": 1706745600000,
+  "ptAddress": "0xbfd3a44f673f4d4df9b1ec126c4a5f602f0380ad",
+  "syAddress": "0x60955a190dec0db9a45abe553ad2994126efdfcc",
+  "ytAddress": "0x2591bc78d50d777cac68aedda0e8bc928a89a538",
+  "rewardTokens": [
+    {
+      "name": "Arbitrum",
+      "decimals": 18,
+      "address": "0x912ce59144191c1204e64559fe8253a0e49e6548"
+    },
+    {
+      "name": "Pendle",
+      "decimals": 18,
+      "address": "0x0c880f6761f1af8d9aa9c466984b80dab9a8c9e8"
+    }
+  ],
+  "tokensIn": [
+    {
+      "name": "USD Coin (Arb1)",
+      "decimals": 6,
+      "address": "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8"
+    },
+    {
+      "name": "Silo Finance Borrowable USDC Deposit in ARB Silo",
+      "decimals": 6,
+      "address": "0x55ade3b74abef55bf379ff6ae61cb77a405eb4a8"
+    }
+  ],
+  "tokensOut": [
+    {
+      "name": "USD Coin (Arb1)",
+      "decimals": 6,
+      "address": "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8"
+    },
+    {
+      "name": "Silo Finance Borrowable USDC Deposit in ARB Silo",
+      "decimals": 6,
+      "address": "0x55ade3b74abef55bf379ff6ae61cb77a405eb4a8"
+    }
+  ]
+}

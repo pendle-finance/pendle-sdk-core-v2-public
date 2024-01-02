@@ -7,15 +7,20 @@ import {
 import { MetaMethodType } from '../../../../contracts';
 import { BN, Address, BigNumberish, NoArgsCache } from '../../../../common';
 import { RouterMetaMethodReturnType, FixedRouterMetaMethodExtraParams } from '../../types';
+import { MarketEntity } from '../../../MarketEntity';
+import * as offchainMath from '@pendle/core-v2-offchain-math';
+import * as limitOrder from '../../limitOrder';
 
 export type RemoveLiquiditySingleTokenRouteIntermediateData = BaseZapOutRouteIntermediateData & {
-    netSyFee: BN;
-    priceImpact: BN;
-    exchangeRateAfter: BN;
     netSyOut: BN;
     netSyFromBurn: BN;
     netPtFromBurn: BN;
+    netSyFeeFromMarket: BN;
+    netSyFeeFromLimit: BN;
     netSyFromSwap: BN;
+    priceImpact: offchainMath.FixedX18;
+    exchangeRateAfter: offchainMath.MarketExchangeRate;
+    limitOrderMatchedResult: limitOrder.LimitOrderMatchedResult;
 };
 
 export type RemoveLiquiditySingleTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
@@ -26,67 +31,96 @@ export type RemoveLiquiditySingleTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
 };
 
 export abstract class _RemoveLiquiditySingleTokenRoute<
-    T extends MetaMethodType,
-    SelfType extends _RemoveLiquiditySingleTokenRoute<T, SelfType>
-> extends BaseZapOutRoute<T, RemoveLiquiditySingleTokenRouteIntermediateData, SelfType> {
+    SelfType extends _RemoveLiquiditySingleTokenRoute<SelfType>
+> extends BaseZapOutRoute<RemoveLiquiditySingleTokenRouteIntermediateData, SelfType> {
     override readonly routeName = 'RemoveLiquiditySingleToken';
     constructor(
-        readonly market: Address,
+        readonly market: Address | MarketEntity,
         readonly lpToRemove: BigNumberish,
         readonly tokenOut: Address,
         readonly slippage: number,
-        params: BaseZapOutRouteConfig<T, SelfType>
+        params: BaseZapOutRouteConfig<SelfType>
     ) {
         super(params);
     }
 
+    get marketAddress() {
+        return this.router.getMarketAddress(this.market);
+    }
+
     override async getSourceTokenAmount() {
-        return { token: this.market, amount: this.lpToRemove };
+        return { token: this.marketAddress, amount: this.lpToRemove };
     }
 
     override get targetToken() {
         return this.tokenOut;
     }
 
-    abstract routeWithBulkSeller(withBulkSeller?: boolean): SelfType;
-
     override signerHasApprovedImplement(signerAddress: Address): Promise<boolean> {
-        return this.checkUserApproval(signerAddress, { token: this.market, amount: this.lpToRemove });
+        return this.checkUserApproval(signerAddress, { token: this.marketAddress, amount: this.lpToRemove });
     }
 
     protected override async previewIntermediateSyImpl(): Promise<
         RemoveLiquiditySingleTokenRouteIntermediateData | undefined
     > {
-        const data = await this.routerStaticCall.removeLiquiditySingleSyStatic(
-            this.market,
-            this.lpToRemove,
-            this.routerExtraParams.forCallStatic
+        const marketStaticMath = await this.getMarketStaticMath();
+
+        const removeLiqResult = marketStaticMath.removeLiquidityDualSyAndPtStatic(BN.from(this.lpToRemove).toBigInt());
+        let totalSyOut = BN.from(removeLiqResult.netSyOut);
+        let netPtRemains = BN.from(removeLiqResult.netPtOut);
+
+        const afterLiqRemovalMarketStaticMath = removeLiqResult.afterMath;
+        const limitOrderMatchedResult = await this.router.limitOrderMatcher.swapPtForSy(this.market, netPtRemains, {
+            routerMethod: 'removeLiquiditySingleToken',
+        });
+        totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
+        netPtRemains = netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+
+        const swapPtToSyResult = afterLiqRemovalMarketStaticMath.swapExactPtForSyStaticAllowExpired(
+            netPtRemains.toBigInt()
         );
-        return { ...data, intermediateSyAmount: data.netSyOut };
+        totalSyOut = totalSyOut.add(swapPtToSyResult.netSyOut);
+
+        return {
+            intermediateSyAmount: totalSyOut,
+            netSyOut: BN.from(totalSyOut),
+            netSyFromBurn: BN.from(removeLiqResult.netSyOut),
+            netPtFromBurn: BN.from(removeLiqResult.netPtOut),
+            netSyFeeFromMarket: BN.from(swapPtToSyResult.netSyFee),
+            netSyFeeFromLimit: limitOrderMatchedResult.totalFee,
+            netSyFromSwap: BN.from(swapPtToSyResult.netSyOut),
+            priceImpact: swapPtToSyResult.priceImpact,
+            exchangeRateAfter: swapPtToSyResult.exchangeRateAfter,
+
+            limitOrderMatchedResult,
+        };
     }
 
     @NoArgsCache
     override async getTokenRedeemSyAmountWithRouter(): Promise<BN | undefined> {
-        const [signerAddress, tokenRedeemSyOutputStruct] = await Promise.all([
+        const [signerAddress, tokenRedeemSyOutputStruct, intermediateResult] = await Promise.all([
             this.getSignerAddressIfApproved(),
             this.buildDummyTokenOutputForTokenRedeemSy(),
+            this.previewIntermediateSy(),
         ]);
-        if (!signerAddress) return undefined;
+        if (!signerAddress || !intermediateResult) return undefined;
         const res = await this.router.contract.callStatic.removeLiquiditySingleToken(
             signerAddress,
-            this.market,
+            this.marketAddress,
             this.lpToRemove,
-            tokenRedeemSyOutputStruct
+            tokenRedeemSyOutputStruct,
+            intermediateResult.limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.router.chainId)
         );
         return res.netTokenOut;
     }
 
     override async getGasUsedImplement(): Promise<BN | undefined> {
-        return this.buildGenericCall({}, { ...this.routerExtraParams, method: 'estimateGas' });
+        const mm = await this.buildGenericCall({}, this.routerExtraParams);
+        return mm?.estimateGas();
     }
 
     async buildCall(): RouterMetaMethodReturnType<
-        T,
+        'meta-method',
         'removeLiquiditySingleToken',
         RemoveLiquiditySingleTokenRouteIntermediateData & {
             route: SelfType;
@@ -114,9 +148,10 @@ export abstract class _RemoveLiquiditySingleTokenRoute<
         if (!output || !intermediateResult) return;
         return this.router.contract.metaCall.removeLiquiditySingleToken(
             params.receiver,
-            this.market,
+            this.marketAddress,
             this.lpToRemove,
             output,
+            intermediateResult.limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.router.chainId),
             { ...data, ...params, ...intermediateResult }
         );
     }
@@ -124,22 +159,11 @@ export abstract class _RemoveLiquiditySingleTokenRoute<
     override async gatherDebugInfo(): Promise<RemoveLiquiditySingleTokenRouteDebugInfo> {
         return {
             ...(await super.gatherDebugInfo()),
-            market: this.market,
+            market: this.marketAddress,
             lpToRemove: String(this.lpToRemove),
             tokenOut: this.tokenOut,
         };
     }
 }
 
-export class RemoveLiquiditySingleTokenRoute<T extends MetaMethodType> extends _RemoveLiquiditySingleTokenRoute<
-    T,
-    RemoveLiquiditySingleTokenRoute<T>
-> {
-    override routeWithBulkSeller(withBulkSeller = true): RemoveLiquiditySingleTokenRoute<T> {
-        return new RemoveLiquiditySingleTokenRoute(this.market, this.lpToRemove, this.tokenOut, this.slippage, {
-            context: this.context,
-            tokenRedeemSy: this.tokenRedeemSy,
-            withBulkSeller,
-        });
-    }
-}
+export class RemoveLiquiditySingleTokenRoute extends _RemoveLiquiditySingleTokenRoute<RemoveLiquiditySingleTokenRoute> {}

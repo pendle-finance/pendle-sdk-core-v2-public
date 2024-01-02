@@ -1,0 +1,73 @@
+[
+  {
+    "name": "Pendle",
+    "decimals": 18,
+    "address": "0x0c880f6761f1af8d9aa9c466984b80dab9a8c9e8"
+  },
+  {
+    "name": "Wrapped Ether",
+    "decimals": 18,
+    "address": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+  },
+  {
+    "name": "Wrapped BTC",
+    "decimals": 8,
+    "address": "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f"
+  },
+  {
+    "name": "USD Coin (Arb1)",
+    "decimals": 6,
+    "address": "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8",
+    "disableTesting": false
+  },
+  {
+    "name": "ChainLink Token",
+    "decimals": 18,
+    "address": "0xf97f4df75117a78c1a5a0dbb814af92458539fb4"
+  },
+  {
+    "name": "Uniswap",
+    "decimals": 18,
+    "address": "0xfa7f8980b0f1e64a2062791cc3b0871572f1f7f0"
+  },
+  {
+    "name": "Tether USD",
+    "decimals": 6,
+    "address": "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9"
+  },
+  {
+    "name": "Frax",
+    "decimals": 18,
+    "address": "0x17fc002b466eec40dae837fc4be5c67993ddbd6f"
+  },
+  {
+    "name": "DAI",
+    "decimals": 18,
+    "address": "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1"
+  },
+  {
+    "name": "Camelot Token",
+    "decimals": 18,
+    "address": "0x3d9907f9a368ad0a51be60f7da3b97cf940982d8"
+  },
+  {
+    "name": "ARB",
+    "decimals": 18,
+    "address": "0x912ce59144191c1204e64559fe8253a0e49e6548"
+  },
+  {
+    "name": "wstETH",
+    "decimals": 18,
+    "address": "0x5979d7b546e38e414f7e9822514be443a4800529"
+  },
+  {
+    "name": "rETH",
+    "decimals": 18,
+    "address": "0xec70dcb4a1efa46b8f2d97c310c9c4790ba5ffa8"
+  },
+  {
+    "name": "USD Coin",
+    "decimals": 6,
+    "address": "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+  }
+]
