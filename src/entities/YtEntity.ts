@@ -22,7 +22,10 @@ export type YtEntityConfig = PyEntityConfig;
  * This class represents a Pendle Yield token (YT token).
  */
 export class YtEntity extends PyEntity {
-    constructor(readonly address: Address, config: YtEntityConfig) {
+    constructor(
+        readonly address: Address,
+        config: YtEntityConfig
+    ) {
         super(address, { abi: PendleYieldTokenV2ABI, ...config });
     }
 
@@ -122,12 +125,20 @@ export class YtEntity extends PyEntity {
 
     async previewMintPyFromSy(netSyIn: BigNumberish, params?: MulticallStaticParams): Promise<BN> {
         const pyIndex = await this.pyIndexCurrent(params);
+        return YtEntity.previewMintSyFromSyWithPyIndex(pyIndex, netSyIn);
+    }
+
+    static previewMintSyFromSyWithPyIndex(this: void, pyIndex: offchainMath.PyIndex, netSyIn: BigNumberish): BN {
         const netPYMinted = pyIndex.convert({ sy: BN.from(netSyIn).toBigInt() }).asset;
         return BN.from(netPYMinted);
     }
 
     async previewRedeemPyToSy(netPYIn: BigNumberish, params?: MulticallStaticParams): Promise<BN> {
         const pyIndex = await this.pyIndexCurrent(params);
+        return YtEntity.previewRedeemPyToSyWithPyIndex(pyIndex, netPYIn);
+    }
+
+    static previewRedeemPyToSyWithPyIndex(this: void, pyIndex: offchainMath.PyIndex, netPYIn: BigNumberish): BN {
         const netSyOut = pyIndex.convert({ asset: BN.from(netPYIn).toBigInt() }).sy;
         return BN.from(netSyOut);
     }

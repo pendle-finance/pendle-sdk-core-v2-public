@@ -70,6 +70,8 @@ describe(SyEntity, () => {
                 );
 
                 if (amountIn.eq(0)) {
+                    // TODO find better way to show this as error
+                    // eslint-disable-next-line no-console
                     console.warn(
                         `[${await tokenHelper.getERC20Name(tokenMintSyAddr)}] No balance to deposit to sy contract.`
                     );
@@ -91,7 +93,10 @@ describe(SyEntity, () => {
 
                 const syBalance = await tokenHelper.getBalance(syAddress, signerAddress);
                 const syInAmount = bnMinAsBn(syBalance, decimalFactor(syDecimals).mul(MAX_TOKEN_ADD_AMOUNT)).div(100);
+
                 if (syBalance.eq(0)) {
+                    // TODO find better way to show this as error
+                    // eslint-disable-next-line no-console
                     console.warn('No sy balance to redeem');
                     return;
                 }

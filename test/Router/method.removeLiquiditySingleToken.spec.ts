@@ -83,7 +83,7 @@ function sharedTestRemoveLiquiditySingleToken() {
                 liquidityRemove.mul(-1)
             );
 
-            const netTokenOut = (await readerData.route.getNetOut())!;
+            const netTokenOut = readerData.netTokenOut;
             expect([tokenBalanceBefore, tokenBalanceAfter]).toHaveDifferenceBN(
                 pendleSDK.isNativeToken(token.address) ? netTokenOut.sub(readerData.gas.nativeSpent) : netTokenOut,
                 // netTokenOut,

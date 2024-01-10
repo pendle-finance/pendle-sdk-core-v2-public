@@ -104,7 +104,18 @@ export class SwapExactTokenForPtRoute extends BaseZapInRoute<SwapExactTokenForPt
         if (!input || !previewResult) return undefined;
         const overrides = txOverridesValueFromTokenInput(input);
         const { minPtOut } = previewResult;
-        const approxParams = this.context.getApproxParamsToPullPt(previewResult.netPtOut, this.slippage);
+
+        // This part is legacy. To be removed.
+        const approxParams = await this.router.approxParamsGenerator.generate(this.router, {
+            routerMethod: 'swapExactTokenForPt',
+            approxSearchingRange: {
+                guessMin: 0n,
+                guessMax: (1n << 256n) - 1n,
+            },
+            guessOffchain: previewResult.netPtOut,
+            limitOrderMatchedResult: undefined,
+            slippage: this.slippage,
+        });
 
         return this.router.contract.metaCall.swapExactTokenForPt(
             params.receiver,

@@ -7,3 +7,4 @@ export * from './ethersjs';
 export * from './math';
 export * from './ContractAddresses';
 export * from './Batcher';
+export * from './Defferable';

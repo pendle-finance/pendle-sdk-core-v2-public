@@ -72,7 +72,7 @@ export class Router extends BaseRouter {
     }
 
     override async findBestZapOutRoute<
-        ZapOutRoute extends BaseZapOutRoute<BaseZapOutRouteIntermediateData, ZapOutRoute>
+        ZapOutRoute extends BaseZapOutRoute<BaseZapOutRouteIntermediateData, ZapOutRoute>,
     >(routes: ZapOutRoute[]): Promise<ZapOutRoute> {
         // Previously there was bulkseller, and there is a step to filter out the
         // bulkseller. It is no longer exist in the system, so now we can just call find best generic route.
@@ -80,7 +80,7 @@ export class Router extends BaseRouter {
     }
 
     override async findBestLiquidityMigrationRoute<
-        LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<LiquidityMigrationRoute, any>
+        LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<LiquidityMigrationRoute, any>,
     >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute> {
         if (routes.length === 0) {
             throw new PendleSdkError('Unexpected empty routes');

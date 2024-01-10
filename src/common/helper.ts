@@ -67,6 +67,7 @@ export type RemoveLastOptional<T extends AnyArray> = T extends [...infer Head, u
 export type AddOptional<T extends AnyArray, P> = [...T, P?];
 
 export type AssertHasSameField<Base extends object, Derived extends Record<keyof Base, unknown>> = Derived;
+export type AssertHasKey<Keys extends string, Derived extends Record<Keys, unknown>> = Derived;
 
 /**
  * @remarks
@@ -128,8 +129,8 @@ export type SyncReturnType<Fn extends AnyFunction<unknown[], AsyncOrSync<unknown
 export type UnionOf<Types> = Types extends [infer Elm]
     ? Elm
     : Types extends [...infer Body, infer Last]
-    ? UnionOf<Body> & Last
-    : Types;
+      ? UnionOf<Body> & Last
+      : Types;
 
 // https://stackoverflow.com/a/52490977
 export type FixedLengthTuple<T, Length extends number> = Length extends Length
@@ -144,8 +145,8 @@ type _FixedLengthTupleOf<T, N extends number, R extends AnyArray> = R['length'] 
 export type If<Condition extends boolean, TrueType, FalseType = undefined> = Condition extends true
     ? TrueType
     : Condition extends false
-    ? FalseType
-    : TrueType | FalseType;
+      ? FalseType
+      : TrueType | FalseType;
 
 export type PropUnion<A extends object, B extends Record<keyof A, unknown>> = {
     [key in keyof A]: A[key] | B[key];
@@ -212,6 +213,7 @@ export function* zip<T extends unknown[]>(...toZip: Iterableify<T>): Generator<T
  */
 export function devLog(message?: unknown, ...optionalParams: AnyArray): void {
     if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
         console.log(message, ...optionalParams);
     }
 }
@@ -294,7 +296,7 @@ export function toArrayOfStructures<T extends object>(structureOfArrays: Structu
     const keys = Object.keys(structureOfArrays) as Array<keyof T>;
     if (keys.length === 0) return [];
     const length = structureOfArrays[keys[0]].length;
-    const res: ArrayOfStructures<T> = Array.from({ length }, () => ({} as T));
+    const res: ArrayOfStructures<T> = Array.from({ length }, () => ({}) as T);
 
     for (const key of keys) {
         const array = structureOfArrays[key];

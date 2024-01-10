@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import * as pendleSDK from '../../../src';
 import axios from 'axios';
 import path from 'path';

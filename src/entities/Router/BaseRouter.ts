@@ -12,7 +12,7 @@ import {
 } from '../../contracts';
 import { abi as IPAllActionV3ABI } from '@pendle/core-v2/build/artifacts/contracts/interfaces/IPAllActionV3.sol/IPAllActionV3.json';
 import type { BigNumberish } from 'ethers';
-import { BigNumber as BN, constants as etherConstants } from 'ethers';
+import { BigNumber as BN } from 'ethers';
 import { MarketEntity } from '../MarketEntity';
 import { SyEntity } from '../SyEntity';
 import { YtEntity } from '../YtEntity';
@@ -22,23 +22,22 @@ import {
     SwapType,
     VoidAggregatorHelper,
     forceAggregatorHelperToCheckResult,
+    BatchAggregatorHelper,
 } from './aggregatorHelper';
 import {
     NATIVE_ADDRESS_0x00,
     Address,
+    toAddress,
     getContractAddresses,
     ChainId,
     RawTokenAmount,
     toArrayOfStructures,
     calcSlippedDownAmount,
-    calcSlippedUpAmount,
     calcSlippedDownAmountSqrt,
     areSameAddresses,
     NoArgsCache,
-    assertDefined,
     bnMax,
 } from '../../common';
-import { BigNumber } from 'bignumber.js';
 
 import {
     TokenOutput,
@@ -55,33 +54,20 @@ import {
 } from './types';
 import * as routerTypes from './types';
 
+import * as routeMod from './route';
+import * as routeDef from './RouterMethodRouteDefinition';
+import { Route } from './route';
 import { BaseRoute, RouteContext } from './route';
 import { txOverridesValueFromTokenInput } from './route/helper';
 import {
     BaseZapInRoute,
     BaseZapInRouteData,
-    AddLiquidityDualTokenAndPtRoute,
     AddLiquiditySingleTokenRoute,
     AddLiquiditySingleTokenKeepYtRoute,
-    SwapExactTokenForPtRoute,
-    SwapExactTokenForYtRoute,
-    MintSyFromTokenRoute,
-    MintPyFromTokenRoute,
 } from './route/zapIn';
-import * as zapInRoutes from './route/zapIn';
 import * as liqMigrationRoutes from './route/liquidityMigration';
 
-import {
-    BaseZapOutRoute,
-    BaseZapOutRouteIntermediateData,
-    RemoveLiquidityDualTokenAndPtRoute,
-    RemoveLiquiditySingleTokenRoute,
-    RedeemSyToTokenRoute,
-    RedeemPyToTokenRoute,
-    SwapExactPtForTokenRoute,
-    SwapExactYtForTokenRoute,
-} from './route/zapOut';
-import * as zapOutRoutes from './route/zapOut';
+import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, RemoveLiquiditySingleTokenRoute } from './route/zapOut';
 
 import { GasFeeEstimator } from './GasFeeEstimator';
 import { RouterTransactionBundler } from './RouterTransactionBundler';
@@ -89,35 +75,41 @@ import { RouterTransactionBundler } from './RouterTransactionBundler';
 import * as offchainMath from '@pendle/core-v2-offchain-math';
 import * as limitOrder from './limitOrder';
 import * as EE from 'eventemitter3';
+import * as routerComponents from './components';
 
 export abstract class BaseRouter extends PendleEntity {
-    static readonly MIN_AMOUNT = 0;
-    static readonly MAX_AMOUNT = etherConstants.MaxUint256;
-    static readonly EPS = 1e-3;
-    static readonly STATIC_APPROX_PARAMS = {
-        guessMin: BaseRouter.MIN_AMOUNT,
-        guessMax: BaseRouter.MAX_AMOUNT,
-        guessOffchain: 0,
-        maxIteration: 256,
-        eps: new BigNumber(BaseRouter.EPS).shiftedBy(18).toFixed(0),
-    };
-
-    readonly aggregatorHelper: AggregatorHelper<true>;
     readonly chainId: ChainId;
-    readonly gasFeeEstimator: GasFeeEstimator;
     readonly checkErrorOnSimulation: boolean;
     readonly limitOrderMatcher: limitOrder.LimitOrderMatcher;
     readonly events = new EE.EventEmitter<routerTypes.RouterEvents, BaseRouter>();
 
-    constructor(readonly address: Address, config: BaseRouterConfig) {
+    // components
+    readonly gasFeeEstimator: GasFeeEstimator;
+    readonly aggregatorHelper: AggregatorHelper<true>;
+    readonly tokenAmountConverter: routerComponents.TokenAmountConverter;
+    readonly optimalOutputRouteSelector: routerComponents.OptimalOutputRouteSelector;
+    readonly limitOrderRouteSelector: routerComponents.LimitOrderRouteSelector;
+    readonly approxParamsGenerator: routerComponents.ApproxParamsGenerator;
+
+    constructor(
+        readonly address: Address,
+        config: BaseRouterConfig
+    ) {
         super(address, { abi: IPAllActionV3ABI, ...config });
         this.chainId = config.chainId;
-        this.aggregatorHelper = forceAggregatorHelperToCheckResult(
-            config.aggregatorHelper ?? new VoidAggregatorHelper()
+        this.aggregatorHelper = BatchAggregatorHelper.create(
+            forceAggregatorHelperToCheckResult(config.aggregatorHelper ?? new VoidAggregatorHelper())
         );
         this.gasFeeEstimator = config.gasFeeEstimator ?? new GasFeeEstimator(this.provider!);
         this.checkErrorOnSimulation = config.checkErrorOnSimulation ?? false;
         this.limitOrderMatcher = config.limitOrderMatcher ?? limitOrder.VoidLimitOrderMatcher.INSTANCE;
+        this.tokenAmountConverter =
+            config.tokenAmountConverter ?? routerComponents.tokenAmountConverterViaAggregatorHelper;
+        this.optimalOutputRouteSelector =
+            config.optimalOutputRouteSelector ?? routerComponents.optimalOutputRouteSelectorWithGasAccounted;
+        this.limitOrderRouteSelector =
+            config.limitOrderRouteSelector ?? routerComponents.limitOrderRouteSelectorWithFallback;
+        this.approxParamsGenerator = config.approxParamsGenerator ?? routerComponents.defaultApproxParamsGenerator;
     }
 
     @NoArgsCache
@@ -129,14 +121,35 @@ export abstract class BaseRouter extends PendleEntity {
         );
     }
 
+    async getSignerAddress(): Promise<Address | undefined> {
+        const signerAddress = this.networkConnection.signer?.getAddress()?.then(toAddress);
+        if (signerAddress === undefined) return undefined;
+        return signerAddress;
+    }
+
+    /**
+     * @deprecated This is now only kept for the migrate liquidity methods.
+     * For other methods, custom {@link BaseRouter#optimalOutputRouteSelector} can be passed in.
+     * @internal
+     */
     abstract findBestZapInRoute<ZapInRoute extends BaseZapInRoute<BaseZapInRouteData, ZapInRoute>>(
         routes: ZapInRoute[]
     ): Promise<ZapInRoute>;
+    /**
+     * @deprecated This is now only kept for the migrate liquidity methods.
+     * For other methods, custom {@link BaseRouter#optimalOutputRouteSelector} can be passed in.
+     * @internal
+     */
     abstract findBestZapOutRoute<ZapOutRoute extends BaseZapOutRoute<BaseZapOutRouteIntermediateData, ZapOutRoute>>(
         routes: ZapOutRoute[]
     ): Promise<ZapOutRoute>;
+    /**
+     * @deprecated This is now only kept for the migrate liquidity methods.
+     * For other methods, custom {@link BaseRouter#optimalOutputRouteSelector} can be passed in.
+     * @internal
+     */
     abstract findBestLiquidityMigrationRoute<
-        LiquidityMigrationRoute extends liqMigrationRoutes.BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any>
+        LiquidityMigrationRoute extends liqMigrationRoutes.BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any>,
     >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute>;
 
     get provider() {
@@ -150,29 +163,6 @@ export abstract class BaseRouter extends PendleEntity {
     override get entityConfig(): BaseRouterConfig {
         return { ...super.entityConfig, chainId: this.chainId, aggregatorHelper: this.aggregatorHelper };
     }
-
-    // async _getMarketStaticMath(params: {
-    //     market: Address | MarketEntity;
-    //     yt?: Address | YtEntity;
-    //     pyIndex?: offchainMath.PyIndex;
-    //     blockTimestamp?: number;
-    //     blockTag?: number | string | Promise<number | string>;
-    // }): Promise<offchainMath.MarketStaticMath> {
-    //     const market =
-    //         typeof params.market === 'string' ? new MarketEntity(params.market, this.entityConfig) : params.market;
-    //     const { marketStaticMath } = await market.getMarketInfo({});
-    //     const [marketState, pyIndex, blockTimestamp] = await Promise.all([
-    //         market.readState(),
-    //         params.pyIndex ??
-    //             (async () => {
-    //                 if (!params.yt) return market.ytEntity();
-    //                 if (typeof params.yt === 'string') return new YtEntity(params.yt, this.entityConfig);
-    //                 return params.yt;
-    //             })().then((yt) => yt.pyIndexCurrent()),
-    //         params.blockTimestamp ?? provider.getBlock(params.blockTag ?? 'latest').then((block) => block.timestamp),
-    //     ]);
-    //     return marketStaticMath;
-    // }
 
     async getMarketStaticMathWithParams(
         market: Address | MarketEntity,
@@ -253,32 +243,6 @@ export abstract class BaseRouter extends PendleEntity {
         });
     }
 
-    getApproxParamsToPullPt(guessAmountOut: BN | bigint, slippage: number): ApproxParamsStruct {
-        return {
-            ...BaseRouter.STATIC_APPROX_PARAMS,
-            guessMin: calcSlippedDownAmount(guessAmountOut, 1 * slippage),
-            guessMax: calcSlippedUpAmount(guessAmountOut, 5 * slippage),
-            guessOffchain: guessAmountOut,
-            maxIteration: this.calcMaxIteration(slippage),
-        };
-    }
-
-    getApproxParamsToPushPt(guessAmountIn: BN | bigint, slippage: number): ApproxParamsStruct {
-        return {
-            ...BaseRouter.STATIC_APPROX_PARAMS,
-            guessMin: calcSlippedDownAmount(guessAmountIn, 5 * slippage),
-            guessMax: calcSlippedUpAmount(guessAmountIn, 1 * slippage),
-            guessOffchain: guessAmountIn,
-            maxIteration: this.calcMaxIteration(slippage),
-        };
-    }
-
-    protected calcMaxIteration(slippage: number): number {
-        const x = (6 * slippage) / BaseRouter.EPS;
-        if (x <= 1) return 3;
-        return Math.ceil(Math.log2(x)) + 3;
-    }
-
     async addLiquidityDualSyAndPt<T extends MetaMethodType = 'send'>(
         market: Address | MarketEntity,
         syDesired: BigNumberish,
@@ -330,31 +294,115 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'addLiquidityDualTokenAndPt',
-        zapInRoutes.AddLiquidityDualTokenAndPtRouteData & {
-            route: AddLiquidityDualTokenAndPtRoute;
+        {
+            netLpOut: BN;
+            netPtUsed: BN;
+            netSyUsed: BN;
+            minLpOut: BN;
+            intermediateSyAmount: BN;
+            afterMath: offchainMath.MarketStaticMath;
+            route: routeDef.AddLiquidityDualTokenAndPt;
+            tokenMintSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.AddLiquidityDualTokenAndPt>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const marketEntity = this.getMarketEntity(market);
-        const marketAddr = marketEntity.address;
-        const syEntity = await marketEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<AddLiquidityDualTokenAndPtRoute>({
-            params,
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(marketEntity, params);
+        const [syEntity, pt] = await Promise.all([marketEntity.syEntity(params.forCallStatic), marketEntity.pt()]);
+        const tokenMintSyList = await syEntity.getTokensIn();
+
+        // Components
+        const tokenInputStructBuilder = routeMod.routeComponentHelper.createTokenInputStructBuilder(this);
+
+        const buildContractMethodFromRoute = async (
+            route: routeMod.Route.PartialRoute<'aggregatorResultGetter' | 'intermediateSyAmountGetter'>
+        ) => {
+            const [input, mintedSyAmount, marketStaticMath] = await Promise.all([
+                tokenInputStructBuilder.call(route),
+                Route.getIntermediateSyAmount(route),
+                marketStaticMathPromise,
+            ]);
+            const addLiqResult = marketStaticMath.addLiquidityDualSyAndPtStatic(
+                BN.from(mintedSyAmount).toBigInt(),
+                BN.from(ptDesired).toBigInt()
+            );
+            const minLpOut = calcSlippedDownAmountSqrt(addLiqResult.netLpOut, slippage);
+            const overrides = txOverridesValueFromTokenInput(input);
+            const data = {
+                ...mergeMetaMethodExtraParams({ overrides }, params),
+                netLpOut: BN.from(addLiqResult.netLpOut),
+                netPtUsed: BN.from(addLiqResult.netPtUsed),
+                netSyUsed: BN.from(addLiqResult.netSyUsed),
+                afterMath: addLiqResult.afterMath,
+
+                minLpOut,
+                intermediateSyAmount: mintedSyAmount,
+            };
+            return this.contract.metaCall.addLiquidityDualTokenAndPt(
+                params.receiver,
+                marketEntity.address,
+                input,
+                ptDesired,
+                minLpOut,
+                data
+            );
+        };
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'addLiquidityDualTokenAndPt',
+                ['aggregatorResultGetter', 'intermediateSyAmountGetter'],
+                buildContractMethodFromRoute,
+                async (metaMethod) => metaMethod.data.netLpOut
+            );
+        const inputTokenAmount = { token: tokenIn, amount: BN.from(tokenDesired) };
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [
+            inputTokenAmount,
+            { token: pt, amount: BN.from(ptDesired) },
+        ]);
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
+            this,
             syEntity,
-            slippage,
-        });
-        const tokenMintSyList = await routeContext.getTokensMintSy();
-        const routes = tokenMintSyList.map(
-            (tokenMintSy) =>
-                new AddLiquidityDualTokenAndPtRoute(marketEntity, tokenIn, tokenDesired, ptDesired, slippage, {
-                    context: routeContext,
+            {
+                ...params,
+                tokenInputStructBuilder,
+            }
+        );
+
+        // Routing
+        const partialRoutes = tokenMintSyList.map((tokenMintSy) =>
+            routeMod.Route.assemble({
+                approvedSignerAddressGetter,
+                aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
+                    this,
+                    inputTokenAmount,
                     tokenMintSy,
-                })
+                    slippage
+                ),
+                syIOTokenAmountGetter,
+                contractMethodBuilder,
+                gasUsedEstimator,
+                intermediateSyAmountGetter,
+                netOutGetter,
+            })
         );
-        const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('add liquidity', tokenIn, marketAddr, { cause })
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createRelativeToToken(
+            this,
+            partialRoutes,
+            inputTokenAmount
         );
-        const metaMethod = await bestRoute.buildCall();
+        const routes = partialRoutes.map((route) => routeMod.Route.assemble({ ...route, netOutInNativeEstimator }));
+        const tokenMintSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routes);
+        if (tokenMintSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('addLiquidityDualTokenAndPt', tokenIn, marketEntity.address, routes, {});
+        }
+        const { selectedRoute } = tokenMintSySelectionRoutingResult;
+
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            tokenMintSySelectionRoutingResult,
+        });
+
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -377,42 +425,49 @@ export abstract class BaseRouter extends PendleEntity {
             netSyFromSwap: BN;
             approxParam: ApproxParamsStruct;
             minLpOut: BN;
+            route: routeDef.AddLiquiditySinglePt;
+            routes: routeDef.AddLiquiditySinglePt[];
             marketStaticMathBefore: offchainMath.MarketStaticMath;
-            marketStaticMathAfter: offchainMath.MarketStaticMath;
-            limitOrderMatchedResult: limitOrder.LimitOrderMatchedResult;
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<routeDef.AddLiquiditySinglePt>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
 
-        const marketAddr = this.getMarketAddress(market);
-        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
-        const pureMarketAddLiqResult = marketStaticMath.addLiquiditySinglePtStatic(BN.from(netPtIn).toBigInt());
-
-        let netPtRemains = BN.from(netPtIn);
-        let netSyHolding = BN.from(0);
-        const limitOrderMatchedResult = await this.limitOrderMatcher.swapPtForSy(
-            market,
-            BN.from(pureMarketAddLiqResult.netPtToSwap),
-            { routerMethod: 'addLiquiditySinglePt' }
+        const marketEntity = this.getMarketEntity(market);
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(marketEntity, params);
+        const pureMarketAddLiqResultPromise = marketStaticMathPromise.then((marketMath) =>
+            marketMath.addLiquiditySinglePtStatic(BN.from(netPtIn).toBigInt())
         );
-        netPtRemains = bnMax(0, netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker));
-        netSyHolding = netSyHolding.add(limitOrderMatchedResult.netOutputToTaker);
+        const limitOrderMatcherForRoute = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapPtForSy', [
+            market,
+            async () => BN.from((await pureMarketAddLiqResultPromise).netPtToSwap),
+            { routerMethod: 'addLiquiditySinglePt' },
+        ]);
+        const buildContractMethodFromRoute = async (route: routeMod.Route.PartialRoute<'limitOrderMatcher'>) => {
+            let netPtRemains = BN.from(netPtIn);
+            let netSyHolding = BN.from(0);
 
-        const marketResult = marketStaticMath.addLiquiditySinglePtStatic(netPtRemains.toBigInt(), {
-            netSyHolding: netSyHolding.toBigInt(),
-        });
-        const netLpOut = BN.from(marketResult.netLpOut);
-        const netPtToSwap = BN.from(marketResult.netPtToSwap);
-        const approxParam = this.getApproxParamsToPushPt(netPtToSwap, slippage);
-        const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage); // note: different slip down amount function
-        const metaMethod = await this.contract.metaCall.addLiquiditySinglePt(
-            params.receiver,
-            marketAddr,
-            netPtIn,
-            minLpOut,
-            approxParam,
-            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
-            {
+            const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+                Route.getMatchedLimitOrderResult(route),
+                marketStaticMathPromise,
+            ]);
+            netPtRemains = bnMax(0, netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker));
+            netSyHolding = netSyHolding.add(limitOrderMatchedResult.netOutputToTaker);
+
+            const marketResult = marketStaticMath.addLiquiditySinglePtStatic(netPtRemains.toBigInt(), {
+                netSyHolding: netSyHolding.toBigInt(),
+            });
+            const netLpOut = BN.from(marketResult.netLpOut);
+            const netPtToSwap = BN.from(marketResult.netPtToSwap);
+            const approxParam = await this.approxParamsGenerator.generate(this, {
+                routerMethod: 'addLiquiditySinglePt',
+                guessOffchain: netPtToSwap,
+                slippage,
+                approxSearchingRange: marketResult.approxSearchingRange,
+                limitOrderMatchedResult,
+            });
+            const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage); // note: different slip down amount function
+            const data = {
                 ...params,
                 ...marketResult,
                 netLpOut,
@@ -420,20 +475,54 @@ export abstract class BaseRouter extends PendleEntity {
                 netSyFromSwap: BN.from(marketResult.netSyFromSwap),
                 netSyFeeFromMarket: BN.from(marketResult.netSyFee),
                 netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
-                marketStaticMathBefore: marketStaticMath,
-                marketStaticMathAfter: marketResult.afterMath,
                 approxParam,
                 minLpOut,
-                limitOrderMatchedResult,
-            }
+                marketStaticMathBefore: marketStaticMath,
+            };
+            return this.contract.metaCall.addLiquiditySinglePt(
+                params.receiver,
+                marketEntity.address,
+                netPtIn,
+                minLpOut,
+                approxParam,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                data
+            );
+        };
+
+        const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            'addLiquiditySinglePt',
+            ['limitOrderMatcher'],
+            buildContractMethodFromRoute,
+            async (metaMethod) => metaMethod.data.netLpOut
         );
+        const routeWithLo = routeMod.Route.assemble({
+            limitOrderMatcher: limitOrderMatcherForRoute,
+            contractMethodBuilder,
+            netOutGetter,
+        });
+        const loRoutingResult = await this.limitOrderRouteSelector(this, routeWithLo);
+        if (loRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError(
+                'addLiquiditySinglePt',
+                await marketEntity.PT(),
+                marketEntity.address,
+                loRoutingResult.allRoutes
+            );
+        }
+        const metaMethod = (await contractMethodBuilder.call(loRoutingResult.selectedRoute)).attachExtraData({
+            route: loRoutingResult.selectedRoute,
+            routes: loRoutingResult.allRoutes,
+            loRoutingResult,
+        });
+
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
 
     async addLiquiditySingleSy<T extends MetaMethodType>(
         market: Address | MarketEntity,
-        netSyIn: BigNumberish,
+        _netSyIn: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
     ): RouterMetaMethodReturnType<
@@ -449,40 +538,50 @@ export abstract class BaseRouter extends PendleEntity {
             exchangeRateAfter: offchainMath.MarketExchangeRate;
             approxParam: ApproxParamsStruct;
             minLpOut: BN;
+            route: routeDef.AddLiquiditySingleSy;
+            routes: routeDef.AddLiquiditySingleSy[];
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<routeDef.AddLiquiditySingleSy>;
         }
     > {
-        netSyIn = BN.from(netSyIn);
+        const netSyIn = BN.from(_netSyIn);
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
-        const marketAddr = this.getMarketAddress(market);
+        const marketEntity = this.getMarketEntity(market);
 
-        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
-        const pureMarketAddLiqResult = marketStaticMath.addLiquiditySingleSyStatic(netSyIn.toBigInt());
-
-        let netSyRemains = BN.from(netSyIn);
-        let netPtHolding = BN.from(0);
-
-        const limitOrderMatchedResult = await this.limitOrderMatcher.swapSyForPt(
-            market,
-            BN.from(pureMarketAddLiqResult.netSyToSwap),
-            { routerMethod: 'addLiquiditySingleSy' }
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(market, params);
+        const pureMarketAddLiqResultPromise = marketStaticMathPromise.then((marketMath) =>
+            marketMath.addLiquiditySingleSyStatic(netSyIn.toBigInt())
         );
-        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
-        netPtHolding = netPtHolding.add(limitOrderMatchedResult.netOutputToTaker);
 
-        const marketResult = marketStaticMath.addLiquiditySingleSyStatic(netSyRemains.toBigInt(), {
-            netPtHolding: netPtHolding.toBigInt(),
-        });
-        const approxParam = this.getApproxParamsToPullPt(marketResult.netPtFromSwap, slippage);
-        const minLpOut = calcSlippedDownAmountSqrt(marketResult.netLpOut, slippage); // note: different slip down amount function
+        const limitOrderMatcherForRoute = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapSyForPt', [
+            market,
+            async () => BN.from((await pureMarketAddLiqResultPromise).netSyToSwap),
+            { routerMethod: 'addLiquiditySingleSy' },
+        ]);
 
-        const metaMethod = await this.contract.metaCall.addLiquiditySingleSy(
-            params.receiver,
-            marketAddr,
-            netSyIn,
-            minLpOut,
-            approxParam,
-            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
-            {
+        const buildContractMethodFromRoute = async (route: routeMod.Route.PartialRoute<'limitOrderMatcher'>) => {
+            let netSyRemains = BN.from(netSyIn);
+            let netPtHolding = BN.from(0);
+
+            const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+                Route.getMatchedLimitOrderResult(route),
+                marketStaticMathPromise,
+            ]);
+
+            netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+            netPtHolding = netPtHolding.add(limitOrderMatchedResult.netOutputToTaker);
+
+            const marketResult = marketStaticMath.addLiquiditySingleSyStatic(netSyRemains.toBigInt(), {
+                netPtHolding: netPtHolding.toBigInt(),
+            });
+            const approxParam = await this.approxParamsGenerator.generate(this, {
+                routerMethod: 'addLiquiditySingleSy',
+                guessOffchain: marketResult.netPtFromSwap,
+                slippage,
+                approxSearchingRange: marketResult.approxSearchingRange,
+                limitOrderMatchedResult,
+            });
+            const minLpOut = calcSlippedDownAmountSqrt(marketResult.netLpOut, slippage); // note: different slip down amount function
+            const data = {
                 ...params,
                 netLpOut: BN.from(marketResult.netLpOut),
                 netPtFromSwap: BN.from(marketResult.netPtFromSwap),
@@ -493,8 +592,44 @@ export abstract class BaseRouter extends PendleEntity {
                 exchangeRateAfter: marketResult.exchangeRateAfter,
                 approxParam,
                 minLpOut,
-            }
+            };
+
+            return this.contract.metaCall.addLiquiditySingleSy(
+                params.receiver,
+                marketEntity.address,
+                netSyIn,
+                minLpOut,
+                approxParam,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                data
+            );
+        };
+
+        const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            'addLiquiditySingleSy',
+            ['limitOrderMatcher'],
+            buildContractMethodFromRoute,
+            async (metaMethod) => metaMethod.data.netLpOut
         );
+        const withLoRoute = routeMod.Route.assemble({
+            limitOrderMatcher: limitOrderMatcherForRoute,
+            contractMethodBuilder,
+            netOutGetter,
+        });
+        const loRoutingResult = await this.limitOrderRouteSelector(this, withLoRoute);
+        if (loRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError(
+                'addLiquiditySingleSy',
+                await marketEntity.SY(),
+                marketEntity.address,
+                loRoutingResult.allRoutes
+            );
+        }
+        const metaMethod = (await contractMethodBuilder.call(loRoutingResult.selectedRoute)).attachExtraData({
+            route: loRoutingResult.selectedRoute,
+            routes: loRoutingResult.allRoutes,
+            loRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -553,62 +688,80 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'addLiquiditySingleToken',
-        zapInRoutes.AddLiquiditySingleTokenRouteData & {
-            route: AddLiquiditySingleTokenRoute;
+        {
+            netLpOut: BN;
+            netPtFromSwap: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            netSyMinted: BN;
+            netSyToSwap: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
+            minLpOut: BN;
+
+            route: routeDef.AddLiquiditySingleToken;
+            routes: routeDef.AddLiquiditySingleToken[];
+            tokenMintSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.AddLiquiditySingleToken>;
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<routeDef.AddLiquiditySingleToken>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
-        market = this.getMarketEntity(market);
-        const marketAddr = market.address;
-        const syEntity = await market.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<AddLiquiditySingleTokenRoute>({
-            params,
-            syEntity,
-            slippage,
-        });
-        const tokenMintSyList = await routeContext.getTokensMintSy();
+        const marketEntity = this.getMarketEntity(market);
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(marketEntity, params);
+        const syEntity = await marketEntity.syEntity(params.forCallStatic);
+        const tokenMintSyList = await syEntity.getTokensIn();
 
-        const routes = tokenMintSyList.map(
-            (tokenMintSy) =>
-                new AddLiquiditySingleTokenRoute(market, tokenIn, netTokenIn, slippage, {
-                    context: routeContext,
-                    tokenMintSy,
-                })
+        const routeLimitOrderMatcher = routeMod.helper.createMinimalRouteComponent(
+            'LimitOrderMatcher.addLiquiditySingleToken',
+            ['intermediateSyAmountGetter'],
+            async (route) => {
+                const [mintedSyAmount, marketStaticMath] = await Promise.all([
+                    Route.getIntermediateSyAmount(route),
+                    marketStaticMathPromise,
+                ]);
+                const simulatedAddLiquidityWithAllSy = marketStaticMath.addLiquiditySingleSyStatic(
+                    mintedSyAmount.toBigInt()
+                );
+                return this.limitOrderMatcher.swapSyForPt(
+                    marketEntity,
+                    BN.from(simulatedAddLiquidityWithAllSy.netSyToSwap),
+                    {
+                        routerMethod: 'addLiquiditySingleToken',
+                    }
+                );
+            }
         );
 
-        const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('add liquidity', tokenIn, marketAddr, { cause })
-        );
+        const tokenInputStructBuilder = routeMod.routeComponentHelper.createTokenInputStructBuilder(this);
+        const buildContractMethodFromRoute = async (
+            route: routeMod.Route.PartialRoute<
+                'aggregatorResultGetter' | 'intermediateSyAmountGetter' | 'limitOrderMatcher'
+            >
+        ) => {
+            const [input, mintedSyAmount, limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+                tokenInputStructBuilder.call(route),
+                Route.getIntermediateSyAmount(route),
+                Route.getMatchedLimitOrderResult(route),
+                marketStaticMathPromise,
+            ]);
 
-        const [marketStaticMath, input, noLimitOrderPreviewResult] = await Promise.all([
-            bestRoute.getMarketStaticMath(),
-            bestRoute.buildTokenInput().then(assertDefined),
-            bestRoute.preview().then(assertDefined),
-            bestRoute.getMintedSyAmount().then(assertDefined),
-        ]);
-        const limitOrderMatchedResult = await this.limitOrderMatcher.swapSyForPt(
-            market,
-            noLimitOrderPreviewResult.netSyToSwap,
-            { routerMethod: 'addLiquiditySingleToken' }
-        );
-        const netSyAfterLimit = noLimitOrderPreviewResult.netSyMinted.sub(limitOrderMatchedResult.netInputFromTaker);
-        const netPtReceivedAfterLimit = BN.from(limitOrderMatchedResult.netOutputToTaker);
-        const marketResult = marketStaticMath.addLiquiditySingleSyStatic(netSyAfterLimit.toBigInt(), {
-            netPtHolding: netPtReceivedAfterLimit.toBigInt(),
-        });
-        const approxParams = this.getApproxParamsToPullPt(marketResult.netPtFromSwap, slippage);
-        const netLpOut = BN.from(marketResult.netLpOut);
-        const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage); // note: sqrtthe slipdown function
+            const netSyAfterLimit = mintedSyAmount.sub(limitOrderMatchedResult.netInputFromTaker);
+            const netPtReceivedAfterLimit = BN.from(limitOrderMatchedResult.netOutputToTaker);
+            const marketResult = marketStaticMath.addLiquiditySingleSyStatic(netSyAfterLimit.toBigInt(), {
+                netPtHolding: netPtReceivedAfterLimit.toBigInt(),
+            });
+            const approxParams = await this.approxParamsGenerator.generate(this, {
+                routerMethod: 'addLiquiditySingleToken',
+                guessOffchain: marketResult.netPtFromSwap,
+                slippage,
+                approxSearchingRange: marketResult.approxSearchingRange,
+                limitOrderMatchedResult,
+            });
+            const netLpOut = BN.from(marketResult.netLpOut);
+            const minLpOut = calcSlippedDownAmountSqrt(netLpOut, slippage); // note: slipdown function is sqrt
 
-        const overrides = txOverridesValueFromTokenInput(input);
-        const metaMethod = await this.contract.metaCall.addLiquiditySingleToken(
-            params.receiver,
-            marketAddr,
-            minLpOut,
-            approxParams,
-            input,
-            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
-            {
+            const overrides = txOverridesValueFromTokenInput(input);
+            const data = {
                 ...mergeMetaMethodExtraParams({ overrides }, params),
 
                 netLpOut,
@@ -619,30 +772,97 @@ export abstract class BaseRouter extends PendleEntity {
                 priceImpact: marketResult.priceImpact,
                 exchangeRateAfter: marketResult.exchangeRateAfter,
                 netSyToSwap: BN.from(marketResult.netSyToSwap),
-                netSyMinted: noLimitOrderPreviewResult.netSyMinted,
-                intermediateSyAmount: noLimitOrderPreviewResult.netSyMinted,
+                netSyMinted: mintedSyAmount,
+                intermediateSyAmount: mintedSyAmount,
 
                 minLpOut,
-                route: bestRoute,
-            }
+            };
+            return this.contract.metaCall.addLiquiditySingleToken(
+                params.receiver,
+                marketEntity.address,
+                minLpOut,
+                approxParams,
+                input,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                data
+            );
+        };
+
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'addLiquiditySingleToken',
+                ['aggregatorResultGetter', 'intermediateSyAmountGetter', 'limitOrderMatcher'],
+                buildContractMethodFromRoute,
+                async (metaMethod) => metaMethod.data.netLpOut
+            );
+        const mintedSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(this, syEntity, {
+            ...params,
+            tokenInputStructBuilder,
+        });
+        const rawTokenInput = { token: tokenIn, amount: BN.from(netTokenIn) };
+
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenInput]);
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+
+        const partialRoutesNoLO = tokenMintSyList.map((tokenMintSy) =>
+            routeMod.Route.assemble({
+                netOutGetter,
+                contractMethodBuilder,
+                limitOrderMatcher: routeMod.limitOrderMatcher.createEmpty(),
+                intermediateSyAmountGetter: mintedSyAmountGetter,
+                syIOTokenAmountGetter,
+                gasUsedEstimator,
+                aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
+                    this,
+                    rawTokenInput,
+                    tokenMintSy,
+                    slippage,
+                    params
+                ),
+                approvedSignerAddressGetter,
+            })
         );
+
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createRelativeToToken(
+            this,
+            partialRoutesNoLO,
+            rawTokenInput
+        );
+        const routesNoLO = partialRoutesNoLO.map((route) =>
+            routeMod.Route.assemble({ ...route, netOutInNativeEstimator })
+        );
+        const tokenMintSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routesNoLO);
+        if (tokenMintSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('addLiquiditySingleToken', tokenIn, marketEntity.address, routesNoLO);
+        }
+
+        const selectedRouteNoLO = tokenMintSySelectionRoutingResult.selectedRoute;
+        const selectedRouteWithLO = routeMod.Route.assemble({
+            ...selectedRouteNoLO,
+            limitOrderMatcher: routeLimitOrderMatcher,
+        });
+        const loRoutingResult = await this.limitOrderRouteSelector(this, selectedRouteWithLO);
+        if (loRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError(
+                'addLiquiditySingleToken',
+                tokenIn,
+                marketEntity.address,
+                loRoutingResult.allRoutes
+            );
+        }
+
+        const metaMethod = (await contractMethodBuilder.call(loRoutingResult.selectedRoute)).attachExtraData({
+            tokenMintSySelectionRoutingResult,
+            loRoutingResult,
+            route: loRoutingResult.selectedRoute,
+            routes: [...routesNoLO, selectedRouteWithLO],
+        });
 
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
 
     /**
-     * @remarks
-     * ### `PendleRouterHelper` patch
-     * A small bug on the contract side: `addLiquiditySingleTokenKeepYt` method
-     * of `router` contract is **not PAYABLE**.
-     *
-     * A small patch for this is to use the function
-     * `addLiquiditySingleTokenKeepYtWithEth` from the new contract
-     * `PendleRouterHelper`.
-     *
-     * Hence the _weird_ return type. :prayge:
-     *
      * @privateRemarks
      * #### More explanation on the return type
      * The return type is slightly complex (it is actually `Promise<Promise<...>>`, as
@@ -664,34 +884,114 @@ export abstract class BaseRouter extends PendleEntity {
         RouterMetaMethodReturnType<
             T,
             'addLiquiditySingleTokenKeepYt',
-            zapInRoutes.AddLiquiditySingleTokenKeepYtRouteData & {
-                route: AddLiquiditySingleTokenKeepYtRoute;
+            {
+                intermediateSyAmount: BN;
+                netLpOut: BN;
+                netYtOut: BN;
+                netSyMinted: BN;
+                netSyToPY: BN;
+                minLpOut: BN;
+                minYtOut: BN;
+                afterMath: offchainMath.MarketStaticMath;
+                route: routeDef.AddLiquiditySingleTokenKeepYt;
+                routes: routeDef.AddLiquiditySingleTokenKeepYt[];
+                tokenMintSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.AddLiquiditySingleTokenKeepYt>;
             }
         >
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
-        market = this.getMarketEntity(market);
-        const marketAddr = market.address;
-        const syEntity = await market.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<AddLiquiditySingleTokenKeepYtRoute>({
-            params,
+        const marketEntity = this.getMarketEntity(market);
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(market, params);
+        const syEntity = await marketEntity.syEntity(params.forCallStatic);
+        const tokenMintSyList = await syEntity.getTokensIn();
+
+        const tokenInputStructBuilder = routeMod.routeComponentHelper.createTokenInputStructBuilder(this);
+        const buildContractMethodFromRoute = async (
+            route: routeMod.Route.PartialRoute<'intermediateSyAmountGetter' | 'aggregatorResultGetter'>
+        ) => {
+            const [input, mintedSyAmount, marketStaticMath] = await Promise.all([
+                tokenInputStructBuilder.call(route),
+                routeMod.Route.getIntermediateSyAmount(route),
+                marketStaticMathPromise,
+            ]);
+            const marketResult = marketStaticMath.addLiquiditySingleSyKeepYtStatic(BN.from(mintedSyAmount).toBigInt());
+            const minLpOut = calcSlippedDownAmountSqrt(marketResult.netLpOut, slippage);
+            const minYtOut = calcSlippedDownAmountSqrt(marketResult.netYtOut, slippage);
+
+            const overrides = txOverridesValueFromTokenInput(input);
+            const data = {
+                ...mergeMetaMethodExtraParams(params, { overrides }),
+                netLpOut: BN.from(marketResult.netLpOut),
+                netYtOut: BN.from(marketResult.netYtOut),
+                netSyMinted: mintedSyAmount,
+                netSyToPY: BN.from(marketResult.netSyToPY),
+                afterMath: marketResult.afterMath,
+                intermediateSyAmount: mintedSyAmount,
+                minLpOut,
+                minYtOut,
+            };
+            return this.contract.metaCall.addLiquiditySingleTokenKeepYt(
+                params.receiver,
+                marketEntity.address,
+                minLpOut,
+                minYtOut,
+                input,
+                data
+            );
+        };
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'addLiquiditySingleTokenKeepYt',
+                ['intermediateSyAmountGetter', 'aggregatorResultGetter'],
+                buildContractMethodFromRoute,
+                async (metaMethod) => metaMethod.data.netLpOut
+            );
+        const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
+            this,
             syEntity,
-            slippage,
-        });
-        const tokenMintSyList = await routeContext.getTokensMintSy();
+            {
+                ...params,
+                tokenInputStructBuilder,
+            }
+        );
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const rawTokenInput = { token: tokenIn, amount: BN.from(netTokenIn) };
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenInput]);
 
-        const routes = tokenMintSyList.map(
-            (tokenMintSy) =>
-                new AddLiquiditySingleTokenKeepYtRoute(marketAddr, tokenIn, netTokenIn, slippage, {
-                    context: routeContext,
+        const partialRoutes = tokenMintSyList.map((tokenMintSy) =>
+            routeMod.Route.assemble({
+                netOutGetter,
+                contractMethodBuilder,
+                intermediateSyAmountGetter,
+                syIOTokenAmountGetter,
+                gasUsedEstimator,
+                aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
+                    this,
+                    rawTokenInput,
                     tokenMintSy,
-                })
+                    slippage,
+                    params
+                ),
+                approvedSignerAddressGetter,
+            })
         );
 
-        const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('add liquidity', tokenIn, marketAddr, { cause })
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createRelativeToToken(
+            this,
+            partialRoutes,
+            rawTokenInput
         );
-        const metaMethod = await bestRoute.buildCall();
+        const routes = partialRoutes.map((route) => routeMod.Route.assemble({ ...route, netOutInNativeEstimator }));
+        const tokenMintSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routes);
+        if (tokenMintSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('addLiquiditySingleTokenKeepYt', tokenIn, marketEntity.address, routes);
+        }
+        const { selectedRoute } = tokenMintSySelectionRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            routes,
+            tokenMintSySelectionRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -747,35 +1047,106 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'removeLiquidityDualTokenAndPt',
-        zapOutRoutes.RemoveLiquidityDualTokenAndPtRouteIntermediateData & {
-            route: RemoveLiquidityDualTokenAndPtRoute;
+        {
+            netPtOut: BN;
+            afterMath: offchainMath.MarketStaticMath;
+            intermediateSyAmount: BN;
+            netTokenOut: BN;
+            route: routeDef.RemoveLiquidityDualTokenAndPt;
+            routes: routeDef.RemoveLiquidityDualTokenAndPt[];
+            tokenRedeemSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.RemoveLiquidityDualTokenAndPt>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
-        market = this.getMarketEntity(market);
+        const marketEntity = this.getMarketEntity(market);
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(marketEntity, params);
+        const marketResultPromise = marketStaticMathPromise.then((marketMath) =>
+            marketMath.removeLiquidityDualSyAndPtStatic(BN.from(lpToRemove).toBigInt())
+        );
 
-        const marketAddr = market.address;
-        const syEntity = await market.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<RemoveLiquidityDualTokenAndPtRoute>({
-            params,
-            syEntity,
+        const syEntity = await marketEntity.syEntity(params.forCallStatic);
+        const tokenRedeemSyList = await syEntity.getTokensOut();
+
+        const buildContractMethod = async (tokenOutputStruct: routerTypes.TokenOutput, netTokenOut: BN) => {
+            const marketResult = await marketResultPromise;
+            const data = {
+                netPtOut: BN.from(marketResult.netPtOut),
+                afterMath: marketResult.afterMath,
+                intermediateSyAmount: BN.from(marketResult.netSyOut),
+            };
+
+            return this.contract.metaCall.removeLiquidityDualTokenAndPt(
+                params.receiver,
+                marketEntity.address,
+                lpToRemove,
+                tokenOutputStruct,
+                calcSlippedDownAmount(marketResult.netPtOut, slippage),
+                { ...data, ...params, netTokenOut }
+            );
+        };
+
+        const intermediateSyAmountGetter = routeMod.helper.createComponentFromConstant('syAmountToRedeem', async () =>
+            BN.from((await marketResultPromise).netSyOut)
+        );
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [
+            { token: marketEntity.address, amount: BN.from(lpToRemove) },
+        ]);
+        const aggregatorResultGetter = routeMod.aggregatorResultGetter.createToRawToken(this, tokenOut, slippage, {
+            aggregatorReceiver: params.aggregatorReceiver,
+        });
+        const tokenOutputStructBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, {
             slippage,
         });
-        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
+        const { contractMethodBuilder, gasUsedEstimator, netOutGetter } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'removeLiquidityDualTokenAndPt',
+                ['aggregatorResultGetter'],
+                async (route) => {
+                    const [aggregatorResult, tokenOutput] = await Promise.all([
+                        routeMod.Route.getAggregatorResult(route),
+                        tokenOutputStructBuilder.call(route),
+                    ]);
+                    return buildContractMethod(tokenOutput, aggregatorResult.outputAmount);
+                },
+                async (metaMethod) => metaMethod.data.netTokenOut
+            );
 
-        const routes = tokenRedeemSyList.map(
-            (tokenRedeemSy) =>
-                new RemoveLiquidityDualTokenAndPtRoute(marketAddr, lpToRemove, tokenOut, slippage, {
-                    context: routeContext,
+        const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
+            routeMod.Route.assemble({
+                approvedSignerAddressGetter,
+                intermediateSyAmountGetter,
+                syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
                     tokenRedeemSy,
-                })
+                    syEntity,
+                    params,
+                    ({ tokenOutput }) =>
+                        buildContractMethod(tokenOutput, BN.from(0))
+                            .then((metaMethod) => metaMethod.callStatic())
+                            .then((res) => res.netTokenOut)
+                ),
+                aggregatorResultGetter,
+                contractMethodBuilder,
+                gasUsedEstimator,
+                netOutGetter,
+            })
         );
-
-        const bestRoute = await this.findBestZapOutRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('remove liquidity', marketAddr, tokenOut, { cause })
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createFromAllRawTokenOut(
+            this,
+            tokenOut,
+            partialRoutes
         );
+        const routes = partialRoutes.map((route) => routeMod.Route.assemble({ ...route, netOutInNativeEstimator }));
+        const tokenRedeemSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routes);
+        if (tokenRedeemSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('removeLiquidityDualPtAndToken', marketEntity.address, tokenOut, routes);
+        }
+        const { selectedRoute } = tokenRedeemSySelectionRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            routes,
+            tokenRedeemSySelectionRoutingResult,
+        });
 
-        const metaMethod = await bestRoute.buildCall();
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -798,49 +1169,96 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: offchainMath.FixedX18;
             exchangeRateAfter: offchainMath.MarketExchangeRate;
             minPtOut: BN;
+            route: routeDef.RemoveLiquiditySinglePt;
+            routes: routeDef.RemoveLiquiditySinglePt[];
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<routeDef.RemoveLiquiditySinglePt>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
-        const marketAddr = this.getMarketAddress(market);
-
-        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
-        const removeLiqResult = marketStaticMath.removeLiquidityDualSyAndPtStatic(BN.from(lpToRemove).toBigInt());
-        let totalPtOut = BN.from(removeLiqResult.netPtOut);
-        let netSyRemains = BN.from(removeLiqResult.netSyOut);
-
-        const afterLiqRemovalMarketStaticMath = removeLiqResult.afterMath;
-        const limitOrderMatchedResult = await this.limitOrderMatcher.swapSyForPt(market, netSyRemains, {
-            routerMethod: 'removeLiquiditySinglePt',
-        });
-        totalPtOut = totalPtOut.add(limitOrderMatchedResult.netOutputToTaker);
-        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
-
-        const swapSyForPtResult = afterLiqRemovalMarketStaticMath.swapExactSyForPtStatic(netSyRemains.toBigInt());
-        totalPtOut = totalPtOut.add(swapSyForPtResult.netPtOut);
-        // netSyRemains should be zero by now
-
-        const minPtOut = calcSlippedDownAmount(totalPtOut, slippage);
-
-        const metaMethod = await this.contract.metaCall.removeLiquiditySinglePt(
-            params.receiver,
-            marketAddr,
-            lpToRemove,
-            minPtOut,
-            this.getApproxParamsToPullPt(swapSyForPtResult.netPtOut, slippage),
-            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
-            {
-                ...params,
-                netPtOut: totalPtOut,
-                netPtFromSwap: BN.from(swapSyForPtResult.netPtOut),
-                netSyFeeFromMarket: BN.from(swapSyForPtResult.netSyFee),
-                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
-                netSyFromBurn: BN.from(removeLiqResult.netSyOut),
-                netPtFromBurn: BN.from(removeLiqResult.netPtOut),
-                priceImpact: swapSyForPtResult.priceImpact,
-                exchangeRateAfter: swapSyForPtResult.exchangeRateAfter,
-                minPtOut,
-            }
+        const marketEntity = this.getMarketEntity(market);
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(marketEntity, params);
+        const removeLiqResultPromise = marketStaticMathPromise.then((marketMath) =>
+            marketMath.removeLiquidityDualSyAndPtStatic(BN.from(lpToRemove).toBigInt())
         );
+
+        const buildContractMethod = async (route: routeMod.Route.PartialRoute<'limitOrderMatcher'>) => {
+            const [limitOrderMatchedResult, removeLiqResult] = await Promise.all([
+                Route.getMatchedLimitOrderResult(route),
+                removeLiqResultPromise,
+            ]);
+            const afterLiqRemovalMarketStaticMath = removeLiqResult.afterMath;
+            let totalPtOut = BN.from(removeLiqResult.netPtOut);
+            let netSyRemains = BN.from(removeLiqResult.netSyOut);
+
+            totalPtOut = totalPtOut.add(limitOrderMatchedResult.netOutputToTaker);
+            netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+
+            const swapSyForPtResult = afterLiqRemovalMarketStaticMath.swapExactSyForPtStatic(netSyRemains.toBigInt());
+            totalPtOut = totalPtOut.add(swapSyForPtResult.netPtOut);
+            // netSyRemains should be zero by now
+            const minPtOut = calcSlippedDownAmount(totalPtOut, slippage);
+
+            const approxParams = await this.approxParamsGenerator.generate(this, {
+                routerMethod: 'removeLiquiditySinglePt',
+                approxSearchingRange: swapSyForPtResult.approxSearchingRange,
+                guessOffchain: swapSyForPtResult.netPtOut,
+                limitOrderMatchedResult,
+                slippage,
+            });
+            return this.contract.metaCall.removeLiquiditySinglePt(
+                params.receiver,
+                marketEntity.address,
+                lpToRemove,
+                minPtOut,
+                approxParams,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                {
+                    ...params,
+                    netPtOut: totalPtOut,
+                    netPtFromSwap: BN.from(swapSyForPtResult.netPtOut),
+                    netSyFeeFromMarket: BN.from(swapSyForPtResult.netSyFee),
+                    netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                    netSyFromBurn: BN.from(removeLiqResult.netSyOut),
+                    netPtFromBurn: BN.from(removeLiqResult.netPtOut),
+                    priceImpact: swapSyForPtResult.priceImpact,
+                    exchangeRateAfter: swapSyForPtResult.exchangeRateAfter,
+                    minPtOut,
+                }
+            );
+        };
+
+        const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            'removeLiquiditySinglePt',
+            ['limitOrderMatcher'],
+            buildContractMethod,
+            async (metaMethod) => metaMethod.data.netPtOut
+        );
+
+        const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapSyForPt', [
+            marketEntity,
+            async () => BN.from((await removeLiqResultPromise).netSyOut),
+            { routerMethod: 'removeLiquiditySinglePt' },
+        ]);
+        const routeWithLO = routeMod.Route.assemble({
+            contractMethodBuilder,
+            netOutGetter,
+            limitOrderMatcher: routeLimitOrderMatcher,
+        });
+        const loRoutingResult = await this.limitOrderRouteSelector(this, routeWithLO);
+        if (loRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError(
+                'removeLiquiditySinglePt',
+                marketEntity.address,
+                await marketEntity.PT(),
+                loRoutingResult.allRoutes
+            );
+        }
+        const { selectedRoute } = loRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            routes: loRoutingResult.allRoutes,
+            loRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -863,38 +1281,39 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: offchainMath.FixedX18;
             exchangeRateAfter: offchainMath.MarketExchangeRate;
             minSyOut: BN;
+            route: routeDef.RemoveLiquiditySinglePt;
+            routes: routeDef.RemoveLiquiditySinglePt[];
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<routeDef.RemoveLiquiditySingleSy>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const marketEntity = this.getMarketEntity(market);
 
-        const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
-        const removeLiqResult = marketStaticMath.removeLiquidityDualSyAndPtStatic(BN.from(lpToRemove).toBigInt());
-        let totalSyOut = BN.from(removeLiqResult.netSyOut);
-        let netPtRemains = BN.from(removeLiqResult.netPtOut);
-
-        const afterLiqRemovalMarketStaticMath = removeLiqResult.afterMath;
-        const limitOrderMatchedResult = await this.limitOrderMatcher.swapPtForSy(market, netPtRemains, {
-            routerMethod: 'removeLiquiditySingleSy',
-        });
-        totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
-        netPtRemains = netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
-
-        const swapPtToSyResult = afterLiqRemovalMarketStaticMath.swapExactPtForSyStaticAllowExpired(
-            netPtRemains.toBigInt()
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(market, params);
+        const removeLiqResultPromise = marketStaticMathPromise.then((marketMath) =>
+            marketMath.removeLiquidityDualSyAndPtStatic(BN.from(lpToRemove).toBigInt())
         );
-        totalSyOut = totalSyOut.add(swapPtToSyResult.netSyOut);
-        // netPtRemains should be zero by now
 
-        const minSyOut = calcSlippedDownAmount(totalSyOut, slippage);
+        const buildContractMethod = async (route: routeMod.Route.PartialRoute<'limitOrderMatcher'>) => {
+            const [limitOrderMatchedResult, removeLiqResult] = await Promise.all([
+                Route.getMatchedLimitOrderResult(route),
+                removeLiqResultPromise,
+            ]);
+            const afterLiqRemovalMarketStaticMath = removeLiqResult.afterMath;
 
-        const metaMethod = await this.contract.metaCall.removeLiquiditySingleSy(
-            params.receiver,
-            marketEntity.address,
-            lpToRemove,
-            minSyOut,
-            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
-            {
+            let totalSyOut = BN.from(removeLiqResult.netSyOut);
+            let netPtRemains = BN.from(removeLiqResult.netPtOut);
+            totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
+            netPtRemains = netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+
+            const swapPtToSyResult = afterLiqRemovalMarketStaticMath.swapExactPtForSyStaticAllowExpired(
+                netPtRemains.toBigInt()
+            );
+            totalSyOut = totalSyOut.add(swapPtToSyResult.netSyOut);
+            // netPtRemains should be zero by now
+            const minSyOut = calcSlippedDownAmount(totalSyOut, slippage);
+
+            const data = {
                 ...params,
                 netSyOut: totalSyOut,
                 netSyFromSwap: BN.from(swapPtToSyResult.netSyOut),
@@ -905,8 +1324,51 @@ export abstract class BaseRouter extends PendleEntity {
                 priceImpact: swapPtToSyResult.priceImpact,
                 exchangeRateAfter: swapPtToSyResult.exchangeRateAfter,
                 minSyOut,
-            }
+            };
+
+            return this.contract.metaCall.removeLiquiditySingleSy(
+                params.receiver,
+                marketEntity.address,
+                lpToRemove,
+                minSyOut,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                data
+            );
+        };
+
+        const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            'removeLiquiditySingleSy',
+            ['limitOrderMatcher'],
+            buildContractMethod,
+            async (metaMethod) => metaMethod.data.netSyOut
         );
+
+        const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapPtForSy', [
+            market,
+            async () => BN.from((await removeLiqResultPromise).netPtOut),
+            { routerMethod: 'removeLiquiditySingleSy' },
+        ]);
+        const routeWithLO = routeMod.Route.assemble({
+            contractMethodBuilder,
+            limitOrderMatcher: routeLimitOrderMatcher,
+            netOutGetter,
+        });
+        const loRoutingResult = await this.limitOrderRouteSelector(this, routeWithLO);
+        if (loRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError(
+                'removeLiquiditySingleSy',
+                marketEntity.address,
+                await marketEntity.SY(),
+                loRoutingResult.allRoutes
+            );
+        }
+        const { selectedRoute } = loRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            routes: loRoutingResult.allRoutes,
+            loRoutingResult,
+        });
+
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -920,32 +1382,173 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'removeLiquiditySingleToken',
-        zapOutRoutes.RemoveLiquiditySingleTokenRouteIntermediateData & {
-            route: RemoveLiquiditySingleTokenRoute;
+        {
+            netTokenOut: BN;
+            netSyFromBurn: BN;
+            netPtFromBurn: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            netSyFromSwap: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
+            limitOrderMatchedResult: limitOrder.LimitOrderMatchedResult;
+            intermediateSyAmount: BN;
+            afterMath: offchainMath.MarketStaticMath;
+
+            route: routeDef.RemoveLiquiditySingleToken;
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<
+                Route.PartialRoute<routeDef.ComponentsForLimitOrderRouting>
+            >;
+            tokenRedeemSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.RemoveLiquiditySingleToken>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
-        market = this.getMarketEntity(market);
-        const marketAddr = market.address;
-        const syEntity = await market.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<RemoveLiquiditySingleTokenRoute>({
-            params,
-            syEntity,
-            slippage,
-        });
-        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
-        const routes = tokenRedeemSyList.map(
-            (tokenRedeemSy) =>
-                new RemoveLiquiditySingleTokenRoute(market, lpToRemove, tokenOut, slippage, {
-                    context: routeContext,
-                    tokenRedeemSy,
-                })
-        );
-        const bestRoute = await this.findBestZapOutRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('zap out', marketAddr, tokenOut, { cause })
+        const marketEntity = this.getMarketEntity(market);
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(marketEntity, params);
+        const removeLiqResultPromise = marketStaticMathPromise.then((marketMath) =>
+            marketMath.removeLiquidityDualSyAndPtStatic(BN.from(lpToRemove).toBigInt())
         );
 
-        const metaMethod = await bestRoute.buildCall();
+        const syEntity = await marketEntity.syEntity(params.forCallStatic);
+        const tokenRedeemSyList = await syEntity.getTokensOut();
+
+        const getDataFromRoute = async (route: routeMod.Route.PartialRoute<'limitOrderMatcher'>) => {
+            const [limitOrderMatchedResult, removeLiqResult] = await Promise.all([
+                Route.getMatchedLimitOrderResult(route),
+                removeLiqResultPromise,
+            ]);
+            const afterLiqRemovalMarketStaticMath = removeLiqResult.afterMath;
+
+            let netPtRemains = BN.from(removeLiqResult.netPtOut);
+            let totalSyOut = BN.from(removeLiqResult.netSyOut);
+
+            netPtRemains = netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+            totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
+
+            const swapPtToSyResult = afterLiqRemovalMarketStaticMath.swapExactPtForSyStaticAllowExpired(
+                netPtRemains.toBigInt()
+            );
+            totalSyOut = totalSyOut.add(swapPtToSyResult.netSyOut);
+
+            return {
+                intermediateSyAmount: totalSyOut,
+                netSyFromBurn: BN.from(removeLiqResult.netSyOut),
+                netPtFromBurn: BN.from(removeLiqResult.netPtOut),
+                netSyFeeFromMarket: BN.from(swapPtToSyResult.netSyFee),
+                netSyFeeFromLimit: limitOrderMatchedResult.totalFee,
+                netSyFromSwap: BN.from(swapPtToSyResult.netSyOut),
+                priceImpact: swapPtToSyResult.priceImpact,
+                exchangeRateAfter: swapPtToSyResult.exchangeRateAfter,
+
+                limitOrderMatchedResult,
+                afterMath: swapPtToSyResult.afterMath,
+            };
+        };
+
+        const buildContractMethod = async (
+            route: routeMod.Route.PartialRoute<'limitOrderMatcher'>,
+            outputStruct: routerTypes.TokenOutput,
+            netTokenOut: BN
+        ) => {
+            const [limitOrderMatchedResult, data] = await Promise.all([
+                Route.getMatchedLimitOrderResult(route),
+                getDataFromRoute(route),
+            ]);
+            return this.contract.metaCall.removeLiquiditySingleToken(
+                params.receiver,
+                marketEntity.address,
+                lpToRemove,
+                outputStruct,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                { ...data, ...params, netTokenOut }
+            );
+        };
+
+        const intermediateSyAmountGetter = routeMod.helper.createMinimalRouteComponent(
+            'IntermediateSyAmountGetter.removeLiquiditySingleSy',
+            ['limitOrderMatcher'],
+            (route) => getDataFromRoute(route).then(({ intermediateSyAmount }) => intermediateSyAmount)
+        );
+        const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapPtForSy', [
+            marketEntity,
+            async () => BN.from((await removeLiqResultPromise).netPtOut),
+            { routerMethod: 'removeLiquiditySingleToken' },
+        ]);
+        const loRoutingResult = await this.limitOrderRouteSelector(
+            this,
+            routeMod.Route.assemble({
+                limitOrderMatcher: routeLimitOrderMatcher,
+                netOutGetter: intermediateSyAmountGetter, // use intemediateSyAmount as netOutGetter here
+            })
+        );
+        if (loRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError(
+                'removeLiquiditySingleToken',
+                marketEntity.address,
+                tokenOut,
+                loRoutingResult.allRoutes
+            );
+        }
+        const selectedLimitOrderMatcher = loRoutingResult.selectedRoute.limitOrderMatcher;
+
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [
+            { token: marketEntity.address, amount: BN.from(lpToRemove) },
+        ]);
+        const aggregatorResultGetter = routeMod.aggregatorResultGetter.createToRawToken(this, tokenOut, slippage, {
+            aggregatorReceiver: params.aggregatorReceiver,
+        });
+        const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'removeLiquiditySinglePt',
+                ['aggregatorResultGetter', 'limitOrderMatcher'],
+                async (route) => {
+                    const [tokenOutput, aggregatorResult] = await Promise.all([
+                        tokenOutputBuilder.call(route),
+                        routeMod.Route.getAggregatorResult(route),
+                    ]);
+                    return buildContractMethod(route, tokenOutput, aggregatorResult.outputAmount);
+                },
+                async (metaMethod) => metaMethod.data.netTokenOut
+            );
+
+        const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
+            routeMod.Route.assemble({
+                approvedSignerAddressGetter,
+                intermediateSyAmountGetter,
+                limitOrderMatcher: selectedLimitOrderMatcher,
+                syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
+                    tokenRedeemSy,
+                    syEntity,
+                    { ...params, additionalDependencies: ['limitOrderMatcher'] },
+                    ({ tokenOutput, route }) =>
+                        buildContractMethod(route, tokenOutput, BN.from(0))
+                            .then((metaMethod) => metaMethod.callStatic())
+                            .then((res) => res.netTokenOut)
+                ),
+                aggregatorResultGetter,
+                contractMethodBuilder,
+                netOutGetter,
+                gasUsedEstimator,
+            })
+        );
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createFromAllRawTokenOut(
+            this,
+            tokenOut,
+            partialRoutes
+        );
+        const routes = partialRoutes.map((route) => Route.assemble({ ...route, netOutInNativeEstimator }));
+
+        const tokenRedeemSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routes);
+        if (tokenRedeemSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('removeLiquiditySingleToken', marketEntity.address, tokenOut, routes);
+        }
+        const { selectedRoute } = tokenRedeemSySelectionRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            loRoutingResult,
+            tokenRedeemSySelectionRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -965,42 +1568,76 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: offchainMath.FixedX18;
             exchangeRateAfter: offchainMath.MarketExchangeRate;
             minSyOut: BN;
+            route: routeDef.SwapExactPtForSy;
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<routeDef.SwapExactPtForSy>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
-        const marketAddr = this.getMarketAddress(market);
+        const marketEntity = this.getMarketEntity(market);
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(market, params);
+        const buildContractMethod = async (route: Route.PartialRoute<'limitOrderMatcher'>) => {
+            let netPtRemains = BN.from(exactPtIn);
+            let totalSyOut = BN.from(0);
 
-        let netPtRemains = BN.from(exactPtIn);
-        let totalSyOut = BN.from(0);
+            const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+                Route.getMatchedLimitOrderResult(route),
+                marketStaticMathPromise,
+            ]);
+            netPtRemains = netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+            totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
 
-        const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
-            this.limitOrderMatcher.swapPtForSy(market, netPtRemains, { routerMethod: 'swapExactPtForSy' }),
-            this.getMarketStaticMathWithParams(market, params),
-        ]);
-        netPtRemains = netPtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
-        totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
+            const marketResult = marketStaticMath.swapExactPtForSyStatic(netPtRemains.toBigInt());
+            totalSyOut = totalSyOut.add(marketResult.netSyOut);
+            // netPtRemains should be zero by now
 
-        const marketResult = marketStaticMath.swapExactPtForSyStatic(netPtRemains.toBigInt());
-        totalSyOut = totalSyOut.add(marketResult.netSyOut);
-        // netPtRemains should be zero by now
+            const minSyOut = calcSlippedDownAmount(totalSyOut, slippage);
 
-        const minSyOut = calcSlippedDownAmount(totalSyOut, slippage);
-        const metaMethod = await this.contract.metaCall.swapExactPtForSy(
-            params.receiver,
-            marketAddr,
-            exactPtIn,
-            minSyOut,
-            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
-            {
-                ...params,
-                netSyOut: totalSyOut,
+            const data = {
+                netSyOut: BN.from(totalSyOut),
                 netSyFeeFromMarket: BN.from(marketResult.netSyFee),
                 netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
                 priceImpact: marketResult.priceImpact,
                 exchangeRateAfter: marketResult.exchangeRateAfter,
                 minSyOut,
-            }
+            };
+            return this.contract.metaCall.swapExactPtForSy(
+                params.receiver,
+                marketEntity.address,
+                exactPtIn,
+                minSyOut,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                { ...params, ...data }
+            );
+        };
+        const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapPtForSy', [
+            marketEntity,
+            BN.from(exactPtIn),
+            { routerMethod: 'swapExactPtForSy' },
+        ]);
+        const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            'swapExactPtForSy',
+            ['limitOrderMatcher'],
+            buildContractMethod,
+            async (metaMethod) => metaMethod.data.netSyOut
         );
+        const routeWithLO = Route.assemble({
+            contractMethodBuilder,
+            netOutGetter,
+            limitOrderMatcher: routeLimitOrderMatcher,
+        });
+        const loRoutingResult = await this.limitOrderRouteSelector(this, routeWithLO);
+        if (loRoutingResult.verdict === 'FAILED') {
+            const [pt, sy] = await Promise.all([
+                marketEntity.pt(params.forCallStatic),
+                marketEntity.sy(params.forCallStatic),
+            ]);
+            return this.throwNoRouteFoundError('swapExactPtForSy', pt, sy, loRoutingResult.allRoutes);
+        }
+        const { selectedRoute } = loRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            loRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -1014,73 +1651,156 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactTokenForPt',
-        zapInRoutes.SwapExactTokenForPtRouteData & {
-            route: SwapExactTokenForPtRoute;
+        {
+            netPtOut: BN;
+            netSyMinted: BN;
+            netPtReceivedAfterLimit: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
+            minPtOut: BN;
+            intermediateSyAmount: BN;
+
+            route: routeDef.SwapExactTokenForPt;
+            tokenMintSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.SwapExactTokenForPt>;
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<routeDef.SwapExactTokenForPt>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const marketEntity = this.getMarketEntity(market);
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(marketEntity, params);
         const syEntity = await marketEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<SwapExactTokenForPtRoute>({
-            params,
-            syEntity,
-            slippage,
-        });
-        const tokenMintSyList = await routeContext.getTokensMintSy();
-        const routes = tokenMintSyList.map(
-            (tokenMintSy) =>
-                new SwapExactTokenForPtRoute(marketEntity, tokenIn, netTokenIn, slippage, {
-                    context: routeContext,
-                    tokenMintSy,
-                })
-        );
-        const bestRoute = await this.findBestZapInRoute(routes).catch(async (cause: unknown) =>
-            this.throwNoRouteFoundError('swap', tokenIn, await marketEntity.pt(), { cause })
-        );
+        const tokenMintSyList = await syEntity.getTokensIn();
 
-        const [marketStaticMath, input, mintedSyAmount] = await Promise.all([
-            bestRoute.getMarketStaticMath(),
-            bestRoute.buildTokenInput().then(assertDefined),
-            bestRoute.getMintedSyAmount().then(assertDefined),
-        ]);
-        let totalPtOut = BN.from(0);
-        let netSyRemains = mintedSyAmount;
+        const tokenInputStructBuilder = routeMod.routeComponentHelper.createTokenInputStructBuilder(this);
 
-        const limitOrderMatchedResult = await this.limitOrderMatcher.swapSyForPt(market, netSyRemains, {
-            routerMethod: 'swapExactTokenForPt',
-        });
-        totalPtOut = totalPtOut.add(limitOrderMatchedResult.netOutputToTaker);
-        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+        const buildContractMethod = async (
+            route: Route.PartialRoute<'aggregatorResultGetter' | 'intermediateSyAmountGetter' | 'limitOrderMatcher'>
+        ) => {
+            const [input, mintedSyAmount, limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+                tokenInputStructBuilder.call(route),
+                Route.getIntermediateSyAmount(route),
+                Route.getMatchedLimitOrderResult(route),
+                marketStaticMathPromise,
+            ]);
 
-        const marketResult = marketStaticMath.swapExactSyForPtStatic(netSyRemains.toBigInt());
-        totalPtOut = totalPtOut.add(marketResult.netPtOut);
-        // netSyRemains should be zero by now
+            let totalPtOut = BN.from(0);
+            let netSyRemains = mintedSyAmount;
 
-        const approxParams = this.getApproxParamsToPullPt(marketResult.netPtOut, slippage);
-        const minPtOut = calcSlippedDownAmount(totalPtOut, slippage);
-        const overrides = txOverridesValueFromTokenInput(input);
+            totalPtOut = totalPtOut.add(limitOrderMatchedResult.netOutputToTaker);
+            netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
 
-        const metaMethod = await this.contract.metaCall.swapExactTokenForPt(
-            params.receiver,
-            marketEntity.address,
-            minPtOut,
-            approxParams,
-            input,
-            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
-            {
-                ...mergeMetaMethodExtraParams({ overrides }, params),
+            const marketResult = marketStaticMath.swapExactSyForPtStatic(netSyRemains.toBigInt());
+            totalPtOut = totalPtOut.add(marketResult.netPtOut);
+            // netSyRemains should be zero by now
+
+            const minPtOut = calcSlippedDownAmount(totalPtOut, slippage);
+            const data = {
                 intermediateSyAmount: mintedSyAmount,
                 netPtOut: totalPtOut,
                 netSyMinted: mintedSyAmount,
                 netSyFeeFromMarket: BN.from(marketResult.netSyFee),
-                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                netSyFeeFromLimit: BN.from(0),
+                netPtReceivedAfterLimit: BN.from(0),
                 priceImpact: marketResult.priceImpact,
                 exchangeRateAfter: marketResult.exchangeRateAfter,
                 minPtOut,
-                route: bestRoute,
                 limitOrderMatchedResult,
-            }
+            };
+            const overrides = txOverridesValueFromTokenInput(input);
+            const approxParams = await this.approxParamsGenerator.generate(this, {
+                routerMethod: 'swapExactTokenForPt',
+                guessOffchain: marketResult.netPtOut,
+                slippage,
+                approxSearchingRange: marketResult.approxSearchingRange,
+                limitOrderMatchedResult,
+            });
+
+            return this.contract.metaCall.swapExactTokenForPt(
+                params.receiver,
+                marketEntity.address,
+                minPtOut,
+                approxParams,
+                input,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                { ...data, ...mergeMetaMethodExtraParams({ overrides }, params) }
+            );
+        };
+
+        const rawTokenIn = { token: tokenIn, amount: BN.from(netTokenIn) };
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenIn]);
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
+            this,
+            syEntity,
+            params
         );
+
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'swapExactTokenForPt',
+                ['aggregatorResultGetter', 'intermediateSyAmountGetter', 'limitOrderMatcher'],
+                buildContractMethod,
+                async (metaMethod) => metaMethod.data.netPtOut
+            );
+
+        const partialRoutesNoLO = tokenMintSyList.map((tokenMintSy) =>
+            Route.assemble({
+                approvedSignerAddressGetter,
+                aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
+                    this,
+                    rawTokenIn,
+                    tokenMintSy,
+                    slippage
+                ),
+                syIOTokenAmountGetter,
+                intermediateSyAmountGetter,
+                limitOrderMatcher: routeMod.limitOrderMatcher.createEmpty(),
+                contractMethodBuilder,
+                netOutGetter,
+                gasUsedEstimator,
+            })
+        );
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createRelativeToToken(
+            this,
+            partialRoutesNoLO,
+            rawTokenIn
+        );
+        const routesNoLO = partialRoutesNoLO.map((route) => Route.assemble({ ...route, netOutInNativeEstimator }));
+
+        const tokenMintSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routesNoLO);
+        if (tokenMintSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('swapExactTokenForPt', tokenIn, await marketEntity.PT(), routesNoLO);
+        }
+        const selectedRouteNoLO = tokenMintSySelectionRoutingResult.selectedRoute;
+
+        const routeLimitOrderMatcher = routeMod.helper.createMinimalRouteComponent(
+            'LimitOrderMatcher.swapExcatTokenForPt',
+            ['intermediateSyAmountGetter'],
+            async (route) =>
+                this.limitOrderMatcher.swapSyForPt(market, await Route.getIntermediateSyAmount(route), {
+                    routerMethod: 'swapExactTokenForPt',
+                })
+        );
+        const routeWithLO = Route.assemble({ ...selectedRouteNoLO, limitOrderMatcher: routeLimitOrderMatcher });
+        const loRoutingResult = await this.limitOrderRouteSelector(this, routeWithLO);
+        if (loRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError(
+                'swapExactTokenForPt',
+                tokenIn,
+                await marketEntity.PT(),
+                loRoutingResult.allRoutes
+            );
+        }
+
+        const { selectedRoute } = loRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            tokenMintSySelectionRoutingResult,
+            loRoutingResult,
+        });
+
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -1100,44 +1820,87 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: offchainMath.FixedX18;
             exchangeRateAfter: offchainMath.MarketExchangeRate;
             minPtOut: BN;
+            route: routeDef.SwapExactSyForPt;
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<routeDef.SwapExactSyForPt>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const marketEntity = this.getMarketEntity(market);
         const marketAddr = marketEntity.address;
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(market, params);
 
-        let netSyRemains = BN.from(exactSyIn);
-        let totalPtOut = BN.from(0);
+        const buildContractMethod = async (route: Route.PartialRoute<'limitOrderMatcher'>) => {
+            let netSyRemains = BN.from(exactSyIn);
+            let totalPtOut = BN.from(0);
 
-        const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
-            this.limitOrderMatcher.swapSyForPt(market, netSyRemains, { routerMethod: 'swapExactSyForPt' }),
-            this.getMarketStaticMathWithParams(market, params),
-        ]);
-        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
-        totalPtOut = totalPtOut.add(limitOrderMatchedResult.netOutputToTaker);
+            const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+                Route.getMatchedLimitOrderResult(route),
+                marketStaticMathPromise,
+            ]);
+            netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+            totalPtOut = totalPtOut.add(limitOrderMatchedResult.netOutputToTaker);
 
-        const marketResult = marketStaticMath.swapExactSyForPtStatic(netSyRemains.toBigInt());
-        totalPtOut = totalPtOut.add(marketResult.netPtOut);
-        // netSyRemains should be zero by now
+            const marketResult = marketStaticMath.swapExactSyForPtStatic(netSyRemains.toBigInt());
+            totalPtOut = totalPtOut.add(marketResult.netPtOut);
+            // netSyRemains should be zero by now
 
-        const minPtOut = calcSlippedDownAmount(totalPtOut, slippage);
-        const metaMethod = await this.contract.metaCall.swapExactSyForPt(
-            params.receiver,
-            marketAddr,
-            exactSyIn,
-            minPtOut,
-            this.getApproxParamsToPullPt(marketResult.netPtOut, slippage),
-            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
-            {
-                ...params,
+            const minPtOut = calcSlippedDownAmount(totalPtOut, slippage);
+            const data = {
                 netPtOut: totalPtOut,
                 netSyFeeFromMarket: BN.from(marketResult.netSyFee),
                 netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
                 priceImpact: marketResult.priceImpact,
                 exchangeRateAfter: marketResult.exchangeRateAfter,
                 minPtOut,
-            }
+            };
+            const approxParams = await this.approxParamsGenerator.generate(this, {
+                routerMethod: 'swapExactSyForPt',
+                approxSearchingRange: marketResult.approxSearchingRange,
+                guessOffchain: marketResult.netPtOut,
+                slippage,
+                limitOrderMatchedResult,
+            });
+            return this.contract.metaCall.swapExactSyForPt(
+                params.receiver,
+                marketAddr,
+                exactSyIn,
+                minPtOut,
+                approxParams,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                { ...data, ...params }
+            );
+        };
+
+        const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            'swapExactSyForPt',
+            ['limitOrderMatcher'],
+            buildContractMethod,
+            async (metaMethod) => metaMethod.data.netPtOut
         );
+        const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapSyForPt', [
+            market,
+            BN.from(exactSyIn),
+            { routerMethod: 'swapExactSyForPt' },
+        ]);
+        const routeWithLO = Route.assemble({
+            contractMethodBuilder,
+            netOutGetter,
+            limitOrderMatcher: routeLimitOrderMatcher,
+        });
+        const loRoutingResult = await this.limitOrderRouteSelector(this, routeWithLO);
+        if (loRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError(
+                'swapExactSyForPt',
+                await marketEntity.SY(),
+                await marketEntity.PT(),
+                loRoutingResult.allRoutes
+            );
+        }
+        const { selectedRoute } = loRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            loRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -1151,33 +1914,85 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'mintSyFromToken',
-        zapInRoutes.MintSyFromTokenRouteData & {
-            route: MintSyFromTokenRoute;
+        {
+            netSyOut: BN;
+            minSyOut: BN;
+            intermediateSyAmount: BN;
+            route: routeDef.MintSyFromToken;
+            tokenMintSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.MintSyFromToken>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
-        if (typeof sy === 'string') {
-            sy = new SyEntity(sy, this.entityConfig);
-        }
-        const syAddr = sy.address;
-        const syEntity = sy; // force type here
-        const routeContext = this.createRouteContext<MintSyFromTokenRoute>({
-            params,
+        const syEntity = typeof sy === 'string' ? new SyEntity(sy, this.entityConfig) : sy;
+        const tokenMintSyList = await syEntity.getTokensIn();
+
+        const rawTokenIn = { token: tokenIn, amount: BN.from(netTokenIn) };
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenIn]);
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
+            this,
             syEntity,
-            slippage,
-        });
-        const tokenMintSyList = await routeContext.getTokensMintSy();
-        const routes = tokenMintSyList.map(
-            (tokenMintSy) =>
-                new MintSyFromTokenRoute(syAddr, tokenIn, netTokenIn, slippage, {
-                    context: routeContext,
+            params
+        );
+        const tokenInputStructBuilder = routeMod.routeComponentHelper.createTokenInputStructBuilder(this);
+        const buildContractMethod = async (
+            route: Route.PartialRoute<'aggregatorResultGetter' | 'intermediateSyAmountGetter'>
+        ) => {
+            const [tokenInputStruct, netSyOut] = await Promise.all([
+                tokenInputStructBuilder.call(route),
+                Route.getIntermediateSyAmount(route),
+            ]);
+            const minSyOut = calcSlippedDownAmount(netSyOut, slippage);
+            const data = { netSyOut, minSyOut, intermediateSyAmount: netSyOut };
+            const overrides = txOverridesValueFromTokenInput(tokenInputStruct);
+            return this.contract.metaCall.mintSyFromToken(
+                params.receiver,
+                syEntity.address,
+                minSyOut,
+                tokenInputStruct,
+                { ...data, ...mergeMetaMethodExtraParams({ overrides }, params) }
+            );
+        };
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'mintSyFromToken',
+                ['aggregatorResultGetter', 'intermediateSyAmountGetter'],
+                buildContractMethod,
+                async (metaMethod) => metaMethod.data.netSyOut
+            );
+
+        const partialRoutes = tokenMintSyList.map((tokenMintSy) =>
+            Route.assemble({
+                approvedSignerAddressGetter,
+                aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
+                    this,
+                    rawTokenIn,
                     tokenMintSy,
-                })
+                    slippage
+                ),
+                syIOTokenAmountGetter,
+                intermediateSyAmountGetter,
+                contractMethodBuilder,
+                netOutGetter,
+                gasUsedEstimator,
+            })
         );
-        const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('mint', tokenIn, syAddr, { cause })
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createRelativeToToken(
+            this,
+            partialRoutes,
+            rawTokenIn
         );
-        const metaMethod = await bestRoute.buildCall();
+        const routes = partialRoutes.map((route) => Route.assemble({ ...route, netOutInNativeEstimator }));
+
+        const tokenMintSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routes);
+        if (tokenMintSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('mintSyFromToken', tokenIn, syEntity.address, routes);
+        }
+        const { selectedRoute } = tokenMintSySelectionRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            tokenMintSySelectionRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -1191,30 +2006,87 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'redeemSyToToken',
-        zapOutRoutes.RedeemSyToTokenRouteIntermediateData & {
-            route: RedeemSyToTokenRoute;
+        {
+            intermediateSyAmount: BN;
+            netTokenOut: BN;
+            route: routeDef.RedeemSyToToken;
+            tokenRedeemSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.RedeemSyToToken>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const syEntity = typeof sy === 'string' ? new SyEntity(sy, this.entityConfig) : sy;
-        const syAddr = syEntity.address;
-        const routeContext = this.createRouteContext<RedeemSyToTokenRoute>({
-            params,
-            syEntity,
-            slippage,
+        const tokenRedeemSyList = await syEntity.getTokensOut();
+        const syTokenAmount = { token: syEntity.address, amount: BN.from(netSyIn) };
+
+        const buildContractMethod = async (tokenOutput: routerTypes.TokenOutput, netTokenOut?: BN) => {
+            netTokenOut ??= BN.from(0);
+            const data = {
+                intermediateSyAmount: syTokenAmount.amount,
+                netTokenOut,
+            };
+            return this.contract.metaCall.redeemSyToToken(
+                params.receiver,
+                syEntity.address,
+                syTokenAmount.amount,
+                tokenOutput,
+                { ...params, ...data }
+            );
+        };
+
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [syTokenAmount]);
+        const intermediateSyAmountGetter = routeMod.helper.createComponentFromConstant(
+            'intermediateSyAmount.redeemSyToToken',
+            syTokenAmount.amount
+        );
+        const aggregatorResultGetter = routeMod.aggregatorResultGetter.createToRawToken(this, tokenOut, slippage, {
+            aggregatorReceiver: params.aggregatorReceiver,
         });
-        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
-        const routes = tokenRedeemSyList.map(
-            (tokenRedeemSy) =>
-                new RedeemSyToTokenRoute(syAddr, BN.from(netSyIn), tokenOut, slippage, {
-                    context: routeContext,
+        const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'reddemSyToToken',
+                ['aggregatorResultGetter'],
+                async (route) => {
+                    const [aggregatorResult, tokenOutputStruct] = await Promise.all([
+                        Route.getAggregatorResult(route),
+                        tokenOutputBuilder.call(route),
+                    ]);
+                    return buildContractMethod(tokenOutputStruct, aggregatorResult.outputAmount);
+                },
+                async (metaMethod) => metaMethod.data.netTokenOut
+            );
+        const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
+            Route.assemble({
+                approvedSignerAddressGetter,
+                intermediateSyAmountGetter,
+                syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
                     tokenRedeemSy,
-                })
+                    syEntity,
+                    params,
+                    async ({ tokenOutput }) =>
+                        buildContractMethod(tokenOutput).then((metaMethod) => metaMethod.callStatic())
+                ),
+                aggregatorResultGetter,
+                contractMethodBuilder,
+                gasUsedEstimator,
+                netOutGetter,
+            })
         );
-        const bestRoute = await this.findBestZapOutRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('redeem', syAddr, tokenOut, { cause })
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createFromAllRawTokenOut(
+            this,
+            tokenOut,
+            partialRoutes
         );
-        const metaMethod = await bestRoute.buildCall();
+        const routes = partialRoutes.map((route) => Route.assemble({ ...route, netOutInNativeEstimator }));
+        const tokenRedeemSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routes);
+        if (tokenRedeemSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('redeemSyToToken', syEntity.address, tokenOut, routes);
+        }
+        const { selectedRoute } = tokenRedeemSySelectionRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            tokenRedeemSySelectionRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -1228,30 +2100,87 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'mintPyFromToken',
-        zapInRoutes.MintPyFromTokenRouteData & {
-            route: MintPyFromTokenRoute;
+        {
+            netPyOut: BN;
+            minPyOut: BN;
+            intermediateSyAmount: BN;
+            route: routeDef.MintPyFromToken;
+            tokenMintSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.MintPyFromToken>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const tokenInputAmount = { token: tokenIn, amount: BN.from(netTokenIn) };
         const ytEntity = typeof yt === 'string' ? new YtEntity(yt, this.entityConfig) : yt;
+        const pyIndexPromise = ytEntity.pyIndexCurrent(params.forCallStatic);
         const syEntity = await ytEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<MintPyFromTokenRoute>({
-            params,
+        const tokenMintSyList = await syEntity.getTokensIn();
+
+        const tokenInputStructBuilder = routeMod.routeComponentHelper.createTokenInputStructBuilder(this);
+
+        const buildContractMethod = async (
+            route: Route.PartialRoute<'aggregatorResultGetter' | 'intermediateSyAmountGetter'>
+        ) => {
+            const [input, mintedSyAmount, pyIndex] = await Promise.all([
+                tokenInputStructBuilder.call(route),
+                Route.getIntermediateSyAmount(route),
+                pyIndexPromise,
+            ]);
+            const netPyOut = YtEntity.previewMintSyFromSyWithPyIndex(pyIndex, mintedSyAmount);
+            const minPyOut = calcSlippedDownAmount(netPyOut, slippage);
+            const data = { netPyOut, minPyOut, intermediateSyAmount: mintedSyAmount };
+
+            const overrides = txOverridesValueFromTokenInput(input);
+            return this.contract.metaCall.mintPyFromToken(params.receiver, ytEntity.address, minPyOut, input, {
+                ...data,
+                ...mergeMetaMethodExtraParams({ overrides }, params),
+            });
+        };
+
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [tokenInputAmount]);
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
+            this,
             syEntity,
-            slippage,
-        });
-        const tokenMintSyList = await routeContext.getTokensMintSy();
-        const routes = tokenMintSyList.map(
-            (tokenMintSy) =>
-                new MintPyFromTokenRoute(ytEntity, tokenIn, netTokenIn, slippage, {
-                    context: routeContext,
+            params
+        );
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'mintPYFromToken',
+                ['aggregatorResultGetter', 'intermediateSyAmountGetter'],
+                buildContractMethod,
+                async (metaMethod) => metaMethod.data.netPyOut
+            );
+        const partialRoutes = tokenMintSyList.map((tokenMintSy) =>
+            Route.assemble({
+                approvedSignerAddressGetter,
+                aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
+                    this,
+                    tokenInputAmount,
                     tokenMintSy,
-                })
+                    slippage
+                ),
+                syIOTokenAmountGetter,
+                intermediateSyAmountGetter,
+                contractMethodBuilder,
+                netOutGetter,
+                gasUsedEstimator,
+            })
         );
-        const bestRoute = await this.findBestZapInRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('mint', tokenIn, ytEntity.address, { cause })
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createRelativeToToken(
+            this,
+            partialRoutes,
+            tokenInputAmount
         );
-        const metaMethod = await bestRoute.buildCall();
+        const routes = partialRoutes.map((route) => Route.assemble({ ...route, netOutInNativeEstimator }));
+        const tokenMintSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routes);
+        if (tokenMintSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('mintPYFromToken', tokenIn, ytEntity.address, routes);
+        }
+        const { selectedRoute } = tokenMintSySelectionRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            tokenMintSySelectionRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -1290,32 +2219,101 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'redeemPyToToken',
-        zapOutRoutes.RedeemPyToTokenRouteIntermediateData & {
-            route: RedeemPyToTokenRoute;
+        {
+            pyIndex: offchainMath.PyIndex;
+            intermediateSyAmount: BN;
+            netTokenOut: BN;
+            route: routeDef.RedeemPyToToken;
+            tokenRedeemSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.RedeemPyToToken>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const ytEntity = typeof yt === 'string' ? new YtEntity(yt, this.entityConfig) : yt;
-        const ytAddr = ytEntity.address;
-        const syEntity = await ytEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<RedeemPyToTokenRoute>({
-            params,
-            syEntity,
-            slippage,
-        });
-        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
+        const pyIndexPromise = ytEntity.pyIndexCurrent(params.forCallStatic);
+        const [syEntity, ptEntity] = await Promise.all([
+            ytEntity.syEntity(params.forCallStatic),
+            ytEntity.ptEntity(params.forCallStatic),
+        ]);
+        const tokenRedeemSyList = await syEntity.getTokensOut(params.forCallStatic);
 
-        const routes = tokenRedeemSyList.map(
-            (tokenRedeemSy) =>
-                new RedeemPyToTokenRoute(ytEntity, BN.from(netPyIn), tokenOut, slippage, {
-                    context: routeContext,
+        const ytTokenAmount = { token: ytEntity.address, amount: BN.from(netPyIn) };
+        const ptTokenAmount = { token: ptEntity.address, amount: BN.from(netPyIn) };
+        const intermediateSyAmountPromise = (async () =>
+            YtEntity.previewRedeemPyToSyWithPyIndex(await pyIndexPromise, netPyIn))();
+
+        const buildContractMethod = async (tokenOutput: routerTypes.TokenOutput, netTokenOut: BN = BN.from(0)) => {
+            const [pyIndex, intermediateSyAmount] = await Promise.all([pyIndexPromise, intermediateSyAmountPromise]);
+            const data = {
+                netTokenOut,
+                intermediateSyAmount,
+                pyIndex,
+            };
+            return this.contract.metaCall.redeemPyToToken(params.receiver, ytEntity.address, netPyIn, tokenOutput, {
+                ...params,
+                ...data,
+            });
+        };
+
+        const intermediateSyAmountGetter = routeMod.helper.createComponentFromConstant(
+            'intermediateSyAmountGetter.redeemPyToToken',
+            intermediateSyAmountPromise
+        );
+
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [
+            ytTokenAmount,
+            ptTokenAmount,
+        ]);
+        const aggregatorResultGetter = routeMod.aggregatorResultGetter.createToRawToken(this, tokenOut, slippage);
+        const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'redeemPyToToken',
+                ['aggregatorResultGetter'],
+                async (route) => {
+                    const [aggregatorResult, tokenOutput] = await Promise.all([
+                        Route.getAggregatorResult(route),
+                        tokenOutputBuilder.call(route),
+                    ]);
+                    return buildContractMethod(tokenOutput, aggregatorResult.outputAmount);
+                },
+                async (metaMethod) => metaMethod.data.netTokenOut
+            );
+
+        const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
+            Route.assemble({
+                approvedSignerAddressGetter,
+                intermediateSyAmountGetter,
+                syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
                     tokenRedeemSy,
-                })
+                    syEntity,
+                    params,
+                    async ({ tokenOutput }) =>
+                        buildContractMethod(tokenOutput)
+                            .then((metaMethod) => metaMethod.callStatic())
+                            .then(({ netTokenOut }) => netTokenOut)
+                ),
+                aggregatorResultGetter,
+                contractMethodBuilder,
+                netOutGetter,
+                gasUsedEstimator,
+            })
         );
-        const bestRoute = await this.findBestZapOutRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('redeem', ytAddr, tokenOut, { cause })
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createFromAllRawTokenOut(
+            this,
+            tokenOut,
+            partialRoutes
         );
-        const metaMethod = await bestRoute.buildCall();
+        const routes = partialRoutes.map((route) => Route.assemble({ ...route, netOutInNativeEstimator }));
+        const tokenRedeemSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routes);
+        if (tokenRedeemSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('redeemPyToToken', ytEntity.address, tokenOut, routes);
+        }
+
+        const { selectedRoute } = tokenRedeemSySelectionRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            tokenRedeemSySelectionRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -1362,45 +2360,86 @@ export abstract class BaseRouter extends PendleEntity {
             exchangeRateAfter: offchainMath.MarketExchangeRate;
             approxParams: ApproxParamsStruct;
             minYtOut: BN;
+
+            route: routeDef.SwapExactSyForYt;
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<routeDef.SwapExactSyForYt>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const marketEntity = this.getMarketEntity(market);
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(market, params);
+        const buildContractMethod = async (route: Route.PartialRoute<'limitOrderMatcher'>) => {
+            let netSyRemains = BN.from(exactSyIn);
+            let totalYtOut = BN.from(0);
 
-        let netSyRemains = BN.from(exactSyIn);
-        let totalYtOut = BN.from(0);
+            const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+                Route.getMatchedLimitOrderResult(route),
+                marketStaticMathPromise,
+            ]);
+            netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+            totalYtOut = totalYtOut.add(limitOrderMatchedResult.netOutputToTaker);
 
-        const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
-            this.limitOrderMatcher.swapSyForYt(market, netSyRemains, { routerMethod: 'swapExactSyForYt' }),
-            this.getMarketStaticMathWithParams(market, params),
-        ]);
-        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
-        totalYtOut = totalYtOut.add(limitOrderMatchedResult.netOutputToTaker);
+            const marketResult = marketStaticMath.swapExactSyForYtStatic(netSyRemains.toBigInt());
+            totalYtOut = totalYtOut.add(marketResult.netYtOut);
+            // netSyRemains should be zero by now
 
-        const marketResult = marketStaticMath.swapExactSyForYtStatic(netSyRemains.toBigInt());
-        totalYtOut = totalYtOut.add(marketResult.netYtOut);
-        // netSyRemains should be zero by now
-
-        const approxParams = this.getApproxParamsToPullPt(marketResult.netYtOut, slippage);
-        const minYtOut = calcSlippedDownAmount(totalYtOut, slippage);
-        const metaMethod = await this.contract.metaCall.swapExactSyForYt(
-            params.receiver,
-            marketEntity.address,
-            exactSyIn,
-            minYtOut,
-            approxParams,
-            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
-            {
-                ...params,
-                netYtOut: totalYtOut,
+            const approxParams = await this.approxParamsGenerator.generate(this, {
+                routerMethod: 'swapExactSyForYt',
+                guessOffchain: marketResult.netYtOut,
+                slippage,
+                approxSearchingRange: marketResult.approxSearchingRange,
+                limitOrderMatchedResult,
+            });
+            const minYtOut = calcSlippedDownAmount(totalYtOut, slippage);
+            const data = {
+                netYtOut: BN.from(totalYtOut),
                 netSyFeeFromMarket: BN.from(marketResult.netSyFee),
                 netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
                 priceImpact: marketResult.priceImpact,
                 exchangeRateAfter: marketResult.exchangeRateAfter,
                 approxParams,
                 minYtOut,
-            }
+            };
+            return this.contract.metaCall.swapExactSyForYt(
+                params.receiver,
+                marketEntity.address,
+                exactSyIn,
+                minYtOut,
+                approxParams,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                { ...params, ...data }
+            );
+        };
+        const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapSyForYt', [
+            marketEntity,
+            BN.from(exactSyIn),
+            { routerMethod: 'swapExactSyForYt' },
+        ]);
+        const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            'swapExactSyForYt',
+            ['limitOrderMatcher'],
+            buildContractMethod,
+            async (metaMethod) => metaMethod.data.netYtOut
         );
+
+        const routeWithLO = Route.assemble({
+            contractMethodBuilder,
+            netOutGetter,
+            limitOrderMatcher: routeLimitOrderMatcher,
+        });
+        const loRoutingResult = await this.limitOrderRouteSelector(this, routeWithLO);
+        if (loRoutingResult.verdict === 'FAILED') {
+            const [sy, yt] = await Promise.all([
+                marketEntity.sy(params.forCallStatic),
+                marketEntity.yt(params.forCallStatic),
+            ]);
+            return this.throwNoRouteFoundError('swapExactSyForYt', sy, yt, loRoutingResult.allRoutes);
+        }
+        const { selectedRoute } = loRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            loRoutingResult,
+        });
 
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
@@ -1415,30 +2454,156 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactPtForToken',
-        zapOutRoutes.SwapExactPtForTokenRouteIntermediateData & {
-            route: SwapExactPtForTokenRoute;
+        {
+            intermediateSyAmount: BN;
+            netTokenOut: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            netSyReceivedAfterLimit: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
+            limitOrderMatchedResult: limitOrder.LimitOrderMatchedResult;
+
+            route: routeDef.SwapExactPtForToken;
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<
+                Route.PartialRoute<routeDef.ComponentsForLimitOrderRouting>
+            >;
+            tokenRedeemSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.SwapExactPtForToken>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const marketEntity = this.getMarketEntity(market);
-        const syEntity = await marketEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<SwapExactPtForTokenRoute>({
-            params,
-            syEntity,
-            slippage,
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(marketEntity, params);
+        const [syEntity, ptEntity] = await Promise.all([
+            marketEntity.syEntity(params.forCallStatic),
+            marketEntity.ptEntity(params.forCallStatic),
+        ]);
+        const ptTokenAmount = { token: ptEntity.address, amount: BN.from(exactPtIn) };
+        const tokenRedeemSyList = await syEntity.getTokensOut();
+
+        const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapPtForSy', [
+            marketEntity,
+            ptTokenAmount.amount,
+            { routerMethod: 'swapExactPtForToken' },
+        ]);
+
+        const getDataFromRoute = async (route: routeMod.Route.PartialRoute<'limitOrderMatcher'>) => {
+            const marketStaticMath = await marketStaticMathPromise;
+            const limitOrderMatchedResult = await Route.getMatchedLimitOrderResult(route);
+            const netPtAfterLimit = ptTokenAmount.amount.sub(limitOrderMatchedResult.netInputFromTaker);
+            const netSyReceivedAfterLimit = BN.from(limitOrderMatchedResult.netOutputToTaker);
+            const marketResult = marketStaticMath.swapExactPtForSyStatic(netPtAfterLimit.toBigInt());
+            const netSyOut = netSyReceivedAfterLimit.add(marketResult.netSyOut);
+
+            return {
+                intermediateSyAmount: netSyOut,
+                netSyReceivedAfterLimit,
+                netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                priceImpact: marketResult.priceImpact,
+                exchangeRateAfter: marketResult.exchangeRateAfter,
+                limitOrderMatchedResult,
+            };
+        };
+
+        const intermediateSyAmountGetter = routeMod.helper.createMinimalRouteComponent(
+            'intermediateSyAmountGetter.swapExactPtForToken',
+            ['limitOrderMatcher'],
+            async (route) => getDataFromRoute(route).then(({ intermediateSyAmount }) => intermediateSyAmount)
+        );
+
+        const partialRouteWithLO = Route.assemble({
+            limitOrderMatcher: routeLimitOrderMatcher,
+            netOutGetter: intermediateSyAmountGetter, // Intermediate process net out getter to be SY.
         });
-        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
-        const routes = tokenRedeemSyList.map(
-            (tokenRedeemSy) =>
-                new SwapExactPtForTokenRoute(marketEntity, exactPtIn, tokenOut, slippage, {
-                    context: routeContext,
+
+        const loRoutingResult = await this.limitOrderRouteSelector(this, partialRouteWithLO);
+        if (loRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError(
+                'swapExactPtForToken',
+                ptTokenAmount.token,
+                tokenOut,
+                loRoutingResult.allRoutes
+            );
+        }
+
+        const buildContractMethod = async (
+            route: routeMod.Route.PartialRoute<'limitOrderMatcher'>,
+            tokenOutput: routerTypes.TokenOutput,
+            netTokenOut: BN = BN.from(0)
+        ) => {
+            const [limitOrderMatchedResult, data] = await Promise.all([
+                Route.getMatchedLimitOrderResult(route),
+                getDataFromRoute(route),
+            ]);
+            return this.contract.metaCall.swapExactPtForToken(
+                params.receiver,
+                marketEntity.address,
+                exactPtIn,
+                tokenOutput,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                { ...data, ...params, netTokenOut }
+            );
+        };
+
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [ptTokenAmount]);
+        const aggregatorResultGetter = routeMod.aggregatorResultGetter.createToRawToken(this, tokenOut, slippage, {
+            aggregatorReceiver: params.aggregatorReceiver,
+        });
+        const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'swapExactPtForToken',
+                ['limitOrderMatcher', 'aggregatorResultGetter'],
+                async (route) => {
+                    const [aggregatorResult, tokenOutput] = await Promise.all([
+                        Route.getAggregatorResult(route),
+                        tokenOutputBuilder.call(route),
+                    ]);
+                    return buildContractMethod(route, tokenOutput, aggregatorResult.outputAmount);
+                },
+                async (metaMethod) => metaMethod.data.netTokenOut
+            );
+
+        const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
+            Route.assemble({
+                approvedSignerAddressGetter,
+                limitOrderMatcher: loRoutingResult.selectedRoute.limitOrderMatcher,
+                intermediateSyAmountGetter,
+                syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
                     tokenRedeemSy,
-                })
+                    syEntity,
+                    { ...params, additionalDependencies: ['limitOrderMatcher'] },
+                    async ({ route, tokenOutput }) =>
+                        buildContractMethod(route, tokenOutput)
+                            .then((metaMethod) => metaMethod.callStatic())
+                            .then((data) => data.netTokenOut)
+                ),
+                aggregatorResultGetter,
+                contractMethodBuilder,
+                netOutGetter,
+                gasUsedEstimator,
+            })
         );
-        const bestRoute = await this.findBestZapOutRoute(routes).catch(async (cause: unknown) =>
-            this.throwNoRouteFoundError('swap', await marketEntity.pt(params.forCallStatic), tokenOut, { cause })
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createFromAllRawTokenOut(
+            this,
+            tokenOut,
+            partialRoutes
         );
-        const metaMethod = await bestRoute.buildCall();
+        const routes = partialRoutes.map((route) => Route.assemble({ ...route, netOutInNativeEstimator }));
+        const tokenRedeemSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routes);
+
+        if (tokenRedeemSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('swapExactPtForToken', ptTokenAmount.token, tokenOut, routes);
+        }
+
+        const { selectedRoute } = tokenRedeemSySelectionRoutingResult;
+
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            loRoutingResult,
+            tokenRedeemSySelectionRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -1458,41 +2623,75 @@ export abstract class BaseRouter extends PendleEntity {
             priceImpact: offchainMath.FixedX18;
             exchangeRateAfter: offchainMath.MarketExchangeRate;
             minSyOut: BN;
+            route: routeDef.SwapExactYtForSy;
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<routeDef.SwapExactYtForSy>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const marketEntity = this.getMarketEntity(market);
-        let totalSyOut = BN.from(0);
-        let netYtRemains = BN.from(exactYtIn);
-
-        const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
-            this.limitOrderMatcher.swapYtForSy(market, netYtRemains, { routerMethod: 'swapExactYtForSy' }),
-            this.getMarketStaticMathWithParams(market, params),
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(market, params);
+        const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapYtForSy', [
+            market,
+            BN.from(exactYtIn),
+            { routerMethod: 'swapExactYtForSy' },
         ]);
-        totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
-        netYtRemains = netYtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+        const buildContractMethod = async (route: Route.PartialRoute<'limitOrderMatcher'>) => {
+            let totalSyOut = BN.from(0);
+            let netYtRemains = BN.from(exactYtIn);
 
-        const marketResult = marketStaticMath.swapExactYtForSyStatic(netYtRemains.toBigInt());
-        totalSyOut = totalSyOut.add(marketResult.netSyOut);
-        // netYtRemains should be zero by now.
+            const [marketStaticMath, limitOrderMatchedResult] = await Promise.all([
+                marketStaticMathPromise,
+                Route.getMatchedLimitOrderResult(route),
+            ]);
+            totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
+            netYtRemains = netYtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
 
-        const minSyOut = calcSlippedDownAmount(totalSyOut, slippage);
-        const metaMethod = await this.contract.metaCall.swapExactYtForSy(
-            params.receiver,
-            marketEntity.address,
-            exactYtIn,
-            minSyOut,
-            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
-            {
-                ...params,
-                netSyOut: totalSyOut,
+            const marketResult = marketStaticMath.swapExactYtForSyStatic(netYtRemains.toBigInt());
+            totalSyOut = totalSyOut.add(marketResult.netSyOut);
+            // netYtRemains should be zero by now.
+
+            const minSyOut = calcSlippedDownAmount(totalSyOut, slippage);
+            const data = {
+                netSyOut: BN.from(totalSyOut),
                 netSyFeeFromMarket: BN.from(marketResult.netSyFee),
                 netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
                 priceImpact: marketResult.priceImpact,
                 exchangeRateAfter: marketResult.exchangeRateAfter,
                 minSyOut,
-            }
+            };
+            return this.contract.metaCall.swapExactYtForSy(
+                params.receiver,
+                marketEntity.address,
+                exactYtIn,
+                minSyOut,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                { ...params, ...data }
+            );
+        };
+        const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            'swapExactYtForSy',
+            ['limitOrderMatcher'],
+            buildContractMethod,
+            async (metaMethod) => metaMethod.data.netSyOut
         );
+        const routeWithLO = Route.assemble({
+            limitOrderMatcher: routeLimitOrderMatcher,
+            contractMethodBuilder,
+            netOutGetter,
+        });
+        const loRoutingResult = await this.limitOrderRouteSelector(this, routeWithLO);
+        if (loRoutingResult.verdict === 'FAILED') {
+            const [yt, sy] = await Promise.all([
+                marketEntity.yt(params.forCallStatic),
+                marketEntity.sy(params.forCallStatic),
+            ]);
+            return this.throwNoRouteFoundError('swapExactYtForSy', yt, sy, loRoutingResult.allRoutes);
+        }
+        const { selectedRoute } = loRoutingResult;
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            loRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -1506,60 +2705,58 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactTokenForYt',
-        zapInRoutes.SwapExactTokenForYtRouteData & {
-            route: SwapExactTokenForYtRoute;
+        {
+            netYtOut: BN;
+            netSyMinted: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
+            minYtOut: BN;
+            route: routeDef.SwapExactTokenForYt;
+            tokenMintSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.SwapExactTokenForYt>;
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<routeDef.SwapExactTokenForYt>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const marketEntity = this.getMarketEntity(market);
         const syEntity = await marketEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<SwapExactTokenForYtRoute>({
-            params,
-            syEntity,
-            slippage,
-        });
-        const tokenMintSyList = await routeContext.getTokensMintSy();
-        const routes = tokenMintSyList.map(
-            (tokenMintSy) =>
-                new SwapExactTokenForYtRoute(marketEntity, tokenIn, netTokenIn, slippage, {
-                    context: routeContext,
-                    tokenMintSy,
-                })
-        );
-        const bestRoute = await this.findBestZapInRoute(routes).catch(async (cause: unknown) =>
-            this.throwNoRouteFoundError('swap', tokenIn, await marketEntity.yt(params.forCallStatic), { cause })
-        );
+        const inputTokenAmount = { token: tokenIn, amount: BN.from(netTokenIn) };
+        const tokenMintSyList = await syEntity.getTokensIn();
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(marketEntity, params);
 
-        const [marketStaticMath, input, mintedSyAmount] = await Promise.all([
-            bestRoute.getMarketStaticMath(),
-            bestRoute.buildTokenInput().then(assertDefined),
-            bestRoute.getMintedSyAmount().then(assertDefined),
-        ]);
-        let netSyRemains = mintedSyAmount;
-        let totalYtOut = BN.from(0);
+        const tokenInputBuilder = routeMod.routeComponentHelper.createTokenInputStructBuilder(this);
 
-        const limitOrderMatchedResult = await this.limitOrderMatcher.swapSyForYt(market, netSyRemains, {
-            routerMethod: 'swapExactTokenForYt',
-        });
-        netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
-        totalYtOut = totalYtOut.add(limitOrderMatchedResult.netOutputToTaker);
+        const buildContractMethod = async (
+            route: Route.PartialRoute<'aggregatorResultGetter' | 'intermediateSyAmountGetter' | 'limitOrderMatcher'>
+        ) => {
+            const [input, mintedSyAmount, marketStaticMath, limitOrderMatchedResult] = await Promise.all([
+                tokenInputBuilder.call(route),
+                Route.getIntermediateSyAmount(route),
+                marketStaticMathPromise,
+                Route.getMatchedLimitOrderResult(route),
+            ]);
 
-        const marketResult = marketStaticMath.swapExactSyForYtStatic(netSyRemains.toBigInt());
-        totalYtOut = totalYtOut.add(marketResult.netYtOut);
+            let netSyRemains = mintedSyAmount;
+            let totalYtOut = BN.from(0);
 
-        const approxParams = this.getApproxParamsToPullPt(marketResult.netYtOut, slippage);
-        const minYtOut = calcSlippedDownAmount(totalYtOut, slippage);
-        const overrides = txOverridesValueFromTokenInput(input);
+            netSyRemains = netSyRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+            totalYtOut = totalYtOut.add(limitOrderMatchedResult.netOutputToTaker);
 
-        const metaMethod = await this.contract.metaCall.swapExactTokenForYt(
-            params.receiver,
-            marketEntity.address,
-            minYtOut,
-            approxParams,
-            input,
-            limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
-            {
-                ...mergeMetaMethodExtraParams({ overrides }, params),
+            const marketResult = marketStaticMath.swapExactSyForYtStatic(netSyRemains.toBigInt());
+            totalYtOut = totalYtOut.add(marketResult.netYtOut);
+
+            const approxParams = await this.approxParamsGenerator.generate(this, {
+                routerMethod: 'swapExactTokenForYt',
+                guessOffchain: marketResult.netYtOut,
+                slippage,
+                approxSearchingRange: marketResult.approxSearchingRange,
+                limitOrderMatchedResult,
+            });
+            const minYtOut = calcSlippedDownAmount(totalYtOut, slippage);
+            const overrides = txOverridesValueFromTokenInput(input);
+
+            const data = {
                 intermediateSyAmount: mintedSyAmount,
                 netYtOut: totalYtOut,
                 netSyMinted: mintedSyAmount,
@@ -1568,9 +2765,90 @@ export abstract class BaseRouter extends PendleEntity {
                 priceImpact: marketResult.priceImpact,
                 exchangeRateAfter: marketResult.exchangeRateAfter,
                 minYtOut,
-                route: bestRoute,
+            };
+
+            return this.contract.metaCall.swapExactTokenForYt(
+                params.receiver,
+                marketEntity.address,
+                minYtOut,
+                approxParams,
+                input,
+                limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                { ...mergeMetaMethodExtraParams({ overrides }, params), ...data }
+            );
+        };
+
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [inputTokenAmount]);
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
+            this,
+            syEntity,
+            params
+        );
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'swapExactTokenForYt',
+                ['aggregatorResultGetter', 'intermediateSyAmountGetter', 'limitOrderMatcher'],
+                buildContractMethod,
+                async (metaMethod) => metaMethod.data.netYtOut
+            );
+        const partialRoutesNoLO = tokenMintSyList.map((tokenMintSy) =>
+            Route.assemble({
+                approvedSignerAddressGetter,
+                aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
+                    this,
+                    inputTokenAmount,
+                    tokenMintSy,
+                    slippage
+                ),
+                syIOTokenAmountGetter,
+                intermediateSyAmountGetter,
+                limitOrderMatcher: routeMod.limitOrderMatcher.createEmpty(), // empty first to find the token mint sy
+                contractMethodBuilder,
+                netOutGetter,
+                gasUsedEstimator,
+            })
+        );
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createRelativeToToken(
+            this,
+            partialRoutesNoLO,
+            inputTokenAmount
+        );
+        const routesNoLO = partialRoutesNoLO.map((route) => Route.assemble({ ...route, netOutInNativeEstimator }));
+        const tokenMintSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routesNoLO);
+        if (tokenMintSySelectionRoutingResult.verdict === 'FAILED') {
+            const yt = await marketEntity.yt(params.forCallStatic);
+            return this.throwNoRouteFoundError('swapExactTokenForYt', tokenIn, yt, routesNoLO);
+        }
+        const { selectedRoute: selectedRouteNoLO } = tokenMintSySelectionRoutingResult;
+
+        const routeLimitOrderMatcher = routeMod.helper.createMinimalRouteComponent(
+            'swapExactTokenForYt',
+            ['intermediateSyAmountGetter'],
+            async (route) => {
+                const mintedSyAmount = await Route.getIntermediateSyAmount(route);
+                return this.limitOrderMatcher.swapSyForYt(market, mintedSyAmount, {
+                    routerMethod: 'swapExactTokenForYt',
+                });
             }
         );
+        const routeWithLO = Route.assemble({
+            ...selectedRouteNoLO,
+            limitOrderMatcher: routeLimitOrderMatcher,
+        });
+        const loRoutingResult = await this.limitOrderRouteSelector(this, routeWithLO);
+        if (loRoutingResult.verdict === 'FAILED') {
+            const yt = await marketEntity.yt(params.forCallStatic);
+            return this.throwNoRouteFoundError('swapExactTokenForYt', tokenIn, yt, loRoutingResult.allRoutes);
+        }
+        const { selectedRoute } = loRoutingResult;
+
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            tokenMintSySelectionRoutingResult,
+            loRoutingResult,
+        });
+
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -1584,30 +2862,157 @@ export abstract class BaseRouter extends PendleEntity {
     ): RouterMetaMethodReturnType<
         T,
         'swapExactYtForToken',
-        zapOutRoutes.SwapExactYtForTokenRouteIntermediateData & {
-            route: SwapExactYtForTokenRoute;
+        {
+            intermediateSyAmount: BN;
+            netSyFeeFromMarket: BN;
+            netSyFeeFromLimit: BN;
+            priceImpact: offchainMath.FixedX18;
+            exchangeRateAfter: offchainMath.MarketExchangeRate;
+            netSyOut: BN;
+            netTokenOut: BN;
+            limitOrderMatchedResult: limitOrder.LimitOrderMatchedResult;
+            route: routeDef.SwapExactYtForToken;
+            loRoutingResult: routerComponents.LimitOrderRouteSelectorResult<
+                Route.PartialRoute<routeDef.ComponentsForLimitOrderRouting>
+            >;
+            tokenRedeemSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.SwapExactYtForToken>;
         }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const marketEntity = this.getMarketEntity(market);
-        const syEntity = await marketEntity.syEntity(params.forCallStatic);
-        const routeContext = this.createRouteContext<SwapExactYtForTokenRoute>({
-            params,
-            syEntity,
-            slippage,
+        const marketStaticMathPromise = this.getMarketStaticMathWithParams(marketEntity, params);
+        const [syEntity, ytEntity] = await Promise.all([
+            marketEntity.syEntity(params.forCallStatic),
+            marketEntity.ytEntity(params.forCallStatic),
+        ]);
+        const tokenRedeemSyList = await syEntity.getTokensOut();
+        const ytTokenAmount = { token: ytEntity.address, amount: BN.from(exactYtIn) };
+
+        const getDataFromRoute = async (route: Route.PartialRoute<'limitOrderMatcher'>) => {
+            const [limitOrderMatchedResult, marketStaticMath] = await Promise.all([
+                Route.getMatchedLimitOrderResult(route),
+                marketStaticMathPromise,
+            ]);
+            let netYtRemains = BN.from(exactYtIn);
+            let totalSyOut = BN.from(0);
+
+            netYtRemains = netYtRemains.sub(limitOrderMatchedResult.netInputFromTaker);
+            totalSyOut = totalSyOut.add(limitOrderMatchedResult.netOutputToTaker);
+
+            const marketResult = marketStaticMath.swapExactYtForSyStatic(netYtRemains.toBigInt());
+            totalSyOut = totalSyOut.add(marketResult.netSyOut);
+
+            const data = {
+                intermediateSyAmount: totalSyOut,
+                priceImpact: marketResult.priceImpact,
+                exchangeRateAfter: marketResult.exchangeRateAfter,
+                netSyOut: totalSyOut,
+                netSyFeeFromMarket: BN.from(marketResult.netSyFee),
+                netSyFeeFromLimit: BN.from(limitOrderMatchedResult.totalFee),
+                limitOrderMatchedResult,
+            };
+            return data;
+        };
+
+        const buildContractMethod = async (
+            route: Route.PartialRoute<'limitOrderMatcher'>,
+            tokenOutput: routerTypes.TokenOutput,
+            netTokenOut: BN = BN.from(0)
+        ) => {
+            const data = await getDataFromRoute(route);
+            return this.contract.metaCall.swapExactYtForToken(
+                params.receiver,
+                marketEntity.address,
+                exactYtIn,
+                tokenOutput,
+                data.limitOrderMatchedResult.toRawLimitOrderDataStructForChain(this.chainId),
+                { ...data, ...params, netTokenOut }
+            );
+        };
+
+        const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapYtForSy', [
+            marketEntity,
+            BN.from(exactYtIn),
+            { routerMethod: 'swapExactYtForToken' },
+        ]);
+        const intermediateSyAmountGetter = routeMod.helper.createMinimalRouteComponent(
+            'swapExactYtForToken',
+            ['limitOrderMatcher'],
+            async (route) => getDataFromRoute(route).then(({ netSyOut }) => netSyOut)
+        );
+        const loRoutingResult = await this.limitOrderRouteSelector(
+            this,
+            Route.assemble({
+                limitOrderMatcher: routeLimitOrderMatcher,
+                netOutGetter: intermediateSyAmountGetter, // use sy amount as intermediate net out getter
+            })
+        );
+        if (loRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError(
+                'swapExactYtForToken',
+                ytEntity.address,
+                tokenOut,
+                loRoutingResult.allRoutes
+            );
+        }
+
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [ytTokenAmount]);
+        const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
+        const aggregatorResultGetter = routeMod.aggregatorResultGetter.createToRawToken(this, tokenOut, slippage, {
+            aggregatorReceiver: params.aggregatorReceiver,
         });
-        const tokenRedeemSyList = await routeContext.getTokensRedeemSy();
-        const routes = tokenRedeemSyList.map(
-            (tokenRedeemSy) =>
-                new SwapExactYtForTokenRoute(marketEntity, exactYtIn, tokenOut, slippage, {
-                    context: routeContext,
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'swapExactYtForToken',
+                ['limitOrderMatcher', 'aggregatorResultGetter'],
+                async (route) => {
+                    const [aggregatorResult, tokenOutput] = await Promise.all([
+                        Route.getAggregatorResult(route),
+                        tokenOutputBuilder.call(route),
+                    ]);
+                    return buildContractMethod(route, tokenOutput, aggregatorResult.outputAmount);
+                },
+                async (metaMethod) => metaMethod.data.netTokenOut
+            );
+        const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
+            Route.assemble({
+                approvedSignerAddressGetter,
+                limitOrderMatcher: loRoutingResult.selectedRoute.limitOrderMatcher,
+                intermediateSyAmountGetter,
+                syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
                     tokenRedeemSy,
-                })
+                    syEntity,
+                    { ...params, additionalDependencies: ['limitOrderMatcher'] },
+                    async ({ route, tokenOutput }) =>
+                        buildContractMethod(route, tokenOutput)
+                            .then((metaMethod) => metaMethod.callStatic())
+                            .then(({ netTokenOut }) => netTokenOut)
+                ),
+                aggregatorResultGetter,
+                contractMethodBuilder,
+                netOutGetter,
+                gasUsedEstimator,
+            })
         );
-        const bestRoute = await this.findBestZapOutRoute(routes).catch(async (cause: unknown) =>
-            this.throwNoRouteFoundError('swap', await marketEntity.yt(params.forCallStatic), tokenOut, { cause })
+
+        const netOutInNativeEstimator = await routeMod.netOutInNativeEstimator.createFromAllRawTokenOut(
+            this,
+            tokenOut,
+            partialRoutes
         );
-        const metaMethod = await bestRoute.buildCall();
+        const routes = partialRoutes.map((route) => Route.assemble({ ...route, netOutInNativeEstimator }));
+        const tokenRedeemSySelectionRoutingResult = await this.optimalOutputRouteSelector(this, routes);
+        if (tokenRedeemSySelectionRoutingResult.verdict === 'FAILED') {
+            return this.throwNoRouteFoundError('swapExactYtForToken', ytEntity.address, tokenOut, routes);
+        }
+
+        const { selectedRoute } = tokenRedeemSySelectionRoutingResult;
+
+        const metaMethod = (await contractMethodBuilder.call(selectedRoute)).attachExtraData({
+            route: selectedRoute,
+            loRoutingResult,
+            tokenRedeemSySelectionRoutingResult,
+        });
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -1636,7 +3041,13 @@ export abstract class BaseRouter extends PendleEntity {
         const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
         const res = marketStaticMath.swapExactYtForPtStatic(BN.from(exactYtIn).toBigInt());
         const { netPtOut, totalPtSwapped } = res;
-        const approxParam = this.getApproxParamsToPushPt(totalPtSwapped, slippage);
+        const approxParam = await this.approxParamsGenerator.generate(this, {
+            routerMethod: 'swapExactYtForPt',
+            guessOffchain: totalPtSwapped,
+            slippage,
+            approxSearchingRange: res.approxSearchingRange,
+            limitOrderMatchedResult: undefined,
+        });
         const minPtOut = calcSlippedDownAmount(netPtOut, slippage);
         const metaMethod = await this.contract.metaCall.swapExactYtForPt(
             params.receiver,
@@ -1684,7 +3095,13 @@ export abstract class BaseRouter extends PendleEntity {
         const marketStaticMath = await this.getMarketStaticMathWithParams(market, params);
         const res = marketStaticMath.swapExactPtForYtStatic(BN.from(exactPtIn).toBigInt());
         const { netYtOut, totalPtToSwap } = res;
-        const approxParam = this.getApproxParamsToPushPt(totalPtToSwap, slippage);
+        const approxParam = await this.approxParamsGenerator.generate(this, {
+            routerMethod: 'swapExactPtForYt',
+            guessOffchain: totalPtToSwap,
+            slippage,
+            approxSearchingRange: res.approxSearchingRange,
+            limitOrderMatchedResult: undefined,
+        });
         const minYtOut = calcSlippedDownAmount(netYtOut, slippage);
         const metaMethod = await this.contract.metaCall.swapExactPtForYt(
             params.receiver,
@@ -1919,7 +3336,7 @@ export abstract class BaseRouter extends PendleEntity {
         );
 
         const route = await this.findBestLiquidityMigrationRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('migrate liquidity', srcMarketEntity.address, dstMarketEntity.address, {
+            this.throwNoRouteFoundError('migrate liquidity', srcMarketEntity.address, dstMarketEntity.address, [], {
                 cause,
             })
         );
@@ -2013,7 +3430,7 @@ export abstract class BaseRouter extends PendleEntity {
         );
 
         const route = await this.findBestLiquidityMigrationRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('migrate liquidity', srcMarketEntity.address, dstMarketEntity.address, {
+            this.throwNoRouteFoundError('migrate liquidity', srcMarketEntity.address, dstMarketEntity.address, [], {
                 cause,
             })
         );
@@ -2061,6 +3478,90 @@ export abstract class BaseRouter extends PendleEntity {
                 tokenInputStruct,
             }
         );
+        this.events.emit('calculationFinalized', { metaMethod });
+        return metaMethod.executeWithMethod(_params);
+    }
+
+    async swapTokenToTokenViaSy<T extends MetaMethodType>(
+        sy: Address | SyEntity,
+        input: RawTokenAmount<BigNumberish>,
+        outputToken: Address,
+        slippage: number,
+        _params: RouterMetaMethodExtraParams<T> = {}
+    ): RouterMetaMethodReturnType<
+        T,
+        'swapTokenToTokenViaSy',
+        {
+            netTokenOut: BN;
+            minTokenOut: BN;
+            intermediateSyAmount: BN;
+
+            route: routeDef.SwapTokenToTokenViaSy;
+            tokenMintSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.SwapTokenToTokenViaSy>;
+        }
+    > {
+        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
+        const syEntity = typeof sy === 'string' ? new SyEntity(sy, this.entityConfig) : sy;
+
+        // TODO check if outputToken is one of sy's tokens out early.
+        // Currently the tokenRedeemSyGetter will throw error on non SY's token out.
+
+        // TODO do better way.
+        const mintSyResult = await this.mintSyFromToken(syEntity, input.token, input.amount, slippage, params);
+        const originalRoute = mintSyResult.data.route;
+
+        const tokenInputStructBuilder = routeMod.routeComponentHelper.createTokenInputStructBuilder(this);
+        const buildContractMethod = async (netTokenOut: BN) => {
+            const tokenInput = await tokenInputStructBuilder.call(originalRoute);
+            const minTokenOut = calcSlippedDownAmount(netTokenOut, slippage);
+            const overrides = txOverridesValueFromTokenInput(tokenInput);
+            return this.contract.metaCall.swapTokenToTokenViaSy(
+                params.receiver,
+                syEntity.address,
+                tokenInput,
+                outputToken,
+                minTokenOut,
+                {
+                    ...params,
+                    overrides,
+                    netTokenOut,
+                    minTokenOut,
+                }
+            );
+        };
+        const tokenRedeemSyGetter = routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
+            outputToken,
+            syEntity,
+            params,
+            async () => {
+                return buildContractMethod(BN.from(0))
+                    .then((metaMethod) => metaMethod.callStatic())
+                    .then((res) => res.netTokenOut);
+            }
+        );
+        const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
+            routeMod.helper.createComponentBundleForContractMethod(
+                'swapTokenToTokenViaSy',
+                ['approvedSignerAddressGetter', 'intermediateSyAmountGetter'],
+                async (route) => {
+                    const { amount: tokenOut } = await tokenRedeemSyGetter.call(route);
+                    return buildContractMethod(tokenOut);
+                },
+                async (metaMethod) => metaMethod.data.netTokenOut
+            );
+
+        const modifiedRoute = Route.assemble({
+            ...originalRoute,
+            contractMethodBuilder,
+            netOutGetter,
+            gasUsedEstimator,
+        });
+        const metaMethod = (await contractMethodBuilder.call(modifiedRoute)).attachExtraData({
+            route: modifiedRoute,
+            tokenMintSySelectionRoutingResult: mintSyResult.data.tokenMintSySelectionRoutingResult,
+            intermediateSyAmount: mintSyResult.data.intermediateSyAmount,
+        });
+
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }
@@ -2130,13 +3631,14 @@ export abstract class BaseRouter extends PendleEntity {
         syTokenAmounts: RawTokenAmount<BigNumberish>[],
         params: { receiver?: Address } = {}
     ): Promise<TokenOutput[]> {
+        const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
         return Promise.all(
             syTokenAmounts.map(async ({ token, amount }) => {
                 const res = await this.redeemSyToToken(token, amount, tokenOut, slippage, {
                     aggregatorReceiver: params.receiver,
                     method: 'meta-method',
                 });
-                return (await res.data.route.buildTokenOutput())!;
+                return tokenOutputBuilder.call(res.data.route);
             })
         );
     }
@@ -2156,20 +3658,21 @@ export abstract class BaseRouter extends PendleEntity {
                     });
                     return res.createSwapData({ needScale: false });
                 } catch (cause: unknown) {
-                    return this.throwNoRouteFoundError('sell token', tokenAmount.token, tokenOut, { cause });
+                    return this.throwNoRouteFoundError('sell token', tokenAmount.token, tokenOut, [], { cause });
                 }
             })
         );
         return swapData;
     }
 
-    protected async throwNoRouteFoundError(
+    protected async throwNoRouteFoundError<RC extends routeMod.Route.ComponentName>(
         actionName: string,
         from: Address,
         to: Address,
+        routes: routeMod.Route.PartialRoute<RC>[],
         errorOptions?: PendleSdkErrorParams
     ): Promise<never> {
-        this.events.emit('noRouteFound', { actionName, from, to, errorOptions });
+        this.events.emit('noRouteFound', { actionName, from, to, errorOptions, routes });
         throw new NoRouteFoundError(actionName, from, to, errorOptions);
     }
 

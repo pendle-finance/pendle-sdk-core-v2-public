@@ -23,9 +23,9 @@ export abstract class Batcher<ParamType = unknown> {
             const queue = this.getMessageQueue();
             queue.push({ params, resolver: resolver as Resolver<unknown>, rejector });
             if (queue.length === 1) {
-                queueMicrotask(() => {
+                setTimeout(() => {
                     this.processQueue(queue);
-                });
+                }, 0);
             }
         });
 

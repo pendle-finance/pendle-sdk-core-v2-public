@@ -29,7 +29,7 @@ export type BaseZapOutRouteIntermediateData = {
 
 export abstract class BaseZapOutRoute<
     IntermediateSyData extends BaseZapOutRouteIntermediateData,
-    SelfType extends BaseZapOutRoute<IntermediateSyData, SelfType>
+    SelfType extends BaseZapOutRoute<IntermediateSyData, SelfType>,
 > extends BaseRoute<SelfType> {
     readonly tokenRedeemSy: Address;
     abstract readonly targetToken: Address;

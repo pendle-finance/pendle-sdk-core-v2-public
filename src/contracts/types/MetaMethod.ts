@@ -20,14 +20,14 @@ export type MetaMethodParam<
     T,
     C extends Contract,
     MethodName extends ContractMethodNames<C>,
-    Data extends MetaMethodExtraParams<any>
+    Data extends MetaMethodExtraParams<any>,
 > = T | ((m: ContractMetaMethod<C, MethodName, Data>) => T | Promise<T>);
 
 export type MetaMethodParams<
     Params extends any[],
     C extends Contract,
     MethodName extends ContractMethodNames<C>,
-    Data extends MetaMethodExtraParams<any>
+    Data extends MetaMethodExtraParams<any>,
 > = Params extends [...infer Body, infer Last]
     ? [...MetaMethodParams<Body, C, MethodName, Data>, MetaMethodParam<Last, C, MethodName, Data>]
     : [];
@@ -35,7 +35,7 @@ export type MetaMethodParams<
 export type CalcBufferedGasFunction = <
     C extends Contract,
     M extends ContractMethodNames<C>,
-    Data extends MetaMethodExtraParams<any>
+    Data extends MetaMethodExtraParams<any>,
 >(
     estimatedGasUsed: BN,
     context: ContractMetaMethod<C, M, Data>
@@ -98,25 +98,25 @@ export type MetaMethodReturnType<
     T extends MetaMethodType,
     C extends Contract,
     MethodName extends ContractMethodNames<C>,
-    Data extends MetaMethodExtraParams<T>
+    Data extends MetaMethodExtraParams<T>,
 > = Promise<
     MetaMethodType extends T // this is when TSC failed to infer T (e.g when the method is not given by the user).
         ? // In this case, TSC only knows that T is MetaMethodType.
           // So we force the default behavior to be 'send'.
           SyncReturnType<EthersContractMethod<C, 'send', MethodName>>
         : T extends 'meta-method'
-        ? ContractMetaMethod<C, MethodName, Data>
-        : T extends 'extractParams'
-        ? ContractMethodParams<C, MethodName>
-        : SyncReturnType<EthersContractMethod<C, T, MethodName>>
+          ? ContractMetaMethod<C, MethodName, Data>
+          : T extends 'extractParams'
+            ? ContractMethodParams<C, MethodName>
+            : SyncReturnType<EthersContractMethod<C, T, MethodName>>
 >;
 
 // TODO make T extends some type for type safety nd IDE support.
 export type MetaMethodData<T> = T extends (..._params: any[]) => infer R
     ? MetaMethodData<Awaited<R>>
     : T extends ContractMetaMethod<infer _C, any, infer D>
-    ? D
-    : never;
+      ? D
+      : never;
 
 export function metaMethodExtraParamsIsType<T extends MetaMethodType>(
     x: MetaMethodExtraParams<MetaMethodType>,

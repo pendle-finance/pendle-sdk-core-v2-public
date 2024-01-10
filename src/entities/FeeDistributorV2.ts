@@ -21,11 +21,14 @@ export type FeeDistributorV2Config = PendleEntityConfigOptionalAbi;
 export type FeeDistributorV2MetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<PendleFeeDistributorV2>,
-    ExtraData extends object = object
+    ExtraData extends object = object,
 > = MetaMethodReturnType<T, PendleFeeDistributorV2, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 export class FeeDistributorV2 extends PendleEntity {
-    constructor(readonly address: Address, config: FeeDistributorV2Config) {
+    constructor(
+        readonly address: Address,
+        config: FeeDistributorV2Config
+    ) {
         super(address, { abi: PendleFeeDistributorV2ABI, ...config });
     }
 
@@ -125,7 +128,10 @@ export class MerkleTreeData {
 
 export class FeeDistributorV2WithStaticProof extends FeeDistributorV2 {
     merkleTreeData: MerkleTreeData;
-    constructor(readonly address: Address, config: FeeDistributorV2WithStaticProofConfig) {
+    constructor(
+        readonly address: Address,
+        config: FeeDistributorV2WithStaticProofConfig
+    ) {
         super(address, config);
         this.merkleTreeData = new MerkleTreeData(config.merkleTreeData);
     }

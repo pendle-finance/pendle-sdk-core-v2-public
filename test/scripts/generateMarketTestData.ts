@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import * as dotenv from 'dotenv';
 import * as pendleSDK from '../../src';
 import fs from 'fs/promises';

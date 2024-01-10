@@ -59,7 +59,7 @@ export type UserMarketInfo = {
 export type MarketEntityMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<PendleMarket>,
-    ExtraData extends object = object
+    ExtraData extends object = object,
 > = MetaMethodReturnType<T, PendleMarket, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 /**
@@ -75,7 +75,10 @@ export type MarketEntityConfig = ERC20EntityConfig & {
 export class MarketEntity extends ERC20Entity {
     readonly chainId: ChainId;
 
-    constructor(readonly address: Address, config: MarketEntityConfig) {
+    constructor(
+        readonly address: Address,
+        config: MarketEntityConfig
+    ) {
         super(address, { abi: PendleMarketABI, ...config });
         this.chainId = config.chainId;
     }
@@ -121,10 +124,11 @@ export class MarketEntity extends ERC20Entity {
             blockTimestamp?: number;
         }
     ): Promise<MarketInfo> {
+        const ytEntity = await this.ytEntity();
         const [{ ptAddress, ytAddress, syAddress }, state, pyIndex, blockTimestamp] = await Promise.all([
             this.readTokens(params),
             this.readState(params),
-            params?.pyIndex ?? this.ytEntity().then((ytEntity) => ytEntity.pyIndexCurrent(params)),
+            params?.pyIndex ?? ytEntity.pyIndexCurrent(params),
             params?.blockTimestamp ??
                 this.contract.provider
                     .getBlock(params?.overrides?.blockTag ?? 'latest')

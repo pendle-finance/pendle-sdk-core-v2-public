@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import * as pendleSDK from '../../../src';
 import * as ethers from 'ethers';
 import fs from 'fs/promises';
@@ -19,7 +20,7 @@ async function loadSlotMapImpl(chainId: pendleSDK.ChainId): Promise<ERC20Balance
     const slotMapFromFile: ERC20BalanceSlotMap = await fs
         .readFile(file, { encoding: 'utf-8' })
         .then((res) => JSON.parse(res) as ERC20BalanceSlotMap)
-        .catch(() => ({} satisfies ERC20BalanceSlotMap));
+        .catch(() => ({}) satisfies ERC20BalanceSlotMap);
     slotMapByChainId[chainId] = slotMapFromFile;
     return slotMapFromFile;
 }

@@ -31,7 +31,7 @@ export type RemoveLiquiditySingleTokenRouteDebugInfo = ZapOutRouteDebugInfo & {
 };
 
 export abstract class _RemoveLiquiditySingleTokenRoute<
-    SelfType extends _RemoveLiquiditySingleTokenRoute<SelfType>
+    SelfType extends _RemoveLiquiditySingleTokenRoute<SelfType>,
 > extends BaseZapOutRoute<RemoveLiquiditySingleTokenRouteIntermediateData, SelfType> {
     override readonly routeName = 'RemoveLiquiditySingleToken';
     constructor(

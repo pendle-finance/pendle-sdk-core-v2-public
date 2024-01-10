@@ -18,6 +18,8 @@ import { LimitOrderMatcher } from './limitOrder';
 export type { ApproxParamsStruct, IPAllActionV3 } from '@pendle/core-v2/typechain-types/IPAllActionV3';
 import * as tsEssentials from 'ts-essentials';
 import * as errors from '../../errors';
+import * as routerComponents from './components';
+import * as route from './route';
 
 /**
  * Reflecting [`AGGREGATOR`](https://github.com/pendle-finance/pendle-core-v2/blob/c6f6000a6f682a2bff41b7a7cce78e36fb497e8e/contracts/router/swap-aggregator/ISwapAggregator.sol#L10) type.
@@ -64,9 +66,15 @@ export type TokenOutput = {
 export type BaseRouterConfig = PendleEntityConfigOptionalAbi & {
     chainId: ChainId;
     gasFeeEstimator?: GasFeeEstimator;
-    aggregatorHelper?: AggregatorHelper;
     checkErrorOnSimulation?: boolean;
+
+    // components
+    aggregatorHelper?: AggregatorHelper;
     limitOrderMatcher?: LimitOrderMatcher;
+    tokenAmountConverter?: routerComponents.TokenAmountConverter;
+    optimalOutputRouteSelector?: routerComponents.OptimalOutputRouteSelector;
+    limitOrderRouteSelector?: routerComponents.LimitOrderRouteSelector;
+    approxParamsGenerator?: routerComponents.ApproxParamsGenerator;
 };
 
 export type RouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtraParams<T> & {
@@ -77,21 +85,21 @@ export type RouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodEx
 export type RouterMetaMethodReturnType<
     T extends MetaMethodType,
     M extends ContractMethodNames<IPAllActionV3>,
-    Data extends object = object
+    Data extends object = object,
 > = MetaMethodReturnType<T, IPAllActionV3, M, Data & RouterMetaMethodExtraParams<T>>;
 
 export type RouterHelperMetaMethodReturnType<
     T extends MetaMethodType,
     M extends ContractMethodNames<typechain.PendleRouterHelper>,
-    Data extends object
+    Data extends object,
 > = MetaMethodReturnType<T, typechain.PendleRouterHelper, M, Data & RouterMetaMethodExtraParams<T>>;
 
 export type MetaMethodForRouterMethod<Method extends tsEssentials.AnyFunction> =
     ReturnType<Method> extends RouterMetaMethodReturnType<any, infer M, infer Data>
         ? Awaited<RouterMetaMethodReturnType<'meta-method', M, Data>>
         : ReturnType<Method> extends RouterHelperMetaMethodReturnType<any, infer M, infer Data>
-        ? Awaited<RouterHelperMetaMethodReturnType<'meta-method', M, Data>>
-        : never;
+          ? Awaited<RouterHelperMetaMethodReturnType<'meta-method', M, Data>>
+          : never;
 
 export type FixedRouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMethodExtraParams<T> & {
     receiver: Address | typeof ContractMetaMethod.utils.getContractSignerAddress;
@@ -102,21 +110,27 @@ export type FixedRouterMetaMethodExtraParams<T extends MetaMethodType> = MetaMet
     forCallStatic: Omit<FixedRouterMetaMethodExtraParams<T>, 'forCallStatic' | 'method'>;
 };
 
+export type AnyRouterContractMetaMethod<Data extends object = object> = ContractMetaMethod<
+    IPAllActionV3,
+    ContractMethodNames<IPAllActionV3>,
+    Data
+>;
+export type AnyRouterHelperContractMetaMethod<Data extends object = object> = ContractMetaMethod<
+    typechain.PendleRouterHelper,
+    ContractMethodNames<typechain.PendleRouterHelper>,
+    Data
+>;
+
 export type RouterEvents = {
     calculationFinalized: (params: {
-        metaMethod:
-            | ContractMetaMethod<IPAllActionV3, ContractMethodNames<IPAllActionV3>, object>
-            | ContractMetaMethod<
-                  typechain.PendleRouterHelper,
-                  ContractMethodNames<typechain.PendleRouterHelper>,
-                  object
-              >;
+        metaMethod: AnyRouterContractMetaMethod | AnyRouterHelperContractMetaMethod;
     }) => void;
 
     noRouteFound: (params: {
         actionName: string;
         from: Address;
         to: Address;
+        routes: route.Route.AnyRoute[];
         errorOptions?: errors.PendleSdkErrorParams;
     }) => void;
 };

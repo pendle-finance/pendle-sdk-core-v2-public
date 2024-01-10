@@ -28,8 +28,7 @@ testHelper.describeIf(isMainchain(ACTIVE_CHAIN_ID))('VotingController', () => {
                 .getPoolData(address, [])
                 .then((res) => !res.chainId.isZero());
             if (!isActive) {
-                console.warn(`Market ${address} is not active`);
-                return;
+                throw new Error(`Market ${address} is not active`);
             }
             const totalVotedBefore = await votingController.contract.callStatic
                 .getUserData(signerAddress, [])

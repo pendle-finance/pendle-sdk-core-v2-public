@@ -13,7 +13,10 @@ export type PtEntityConfig = PyEntityConfig;
  * This class represents a Pendle Principle token (PT token).
  */
 export class PtEntity extends PyEntity {
-    constructor(readonly address: Address, config: PtEntityConfig) {
+    constructor(
+        readonly address: Address,
+        config: PtEntityConfig
+    ) {
         super(address, { abi: PendlePrincipalTokenABI, ...config });
     }
 

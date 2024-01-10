@@ -36,7 +36,6 @@ describe(pendleSDK.Router.prototype.swapTokenToToken, () => {
                 fromTokenBalanceBefore
             );
             input = { token: fromToken.address, amount: swapAmount };
-            console.log(router.address);
         });
 
         let metaMethod: pendleSDK.MetaMethodForRouterMethod<pendleSDK.Router['swapTokenToToken']>;

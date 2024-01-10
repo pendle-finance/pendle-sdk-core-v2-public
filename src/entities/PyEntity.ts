@@ -47,7 +47,10 @@ export type PyEntityConfig = ERC20EntityConfig & {
 export abstract class PyEntity extends ERC20Entity {
     readonly chainId: ChainId;
 
-    constructor(readonly address: Address, config: PyEntityConfig) {
+    constructor(
+        readonly address: Address,
+        config: PyEntityConfig
+    ) {
         super(address, { ...config });
         this.chainId = config.chainId;
     }

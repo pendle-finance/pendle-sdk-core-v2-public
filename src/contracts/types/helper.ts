@@ -33,12 +33,12 @@ export type MetaMethodTypeToEthersMetaClass<T extends MetaMethodType> = NonNulla
 export type EthersContractMethod<
     C extends Contract,
     MetaClassOrType extends EthersContractMetaClass | MetaMethodType,
-    MethodName extends ContractMethodNames<C>
+    MethodName extends ContractMethodNames<C>,
 > = MetaClassOrType extends EthersContractMetaClass
     ? GetField<C[MetaClassOrType], MethodName>
     : MetaClassOrType extends MetaMethodType
-    ? GetField<C[MetaMethodTypeToEthersMetaClass<MetaClassOrType>], MethodName>
-    : never;
+      ? GetField<C[MetaMethodTypeToEthersMetaClass<MetaClassOrType>], MethodName>
+      : never;
 
 export type ContractLike<T extends Contract = Contract> = T | WrappedContract<T>;
 

@@ -7,3 +7,5 @@ export * from './route';
 export * from './aggregatorHelper';
 export * from './limitOrder';
 export * as limitOrder from './limitOrder';
+export * as routeDef from './RouterMethodRouteDefinition';
+export * from './components';

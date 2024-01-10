@@ -1,5 +1,5 @@
 import { LimitOrderMatchedResult } from './LimitOrderMatchedResult';
-import { Address, RawTokenAmount, BN } from '../../../common';
+import { Address, RawTokenAmount, BN, Deferrable } from '../../../common';
 import { MarketEntity } from '../../MarketEntity';
 import * as contractTypes from '@pendle/core-v2/typechain-types/IPAllActionV3';
 
@@ -15,34 +15,34 @@ export type SupportedLimitOrderRouterMethods = IsSupportedLimitOrderMethod<Route
 export interface LimitOrderMatcher {
     swapPtForSy(
         market: Address | MarketEntity,
-        netPtIn: BN,
+        netPtIn: Deferrable<BN>,
         params: { routerMethod: SupportedLimitOrderRouterMethods }
     ): Promise<LimitOrderMatchedResult>;
     swapYtForSy(
         market: Address | MarketEntity,
-        netYtIn: BN,
+        netYtIn: Deferrable<BN>,
         params: { routerMethod: SupportedLimitOrderRouterMethods }
     ): Promise<LimitOrderMatchedResult>;
 
     swapSyForPt(
         market: Address | MarketEntity,
-        netSyIn: BN,
+        netSyIn: Deferrable<BN>,
         params: { routerMethod: SupportedLimitOrderRouterMethods }
     ): Promise<LimitOrderMatchedResult>;
     swapSyForYt(
         market: Address | MarketEntity,
-        netSyIn: BN,
+        netSyIn: Deferrable<BN>,
         params: { routerMethod: SupportedLimitOrderRouterMethods }
     ): Promise<LimitOrderMatchedResult>;
 
     swapTokenForPt(
         market: Address | MarketEntity,
-        netTokenIn: RawTokenAmount<BN>,
+        netTokenIn: Deferrable<RawTokenAmount<BN>>,
         params: { routerMethod: SupportedLimitOrderRouterMethods }
     ): Promise<LimitOrderMatchedResult>;
     swapTokenForYt(
         market: Address | MarketEntity,
-        netTokenIn: RawTokenAmount<BN>,
+        netTokenIn: Deferrable<RawTokenAmount<BN>>,
         params: { routerMethod: SupportedLimitOrderRouterMethods }
     ): Promise<LimitOrderMatchedResult>;
 }

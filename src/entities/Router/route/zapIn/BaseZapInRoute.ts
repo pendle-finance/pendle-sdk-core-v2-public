@@ -29,7 +29,7 @@ export type BaseZapInRouteData = {
 
 export abstract class BaseZapInRoute<
     Data extends BaseZapInRouteData,
-    SelfType extends BaseZapInRoute<Data, SelfType>
+    SelfType extends BaseZapInRoute<Data, SelfType>,
 > extends BaseRoute<SelfType> {
     readonly tokenMintSy: Address;
 

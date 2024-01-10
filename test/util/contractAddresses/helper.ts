@@ -3,8 +3,8 @@ import { toAddress, Address } from '../../../src';
 export type ShallowToAddressType<T> = T extends string
     ? Address
     : T extends object
-    ? { [Key in keyof T]: ShallowToAddressType<T[Key]> }
-    : T;
+      ? { [Key in keyof T]: ShallowToAddressType<T[Key]> }
+      : T;
 
 export function shallowToAddress<T>(obj: T): ShallowToAddressType<T> {
     if (typeof obj === 'string') {

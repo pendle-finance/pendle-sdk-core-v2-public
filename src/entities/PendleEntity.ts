@@ -55,7 +55,10 @@ export class PendleEntity {
      * @param address - the inner contract address
      * @param config - the entity configuration.
      */
-    constructor(readonly address: Address, config: PendleEntityConfig) {
+    constructor(
+        readonly address: Address,
+        config: PendleEntityConfig
+    ) {
         this.multicall = config.multicall;
         this.networkConnection = copyNetworkConnection(config);
         this._contract = createContractObject(address, config.abi, config);

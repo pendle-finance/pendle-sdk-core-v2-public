@@ -5,6 +5,7 @@ import * as tokenHelper from '../util/tokenHelper';
 import * as testEnv from '../util/testEnv';
 import * as testHelper from '../util/testHelper';
 import * as iters from 'itertools';
+import util from 'util';
 import { Promisable } from 'type-fest';
 import { mockLimitOrderMatcher } from './limitOrderSetup';
 
@@ -135,12 +136,13 @@ async function prepareBalances() {
     );
     const increaseNativeBalancePromise = testHelper.increaseNativeBalance(signerAddress);
 
-    const tokensIn = [
-        ...tokensInToTest.map(({ address }) => address),
-        ...testEnv.currentConfig.zappableTokensToTest.map(({ address }) => address),
-    ];
+    const tokensIn = [...tokensInToTest, ...testEnv.currentConfig.zappableTokensToTest];
     const setTokensInBalancePromises = tokensIn.map(async (token) => {
-        return testHelper.setERC20Balance(token, signerAddress, testHelper.valueToTokenAmount(token, chainId));
+        return testHelper.setERC20Balance(
+            token.address,
+            signerAddress,
+            testHelper.valueToTokenAmount(token.address, chainId)
+        );
     });
     await Promise.all([...setPendleTokenBalancePromises, increaseNativeBalancePromise, ...setTokensInBalancePromises]);
 }
@@ -175,11 +177,15 @@ beforeAll(async () => {
 });
 
 router.events.on('noRouteFound', (params) => {
-    const cause = params.errorOptions?.cause;
-    if (cause instanceof pendleSDK.RoutingError) {
-        const routeErrors = cause.routeErrors;
-        console.log('NoRouteFound', params, routeErrors);
-    } else {
-        console.log('NoRouteFound', params);
-    }
+    void Promise.all(params.routes.map((route) => pendleSDK.Route.gatherDebugInfo(route))).then((debugInfo) =>
+        // eslint-disable-next-line no-console
+        console.log(util.inspect(debugInfo, { showHidden: true, depth: 3, colors: true }))
+    );
+    // const cause = params.errorOptions?.cause;
+    // if (cause instanceof pendleSDK.RoutingError) {
+    //     const routeErrors = cause.routeErrors;
+    //     console.log('NoRouteFound', params, routeErrors);
+    // } else {
+    //     console.log('NoRouteFound', params);
+    // }
 });

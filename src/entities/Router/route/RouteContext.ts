@@ -83,14 +83,6 @@ export class RouteContext<RouteType extends BaseRoute<any>> {
         return iters.reduce(routeOut, (a, b) => bnMax(a, b));
     }
 
-    getApproxParamsToPullPt(guessAmountOut: BN, slippage: number): ApproxParamsStruct {
-        return this.router.getApproxParamsToPullPt(guessAmountOut, slippage);
-    }
-
-    getApproxParamsToPushPt(guessAmountIn: BN, slippage: number): ApproxParamsStruct {
-        return this.router.getApproxParamsToPushPt(guessAmountIn, slippage);
-    }
-
     /**
      *
      * @see [Corresponding contract method](https://github.com/pendle-finance/pendle-core-v2/blob/a34601353a666986093a25f74930df043b0205ce/contracts/offchain-helpers/MarketMathStatic.sol#L17)

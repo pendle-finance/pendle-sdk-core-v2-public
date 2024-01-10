@@ -5,7 +5,10 @@ import { Address } from '../common';
 export type MarketFactoryConfig = PendleEntityConfigOptionalAbi;
 
 export class MarketFactory extends PendleEntity {
-    constructor(readonly address: Address, config: MarketFactoryConfig) {
+    constructor(
+        readonly address: Address,
+        config: MarketFactoryConfig
+    ) {
         super(address, { abi: PendleMarketFactoryABI, ...config });
     }
 

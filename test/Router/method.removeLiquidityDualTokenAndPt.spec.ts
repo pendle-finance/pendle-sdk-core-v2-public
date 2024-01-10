@@ -3,6 +3,7 @@ import * as testHelper from '../util/testHelper';
 import * as testEnv from '../util/testEnv';
 import * as constants from '../util/constants';
 import * as tokenHelper from '../util/tokenHelper';
+import * as iters from 'itertools';
 import {
     router,
     chainId,
@@ -27,16 +28,21 @@ describe('Router#removeLiquidityDualTokenAndPt', () => {
 });
 
 function sharedTests() {
-    const tokensToTest = [
-        { name: 'native  token', address: pendleSDK.NATIVE_ADDRESS_0x00 },
-        ...tokensOutToTest,
-        ...testEnv.currentConfig.zappableTokensToTest,
-    ];
+    const tokensToTest = Array.from(
+        iters.uniqueEverseen(
+            [
+                { name: 'native  token', address: pendleSDK.NATIVE_ADDRESS_0x00 },
+                ...tokensOutToTest,
+                ...testEnv.currentConfig.zappableTokensToTest,
+            ],
+            ({ address }) => address
+        )
+    );
 
     const tokenBalancesBefore: Partial<Record<pendleSDK.Address, pendleSDK.BN>> = {};
     beforeAll(async () => {
         await Promise.all(
-            tokensToTest.map(async ({ address }) => {
+            iters.map(tokensToTest, async ({ address }) => {
                 const tokenBalance = await tokenHelper.getBalance(address, signerAddress);
                 tokenBalancesBefore[address] = tokenBalance;
             })
@@ -85,7 +91,7 @@ function sharedTests() {
                 constants.EPSILON_FOR_AGGREGATOR
             );
 
-            const netTokenOut = (await readerResult.route.getNetOut())!;
+            const netTokenOut = readerResult.netTokenOut;
             expect([tokenBalanceBefore, tokenBalanceAfter]).toHaveDifferenceBN(
                 pendleSDK.isNativeToken(token.address) ? netTokenOut.sub(readerResult.gas.nativeSpent) : netTokenOut,
                 constants.EPSILON_FOR_AGGREGATOR

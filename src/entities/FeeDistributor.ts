@@ -28,11 +28,14 @@ export type FeeDistributorConfigWithChainId = FeeDistributorConfig & { chainId: 
 export type FeeDistributorMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<PendleFeeDistributor>,
-    ExtraData extends object = object
+    ExtraData extends object = object,
 > = MetaMethodReturnType<T, PendleFeeDistributor, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 export class FeeDistributor extends PendleEntity {
-    constructor(readonly address: Address, config: FeeDistributorConfig) {
+    constructor(
+        readonly address: Address,
+        config: FeeDistributorConfig
+    ) {
         super(address, { abi: PendleFeeDistributorABI, ...config });
     }
     /**

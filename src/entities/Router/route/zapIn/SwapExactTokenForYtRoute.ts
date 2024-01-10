@@ -102,13 +102,24 @@ export class SwapExactTokenForYtRoute extends BaseZapInRoute<SwapExactTokenForYt
         if (!input || !previewResult) return undefined;
         const overrides = txOverridesValueFromTokenInput(input);
         const { minYtOut } = previewResult;
-        const approxParam = this.context.getApproxParamsToPullPt(previewResult.netYtOut, this.slippage);
+
+        // This part is legacy. To be removed.
+        const approxParams = await this.router.approxParamsGenerator.generate(this.router, {
+            routerMethod: 'swapExactTokenForYt',
+            approxSearchingRange: {
+                guessMin: 0n,
+                guessMax: (1n << 256n) - 1n,
+            },
+            guessOffchain: previewResult.netYtOut,
+            limitOrderMatchedResult: undefined,
+            slippage: this.slippage,
+        });
 
         return this.router.contract.metaCall.swapExactTokenForYt(
             params.receiver,
             this.getMarketAddress(),
             minYtOut,
-            approxParam,
+            approxParams,
             input,
             limitOrder.LimitOrderMatchedResult.EMPTY.toRawLimitOrderDataStructForChain(this.router.chainId),
             { ...data, ...mergeMetaMethodExtraParams({ overrides }, params) }

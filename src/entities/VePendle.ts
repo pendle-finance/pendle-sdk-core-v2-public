@@ -28,7 +28,10 @@ export class VePendle extends PendleEntity {
     static readonly MAX_LOCK_TIME_s = 104 * VePendle.ONE_WEEK_s;
     static readonly MIN_LOCK_TIME_s = VePendle.ONE_WEEK_s;
 
-    constructor(readonly address: Address, config: VePendleConfig) {
+    constructor(
+        readonly address: Address,
+        config: VePendleConfig
+    ) {
         super(address, { abi: VotingEscrowTokenBaseABI, ...config });
     }
 
@@ -81,7 +84,7 @@ export class VePendle extends PendleEntity {
 export type VePendleMainchainMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<VotingEscrowPendleMainchain>,
-    ExtraData extends object = object
+    ExtraData extends object = object,
 > = MetaMethodReturnType<T, VotingEscrowPendleMainchain, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 /**
@@ -95,7 +98,10 @@ export class VePendleMainchain extends VePendle {
     static BROADCAST_FEE_BUFFER = 0.02; // 2%
     readonly chainId: ChainId;
 
-    constructor(readonly address: Address, config: VePendleMainchainConfig) {
+    constructor(
+        readonly address: Address,
+        config: VePendleMainchainConfig
+    ) {
         super(address, { abi: VotingEscrowPendleMainchainABI, ...config });
         this.chainId = config.chainId;
     }

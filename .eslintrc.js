@@ -60,5 +60,7 @@ module.exports = {
                 allowConstantLoopConditions: true,
             },
         ],
+
+        'no-console': 'error'
     },
 };

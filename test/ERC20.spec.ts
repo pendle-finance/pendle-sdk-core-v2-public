@@ -14,7 +14,6 @@ import { describeWithMulticall } from './util/testHelper';
 import * as testHelper from './util/testHelper';
 
 describe('ERC20Like', () => {
-    console.log('signer address', networkConnection.signerAddress);
     const usdc = new ERC20Entity(currentConfig.tokens.USDC, networkConnection);
     const usdcWithMulticall = new ERC20Entity(currentConfig.tokens.USDC, {
         ...networkConnection,
@@ -102,8 +101,7 @@ describe('ERC20Like', () => {
                     const transferAmount = 1;
                     const beforeBalance = await token.balanceOf(signerAddress);
                     if (beforeBalance.lt(transferAmount)) {
-                        console.log('Not enough balance to test transfer');
-                        return;
+                        throw new Error('Not enough balance to test transfer');
                     }
 
                     const tx = await token

@@ -62,7 +62,7 @@ describe('Router#redeemSyFromToken', () => {
                 tokenHelper.getBalance(token.address, signerAddress),
             ]);
 
-            const netTokenOut = pendleSDK.assertDefined(await readerData.route.getNetOut());
+            const netTokenOut = readerData.netTokenOut;
             expect([tokenBalanceBefore, tokenBalanceAfter]).toHaveDifferenceBN(
                 pendleSDK.isNativeToken(token.address) ? netTokenOut.sub(readerData.gas.nativeSpent) : netTokenOut,
                 constants.EPSILON_FOR_AGGREGATOR

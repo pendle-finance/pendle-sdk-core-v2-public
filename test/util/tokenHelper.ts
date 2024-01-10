@@ -147,6 +147,7 @@ export function getTokenBalancesBeforeTesting(
 }
 
 export async function stalkAccount(user: Address, markets: any[]) {
+    /* eslint-disable no-console */
     for (const market of markets) {
         console.log('Market: ', market.symbol);
         console.log('Portfolio');
@@ -160,4 +161,5 @@ export async function stalkAccount(user: Address, markets: any[]) {
         console.log('pt                     :', (await getBalance(market.PT, user)).toString());
         console.log('sy                     :', (await getBalance(market.SY, user)).toString());
     }
+    /* eslint-enable no-console */
 }

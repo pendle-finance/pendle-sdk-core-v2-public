@@ -18,7 +18,7 @@ export type ContractMetaMethodCallback = <
     T extends MetaMethodType,
     C extends Contract,
     MethodName extends ContractMethodNames<C>,
-    Data extends MetaMethodExtraParams<any>
+    Data extends MetaMethodExtraParams<any>,
 >(
     methodType: T,
     method: EthersContractMethod<C, T, MethodName>,
@@ -33,12 +33,12 @@ export type ContractMetaMethodUtilFunction<Data, C extends Contract = Contract> 
 export class ContractMetaMethod<
     C extends Contract,
     M extends ContractMethodNames<C>,
-    Data extends MetaMethodExtraParams<any>
+    Data extends MetaMethodExtraParams<any>,
 > {
     static calcBufferedGas: CalcBufferedGasFunction = async (estimatedGasUsed, context) => {
         const network = await context.contract.provider.getNetwork();
         if (network.chainId === CHAIN_ID_MAPPING.ARBITRUM) {
-            return bnMax(calcSlippedUpAmount(estimatedGasUsed, 0.3), estimatedGasUsed.add(300_000));
+            return bnMax(calcSlippedUpAmount(estimatedGasUsed, 0.5), estimatedGasUsed.add(600_000));
         }
         return bnMax(calcSlippedUpAmount(estimatedGasUsed, 0.1), estimatedGasUsed.add(100_000));
     };
@@ -63,7 +63,7 @@ export class ContractMetaMethod<
         C extends Contract,
         MethodName extends ContractMethodNames<C>,
         Data extends MetaMethodExtraParams<T>,
-        ExtraData extends object
+        ExtraData extends object,
     >(
         obj: Awaited<MetaMethodReturnType<T, C, MethodName, Data>>,
         extraData: ExtraData
@@ -86,7 +86,7 @@ export class ContractMetaMethod<
         C extends Contract,
         MethodName extends ContractMethodNames<C>,
         Data extends MetaMethodExtraParams<T>,
-        ExtraData extends object
+        ExtraData extends object,
     >(
         obj: MetaMethodReturnType<T, C, MethodName, Data>,
         extraData: ExtraData
@@ -251,7 +251,7 @@ export function callMetaMethod<
     C extends Contract,
     M extends ContractMethodNames<C>,
     T extends MetaMethodType,
-    Data extends MetaMethodExtraParams<T>
+    Data extends MetaMethodExtraParams<T>,
 >(
     contract: WrappedContract<C>,
     methodName: M,

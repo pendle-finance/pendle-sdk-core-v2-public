@@ -1,0 +1,40 @@
+{
+  "marketAddress": "0x8621c587059357d6c669f72da3bfe1398fc0d0b5",
+  "expiry_ms": 1719446400000,
+  "ptAddress": "0xb72b988caf33f3d8a6d816974fe8caa199e5e86c",
+  "syAddress": "0x50288c30c37fa1ec6167a31e575ea8632645de20",
+  "ytAddress": "0xa1c32ef8d3c4c30cb596bab8647e11daf0fa5c94",
+  "rewardTokens": [
+    {
+      "name": "Pendle",
+      "decimals": 18,
+      "address": "0x0c880f6761f1af8d9aa9c466984b80dab9a8c9e8"
+    }
+  ],
+  "tokensIn": [
+    {
+      "name": "USD Coin",
+      "decimals": 6,
+      "address": "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+    },
+    {
+      "name": "Aave Arbitrum USDCn",
+      "decimals": 6,
+      "address": "0x724dc807b04555b71ed48a6896b6f41593b8c637",
+      "disableTesting": true
+    }
+  ],
+  "tokensOut": [
+    {
+      "name": "USD Coin",
+      "decimals": 6,
+      "address": "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+    },
+    {
+      "name": "Aave Arbitrum USDCn",
+      "decimals": 6,
+      "address": "0x724dc807b04555b71ed48a6896b6f41593b8c637",
+      "disableTesting": true
+    }
+  ]
+}

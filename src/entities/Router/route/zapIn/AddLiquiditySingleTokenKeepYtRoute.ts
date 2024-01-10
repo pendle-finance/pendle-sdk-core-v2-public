@@ -16,7 +16,7 @@ export type AddLiquiditySingleTokenKeepYtRouteData = BaseZapInRouteData & {
 };
 
 export type AddLiquiditySingleTokenKeepYtRouteConfig<
-    SelfType extends BaseAddLiquiditySingleTokenKeepYtRoute<SelfType>
+    SelfType extends BaseAddLiquiditySingleTokenKeepYtRoute<SelfType>,
 > = BaseZapInRouteConfig<SelfType>;
 
 export type AddLiquiditySingleTokenKeepYtRouteDebugInfo = ZapInRouteDebugInfo & {
@@ -29,7 +29,7 @@ export type AddLiquiditySingleTokenKeepYtRouteDebugInfo = ZapInRouteDebugInfo & 
 };
 
 export abstract class BaseAddLiquiditySingleTokenKeepYtRoute<
-    SelfType extends BaseAddLiquiditySingleTokenKeepYtRoute<SelfType>
+    SelfType extends BaseAddLiquiditySingleTokenKeepYtRoute<SelfType>,
 > extends BaseZapInRoute<AddLiquiditySingleTokenKeepYtRouteData, SelfType> {
     override readonly routeName = 'AddLiquiditySingleTokenKeepYt';
 

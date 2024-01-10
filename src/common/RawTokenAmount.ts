@@ -23,3 +23,7 @@ export type RawTokenAmount<AmountType extends BigNumberish = BN> = {
 export function createTokenAmount({ token, amount }: { token: string; amount: BigNumberish }): RawTokenAmount {
     return { token: toAddress(token), amount: BN.from(amount) };
 }
+
+export function rawTokenAmountToStringTuple({ token, amount }: RawTokenAmount<BigNumberish>) {
+    return [token, BN.from(amount).toString()];
+}

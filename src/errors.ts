@@ -199,7 +199,7 @@ export class EthersJsError extends PendleSdkError {
  */
 export class ContractErrorFactory<
     ErrorType extends PendleSdkError,
-    Fn extends (hexStringData: string, ethersJsError: Error) => ErrorType | undefined
+    Fn extends (hexStringData: string, ethersJsError: Error) => ErrorType | undefined,
 > {
     /**
      *
@@ -287,7 +287,7 @@ export class ContractErrorFactory<
  * @see PendleContractErrorMessageHandler
  */
 export class PendleContractError<
-    ErrorType extends PendleContractErrorType = PendleContractErrorType
+    ErrorType extends PendleContractErrorType = PendleContractErrorType,
 > extends PendleSdkError {
     static readonly errorsInterface = new Interface(PendleContractErrorsAbi);
     /**
@@ -387,7 +387,10 @@ export class BuiltinContractError extends PendleSdkError {
  * Wrapper class for `Panic` error thrown by a contract.
  */
 export class PanicBuiltinContractError extends BuiltinContractError {
-    constructor(readonly code: BN, readonly cause: Error) {
+    constructor(
+        readonly code: BN,
+        readonly cause: Error
+    ) {
         super(`Panic error with code ${String(code)}`);
     }
 }
@@ -396,7 +399,10 @@ export class PanicBuiltinContractError extends BuiltinContractError {
  * Wrapper class for `Error` error thrown by a contract.
  */
 export class ErrorBuiltinContractError extends BuiltinContractError {
-    constructor(readonly reason: string, readonly cause: Error) {
+    constructor(
+        readonly reason: string,
+        readonly cause: Error
+    ) {
         super(reason, { cause });
     }
 }
@@ -412,7 +418,10 @@ export class GasEstimationError extends PendleSdkError {
 }
 
 export class WrappedAxiosError extends PendleSdkError {
-    constructor(message: string, readonly cause: AxiosError) {
+    constructor(
+        message: string,
+        readonly cause: AxiosError
+    ) {
         const prefix = `Wrapped axios error: ${message}: ${cause.message}.`;
         const errorMessage = cause.response ? `${prefix}\nResponse: ${JSON.stringify(cause.response.data)}.` : prefix;
         super(errorMessage, { cause });
@@ -422,7 +431,11 @@ export class WrappedAxiosError extends PendleSdkError {
 EthersJsError.MAKE_ERROR_CALLBACKS.push(PendleContractError.factory, BuiltinContractError.factory);
 
 export class SignerRequired extends PendleSdkError {
-    constructor(readonly operationName: string, message: string, options?: ErrorOptions) {
+    constructor(
+        readonly operationName: string,
+        message: string,
+        options?: ErrorOptions
+    ) {
         super(message, options);
     }
 

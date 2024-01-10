@@ -26,7 +26,7 @@ export type ERC20EntityConfig = PendleEntityConfigOptionalAbi;
 export type ERC20EntityMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<PendleERC20>,
-    ExtraData extends object = object
+    ExtraData extends object = object,
 > = MetaMethodReturnType<T, PendleERC20, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 /**
@@ -37,7 +37,10 @@ export class ERC20Entity extends PendleEntity implements ERC20Like {
      * @param address - the inner contract address
      * @param config - the entity configuration.
      */
-    constructor(readonly address: Address, config: ERC20EntityConfig) {
+    constructor(
+        readonly address: Address,
+        config: ERC20EntityConfig
+    ) {
         super(address, { abi: PendleERC20ABI, ...config });
     }
 

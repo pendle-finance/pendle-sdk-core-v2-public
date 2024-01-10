@@ -68,6 +68,7 @@ export function useRestoreEvmSnapShotAfterAll(): {
 }
 
 export function print(message: any): void {
+    // eslint-disable-next-line no-console
     console.log(inspect(message, { showHidden: false, depth: null, colors: true }));
 }
 
@@ -99,7 +100,8 @@ export async function setERC20Balance(address: Address, user: Address, value: BN
         testEnv.networkConnection.provider
     );
     if (!slot) {
-        console.log(`Can not set user balance for token ${address}`);
+        // eslint-disable-next-line no-console
+        console.error(`Can not set user balance for token ${address}`);
         return;
     }
     await erc20SlotScanner.setERC20Balance(address, user, value, slot, networkConnection.provider);
@@ -174,7 +176,7 @@ export function useSetTime(
     useRestoreEvmSnapShotAfterAll();
 
     beforeAll(async () => {
-        jest.useFakeTimers().setSystemTime(targetTime);
+        jest.useFakeTimers({ advanceTimers: true }).setSystemTime(targetTime);
 
         const blk = await provider.getBlock('latest');
         const timeToIncrease = Math.ceil(targetTime.getTime() / 1000) - blk.timestamp;

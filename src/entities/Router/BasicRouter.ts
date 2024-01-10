@@ -46,7 +46,7 @@ export class BasicRouter extends BaseRouter {
      * @returns the route having tokenRedeemSy equals its target token.
      */
     override async findBestZapOutRoute<
-        ZapOutRoute extends BaseZapOutRoute<BaseZapOutRouteIntermediateData, ZapOutRoute>
+        ZapOutRoute extends BaseZapOutRoute<BaseZapOutRouteIntermediateData, ZapOutRoute>,
     >(routes: ZapOutRoute[]): Promise<ZapOutRoute> {
         return Promise.resolve(routes.filter((route) => areSameAddresses(route.targetToken, route.tokenRedeemSy))[0]);
     }
@@ -55,7 +55,7 @@ export class BasicRouter extends BaseRouter {
      * @returns the route that does not use aggregator
      */
     override async findBestLiquidityMigrationRoute<
-        LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any>
+        LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any>,
     >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute> {
         return routes.filter((route) => areSameAddresses(route.tokenRedeemSy, route.tokenMintSy))[0];
     }

@@ -18,12 +18,12 @@ type IsBuiltin<T> = T extends Builtin ? true : false;
 type AreBuiltins<Arr> = Arr extends readonly []
     ? true
     : Arr extends readonly (infer T)[]
-    ? IsBuiltin<T>
-    : Arr extends readonly [head: infer Head, ...tails: infer Tail]
-    ? [IsBuiltin<Head>, AreBuiltins<Tail>] extends [true, true]
-        ? true
-        : false
-    : false;
+      ? IsBuiltin<T>
+      : Arr extends readonly [head: infer Head, ...tails: infer Tail]
+        ? [IsBuiltin<Head>, AreBuiltins<Tail>] extends [true, true]
+            ? true
+            : false
+        : false;
 type IsFunctionOfBuiltin<T> = T extends (...params: infer Params) => unknown
     ? AreBuiltins<Params> extends true
         ? T

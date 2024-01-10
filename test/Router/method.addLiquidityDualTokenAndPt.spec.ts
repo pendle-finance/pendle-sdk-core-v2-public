@@ -3,6 +3,7 @@ import * as tokenHelper from '../util/tokenHelper';
 import * as testHelper from '../util/testHelper';
 import * as constants from '../util/constants';
 import * as testEnv from '../util/testEnv';
+import * as iters from 'itertools';
 
 import {
     tokensInToTest,
@@ -30,12 +31,15 @@ describe('Router#addLiquidityDualTokenAndPt', () => {
         }
     });
 
-    const tokensToTests = [
-        { name: 'native token', address: pendleSDK.NATIVE_ADDRESS_0x00 },
-        ...tokensInToTest,
-        ...testEnv.currentConfig.zappableTokensToTest,
-    ];
-    describe.each(tokensToTests)('With tokenIn $name ($address)', (token) => {
+    const tokensToTests = iters.uniqueEverseen(
+        [
+            { name: 'native token', address: pendleSDK.NATIVE_ADDRESS_0x00 },
+            ...tokensInToTest,
+            ...testEnv.currentConfig.zappableTokensToTest,
+        ],
+        (key) => key.address
+    );
+    describe.each([...tokensToTests])('With tokenIn $name ($address)', (token) => {
         testHelper.useRestoreEvmSnapShotAfterEach();
 
         let tokenBalanceBefore: pendleSDK.BN;

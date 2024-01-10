@@ -33,7 +33,7 @@ export type SyEntityConfig = ERC20EntityConfig & {
 export type SyEntityMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<SYBase>,
-    ExtraData extends object = object
+    ExtraData extends object = object,
 > = MetaMethodReturnType<T, SYBase, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 /**
@@ -42,7 +42,10 @@ export type SyEntityMetaMethodReturnType<
 export class SyEntity extends ERC20Entity {
     readonly chainId: ChainId;
 
-    constructor(readonly address: Address, config: SyEntityConfig) {
+    constructor(
+        readonly address: Address,
+        config: SyEntityConfig
+    ) {
         super(address, { abi: SYBaseABI, ...config });
         this.chainId = config.chainId;
     }

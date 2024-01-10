@@ -66,7 +66,10 @@ export const networkConnectionWithChainId = {
 };
 
 class ConstantGasFeeEstimator extends GasFeeEstimator {
-    constructor(readonly constGasFee: BN, readonly provider: providers.Provider) {
+    constructor(
+        readonly constGasFee: BN,
+        readonly provider: providers.Provider
+    ) {
         super(provider);
     }
 

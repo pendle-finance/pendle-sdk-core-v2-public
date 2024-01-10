@@ -45,7 +45,7 @@ export type MakeCallParams = [
     tokenAmountIn: RawTokenAmount<BigNumberish>,
     tokenOut: Address,
     slippage: number,
-    params?: { aggregatorReceiver?: Address; needScale?: boolean }
+    params?: { aggregatorReceiver?: Address; needScale?: boolean },
 ];
 
 export interface AggregatorHelper<CheckedResult extends boolean = boolean> {

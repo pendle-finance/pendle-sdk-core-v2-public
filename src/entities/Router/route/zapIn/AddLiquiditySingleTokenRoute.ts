@@ -33,7 +33,7 @@ export type AddLiquiditySingleTokenRouteDebugInfo = ZapInRouteDebugInfo & {
 };
 
 export abstract class BaseAddLiquiditySingleTokenRoute<
-    SelfType extends BaseAddLiquiditySingleTokenRoute<SelfType>
+    SelfType extends BaseAddLiquiditySingleTokenRoute<SelfType>,
 > extends BaseZapInRoute<AddLiquiditySingleTokenRouteData, SelfType> {
     override readonly routeName = 'AddLiquiditySingleToken';
     constructor(
@@ -136,7 +136,17 @@ export abstract class BaseAddLiquiditySingleTokenRoute<
     async getApproxParam() {
         const previewResult = await this.preview();
         if (!previewResult) return undefined;
-        return this.context.getApproxParamsToPullPt(previewResult.netPtFromSwap, this.slippage);
+        // This part is legacy. To be removed.
+        return this.router.approxParamsGenerator.generate(this.router, {
+            routerMethod: 'addLiquiditySingleToken',
+            approxSearchingRange: {
+                guessMin: 0n,
+                guessMax: (1n << 256n) - 1n,
+            },
+            guessOffchain: previewResult.netPtFromSwap,
+            slippage: this.slippage,
+            limitOrderMatchedResult: undefined,
+        });
     }
 
     async getMinLpOut() {

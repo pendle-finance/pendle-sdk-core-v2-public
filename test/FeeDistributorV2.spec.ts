@@ -19,7 +19,7 @@ import * as testHelper from './util/testHelper';
             multicall: currentConfig.multicall,
         });
 
-        console.log(feeDistributor.merkleTree.toString());
+        testHelper.print(feeDistributor.merkleTree.toString());
     });
 
     it('merkle root check', () => {
@@ -41,7 +41,7 @@ import * as testHelper from './util/testHelper';
             // const [balanceBefore] = await getUserBalances(receiver, [NATIVE_ADDRESS_0x00]);
 
             const proof = await feeDistributor.getProof(receiver, amount);
-            console.log(
+            testHelper.print(
                 feeDistributor.merkleTree.verify(
                     proof,
                     FeeDistributorV2WithStaticProof.leaveHashHex(receiver, amount),

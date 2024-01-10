@@ -43,8 +43,7 @@ testHelper.describeIf(isMainchain(ACTIVE_CHAIN_ID))('VePendle', () => {
         it('#increaseLockPosition', async () => {
             const pendleBalanceBefore = await pendle.balanceOf(signerAddress);
             if (pendleBalanceBefore.isZero()) {
-                console.warn(`No PENDLE balance in ${signerAddress}.`);
-                return;
+                throw new Error(`No PENDLE balance in ${signerAddress}.`);
             }
             // lock all PENDLE
             const lockAmount = pendleBalanceBefore;

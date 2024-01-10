@@ -84,7 +84,10 @@ export class Multicall {
 
     readonly batchMap = new Map<BlockTag, MulticallBatch>();
     public readonly cacheWrappedContract = new WeakMap<ContractLike, MulticallStatic<Contract>>();
-    constructor(readonly callLimit: number, private multicallAggregateCaller: MulticallAggregateCaller) {}
+    constructor(
+        readonly callLimit: number,
+        private multicallAggregateCaller: MulticallAggregateCaller
+    ) {}
 
     static create(params: {
         chainId: ChainId;
@@ -112,6 +115,7 @@ export class Multicall {
             });
         } else {
             if (withGasLimit) {
+                // eslint-disable-next-line no-console
                 console.info(`Multicall with gas limit is not supported on chain ${chainId}. Fallback to Multicall3`);
             }
             multicallAggregateCaller = new MulticallAggregateCallerNoGasLimit({ chainId, provider });
@@ -217,7 +221,10 @@ export class Multicall {
 }
 
 class MulticallBatch extends batcher.StaticStorageBatcher<ContractCall> {
-    constructor(private readonly multicallInstance: Multicall, readonly blockTag: BlockTag = 'latest') {
+    constructor(
+        private readonly multicallInstance: Multicall,
+        readonly blockTag: BlockTag = 'latest'
+    ) {
         super();
         this.multicallInstance.batchMap.set(this.blockTag, this);
     }

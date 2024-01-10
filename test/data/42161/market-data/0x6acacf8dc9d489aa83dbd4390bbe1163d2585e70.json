@@ -1,0 +1,43 @@
+{
+  "marketAddress": "0x6acacf8dc9d489aa83dbd4390bbe1163d2585e70",
+  "expiry_ms": 1711584000000,
+  "ptAddress": "0x9addde3a8819c2eed4e5113b7aa1cecf4096bec3",
+  "syAddress": "0x22b9e6f6c462bb0b03f76d3a8246950d95f03692",
+  "ytAddress": "0x0c9d0caf36c14f26d29a18d84b19a4c2565f5739",
+  "rewardTokens": [
+    {
+      "name": "Arbitrum",
+      "decimals": 18,
+      "address": "0x912ce59144191c1204e64559fe8253a0e49e6548"
+    },
+    {
+      "name": "Pendle",
+      "decimals": 18,
+      "address": "0x0c880f6761f1af8d9aa9c466984b80dab9a8c9e8"
+    }
+  ],
+  "tokensIn": [
+    {
+      "name": "Wrapped Ether",
+      "decimals": 18,
+      "address": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+    },
+    {
+      "name": "Silo Finance Borrowable WETH Deposit in wstETH Silo",
+      "decimals": 18,
+      "address": "0xc46c5de6eca1ca6dc3f8c5d3ce863ae326f4b2cf"
+    }
+  ],
+  "tokensOut": [
+    {
+      "name": "Wrapped Ether",
+      "decimals": 18,
+      "address": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+    },
+    {
+      "name": "Silo Finance Borrowable WETH Deposit in wstETH Silo",
+      "decimals": 18,
+      "address": "0xc46c5de6eca1ca6dc3f8c5d3ce863ae326f4b2cf"
+    }
+  ]
+}

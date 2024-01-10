@@ -5,7 +5,10 @@ import type { Address } from '../common';
 export type YieldContractFactoryConfig = PendleEntityConfigOptionalAbi;
 
 export class YieldContractFactory extends PendleEntity {
-    constructor(readonly address: Address, config: YieldContractFactoryConfig) {
+    constructor(
+        readonly address: Address,
+        config: YieldContractFactoryConfig
+    ) {
         super(address, { abi: PendleYieldContractFactoryABI, ...config });
     }
 

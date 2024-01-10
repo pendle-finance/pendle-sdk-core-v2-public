@@ -24,7 +24,10 @@ export class NativeERC20 implements ERC20Like {
     private readonly _name: string;
     private readonly _symbol: string;
 
-    constructor(readonly address: NativeTokenAddress, config: NativeERC20Config) {
+    constructor(
+        readonly address: NativeTokenAddress,
+        config: NativeERC20Config
+    ) {
         this.networkConnection = copyNetworkConnection(config);
 
         if (areSameAddresses(address, NATIVE_ADDRESS_0x00)) {

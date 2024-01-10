@@ -21,11 +21,14 @@ export type VotingControllerConfig = PendleEntityConfigOptionalAbi;
 export type VotingControllerMetaMethodReturnType<
     T extends MetaMethodType,
     MethodName extends ContractMethodNames<PendleVotingControllerUpg>,
-    ExtraData extends object
+    ExtraData extends object,
 > = MetaMethodReturnType<T, PendleVotingControllerUpg, MethodName, ExtraData & MetaMethodExtraParams<T>>;
 
 export class VotingController extends PendleEntity {
-    constructor(readonly address: Address, config: VotingControllerConfig) {
+    constructor(
+        readonly address: Address,
+        config: VotingControllerConfig
+    ) {
         super(address, { abi: PendleVotingControllerUpgABI, ...config });
     }
 

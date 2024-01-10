@@ -133,7 +133,10 @@ export class OneInchAggregatorHelperAxiosError extends WrappedAxiosError {
 }
 
 export class OneInchAggregatorHelperSwapAPI400Error extends OneInchAggregatorHelperError {
-    constructor(readonly data: OneInchSwapAPI400ErrorData, params?: PendleSdkErrorParams) {
+    constructor(
+        readonly data: OneInchSwapAPI400ErrorData,
+        params?: PendleSdkErrorParams
+    ) {
         super(data.description, params);
     }
 }

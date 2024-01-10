@@ -16,7 +16,7 @@ import {
     sendTxWithInfApproval,
 } from './setup';
 
-describe('Router#redeemPyFromToken', () => {
+describe('Router#redeemPyToToken', () => {
     sharedTests({ isTestingAfterExpiry: false });
 
     describe('with expired market', () => {
@@ -82,7 +82,7 @@ function sharedTests(testParams: { isTestingAfterExpiry: boolean }) {
                 tokenHelper.getBalance(token.address, signerAddress),
             ]);
 
-            const netTokenOut = pendleSDK.assertDefined(await readerData.route.getNetOut());
+            const { netTokenOut } = readerData;
             expect([tokenBalanceBefore, tokenBalanceAfter]).toHaveDifferenceBN(
                 pendleSDK.isNativeToken(token.address) ? netTokenOut.sub(readerData.gas.nativeSpent) : netTokenOut,
                 constants.EPSILON_FOR_AGGREGATOR

@@ -1,6 +1,7 @@
 import BigNumber from 'bignumber.js';
 import { BigNumber as BN, ethers } from 'ethers';
 import { Address, NATIVE_ADDRESS_0x00, Router, decimalFactor, toAddress } from '../src';
+import * as pendleSDK from '../src';
 
 // TODO export classes
 import { DEFAULT_EPSILON, EPSILON_FOR_AGGREGATOR, INF, SLIPPAGE_TYPE2 } from './util/constants';
@@ -54,7 +55,7 @@ const zapInData = new CsvWriter([
     'tokenMintSy',
     'gasUsed',
     'netLpOut',
-    'estimateEthOut',
+    'estimatedEthOut',
     'actualReceived',
     'selected',
 ] as const);
@@ -68,12 +69,12 @@ const zapOutData = new CsvWriter([
     'tokenRedeemSy',
     'gasUsed',
     'netTokenOut',
-    'estimateEthOut',
+    'estimatedEthOut',
     'actualReceived',
     'selected',
 ] as const);
 
-testHelper.describeIf(currentConfig.chainId === 1)('Routing', () => {
+testHelper.describeIf(currentConfig.chainId === pendleSDK.CHAIN_ID_MAPPING.ARBITRUM)('Routing', () => {
     testHelper.useRestoreEvmSnapShotAfterEach();
     const router = Router.getRouter(currentConfig.routerConfig);
     const signerAddress = networkConnectionWithChainId.signerAddress;
@@ -170,19 +171,31 @@ testHelper.describeIf(currentConfig.chainId === 1)('Routing', () => {
             expect(exactOut).toEqBN(metaMethod.data.netLpOut, EPSILON_FOR_AGGREGATOR);
             expect(tokenBalanceBefore.sub(tokenBalanceAfter)).toEqBN(tokenAmount, DEFAULT_EPSILON);
 
-            const routes = [...metaMethod.data.route.context.routes];
+            const routes = [
+                ...('loRoutingResult' in metaMethod.data ? metaMethod.data.loRoutingResult.allRoutes : []),
+                ...('tokenMintSySelectionRoutingResult' in metaMethod.data
+                    ? metaMethod.data.tokenMintSySelectionRoutingResult.allRoutes
+                    : []),
+            ];
+            const gasFee = await router.gasFeeEstimator.getGasFee();
 
             for (const route of routes) {
-                const selected = route.tokenMintSy == metaMethod.data.route.tokenMintSy;
-                const gasUsedBN = await route.getGasUsed();
+                const selected = route === metaMethod.data.route;
+                const gasUsedBN = await pendleSDK.Route.estimateGasUsed(route).catch(() => ethers.constants.MaxUint256);
                 const gasUsedStr = gasUsedBN.eq(INF) ? 'null' : gasUsedBN.toString();
-                const netOut = await route.getNetOut().then(nullOrToEthAmount);
-                const actualReceived = await route.estimateActualReceivedInEth().then(nullOrToEthAmount);
-                const estimateEthOut = await route.estimateNetOutInEth().then(nullOrToEthAmount);
+                const netOut = await pendleSDK.Route.getNetOut(route).catch(() => BN.from(-1));
+                const estimatedEthOut = await pendleSDK.Route.estimateNetOutInNative(route).catch(() => BN.from(-1));
+                const actualReceived = estimatedEthOut.sub(gasUsedBN.mul(gasFee));
                 const tokenName = await tokenHelper.getERC20Name(token);
-                const tokenMintSyName = await tokenHelper.getERC20Name(route.tokenMintSy);
-                const actualAmountInEth = await route.estimateSourceTokenAmountInEth().then(nullOrToEthAmount);
-                const debugInfo = await route.gatherDebugInfo();
+                const tokenMintSyName = await tokenHelper.getERC20Name(
+                    await pendleSDK.Route.getSYIOTokenAmount(route).then(({ token }) => token)
+                );
+                const actualAmountInEth = await router.tokenAmountConverter(
+                    router,
+                    { token, amount: tokenAmount },
+                    pendleSDK.NATIVE_ADDRESS_0x00
+                );
+                const debugInfo = await pendleSDK.Route.gatherDebugInfo(route);
                 print({ debugInfo });
 
                 zapInData.addRow({
@@ -194,8 +207,8 @@ testHelper.describeIf(currentConfig.chainId === 1)('Routing', () => {
                     tokenMintSy: tokenMintSyName,
                     gasUsed: gasUsedStr,
                     netLpOut: netOut,
-                    estimateEthOut: estimateEthOut,
-                    actualReceived: actualReceived,
+                    estimatedEthOut,
+                    actualReceived,
                     selected: selected,
                 });
             }
@@ -236,22 +249,30 @@ testHelper.describeIf(currentConfig.chainId === 1)('Routing', () => {
             const exactOut = lpBalanceBefore.sub(lpBalanceAfter);
             expect(exactOut).toEqBN(lpAmountToRemove, EPSILON_FOR_AGGREGATOR);
             expect(tokenBalanceAfter.sub(tokenBalanceBefore)).toEqBN(
-                (await metaMethod.data.route.getNetOut())!,
+                await pendleSDK.Route.getNetOut(metaMethod.data.route),
                 DEFAULT_EPSILON
             );
 
-            const routes = [...metaMethod.data.route.context.routes];
+            const routes = [
+                ...('tokenMintSySelectionRoutingResult' in metaMethod.data
+                    ? metaMethod.data.tokenRedeemSySelectionRoutingResult.allRoutes
+                    : []),
+            ];
+
+            const gasFee = await router.gasFeeEstimator.getGasFee();
 
             for (const route of routes) {
-                const selected = route.tokenRedeemSy == metaMethod.data.route.tokenRedeemSy;
-                const gasUsedBN = await route.getGasUsed();
+                const selected = route === metaMethod.data.route;
+                const gasUsedBN = await pendleSDK.Route.estimateGasUsed(route).catch(() => ethers.constants.MaxUint256);
                 const gasUsedStr = gasUsedBN.eq(INF) ? 'null' : gasUsedBN.toString();
-                const netOut = await route.getNetOut().then(nullOrToEthAmount);
-                const actualReceived = await route.estimateActualReceivedInEth().then(nullOrToEthAmount);
-                const estimateEthOut = await route.estimateNetOutInEth().then(nullOrToEthAmount);
+                const netOut = await pendleSDK.Route.getNetOut(route).catch(() => BN.from(-1));
+                const estimatedEthOut = await pendleSDK.Route.estimateNetOutInNative(route).catch(() => BN.from(-1));
+                const actualReceived = estimatedEthOut.sub(gasUsedBN.mul(gasFee));
                 const tokenName = await tokenHelper.getERC20Name(token);
-                const tokenRedeemSy = await tokenHelper.getERC20Name(route.tokenRedeemSy);
-                const debugInfo = await route.gatherDebugInfo();
+                const tokenRedeemSy = await tokenHelper.getERC20Name(
+                    await pendleSDK.Route.getSYIOTokenAmount(route).then(({ token }) => token)
+                );
+                const debugInfo = await pendleSDK.Route.gatherDebugInfo(route);
                 print({ debugInfo });
 
                 zapOutData.addRow({
@@ -263,9 +284,9 @@ testHelper.describeIf(currentConfig.chainId === 1)('Routing', () => {
                     tokenRedeemSy,
                     gasUsed: gasUsedStr,
                     netTokenOut: netOut,
-                    estimateEthOut: estimateEthOut,
-                    actualReceived: actualReceived,
-                    selected: selected,
+                    estimatedEthOut,
+                    actualReceived,
+                    selected,
                 });
             }
         }
@@ -285,7 +306,7 @@ function formatEthAmount(amount: string) {
     return ethers.utils.formatEther(amount);
 }
 
-function nullOrToEthAmount<T extends null | undefined | { toString(): string }>(value: T): string {
+function _nullOrToEthAmount<T extends null | undefined | { toString(): string }>(value: T): string {
     const str = nullOrToString(value);
     return formatEthAmount(str);
 }

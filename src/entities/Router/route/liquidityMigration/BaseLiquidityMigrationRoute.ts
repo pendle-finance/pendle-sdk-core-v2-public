@@ -6,7 +6,7 @@ import { BN, Address, NoArgsCache, BigNumberish } from '../../../../common';
 import { FixedRouterMetaMethodExtraParams } from '../../types';
 
 export type BaseLiquidityMigrationFixTokenRedeemSyRouteConfig<
-    SelfType extends BaseLiquidityMigrationFixTokenRedeemSyRoute<any>
+    SelfType extends BaseLiquidityMigrationFixTokenRedeemSyRoute<any>,
 > = BaseRouteConfig<SelfType> & {
     removeLiquidityRoute: PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper;
 };
@@ -19,7 +19,7 @@ export type LiquidityMigrationFixTokenRedeemSyRouteDebugInfo = RouteDebugInfo & 
 
 export abstract class BaseLiquidityMigrationFixTokenRedeemSyRoute<
     SelfType extends BaseLiquidityMigrationFixTokenRedeemSyRoute<SelfType>,
-    AddLiquidityRouteType extends BaseZapInRoute<any, any> = BaseZapInRoute<any, any>
+    AddLiquidityRouteType extends BaseZapInRoute<any, any> = BaseZapInRoute<any, any>,
 > extends BaseRoute<SelfType> {
     readonly removeLiquidityRoute: PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper;
 
