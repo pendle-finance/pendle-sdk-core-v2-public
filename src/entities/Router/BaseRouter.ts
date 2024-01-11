@@ -122,7 +122,7 @@ export abstract class BaseRouter extends PendleEntity {
     }
 
     async getSignerAddress(): Promise<Address | undefined> {
-        const signerAddress = this.networkConnection.signer?.getAddress()?.then(toAddress);
+        const signerAddress = this.networkConnection.signer?.getAddress().then(toAddress);
         if (signerAddress === undefined) return undefined;
         return signerAddress;
     }

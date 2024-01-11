@@ -1,4 +1,4 @@
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosHeaders } from 'axios';
 import {
     SyEntity,
     PendleContractError,
@@ -81,21 +81,17 @@ describe('KyberSwapAggregatorHelperRequestError', () => {
 });
 
 describe('WrappedAxiosError', () => {
-    const testAxiosError = new AxiosError(
-        'Test Axios Error',
-        '696',
-        {},
-        {},
-        {
-            data: {
-                error: 'axios error data',
-            },
-            status: 696,
-            statusText: '696',
-            headers: {},
-            config: {},
-        }
-    );
+    const testAxiosError = new AxiosError('Test Axios Error', '696', undefined, undefined, {
+        data: {
+            error: 'axios error data',
+        },
+        status: 696,
+        statusText: '696',
+        headers: {},
+        config: {
+            headers: new AxiosHeaders(),
+        },
+    });
     it('Kyber Axios Error', async () => {
         try {
             throw new KyberSwapAggregatorHelperAxiosError(testAxiosError);

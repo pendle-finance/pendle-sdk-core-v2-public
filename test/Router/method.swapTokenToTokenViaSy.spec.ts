@@ -5,12 +5,12 @@ import * as testHelper from '../util/testHelper';
 import * as testEnv from '../util/testEnv';
 import * as constants from '../util/constants';
 
-import { router, signerAddress, chainId, sendTxWithInfApproval, tokensOutToTest, syAddress } from './setup';
+import { router, signerAddress, chainId, sendTxWithInfApproval, syAddress } from './setup';
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
 describe(pendleSDK.Router.prototype.swapTokenToTokenViaSy, () => {
     const pairsTokenToTest = [
-        ...iters.flatmap(iters.take(2, tokensOutToTest), (tokenOut) => [
+        ...iters.flatmap(iters.take(2, testEnv.currentConfig.market.tokensOut), (tokenOut) => [
             { fromToken: tokenHelper.NATIVE_TOKEN_0x00, toToken: tokenOut },
             ...testEnv.currentConfig.zappableTokensToTest.map((tok) => ({
                 fromToken: tok,
