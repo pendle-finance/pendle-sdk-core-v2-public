@@ -15,8 +15,13 @@ export function createMintedSyAmountGetter(
     'approvedSignerAddressGetter' | 'aggregatorResultGetter' | 'syIOTokenAmountGetter'
 > {
     const { tokenInputStructBuilder = createTokenInputStructBuilder(router) } = params;
-    return routeHelper.addCacheForComponent({
-        call: async (route) => {
+    const name = 'intermediateSyGetter.fromTokenMintSy';
+    const debugInfo = { syAddress: syEntity.address };
+    return routeHelper.createMinimalRouteComponent(
+        router,
+        name,
+        ['approvedSignerAddressGetter', 'aggregatorResultGetter', 'syIOTokenAmountGetter'],
+        async (route) => {
             const [signerAddress] = await Promise.all([Route.getApprovedSignerAddress(route)]);
             if (signerAddress === undefined) {
                 const tokenMintSyAmount = await Route.getSYIOTokenAmount(route);
@@ -34,16 +39,6 @@ export function createMintedSyAmountGetter(
                 );
             }
         },
-        description: async (route) => {
-            return [
-                'intermediateSyGetter',
-                'fromTokenMintSy',
-                ...(await Promise.all([
-                    route.approvedSignerAddressGetter.description(route),
-                    route.aggregatorResultGetter.description(route),
-                    route.syIOTokenAmountGetter.description(route),
-                ])),
-            ];
-        },
-    });
+        { debugInfo }
+    );
 }

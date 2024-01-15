@@ -11,6 +11,7 @@ export function createTokenInputStructBuilder(
 ): TokenInputStructBuilder {
     const { needScale = false } = params ?? {};
     return routeHelper.createMinimalRouteComponent(
+        router,
         'tokenInputStructBuilder',
         ['aggregatorResultGetter'],
         async (route) => {

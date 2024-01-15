@@ -25,13 +25,11 @@ export function createApprovedSignerAddressGetter(
         erc20: createERC20(token, router.entityConfig),
         amount,
     }));
-    const key = [
+    const name = [
         'approvalChecker',
-        'tokens',
-        ...tokenAmounts.map(common.rawTokenAmountToStringTuple),
-        'spender',
-        spenderAddress,
-    ].join('.');
+        `tokens: ${tokenAmounts.map(common.rawTokenAmountToString).join(';')}`,
+        `spender: ${spenderAddress}`,
+    ].join('\n');
 
     const getApprovedSignerAddress = async () => {
         const signerAddress = await router.getSignerAddress();
@@ -49,10 +47,18 @@ export function createApprovedSignerAddressGetter(
         return allApproved ? signerAddress : undefined;
     };
 
+    const debugInfo = {
+        spenderAddress,
+        tokenAmounts,
+        lazy,
+    };
+
     if (lazy) {
-        return routeHelper.createMinimalRouteComponent(key, [], getApprovedSignerAddress);
+        return routeHelper.createMinimalRouteComponent(router, name, [], getApprovedSignerAddress, { debugInfo });
     } else {
         const approvedSignerAddressPromise = getApprovedSignerAddress();
-        return routeHelper.createMinimalRouteComponent(key, [], () => approvedSignerAddressPromise);
+        return routeHelper.createMinimalRouteComponent(router, name, [], () => approvedSignerAddressPromise, {
+            debugInfo,
+        });
     }
 }

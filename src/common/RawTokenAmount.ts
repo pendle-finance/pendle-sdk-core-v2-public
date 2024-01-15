@@ -27,3 +27,7 @@ export function createTokenAmount({ token, amount }: { token: string; amount: Bi
 export function rawTokenAmountToStringTuple({ token, amount }: RawTokenAmount<BigNumberish>) {
     return [token, BN.from(amount).toString()];
 }
+
+export function rawTokenAmountToString({ token, amount }: RawTokenAmount<BigNumberish>) {
+    return `${token}:${BN.from(amount).toString()}`;
+}

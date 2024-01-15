@@ -1,6 +1,8 @@
 import * as z from 'zod';
 import { CHAIN_ID_MAPPING, toAddress } from '../../src';
 
+const BooleanSchema = z.enum(['0', '1']).transform((value) => value === '1');
+
 export const TEST_ENV_SCHEMA = z.object({
     INFURA_PROJECT_ID: z.string(),
     ACTIVE_CHAIN_ID: z.coerce.number().transform((value, ctx) => {
@@ -35,15 +37,10 @@ export const TEST_ENV_SCHEMA = z.object({
 
     ONEINCH_API_KEY: z.string().default(''),
 
-    INCLUDE_PENDLE_BACKEND_ZAPPABLE_TOKENS: z
-        .enum(['0', '1'])
-        .default('0')
-        .transform((value) => value === '1'),
+    INCLUDE_PENDLE_BACKEND_ZAPPABLE_TOKENS: BooleanSchema.default('0'),
+    EXCLUDE_SY_IO_TOKENS: BooleanSchema.default('0'),
 
-    EXCLUDE_SY_IO_TOKENS: z
-        .enum(['0', '1'])
-        .default('0')
-        .transform((value) => value === '1'),
+    ENABLE_COMPONENT_CALL_LOGGING: BooleanSchema.default('0'),
 });
 
 export type TestEnv = z.infer<typeof TEST_ENV_SCHEMA>;

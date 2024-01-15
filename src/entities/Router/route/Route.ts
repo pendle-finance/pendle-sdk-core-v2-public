@@ -4,6 +4,7 @@ import * as routerTypes from '../types';
 import * as typefest from 'type-fest';
 import * as aggregatorHelper from '../aggregatorHelper';
 import * as iters from 'itertools';
+import { BaseRouter } from '../BaseRouter';
 
 // === Route definition ====
 export const COMPONENTS = [
@@ -106,6 +107,37 @@ export async function gatherDebugInfo(route: AnyRoute): Promise<object> {
 export type ComponentDescription = string | ComponentDescription[];
 
 export type Component<RequiredComponents extends ComponentName, ReturnType> = {
+    /**
+     * Human readable name for the component.
+     * @remarks
+     * This field will be used mostly for debugging.
+     *
+     * It is {@link common.Deferrable} since sometimes its identification comes
+     * from a Deferrable parameter.
+     */
+    readonly name: common.Deferrable<string>;
+    /**
+     * @remarks
+     * This field does not have the type of {@link RequiredComponents}[] because
+     * it will force the typing to be **Invariance** rather than **Covariance**.
+     *
+     * This field will be used mostly for debugging.
+     *
+     * @see [Wiki page on Covariance and contravariance](https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science))
+     */
+    readonly dependencies: readonly ComponentName[];
+    /**
+     * Optional data for debugging.
+     * @remarks
+     */
+    readonly debugInfo?: object;
+
+    /**
+     * The {@link BaseRotuer} object that this route belong to.
+     * Can be se to have more context.
+     */
+    readonly router: BaseRouter;
+
     description(route: PartialRoute<RequiredComponents>): Promise<ComponentDescription>;
     call(route: PartialRoute<RequiredComponents>): Promise<ReturnType>;
 };

@@ -13,7 +13,19 @@ export function createToRawToken(
     }
 ): Route.AggregatorResultGetter<'syIOTokenAmountGetter'> {
     const { needScale = true, aggregatorReceiver } = params ?? {};
-    return routeHelper.addCacheForComponent({
+    const name = ['AggregatorResultGetter', 'toRawToken', 'syIOTokenAmountGetter'].join('.');
+    const debugInfo = {
+        rawToken,
+        slippage,
+        needScale,
+        aggregatorReceiver,
+    };
+    return routeHelper.applyRouteComponentTrait({
+        router,
+        name,
+        dependencies: ['syIOTokenAmountGetter'],
+        debugInfo,
+
         call: async (route) => {
             const tokenRedeemSyAmount = await Route.getSYIOTokenAmount(route);
             return router.aggregatorHelper.makeCall(tokenRedeemSyAmount, rawToken, slippage, {
@@ -21,12 +33,7 @@ export function createToRawToken(
                 needScale,
             });
         },
-        description: async (route) => [
-            'AggregatorResultGetter',
-            'toRawToken',
-            'syIOTokenAmountGetter',
-            await route.syIOTokenAmountGetter.description(route),
-        ],
+        description: async (route) => [name, await route.syIOTokenAmountGetter.description(route)],
         getInput: (route) => Route.getSYIOTokenAmount(route),
         getOutputTokenAddress: () => Promise.resolve(rawToken),
     });

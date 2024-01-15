@@ -21,10 +21,10 @@ export type LimitOrderRouteSelector = <R extends Route.PartialRoute<'limitOrderM
     route: R
 ) => Promise<LimitOrderRouteSelectorResult<R>>;
 
-export const limitOrderRouteSelectorWithFallback: LimitOrderRouteSelector = async (_router, routeWithLimitOrder) => {
+export const limitOrderRouteSelectorWithFallback: LimitOrderRouteSelector = async (router, routeWithLimitOrder) => {
     const routeNoLimitOrder = {
         ...routeWithLimitOrder,
-        limitOrderMatcher: routeMod.limitOrderMatcher.createEmpty(),
+        limitOrderMatcher: routeMod.limitOrderMatcher.createEmpty(router),
     };
     const allRoutes = [routeWithLimitOrder, routeNoLimitOrder];
     const [withLimitOrderNetOut, noLimitOrderNetOut] = await Promise.allSettled([

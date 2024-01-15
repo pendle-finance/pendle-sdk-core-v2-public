@@ -37,6 +37,7 @@ import {
     areSameAddresses,
     NoArgsCache,
     bnMax,
+    LazyDeferrable,
 } from '../../common';
 
 import {
@@ -349,6 +350,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'addLiquidityDualTokenAndPt',
                 ['aggregatorResultGetter', 'intermediateSyAmountGetter'],
                 buildContractMethodFromRoute,
@@ -359,7 +361,7 @@ export abstract class BaseRouter extends PendleEntity {
             inputTokenAmount,
             { token: pt, amount: BN.from(ptDesired) },
         ]);
-        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
             this,
             syEntity,
@@ -440,7 +442,7 @@ export abstract class BaseRouter extends PendleEntity {
         );
         const limitOrderMatcherForRoute = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapPtForSy', [
             market,
-            async () => BN.from((await pureMarketAddLiqResultPromise).netPtToSwap),
+            LazyDeferrable.create(async () => BN.from((await pureMarketAddLiqResultPromise).netPtToSwap)),
             { routerMethod: 'addLiquiditySinglePt' },
         ]);
         const buildContractMethodFromRoute = async (route: routeMod.Route.PartialRoute<'limitOrderMatcher'>) => {
@@ -491,6 +493,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
 
         const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            this,
             'addLiquiditySinglePt',
             ['limitOrderMatcher'],
             buildContractMethodFromRoute,
@@ -554,7 +557,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const limitOrderMatcherForRoute = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapSyForPt', [
             market,
-            async () => BN.from((await pureMarketAddLiqResultPromise).netSyToSwap),
+            LazyDeferrable.create(async () => BN.from((await pureMarketAddLiqResultPromise).netSyToSwap)),
             { routerMethod: 'addLiquiditySingleSy' },
         ]);
 
@@ -606,6 +609,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
 
         const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            this,
             'addLiquiditySingleSy',
             ['limitOrderMatcher'],
             buildContractMethodFromRoute,
@@ -712,6 +716,7 @@ export abstract class BaseRouter extends PendleEntity {
         const tokenMintSyList = await syEntity.getTokensIn();
 
         const routeLimitOrderMatcher = routeMod.helper.createMinimalRouteComponent(
+            this,
             'LimitOrderMatcher.addLiquiditySingleToken',
             ['intermediateSyAmountGetter'],
             async (route) => {
@@ -790,6 +795,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'addLiquiditySingleToken',
                 ['aggregatorResultGetter', 'intermediateSyAmountGetter', 'limitOrderMatcher'],
                 buildContractMethodFromRoute,
@@ -802,13 +808,13 @@ export abstract class BaseRouter extends PendleEntity {
         const rawTokenInput = { token: tokenIn, amount: BN.from(netTokenIn) };
 
         const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenInput]);
-        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
 
         const partialRoutesNoLO = tokenMintSyList.map((tokenMintSy) =>
             routeMod.Route.assemble({
                 netOutGetter,
                 contractMethodBuilder,
-                limitOrderMatcher: routeMod.limitOrderMatcher.createEmpty(),
+                limitOrderMatcher: routeMod.limitOrderMatcher.createEmpty(this),
                 intermediateSyAmountGetter: mintedSyAmountGetter,
                 syIOTokenAmountGetter,
                 gasUsedEstimator,
@@ -941,6 +947,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'addLiquiditySingleTokenKeepYt',
                 ['intermediateSyAmountGetter', 'aggregatorResultGetter'],
                 buildContractMethodFromRoute,
@@ -954,7 +961,7 @@ export abstract class BaseRouter extends PendleEntity {
                 tokenInputStructBuilder,
             }
         );
-        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const rawTokenInput = { token: tokenIn, amount: BN.from(netTokenIn) };
         const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenInput]);
 
@@ -1085,8 +1092,10 @@ export abstract class BaseRouter extends PendleEntity {
             );
         };
 
-        const intermediateSyAmountGetter = routeMod.helper.createComponentFromConstant('syAmountToRedeem', async () =>
-            BN.from((await marketResultPromise).netSyOut)
+        const intermediateSyAmountGetter = routeMod.helper.createComponentFromConstant(
+            this,
+            'syAmountToRedeem',
+            LazyDeferrable.create(async () => BN.from((await marketResultPromise).netSyOut))
         );
         const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [
             { token: marketEntity.address, amount: BN.from(lpToRemove) },
@@ -1099,6 +1108,7 @@ export abstract class BaseRouter extends PendleEntity {
         });
         const { contractMethodBuilder, gasUsedEstimator, netOutGetter } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'removeLiquidityDualTokenAndPt',
                 ['aggregatorResultGetter'],
                 async (route) => {
@@ -1116,6 +1126,7 @@ export abstract class BaseRouter extends PendleEntity {
                 approvedSignerAddressGetter,
                 intermediateSyAmountGetter,
                 syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
+                    this,
                     tokenRedeemSy,
                     syEntity,
                     params,
@@ -1228,6 +1239,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
 
         const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            this,
             'removeLiquiditySinglePt',
             ['limitOrderMatcher'],
             buildContractMethod,
@@ -1236,7 +1248,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapSyForPt', [
             marketEntity,
-            async () => BN.from((await removeLiqResultPromise).netSyOut),
+            LazyDeferrable.create(async () => BN.from((await removeLiqResultPromise).netSyOut)),
             { routerMethod: 'removeLiquiditySinglePt' },
         ]);
         const routeWithLO = routeMod.Route.assemble({
@@ -1337,6 +1349,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
 
         const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            this,
             'removeLiquiditySingleSy',
             ['limitOrderMatcher'],
             buildContractMethod,
@@ -1345,7 +1358,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapPtForSy', [
             market,
-            async () => BN.from((await removeLiqResultPromise).netPtOut),
+            LazyDeferrable.create(async () => BN.from((await removeLiqResultPromise).netPtOut)),
             { routerMethod: 'removeLiquiditySingleSy' },
         ]);
         const routeWithLO = routeMod.Route.assemble({
@@ -1465,13 +1478,14 @@ export abstract class BaseRouter extends PendleEntity {
         };
 
         const intermediateSyAmountGetter = routeMod.helper.createMinimalRouteComponent(
+            this,
             'IntermediateSyAmountGetter.removeLiquiditySingleSy',
             ['limitOrderMatcher'],
             (route) => getDataFromRoute(route).then(({ intermediateSyAmount }) => intermediateSyAmount)
         );
         const routeLimitOrderMatcher = routeMod.limitOrderMatcher.createWithRouterComponent(this, 'swapPtForSy', [
             marketEntity,
-            async () => BN.from((await removeLiqResultPromise).netPtOut),
+            LazyDeferrable.create(async () => BN.from((await removeLiqResultPromise).netPtOut)),
             { routerMethod: 'removeLiquiditySingleToken' },
         ]);
         const loRoutingResult = await this.limitOrderRouteSelector(
@@ -1500,6 +1514,7 @@ export abstract class BaseRouter extends PendleEntity {
         const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'removeLiquiditySinglePt',
                 ['aggregatorResultGetter', 'limitOrderMatcher'],
                 async (route) => {
@@ -1518,6 +1533,7 @@ export abstract class BaseRouter extends PendleEntity {
                 intermediateSyAmountGetter,
                 limitOrderMatcher: selectedLimitOrderMatcher,
                 syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
+                    this,
                     tokenRedeemSy,
                     syEntity,
                     { ...params, additionalDependencies: ['limitOrderMatcher'] },
@@ -1615,6 +1631,7 @@ export abstract class BaseRouter extends PendleEntity {
             { routerMethod: 'swapExactPtForSy' },
         ]);
         const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            this,
             'swapExactPtForSy',
             ['limitOrderMatcher'],
             buildContractMethod,
@@ -1730,7 +1747,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const rawTokenIn = { token: tokenIn, amount: BN.from(netTokenIn) };
         const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenIn]);
-        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
             this,
             syEntity,
@@ -1739,6 +1756,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'swapExactTokenForPt',
                 ['aggregatorResultGetter', 'intermediateSyAmountGetter', 'limitOrderMatcher'],
                 buildContractMethod,
@@ -1756,7 +1774,7 @@ export abstract class BaseRouter extends PendleEntity {
                 ),
                 syIOTokenAmountGetter,
                 intermediateSyAmountGetter,
-                limitOrderMatcher: routeMod.limitOrderMatcher.createEmpty(),
+                limitOrderMatcher: routeMod.limitOrderMatcher.createEmpty(this),
                 contractMethodBuilder,
                 netOutGetter,
                 gasUsedEstimator,
@@ -1776,6 +1794,7 @@ export abstract class BaseRouter extends PendleEntity {
         const selectedRouteNoLO = tokenMintSySelectionRoutingResult.selectedRoute;
 
         const routeLimitOrderMatcher = routeMod.helper.createMinimalRouteComponent(
+            this,
             'LimitOrderMatcher.swapExcatTokenForPt',
             ['intermediateSyAmountGetter'],
             async (route) =>
@@ -1872,6 +1891,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
 
         const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            this,
             'swapExactSyForPt',
             ['limitOrderMatcher'],
             buildContractMethod,
@@ -1928,7 +1948,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const rawTokenIn = { token: tokenIn, amount: BN.from(netTokenIn) };
         const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenIn]);
-        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
             this,
             syEntity,
@@ -1955,6 +1975,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'mintSyFromToken',
                 ['aggregatorResultGetter', 'intermediateSyAmountGetter'],
                 buildContractMethod,
@@ -2035,6 +2056,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [syTokenAmount]);
         const intermediateSyAmountGetter = routeMod.helper.createComponentFromConstant(
+            this,
             'intermediateSyAmount.redeemSyToToken',
             syTokenAmount.amount
         );
@@ -2044,6 +2066,7 @@ export abstract class BaseRouter extends PendleEntity {
         const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'reddemSyToToken',
                 ['aggregatorResultGetter'],
                 async (route) => {
@@ -2060,6 +2083,7 @@ export abstract class BaseRouter extends PendleEntity {
                 approvedSignerAddressGetter,
                 intermediateSyAmountGetter,
                 syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
+                    this,
                     tokenRedeemSy,
                     syEntity,
                     params,
@@ -2137,7 +2161,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
 
         const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [tokenInputAmount]);
-        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
             this,
             syEntity,
@@ -2145,6 +2169,7 @@ export abstract class BaseRouter extends PendleEntity {
         );
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'mintPYFromToken',
                 ['aggregatorResultGetter', 'intermediateSyAmountGetter'],
                 buildContractMethod,
@@ -2255,6 +2280,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
 
         const intermediateSyAmountGetter = routeMod.helper.createComponentFromConstant(
+            this,
             'intermediateSyAmountGetter.redeemPyToToken',
             intermediateSyAmountPromise
         );
@@ -2267,6 +2293,7 @@ export abstract class BaseRouter extends PendleEntity {
         const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'redeemPyToToken',
                 ['aggregatorResultGetter'],
                 async (route) => {
@@ -2284,6 +2311,7 @@ export abstract class BaseRouter extends PendleEntity {
                 approvedSignerAddressGetter,
                 intermediateSyAmountGetter,
                 syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
+                    this,
                     tokenRedeemSy,
                     syEntity,
                     params,
@@ -2416,6 +2444,7 @@ export abstract class BaseRouter extends PendleEntity {
             { routerMethod: 'swapExactSyForYt' },
         ]);
         const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            this,
             'swapExactSyForYt',
             ['limitOrderMatcher'],
             buildContractMethod,
@@ -2507,6 +2536,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
 
         const intermediateSyAmountGetter = routeMod.helper.createMinimalRouteComponent(
+            this,
             'intermediateSyAmountGetter.swapExactPtForToken',
             ['limitOrderMatcher'],
             async (route) => getDataFromRoute(route).then(({ intermediateSyAmount }) => intermediateSyAmount)
@@ -2553,6 +2583,7 @@ export abstract class BaseRouter extends PendleEntity {
         const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'swapExactPtForToken',
                 ['limitOrderMatcher', 'aggregatorResultGetter'],
                 async (route) => {
@@ -2571,6 +2602,7 @@ export abstract class BaseRouter extends PendleEntity {
                 limitOrderMatcher: loRoutingResult.selectedRoute.limitOrderMatcher,
                 intermediateSyAmountGetter,
                 syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
+                    this,
                     tokenRedeemSy,
                     syEntity,
                     { ...params, additionalDependencies: ['limitOrderMatcher'] },
@@ -2669,6 +2701,7 @@ export abstract class BaseRouter extends PendleEntity {
             );
         };
         const { contractMethodBuilder, netOutGetter } = routeMod.helper.createComponentBundleForContractMethod(
+            this,
             'swapExactYtForSy',
             ['limitOrderMatcher'],
             buildContractMethod,
@@ -2779,7 +2812,7 @@ export abstract class BaseRouter extends PendleEntity {
         };
 
         const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [inputTokenAmount]);
-        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter();
+        const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
             this,
             syEntity,
@@ -2787,6 +2820,7 @@ export abstract class BaseRouter extends PendleEntity {
         );
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'swapExactTokenForYt',
                 ['aggregatorResultGetter', 'intermediateSyAmountGetter', 'limitOrderMatcher'],
                 buildContractMethod,
@@ -2803,7 +2837,7 @@ export abstract class BaseRouter extends PendleEntity {
                 ),
                 syIOTokenAmountGetter,
                 intermediateSyAmountGetter,
-                limitOrderMatcher: routeMod.limitOrderMatcher.createEmpty(), // empty first to find the token mint sy
+                limitOrderMatcher: routeMod.limitOrderMatcher.createEmpty(this), // empty first to find the token mint sy
                 contractMethodBuilder,
                 netOutGetter,
                 gasUsedEstimator,
@@ -2823,6 +2857,7 @@ export abstract class BaseRouter extends PendleEntity {
         const { selectedRoute: selectedRouteNoLO } = tokenMintSySelectionRoutingResult;
 
         const routeLimitOrderMatcher = routeMod.helper.createMinimalRouteComponent(
+            this,
             'swapExactTokenForYt',
             ['intermediateSyAmountGetter'],
             async (route) => {
@@ -2936,6 +2971,7 @@ export abstract class BaseRouter extends PendleEntity {
             { routerMethod: 'swapExactYtForToken' },
         ]);
         const intermediateSyAmountGetter = routeMod.helper.createMinimalRouteComponent(
+            this,
             'swapExactYtForToken',
             ['limitOrderMatcher'],
             async (route) => getDataFromRoute(route).then(({ netSyOut }) => netSyOut)
@@ -2963,6 +2999,7 @@ export abstract class BaseRouter extends PendleEntity {
         });
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'swapExactYtForToken',
                 ['limitOrderMatcher', 'aggregatorResultGetter'],
                 async (route) => {
@@ -2980,6 +3017,7 @@ export abstract class BaseRouter extends PendleEntity {
                 limitOrderMatcher: loRoutingResult.selectedRoute.limitOrderMatcher,
                 intermediateSyAmountGetter,
                 syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
+                    this,
                     tokenRedeemSy,
                     syEntity,
                     { ...params, additionalDependencies: ['limitOrderMatcher'] },
@@ -3530,6 +3568,7 @@ export abstract class BaseRouter extends PendleEntity {
             );
         };
         const tokenRedeemSyGetter = routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
+            this,
             outputToken,
             syEntity,
             params,
@@ -3541,6 +3580,7 @@ export abstract class BaseRouter extends PendleEntity {
         );
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
             routeMod.helper.createComponentBundleForContractMethod(
+                this,
                 'swapTokenToTokenViaSy',
                 ['approvedSignerAddressGetter', 'intermediateSyAmountGetter'],
                 async (route) => {

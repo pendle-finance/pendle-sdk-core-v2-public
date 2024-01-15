@@ -23,7 +23,7 @@ export async function createFromAllRawTokenOut(
     }
     const maxOut = iters.reduce(nonFailedRouteOut, (u, v) => (u.gt(v) ? u : v));
     if (maxOut == undefined) {
-        return createWithError(new errors.PendleSdkError('All route failed'));
+        return createWithError(router, new errors.PendleSdkError('All route failed'));
     }
     try {
         const equivAmountInNative = await router.tokenAmountConverter(
@@ -32,8 +32,8 @@ export async function createFromAllRawTokenOut(
             common.NATIVE_ADDRESS_0x00
         );
         const theoreticalPrice = offchainMath.FixedX18.divDown(equivAmountInNative.toBigInt(), maxOut.toBigInt());
-        return createWithPrice(theoreticalPrice);
+        return createWithPrice(router, theoreticalPrice);
     } catch (e: unknown) {
-        return createWithPrice(offchainMath.FixedX18.ONE);
+        return createWithPrice(router, offchainMath.FixedX18.ONE);
     }
 }

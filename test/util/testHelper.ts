@@ -67,9 +67,18 @@ export function useRestoreEvmSnapShotAfterAll(): {
     };
 }
 
-export function print(message: any): void {
+export function print(message: unknown): void {
     // eslint-disable-next-line no-console
     console.log(inspect(message, { showHidden: false, depth: null, colors: true }));
+}
+
+export function prettifyJson(
+    json: unknown,
+    params?: {
+        depth?: number;
+    }
+): string {
+    return inspect(json, { showHidden: false, depth: params?.depth ?? null, colors: true });
 }
 
 export function describeWithMulticall(fn: (multicall: Multicall | undefined) => any) {
@@ -205,13 +214,37 @@ export function convertValueViaSpotPrice(
     return pendleSDK.BN.from((input.amount.toBigInt() * num) / dem);
 }
 
-const registerCustomInspection = (BigNumber: any) => {
-    const inspectCustomSymbol = Symbol.for('nodejs.util.inspect.custom');
+const inspectCustomSymbol = Symbol.for('nodejs.util.inspect.custom');
 
+const registerCustomInspection = (BigNumber: any) => {
     BigNumber.prototype[inspectCustomSymbol] = function (this: pendleSDK.BN) {
         const value = this.toString();
         return `BigNumber { value: "${value}" }`;
     };
 };
 
+const registerCustomInspectionForMetaMethod = (metaMethod: any) => {
+    metaMethod.prototype[inspectCustomSymbol] = function (
+        this: pendleSDK.ContractMetaMethod<any, never, any>,
+        _depth: number,
+        _options: object,
+        inspectFn: typeof inspect
+    ) {
+        return inspectFn(
+            {
+                name: 'ContractMetaMethod',
+                contractAddress: this.contract.address,
+                method: this.methodName,
+                data: this.data,
+                // TODO args
+            },
+            {
+                depth: 2,
+                colors: true,
+            }
+        );
+    };
+};
+
 registerCustomInspection(BN);
+registerCustomInspectionForMetaMethod(pendleSDK.ContractMetaMethod);

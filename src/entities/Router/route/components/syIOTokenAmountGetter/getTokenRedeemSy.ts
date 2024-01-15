@@ -4,11 +4,13 @@ import * as common from '../../../../../common';
 import * as routerTypes from '../../../types';
 import * as aggregatorHelper from '../../../aggregatorHelper';
 import { SyEntity } from '../../../../SyEntity';
+import { BaseRouter } from '../../../BaseRouter';
 
 const BASE_DEPENDENCIES = ['approvedSignerAddressGetter', 'intermediateSyAmountGetter'] as const;
 type BaseDependencies = (typeof BASE_DEPENDENCIES)[number];
 
 export function createTokenRedeemSyGetter<AdditionalRC extends Route.ComponentName = never>(
+    router: BaseRouter,
     tokenRedeemSy: common.Address,
     syEntity: SyEntity,
     params: routerTypes.FixedRouterMetaMethodExtraParams<'meta-method'> & { additionalDependencies?: AdditionalRC[] },
@@ -21,7 +23,12 @@ export function createTokenRedeemSyGetter<AdditionalRC extends Route.ComponentNa
         route: Route.PartialRoute<BaseDependencies | AdditionalRC>;
     }) => Promise<common.BigNumberish>
 ): Route.SYIOTokenAmountGetter<BaseDependencies | AdditionalRC> {
+    const debugInfo = {
+        tokenRedeemSy,
+        syAddress: syEntity.address,
+    };
     return routeHelper.createMinimalRouteComponent(
+        router,
         `syIOTokenAmountGetter.getTokenRedeemSy.${tokenRedeemSy}`,
         [...BASE_DEPENDENCIES, ...(params.additionalDependencies ?? [])],
         async (route) => {
@@ -49,6 +56,7 @@ export function createTokenRedeemSyGetter<AdditionalRC extends Route.ComponentNa
                 route,
             }).then((res) => common.BN.from(res));
             return { token: tokenRedeemSy, amount };
-        }
+        },
+        { debugInfo }
     );
 }

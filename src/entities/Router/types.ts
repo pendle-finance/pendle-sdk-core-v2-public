@@ -133,4 +133,15 @@ export type RouterEvents = {
         routes: route.Route.AnyRoute[];
         errorOptions?: errors.PendleSdkErrorParams;
     }) => void;
+
+    routeComponentCallBegin: (params: {
+        route: route.Route.AnyRoute;
+        component: route.Route.Component<never, unknown>;
+    }) => void;
+
+    routerComponentCallFinalized: (params: {
+        route: route.Route.AnyRoute;
+        component: route.Route.Component<never, unknown>;
+        result: Promise<unknown>;
+    }) => void;
 };

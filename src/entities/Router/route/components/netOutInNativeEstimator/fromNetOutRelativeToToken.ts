@@ -21,12 +21,12 @@ export async function createRelativeToToken(
         getMaxOut(),
         router.tokenAmountConverter(router, tokenAmount, common.NATIVE_ADDRESS_0x00),
     ]);
-    if (maxOut.status === 'rejected') return createWithError(maxOut.reason);
-    if (equivTokenAmountInNative.status === 'rejected') return createWithError(equivTokenAmountInNative.reason);
-    if (maxOut.value === undefined) return createWithError(new errors.PendleSdkError('All route failed'));
+    if (maxOut.status === 'rejected') return createWithError(router, maxOut.reason);
+    if (equivTokenAmountInNative.status === 'rejected') return createWithError(router, equivTokenAmountInNative.reason);
+    if (maxOut.value === undefined) return createWithError(router, new errors.PendleSdkError('All route failed'));
     const theoreticalPrice = offchainMath.FixedX18.divDown(
         equivTokenAmountInNative.value.toBigInt(),
         maxOut.value.toBigInt()
     );
-    return createWithPrice(theoreticalPrice);
+    return createWithPrice(router, theoreticalPrice);
 }

@@ -189,3 +189,22 @@ router.events.on('noRouteFound', (params) => {
     //     console.log('NoRouteFound', params);
     // }
 });
+
+if (testEnv.env.ENABLE_COMPONENT_CALL_LOGGING) {
+    router.events.addListener('routerComponentCallFinalized', ({ route, component, result }) => {
+        const getRouteInfo = async () =>
+            [
+                `Component: ${await pendleSDK.unwrapDeferrable(component.name)}`,
+                `Description: ${JSON.stringify(await component.description(route))}`, // description is big, no need for stringify
+                `Debug info: ${testHelper.prettifyJson(component.debugInfo)}`,
+            ].join('\n');
+
+        /* eslint-disable no-console */
+        void result.then(
+            async (res) =>
+                console.log(`${await getRouteInfo()}\nResult: ${testHelper.prettifyJson(res, { depth: 3 })}`),
+            async (err) => console.log(`${await getRouteInfo()}\nError: ${testHelper.prettifyJson(err, { depth: 3 })}`)
+        );
+        /* eslint-enable no-console */
+    });
+}

@@ -14,19 +14,29 @@ export function createFromRawToken(
     }
 ): Route.AggregatorResultGetter {
     const { needScale = false, aggregatorReceiver } = params ?? {};
-    const description = [
+    const name = [
         'AggregatorResultGetter.fromRawToken',
-        common.rawTokenAmountToStringTuple(rawTokenInput),
+        common.rawTokenAmountToString(rawTokenInput),
         tokenMintSy,
-    ];
-    return routeHelper.addCacheForComponent({
+    ].join('.');
+    const debugInfo = {
+        rawTokenInput,
+        tokenMintSy,
+        slippage,
+    };
+    return routeHelper.applyRouteComponentTrait({
+        router,
+        name,
+        dependencies: [],
+        debugInfo,
+
         call: async () => {
             return router.aggregatorHelper.makeCall(rawTokenInput, tokenMintSy, slippage, {
                 aggregatorReceiver,
                 needScale,
             });
         },
-        description: () => Promise.resolve(description),
+        description: () => Promise.resolve(name),
         getInput: () => Promise.resolve(rawTokenInput),
         getOutputTokenAddress: () => Promise.resolve(tokenMintSy),
     });

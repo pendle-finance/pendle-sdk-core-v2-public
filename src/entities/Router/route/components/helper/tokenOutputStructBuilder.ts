@@ -12,6 +12,7 @@ export function createTokenOutputStructBuilder(
 ): TokenOutputStructBuilder {
     const { needScale = true, slippage } = params;
     return routeHelper.createMinimalRouteComponent(
+        router,
         'tokenOutputStructBuilder',
         ['aggregatorResultGetter'],
         async (route) => {

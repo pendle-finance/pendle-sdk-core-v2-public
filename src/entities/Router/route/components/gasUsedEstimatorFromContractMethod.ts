@@ -2,11 +2,13 @@ import * as Route from '../Route';
 import * as routeHelper from '../helper';
 import * as errors from '../../../../errors';
 import { ethers } from 'ethers';
+import { BaseRouter } from '../../BaseRouter';
 
-export function createGasUsedEstimatorFromContractMethod(): Route.GasUsedEstimator<
-    'approvedSignerAddressGetter' | 'contractMethodBuilder'
-> {
+export function createGasUsedEstimatorFromContractMethod(
+    router: BaseRouter
+): Route.GasUsedEstimator<'approvedSignerAddressGetter' | 'contractMethodBuilder'> {
     return routeHelper.createMinimalRouteComponent(
+        router,
         'gasUsedEstimator.fromContractMethod',
         ['contractMethodBuilder', 'approvedSignerAddressGetter'],
         async (route) => {
