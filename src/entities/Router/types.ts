@@ -20,6 +20,7 @@ import * as tsEssentials from 'ts-essentials';
 import * as errors from '../../errors';
 import * as routerComponents from './components';
 import * as route from './route';
+import { type BaseRouter } from './BaseRouter';
 
 /**
  * Reflecting [`AGGREGATOR`](https://github.com/pendle-finance/pendle-core-v2/blob/c6f6000a6f682a2bff41b7a7cce78e36fb497e8e/contracts/router/swap-aggregator/ISwapAggregator.sol#L10) type.
@@ -94,10 +95,21 @@ export type RouterHelperMetaMethodReturnType<
     Data extends object,
 > = MetaMethodReturnType<T, typechain.PendleRouterHelper, M, Data & RouterMetaMethodExtraParams<T>>;
 
+type _AnyFunctionCallingRouter<M extends ContractMethodNames<IPAllActionV3>, Data extends object> = <
+    T extends MetaMethodType,
+>(
+    ...params: any[]
+) => RouterMetaMethodReturnType<T, M, Data>;
+
+type _AnyFunctionCallingRouterHelper<
+    M extends ContractMethodNames<typechain.PendleRouterHelper>,
+    Data extends object,
+> = <T extends MetaMethodType>(...params: any[]) => RouterHelperMetaMethodReturnType<T, M, Data>;
+
 export type MetaMethodForRouterMethod<Method extends tsEssentials.AnyFunction> =
-    ReturnType<Method> extends RouterMetaMethodReturnType<any, infer M, infer Data>
+    Method extends _AnyFunctionCallingRouter<infer M, infer Data>
         ? Awaited<RouterMetaMethodReturnType<'meta-method', M, Data>>
-        : ReturnType<Method> extends RouterHelperMetaMethodReturnType<any, infer M, infer Data>
+        : Method extends _AnyFunctionCallingRouterHelper<infer M, infer Data>
           ? Awaited<RouterHelperMetaMethodReturnType<'meta-method', M, Data>>
           : never;
 
@@ -121,10 +133,16 @@ export type AnyRouterHelperContractMetaMethod<Data extends object = object> = Co
     Data
 >;
 
+export type AllRouterReturnedMetaMethods = NonNullable<
+    {
+        [Method in keyof BaseRouter]: BaseRouter[Method] extends tsEssentials.AnyFunction
+            ? MetaMethodForRouterMethod<BaseRouter[Method]>
+            : never;
+    }[keyof BaseRouter]
+>;
+
 export type RouterEvents = {
-    calculationFinalized: (params: {
-        metaMethod: AnyRouterContractMetaMethod | AnyRouterHelperContractMetaMethod;
-    }) => void;
+    calculationFinalized: (params: { metaMethod: AllRouterReturnedMetaMethods }) => void;
 
     noRouteFound: (params: {
         actionName: string;

@@ -886,24 +886,22 @@ export abstract class BaseRouter extends PendleEntity {
         netTokenIn: BigNumberish,
         slippage: number,
         _params: RouterMetaMethodExtraParams<T> = {}
-    ): Promise<
-        RouterMetaMethodReturnType<
-            T,
-            'addLiquiditySingleTokenKeepYt',
-            {
-                intermediateSyAmount: BN;
-                netLpOut: BN;
-                netYtOut: BN;
-                netSyMinted: BN;
-                netSyToPY: BN;
-                minLpOut: BN;
-                minYtOut: BN;
-                afterMath: offchainMath.MarketStaticMath;
-                route: routeDef.AddLiquiditySingleTokenKeepYt;
-                routes: routeDef.AddLiquiditySingleTokenKeepYt[];
-                tokenMintSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.AddLiquiditySingleTokenKeepYt>;
-            }
-        >
+    ): RouterMetaMethodReturnType<
+        T,
+        'addLiquiditySingleTokenKeepYt',
+        {
+            intermediateSyAmount: BN;
+            netLpOut: BN;
+            netYtOut: BN;
+            netSyMinted: BN;
+            netSyToPY: BN;
+            minLpOut: BN;
+            minYtOut: BN;
+            afterMath: offchainMath.MarketStaticMath;
+            route: routeDef.AddLiquiditySingleTokenKeepYt;
+            routes: routeDef.AddLiquiditySingleTokenKeepYt[];
+            tokenMintSySelectionRoutingResult: routerComponents.OptimalOutputRouteSelectionResult<routeDef.AddLiquiditySingleTokenKeepYt>;
+        }
     > {
         const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
         const marketEntity = this.getMarketEntity(market);

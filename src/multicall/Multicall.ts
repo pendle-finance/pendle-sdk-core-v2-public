@@ -2,7 +2,7 @@ import type { BlockTag } from '@ethersproject/abstract-provider';
 import type { Provider } from '@ethersproject/providers';
 import { Contract, CallOverrides } from 'ethers';
 import { FunctionFragment, Interface } from 'ethers/lib/utils';
-import { EthersJsError, PendleSdkError } from '../errors';
+import { PendleSdkError } from '../errors';
 import { Address, toAddress, ChainId, RemoveLastOptionalParam, AddParams } from '../common';
 import * as batcher from '../common/Batcher';
 import { ContractLike } from '../contracts/types';
@@ -13,6 +13,7 @@ import {
     MulticallV2AggregateCallerWithGasLimit,
 } from './MulticallAggregateCaller';
 import * as iters from 'itertools';
+import { MulticallError } from './errors';
 
 /**
  * Multicall implementation, allowing to call function of contract.callStatic functions
@@ -47,9 +48,9 @@ export const DEFAULT_CALL_LIMIT = 64;
 class ContractCall {
     fragment: FunctionFragment;
     address: Address;
-    params: any[];
+    params: unknown[];
 
-    constructor({ fragment, address, params }: { fragment: FunctionFragment; address: Address; params: any[] }) {
+    constructor({ fragment, address, params }: { fragment: FunctionFragment; address: Address; params: unknown[] }) {
         this.fragment = fragment;
         this.address = address;
         this.params = params;
@@ -158,8 +159,8 @@ export class Multicall {
                     if (e.reason == null) {
                         e.reason = 'Call failed for unknown reason';
                     }
-                    e.calldata = callRequest.callData;
-                    return { type: 'failed' as const, error: EthersJsError.handleEthersJsError(e) };
+                    const error = new MulticallError(e, callRequest.callData);
+                    return { type: 'failed' as const, error };
                 }
             }
         );

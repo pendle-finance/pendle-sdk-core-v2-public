@@ -2787,7 +2787,6 @@ __metadata:
     type-fest: "npm:^4.9.0"
     typedoc: "npm:^0.25.7"
     typescript: "npm:^5.3.3"
-    ulid: "npm:^2.3.0"
     zod: "npm:^3.22.4"
   languageName: unknown
   linkType: soft
@@ -12362,15 +12361,6 @@ __metadata:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: c93786fcc9a70718ba1e3819bab56064ead5817004d1b8186f8ca66165f3a2d0100fee91fa64c840dcd45f994ca5d615d8e1f566d39a7470fc1e014dbb4cf15d
-  languageName: node
-  linkType: hard
-
-"ulid@npm:^2.3.0":
-  version: 2.3.0
-  resolution: "ulid@npm:2.3.0"
-  bin:
-    ulid: ./bin/cli.js
-  checksum: 11d7dd35072b863effb1249f66fb03070142a625610f00e5afd99af7e909b5de9cc7ebca6ede621a6bb1b7479b2489d6f064db6742b55c14bff6496ac60f290f
   languageName: node
   linkType: hard
 

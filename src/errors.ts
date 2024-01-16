@@ -10,7 +10,6 @@ import {
     PendleContractErrorParams,
 } from './PendleContractErrorMessages';
 import { Address } from 'common';
-import * as ulid from 'ulid';
 import { AxiosError } from 'axios';
 
 // The list of error code is here
@@ -33,27 +32,11 @@ export type PendleSdkErrorParams = {
  */
 export class PendleSdkError extends Error {
     /**
-     * @privateRemarks
-     * The rng function can also be `ulid.detectRng(false)`  // allowInsecure = false
-     * But that function logs some info to the console.
-     * Passing our own instead.
-     *
-     * @see https://github.com/ulid/javascript/blob/a5831206a11636c94d4657b9e1a1354c529ee4e9/lib/index.ts#L138-L145
-     */
-    static ulid = ulid.factory(() => Math.random());
-
-    /**
      * @remarks
      * Below ES2022, Error has no `cause`.
      * Adding it here as fallback so it is still accessible.
      */
     cause?: unknown;
-
-    /**
-     * @remarks
-     * An unique ID for the error. Can be used for reference else-where.
-     */
-    refId: string = PendleSdkError.ulid();
 
     constructor(message: string, params?: PendleSdkErrorParams) {
         super(message, params);

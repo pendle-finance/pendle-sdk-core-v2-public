@@ -54,8 +54,7 @@
         "merkletreejs": "^0.3.11",
         "ts-essentials": "^9.4.1",
         "tslib": "^2.6.2",
-        "type-fest": "^4.9.0",
-        "ulid": "^2.3.0"
+        "type-fest": "^4.9.0"
     },
     "devDependencies": {
         "@pendle/core-v2-testnet": "npm:@pendle/core-v2@1.7.0-testnet",
