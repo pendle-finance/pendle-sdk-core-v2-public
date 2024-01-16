@@ -194,3 +194,22 @@ export const estimateNetOutInNative = createInvokerForComponent('netOutInNativeE
 // ==== Other helpers ====
 export const signerHasApproved = (route: PartialRoute<'approvedSignerAddressGetter'>) =>
     getApprovedSignerAddress(route).then((addr) => !!addr);
+
+export function hasComponent<C extends ComponentName>(route: AnyRoute, component: C): route is PartialRoute<C> {
+    return route[component] != null;
+}
+
+export function hasComponents<const C extends ComponentName>(
+    route: AnyRoute,
+    components: C[]
+): route is PartialRoute<C> {
+    return components.every((component) => hasComponent(route, component));
+}
+
+export function tryInvokeComponent<C extends ComponentName>(
+    route: AnyRoute,
+    component: C
+): ReturnType<PartialRoute<C>[C]['call']> | undefined {
+    if (!hasComponent(route, component)) return;
+    return route[component].call(route) as ReturnType<PartialRoute<C>[C]['call']>;
+}
