@@ -357,10 +357,12 @@ export abstract class BaseRouter extends PendleEntity {
                 async (metaMethod) => metaMethod.data.netLpOut
             );
         const inputTokenAmount = { token: tokenIn, amount: BN.from(tokenDesired) };
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [
             inputTokenAmount,
             { token: pt, amount: BN.from(ptDesired) },
         ]);
+
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
             this,
@@ -374,6 +376,7 @@ export abstract class BaseRouter extends PendleEntity {
         // Routing
         const partialRoutes = tokenMintSyList.map((tokenMintSy) =>
             routeMod.Route.assemble({
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
                 aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
                     this,
@@ -807,7 +810,8 @@ export abstract class BaseRouter extends PendleEntity {
         });
         const rawTokenInput = { token: tokenIn, amount: BN.from(netTokenIn) };
 
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenInput]);
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [rawTokenInput]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
 
         const partialRoutesNoLO = tokenMintSyList.map((tokenMintSy) =>
@@ -825,6 +829,7 @@ export abstract class BaseRouter extends PendleEntity {
                     slippage,
                     params
                 ),
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
             })
         );
@@ -961,7 +966,8 @@ export abstract class BaseRouter extends PendleEntity {
         );
         const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const rawTokenInput = { token: tokenIn, amount: BN.from(netTokenIn) };
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenInput]);
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [rawTokenInput]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
 
         const partialRoutes = tokenMintSyList.map((tokenMintSy) =>
             routeMod.Route.assemble({
@@ -977,6 +983,7 @@ export abstract class BaseRouter extends PendleEntity {
                     slippage,
                     params
                 ),
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
             })
         );
@@ -1095,9 +1102,10 @@ export abstract class BaseRouter extends PendleEntity {
             'syAmountToRedeem',
             LazyDeferrable.create(async () => BN.from((await marketResultPromise).netSyOut))
         );
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [
             { token: marketEntity.address, amount: BN.from(lpToRemove) },
         ]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const aggregatorResultGetter = routeMod.aggregatorResultGetter.createToRawToken(this, tokenOut, slippage, {
             aggregatorReceiver: params.aggregatorReceiver,
         });
@@ -1121,6 +1129,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
             routeMod.Route.assemble({
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
                 intermediateSyAmountGetter,
                 syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
@@ -1503,9 +1512,10 @@ export abstract class BaseRouter extends PendleEntity {
         }
         const selectedLimitOrderMatcher = loRoutingResult.selectedRoute.limitOrderMatcher;
 
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [
             { token: marketEntity.address, amount: BN.from(lpToRemove) },
         ]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const aggregatorResultGetter = routeMod.aggregatorResultGetter.createToRawToken(this, tokenOut, slippage, {
             aggregatorReceiver: params.aggregatorReceiver,
         });
@@ -1527,6 +1537,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
             routeMod.Route.assemble({
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
                 intermediateSyAmountGetter,
                 limitOrderMatcher: selectedLimitOrderMatcher,
@@ -1744,7 +1755,8 @@ export abstract class BaseRouter extends PendleEntity {
         };
 
         const rawTokenIn = { token: tokenIn, amount: BN.from(netTokenIn) };
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenIn]);
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [rawTokenIn]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
             this,
@@ -1763,6 +1775,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const partialRoutesNoLO = tokenMintSyList.map((tokenMintSy) =>
             Route.assemble({
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
                 aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
                     this,
@@ -1945,7 +1958,8 @@ export abstract class BaseRouter extends PendleEntity {
         const tokenMintSyList = await syEntity.getTokensIn();
 
         const rawTokenIn = { token: tokenIn, amount: BN.from(netTokenIn) };
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [rawTokenIn]);
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [rawTokenIn]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
             this,
@@ -1982,6 +1996,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const partialRoutes = tokenMintSyList.map((tokenMintSy) =>
             Route.assemble({
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
                 aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
                     this,
@@ -2052,7 +2067,8 @@ export abstract class BaseRouter extends PendleEntity {
             );
         };
 
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [syTokenAmount]);
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [syTokenAmount]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const intermediateSyAmountGetter = routeMod.helper.createComponentFromConstant(
             this,
             'intermediateSyAmount.redeemSyToToken',
@@ -2078,6 +2094,7 @@ export abstract class BaseRouter extends PendleEntity {
             );
         const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
             Route.assemble({
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
                 intermediateSyAmountGetter,
                 syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
@@ -2158,7 +2175,8 @@ export abstract class BaseRouter extends PendleEntity {
             });
         };
 
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [tokenInputAmount]);
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [tokenInputAmount]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
             this,
@@ -2175,6 +2193,7 @@ export abstract class BaseRouter extends PendleEntity {
             );
         const partialRoutes = tokenMintSyList.map((tokenMintSy) =>
             Route.assemble({
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
                 aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
                     this,
@@ -2283,10 +2302,11 @@ export abstract class BaseRouter extends PendleEntity {
             intermediateSyAmountPromise
         );
 
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [
             ytTokenAmount,
             ptTokenAmount,
         ]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const aggregatorResultGetter = routeMod.aggregatorResultGetter.createToRawToken(this, tokenOut, slippage);
         const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
         const { contractMethodBuilder, netOutGetter, gasUsedEstimator } =
@@ -2306,6 +2326,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
             Route.assemble({
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
                 intermediateSyAmountGetter,
                 syIOTokenAmountGetter: routeMod.syIOTokenAmountGetter.createTokenRedeemSyGetter(
@@ -2535,7 +2556,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const intermediateSyAmountGetter = routeMod.helper.createMinimalRouteComponent(
             this,
-            'intermediateSyAmountGetter.swapExactPtForToken',
+            'IntermediateSyAmountGetter.swapExactPtForToken',
             ['limitOrderMatcher'],
             async (route) => getDataFromRoute(route).then(({ intermediateSyAmount }) => intermediateSyAmount)
         );
@@ -2574,7 +2595,8 @@ export abstract class BaseRouter extends PendleEntity {
             );
         };
 
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [ptTokenAmount]);
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [ptTokenAmount]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const aggregatorResultGetter = routeMod.aggregatorResultGetter.createToRawToken(this, tokenOut, slippage, {
             aggregatorReceiver: params.aggregatorReceiver,
         });
@@ -2596,6 +2618,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
             Route.assemble({
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
                 limitOrderMatcher: loRoutingResult.selectedRoute.limitOrderMatcher,
                 intermediateSyAmountGetter,
@@ -2809,7 +2832,8 @@ export abstract class BaseRouter extends PendleEntity {
             );
         };
 
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [inputTokenAmount]);
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [inputTokenAmount]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const syIOTokenAmountGetter = routeMod.syIOTokenAmountGetter.createTokenMintSyGetter(this);
         const intermediateSyAmountGetter = routeMod.intermediateSyAmountGetter.createMintedSyAmountGetter(
             this,
@@ -2826,6 +2850,7 @@ export abstract class BaseRouter extends PendleEntity {
             );
         const partialRoutesNoLO = tokenMintSyList.map((tokenMintSy) =>
             Route.assemble({
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
                 aggregatorResultGetter: routeMod.aggregatorResultGetter.createFromRawToken(
                     this,
@@ -2856,7 +2881,7 @@ export abstract class BaseRouter extends PendleEntity {
 
         const routeLimitOrderMatcher = routeMod.helper.createMinimalRouteComponent(
             this,
-            'swapExactTokenForYt',
+            'LimitOrderMatcher.swapExactTokenForYt',
             ['intermediateSyAmountGetter'],
             async (route) => {
                 const mintedSyAmount = await Route.getIntermediateSyAmount(route);
@@ -2970,7 +2995,7 @@ export abstract class BaseRouter extends PendleEntity {
         ]);
         const intermediateSyAmountGetter = routeMod.helper.createMinimalRouteComponent(
             this,
-            'swapExactYtForToken',
+            'IntermediateSyAmountGetter.swapExactYtForToken',
             ['limitOrderMatcher'],
             async (route) => getDataFromRoute(route).then(({ netSyOut }) => netSyOut)
         );
@@ -2990,7 +3015,8 @@ export abstract class BaseRouter extends PendleEntity {
             );
         }
 
-        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this, [ytTokenAmount]);
+        const signerBalanceAllowanceChecker = routeMod.createSignerBalanceAllowanceChecker(this, [ytTokenAmount]);
+        const approvedSignerAddressGetter = routeMod.createApprovedSignerAddressGetter(this);
         const tokenOutputBuilder = routeMod.routeComponentHelper.createTokenOutputStructBuilder(this, { slippage });
         const aggregatorResultGetter = routeMod.aggregatorResultGetter.createToRawToken(this, tokenOut, slippage, {
             aggregatorReceiver: params.aggregatorReceiver,
@@ -3011,6 +3037,7 @@ export abstract class BaseRouter extends PendleEntity {
             );
         const partialRoutes = tokenRedeemSyList.map((tokenRedeemSy) =>
             Route.assemble({
+                signerBalanceAllowanceChecker,
                 approvedSignerAddressGetter,
                 limitOrderMatcher: loRoutingResult.selectedRoute.limitOrderMatcher,
                 intermediateSyAmountGetter,

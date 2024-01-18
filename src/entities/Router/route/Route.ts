@@ -8,6 +8,7 @@ import { BaseRouter } from '../BaseRouter';
 
 // === Route definition ====
 export const COMPONENTS = [
+    'signerBalanceAllowanceChecker',
     'approvedSignerAddressGetter',
     'syIOTokenAmountGetter',
     'aggregatorResultGetter',
@@ -23,6 +24,7 @@ export type ComponentName = (typeof COMPONENTS)[number];
 type _Route<RequiredComponents extends ComponentName> = common.AssertHasKey<
     ComponentName,
     {
+        readonly signerBalanceAllowanceChecker: SignerBalanceAllowanceChecker<RequiredComponents>;
         readonly approvedSignerAddressGetter: ApprovedSignerAddressGetter<RequiredComponents>;
         readonly syIOTokenAmountGetter: SYIOTokenAmountGetter<RequiredComponents>;
         readonly aggregatorResultGetter: AggregatorResultGetter<RequiredComponents>;
@@ -144,6 +146,19 @@ export type Component<RequiredComponents extends ComponentName, ReturnType> = {
 
 export type ComponentReturnType<CN extends ComponentName> = typefest.AsyncReturnType<Route[CN]['call']>;
 
+export type SignerBalanceAllowanceChecker<RC extends ComponentName = never> = Component<
+    RC,
+    | {
+          spenderAddress: common.Address;
+          signerAddress: common.Address;
+          tokenAmountsToCheck: common.RawTokenAmount[];
+
+          // these 2 should have the same length as tokenAmountsToCheck
+          allowances: common.BN[];
+          balances: common.BN[];
+      }
+    | undefined // undefined when there is no signer
+>;
 export type ApprovedSignerAddressGetter<RC extends ComponentName = never> = Component<RC, common.Address | undefined>;
 export type SYIOTokenAmountGetter<RC extends ComponentName = never> = Component<RC, common.RawTokenAmount>;
 export type AggregatorResultGetter<RC extends ComponentName = never> = Component<
@@ -181,6 +196,7 @@ export function createInvokerForComponent<const T extends ComponentName>(compone
         route[componentName].call(route) as Promise<ComponentReturnType<T>>;
 }
 
+export const getSignerBalanceAndAllowanceData = createInvokerForComponent('signerBalanceAllowanceChecker');
 export const getApprovedSignerAddress = createInvokerForComponent('approvedSignerAddressGetter');
 export const getAggregatorResult = createInvokerForComponent('aggregatorResultGetter');
 export const getSYIOTokenAmount = createInvokerForComponent('syIOTokenAmountGetter');

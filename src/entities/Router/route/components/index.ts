@@ -1,3 +1,4 @@
+export * from './signerBalanceAllowanceChecker';
 export * from './approvalCheckerForToken';
 export * from './gasUsedEstimatorFromContractMethod';
 export * from './aggregatorResultGetter';

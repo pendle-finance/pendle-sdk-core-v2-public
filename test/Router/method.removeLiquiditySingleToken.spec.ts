@@ -14,7 +14,7 @@ import {
     tokensOutToTest,
 } from './setup';
 
-describe('Router#removeLiquiditySinglePt', () => {
+describe('Router#removeLiquiditySingleToken', () => {
     sharedTestRemoveLiquiditySingleToken();
 
     describe('with expired market', () => {
