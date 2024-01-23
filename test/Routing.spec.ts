@@ -24,7 +24,7 @@ const { TOKENS_TO_TEST, MARKETS_TO_TEST, ETH_AMOUNTS_TO_TEST } =
           }
         : {
               TOKENS_TO_TEST: [currentConfig.tokens.USDC],
-              MARKETS_TO_TEST: [currentConfig.markets[9]!].filter(
+              MARKETS_TO_TEST: [currentConfig.markets[0]!].filter(
                   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                   (m) => m != undefined
               ),

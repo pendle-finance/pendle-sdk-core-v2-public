@@ -12,7 +12,6 @@ export const MAPPING = {
 
     [CHAIN_ID_MAPPING.FUJI]: 'https://api.avax-test.network/ext/bc/C/rpc',
     [CHAIN_ID_MAPPING.MUMBAI]: 'https://matic-mumbai.chainstacklabs.com',
-    [CHAIN_ID_MAPPING.MANTLE]: 'https://rpc.mantle.xyz',
     [LOCAL_CHAIN_ID]: 'http://127.0.0.1:8545',
 } as const satisfies Record<SupportedChainId, string>;
 

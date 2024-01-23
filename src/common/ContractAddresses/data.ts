@@ -1,5 +1,5 @@
 // This file is generated via `yarn generateContractAddresses`
-// Generated at Tue, 19 Dec 2023 02:59:33 GMT
+// Generated at Tue, 16 Jan 2024 01:11:24 GMT
 import { ContractAddresses } from './types';
 import { toAddress } from '../Address';
 
@@ -49,22 +49,6 @@ export const BSC_CORE_ADDRESSES = {
     ARB_MERKLE_DISTRIBUTION: undefined,
     FEE_DISTRIBUTOR: undefined,
     FEE_DISTRIBUTORV2: undefined,
-    VOTING_CONTROLLER: undefined,
-} as const satisfies ContractAddresses;
-export const MANTLE_CORE_ADDRESSES = {
-    PENDLE: toAddress('0xd27b18915e7acc8fd6ac75db6766a80f8d2f5729'),
-    PENDLE_SWAP: toAddress('0xcb645c93820b92e5f21781c5c3c18c29bcb6126b'),
-    ROUTER: toAddress('0x0000000001e4ef00d069e71d6ba041b0a16f7ea0'),
-    ROUTER_HELPER: toAddress('0x462206b11d185ef6f64b41d344325401c37ec335'),
-    ROUTER_STATIC: toAddress('0xb4853cc09de22a70977a2b1569a6792b5ba7d1d5'),
-    VEPENDLE: toAddress('0xf3038be5aa8cb10fe3f3b42809283f05a9776598'),
-    WRAPPED_NATIVE: toAddress('0x78c1b0c915c4faa5fffa6cabf0219da63d7f4cb8'),
-    ARB_MERKLE_DISTRIBUTION: undefined,
-    FEE_DISTRIBUTOR: undefined,
-    FEE_DISTRIBUTORV2: undefined,
-    LIMIT_ROUTER: undefined,
-    PENDLE_MULTICALL: undefined,
-    PENDLE_MULTICALLV2: undefined,
     VOTING_CONTROLLER: undefined,
 } as const satisfies ContractAddresses;
 export const OPTIMISM_CORE_ADDRESSES = {

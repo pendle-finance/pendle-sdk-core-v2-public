@@ -1,7 +1,6 @@
 import ETHEREUM_CORE_ADDRESSES from '@pendle/core-v2/deployments/1-core.json';
 import ARBITRUM_CORE_ADDRESSES from '@pendle/core-v2/deployments/42161-core.json';
 import BSC_CORE_ADDRESSES from '@pendle/core-v2/deployments/56-core.json';
-import MANTLE_CORE_ADDRESSES from '@pendle/core-v2/deployments/5000-core.json';
 import OPTIMISM_CORE_ADDRESSES from '@pendle/core-v2/deployments/10-core.json';
 
 import FUJI_CORE_ADDRESSES from '@pendle/core-v2-testnet/deployments/43113-core.json';
@@ -23,7 +22,6 @@ type CoreAddresses =
     | typeof FUJI_CORE_ADDRESSES
     | typeof MUMBAI_CORE_ADDRESSES
     | typeof BSC_CORE_ADDRESSES
-    | typeof MANTLE_CORE_ADDRESSES
     | typeof OPTIMISM_CORE_ADDRESSES;
 
 type OffchainHelperAddresses =
@@ -145,7 +143,6 @@ ${dataToString(
     transformData('42161-core', ARBITRUM_CORE_ADDRESSES, ARBITRUM_OFFCHAIN_HELPER)
 )};
 ${dataToString('BSC_CORE_ADDRESSES', transformData('56-core', BSC_CORE_ADDRESSES, BSC_OFFCHAIN_HELPER))};
-${dataToString('MANTLE_CORE_ADDRESSES', transformData('5000-core', MANTLE_CORE_ADDRESSES, undefined))};
 ${dataToString('OPTIMISM_CORE_ADDRESSES', transformData('10-core', OPTIMISM_CORE_ADDRESSES, OPTIMISM_OFFCHAIN_HELPER))};
 
 ${dataToString('FUJI_CORE_ADDRESSES', transformData('43113-core', FUJI_CORE_ADDRESSES, undefined))};
