@@ -2718,12 +2718,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pendle/core-v2-offchain-math@npm:^1.0.4":
-  version: 1.0.4
-  resolution: "@pendle/core-v2-offchain-math@npm:1.0.4"
+"@pendle/core-v2-offchain-math@npm:^1.0.5":
+  version: 1.0.5
+  resolution: "@pendle/core-v2-offchain-math@npm:1.0.5"
   dependencies:
     tslib: "npm:^2.6.2"
-  checksum: 76d2c83daef29ba4de55302fec65af00b94d6f5f24cc4a00058b1c494d8ba67d224813f22476e03f099ff4926443c43af5ba06fa231fb3c8e415493f20bac02c
+  checksum: 1d1bfff15ad58d56fc8b5d2fbb9739df73e8626dae5f5610e8f702aee04295f4d037bd351363f500d9681f1a4ee683d76cd946f1ae7ca95cdc8fdc1655a17360
   languageName: node
   linkType: hard
 
@@ -2755,7 +2755,7 @@ __metadata:
   dependencies:
     "@pendle/core-v2": "npm:4.0.4"
     "@pendle/core-v2-for-legacy-fee-distributor": "npm:@pendle/core-v2@2.9.0-mainnet"
-    "@pendle/core-v2-offchain-math": "npm:^1.0.4"
+    "@pendle/core-v2-offchain-math": "npm:^1.0.5"
     "@pendle/core-v2-testnet": "npm:@pendle/core-v2@1.7.0-testnet"
     "@size-limit/preset-small-lib": "npm:^11.0.1"
     "@types/jest": "npm:^29.5.11"
