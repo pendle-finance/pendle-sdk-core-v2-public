@@ -42,7 +42,7 @@
         "release": "yarn npm publish --tag nightly"
     },
     "dependencies": {
-        "@pendle/core-v2": "4.0.4",
+        "@pendle/core-v2": "4.0.6",
         "@pendle/core-v2-for-legacy-fee-distributor": "npm:@pendle/core-v2@2.9.0-mainnet",
         "@pendle/core-v2-offchain-math": "^1.0.5",
         "axios": "^1.6.5",

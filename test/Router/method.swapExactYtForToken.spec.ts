@@ -35,7 +35,7 @@ describe('Router#swapExactYtForToken', () => {
     let ytSwapAmount: pendleSDK.BN;
     beforeAll(async () => {
         ytSwapAmount = pendleSDK.bnMin(
-            balanceSnapshotBefore.ptBalance,
+            balanceSnapshotBefore.ytBalance,
             testHelper.valueToTokenAmount(ytAddress, chainId)
         );
         if (ytSwapAmount.eq(0)) {
