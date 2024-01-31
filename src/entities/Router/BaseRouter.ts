@@ -58,17 +58,7 @@ import * as routerTypes from './types';
 import * as routeMod from './route';
 import * as routeDef from './RouterMethodRouteDefinition';
 import { Route } from './route';
-import { BaseRoute, RouteContext } from './route';
 import { txOverridesValueFromTokenInput } from './route/helper';
-import {
-    BaseZapInRoute,
-    BaseZapInRouteData,
-    AddLiquiditySingleTokenRoute,
-    AddLiquiditySingleTokenKeepYtRoute,
-} from './route/zapIn';
-import * as liqMigrationRoutes from './route/liquidityMigration';
-
-import { BaseZapOutRoute, BaseZapOutRouteIntermediateData, RemoveLiquiditySingleTokenRoute } from './route/zapOut';
 
 import { GasFeeEstimator } from './GasFeeEstimator';
 import { RouterTransactionBundler } from './RouterTransactionBundler';
@@ -127,31 +117,6 @@ export abstract class BaseRouter extends PendleEntity {
         if (signerAddress === undefined) return undefined;
         return signerAddress;
     }
-
-    /**
-     * @deprecated This is now only kept for the migrate liquidity methods.
-     * For other methods, custom {@link BaseRouter#optimalOutputRouteSelector} can be passed in.
-     * @internal
-     */
-    abstract findBestZapInRoute<ZapInRoute extends BaseZapInRoute<BaseZapInRouteData, ZapInRoute>>(
-        routes: ZapInRoute[]
-    ): Promise<ZapInRoute>;
-    /**
-     * @deprecated This is now only kept for the migrate liquidity methods.
-     * For other methods, custom {@link BaseRouter#optimalOutputRouteSelector} can be passed in.
-     * @internal
-     */
-    abstract findBestZapOutRoute<ZapOutRoute extends BaseZapOutRoute<BaseZapOutRouteIntermediateData, ZapOutRoute>>(
-        routes: ZapOutRoute[]
-    ): Promise<ZapOutRoute>;
-    /**
-     * @deprecated This is now only kept for the migrate liquidity methods.
-     * For other methods, custom {@link BaseRouter#optimalOutputRouteSelector} can be passed in.
-     * @internal
-     */
-    abstract findBestLiquidityMigrationRoute<
-        LiquidityMigrationRoute extends liqMigrationRoutes.BaseLiquidityMigrationFixTokenRedeemSyRoute<any, any>,
-    >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute>;
 
     get provider() {
         return this.networkConnection.provider ?? this.networkConnection.signer.provider;
@@ -225,23 +190,6 @@ export abstract class BaseRouter extends PendleEntity {
         params: RouterMetaMethodExtraParams<T>
     ): FixedRouterMetaMethodExtraParams<T> {
         return mergeParams(this.getDefaultMetaMethodExtraParams(), params);
-    }
-
-    createRouteContext<RouteType extends BaseRoute<RouteType>>({
-        params,
-        syEntity,
-        slippage,
-    }: {
-        readonly params: FixedRouterMetaMethodExtraParams<'meta-method'>;
-        readonly syEntity: SyEntity;
-        readonly slippage: number;
-    }): RouteContext<RouteType> {
-        return new RouteContext({
-            router: this,
-            syEntity,
-            routerExtraParams: params,
-            aggregatorSlippage: slippage,
-        });
     }
 
     async addLiquidityDualSyAndPt<T extends MetaMethodType = 'send'>(
@@ -3314,190 +3262,6 @@ export abstract class BaseRouter extends PendleEntity {
             { ...params, removeLiquidityMetaMethod, addLiquidityMetaMethod }
         );
 
-        this.events.emit('calculationFinalized', { metaMethod });
-        return metaMethod.executeWithMethod(_params);
-    }
-
-    async migrateLiquidityViaTokenRedeemSy<T extends MetaMethodType>(
-        srcMarket: Address | MarketEntity,
-        netLpToMigrate: BigNumberish,
-        dstMarket: Address | MarketEntity,
-        tokenRedeemSrcSy: Address,
-        slippage: number,
-        _params: RouterMetaMethodExtraParams<T> & { redeemRewards?: boolean } = {}
-    ): RouterHelperMetaMethodReturnType<
-        T,
-        'transferLiquidityDifferentSyNormal',
-        {
-            removeLiquidityRoute: RemoveLiquiditySingleTokenRoute;
-            addLiquidityRoute: liqMigrationRoutes.AddLiquiditySingleTokenForMigrationRoute;
-            route: liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyRoute;
-        }
-    > {
-        const redeemRewards = _params.redeemRewards ?? false;
-        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
-        const srcMarketEntity =
-            typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
-        const dstMarketEntity =
-            typeof dstMarket === 'string' ? new MarketEntity(dstMarket, this.entityConfig) : dstMarket;
-        const [srcSyEntity, dstSyEntity] = await Promise.all([
-            srcMarketEntity.syEntity({ entityConfig: this.entityConfig }),
-            dstMarketEntity.syEntity({ entityConfig: this.entityConfig }),
-        ]);
-
-        const removeLiqContext =
-            this.createRouteContext<liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper>({
-                params,
-                syEntity: srcSyEntity,
-                slippage,
-            });
-        const addLiqContext = this.createRouteContext<AddLiquiditySingleTokenRoute>({
-            params,
-            syEntity: dstSyEntity,
-            slippage,
-        });
-
-        const [srcTokenRedeemSyList, dstTokenMintSyList] = await Promise.all([
-            removeLiqContext.getTokensMintSy(),
-            addLiqContext.getTokensRedeemSy(),
-        ]);
-
-        if (!srcTokenRedeemSyList.includes(tokenRedeemSrcSy)) {
-            throw new PendleSdkError('A token redeem Sy from the source market should be used.');
-        }
-
-        const liquidityMigrationContext =
-            this.createRouteContext<liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyRoute>({
-                params,
-                syEntity: srcSyEntity, // This one does not matter tho
-                slippage,
-            });
-
-        const removeLiquidityRoute = new liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper(
-            srcMarketEntity.address,
-            netLpToMigrate,
-            tokenRedeemSrcSy,
-            slippage,
-            { context: removeLiqContext, tokenRedeemSy: tokenRedeemSrcSy, redeemRewards }
-        );
-
-        const routes = dstTokenMintSyList.map(
-            (dstTokenMintSy) =>
-                new liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyRoute({
-                    removeLiquidityRoute,
-                    context: liquidityMigrationContext,
-                    redeemRewards,
-                    slippage,
-                    addLiquidityRouteConfig: {
-                        destinationMarket: dstMarketEntity.address,
-                        params: {
-                            context: addLiqContext,
-                            tokenMintSy: dstTokenMintSy,
-                        },
-                    },
-                })
-        );
-
-        const route = await this.findBestLiquidityMigrationRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('migrate liquidity', srcMarketEntity.address, dstMarketEntity.address, [], {
-                cause,
-            })
-        );
-        const metaMethod = await route.buildCall();
-        this.events.emit('calculationFinalized', { metaMethod });
-        return metaMethod.executeWithMethod(_params);
-    }
-
-    async migrateLiquidityViaTokenRedeemSyKeepYt<T extends MetaMethodType>(
-        srcMarket: Address | MarketEntity,
-        netLpToMigrate: BigNumberish,
-        dstMarket: Address | MarketEntity,
-        tokenRedeemSrcSy: Address,
-        slippage: number,
-        _params: RouterMetaMethodExtraParams<T> & { redeemRewards?: boolean } = {}
-    ): RouterHelperMetaMethodReturnType<
-        T,
-        'transferLiquidityDifferentSyKeepYt',
-        {
-            removeLiquidityRoute: RemoveLiquiditySingleTokenRoute;
-            addLiquidityRoute: liqMigrationRoutes.AddLiquiditySingleTokenKeepYtForMigrationRoute;
-            route: liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyKeepYtRoute;
-        }
-    > {
-        const redeemRewards = _params.redeemRewards ?? false;
-        const params = { ...this.addExtraParams(_params), method: 'meta-method' as const };
-        const srcMarketEntity =
-            typeof srcMarket === 'string' ? new MarketEntity(srcMarket, this.entityConfig) : srcMarket;
-        const dstMarketEntity =
-            typeof dstMarket === 'string' ? new MarketEntity(dstMarket, this.entityConfig) : dstMarket;
-        const [srcSyEntity, dstSyEntity] = await Promise.all([
-            srcMarketEntity.syEntity({
-                entityConfig: this.entityConfig,
-            }),
-            dstMarketEntity.syEntity({
-                entityConfig: this.entityConfig,
-            }),
-        ]);
-
-        const removeLiqContext =
-            this.createRouteContext<liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper>({
-                params,
-                syEntity: srcSyEntity,
-                slippage,
-            });
-        const addLiqContext = this.createRouteContext<AddLiquiditySingleTokenKeepYtRoute>({
-            params,
-            syEntity: dstSyEntity,
-            slippage,
-        });
-
-        const [srcTokenRedeemSyList, dstTokenMintSyList] = await Promise.all([
-            removeLiqContext.getTokensMintSy(),
-            addLiqContext.getTokensRedeemSy(),
-        ]);
-
-        if (!srcTokenRedeemSyList.includes(tokenRedeemSrcSy)) {
-            throw new PendleSdkError('A token redeem Sy from the source market should be used.');
-        }
-
-        const liquidityMigrationContext =
-            this.createRouteContext<liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyKeepYtRoute>({
-                params,
-                syEntity: srcSyEntity, // This one does not matter tho
-                slippage,
-            });
-
-        const removeLiquidityRoute = new liqMigrationRoutes.PatchedRemoveLiquiditySingleTokenRouteWithRouterHelper(
-            srcMarketEntity.address,
-            netLpToMigrate,
-            tokenRedeemSrcSy,
-            slippage,
-            { context: removeLiqContext, tokenRedeemSy: tokenRedeemSrcSy, redeemRewards }
-        );
-
-        const routes = dstTokenMintSyList.map(
-            (dstTokenMintSy) =>
-                new liqMigrationRoutes.LiquidityMigrationFixTokenRedeemSyKeepYtRoute({
-                    removeLiquidityRoute,
-                    context: liquidityMigrationContext,
-                    redeemRewards,
-                    slippage,
-                    addLiquidityRouteConfig: {
-                        destinationMarket: dstMarketEntity.address,
-                        params: {
-                            context: addLiqContext,
-                            tokenMintSy: dstTokenMintSy,
-                        },
-                    },
-                })
-        );
-
-        const route = await this.findBestLiquidityMigrationRoute(routes).catch((cause: unknown) =>
-            this.throwNoRouteFoundError('migrate liquidity', srcMarketEntity.address, dstMarketEntity.address, [], {
-                cause,
-            })
-        );
-        const metaMethod = await route.buildCall();
         this.events.emit('calculationFinalized', { metaMethod });
         return metaMethod.executeWithMethod(_params);
     }

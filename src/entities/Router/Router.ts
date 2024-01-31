@@ -1,41 +1,9 @@
-import { GasEstimationError, PendleSdkError, PendleSdkErrorParams } from '../../errors';
-import { promiseAllWithErrors, zip } from '../../common';
-
-import {
-    BaseRoute,
-    BaseZapInRoute,
-    BaseZapOutRoute,
-    BaseZapInRouteData,
-    BaseZapOutRouteIntermediateData,
-    BaseLiquidityMigrationFixTokenRedeemSyRoute,
-} from './route';
-
 import { BaseRouter } from './BaseRouter';
 import { BaseRouterConfig } from './types';
 import { getContractAddresses } from '../../common';
 import { KyberSwapAggregatorHelper } from './aggregatorHelper';
 
 export type RouterConfig = BaseRouterConfig;
-
-/**
- * @remarks
- * As the routing algorithm try multiple routes to find the best one,
- * there are also multiple errors.
- *
- * This error is the collection of the errors from the routes.
- */
-export class RoutingError extends PendleSdkError {
-    constructor(
-        readonly routeErrors: {
-            route: BaseRoute<any>;
-            error: unknown;
-        }[],
-        params?: PendleSdkErrorParams
-    ) {
-        super('RoutingError', params);
-        // console.log(routeErrors);
-    }
-}
 
 export class Router extends BaseRouter {
     /**
@@ -61,76 +29,5 @@ export class Router extends BaseRouter {
             signer: config.signer,
             aggregatorHelper: aggregatorHelper,
         });
-    }
-
-    override async findBestZapInRoute<ZapInRoute extends BaseZapInRoute<BaseZapInRouteData, ZapInRoute>>(
-        routes: ZapInRoute[]
-    ): Promise<ZapInRoute> {
-        // Previously there was bulkseller, and there is a step to filter out the
-        // bulkseller. It is no longer exist in the system, so now we can just call find best generic route.
-        return this.findBestGenericRoute(routes);
-    }
-
-    override async findBestZapOutRoute<
-        ZapOutRoute extends BaseZapOutRoute<BaseZapOutRouteIntermediateData, ZapOutRoute>,
-    >(routes: ZapOutRoute[]): Promise<ZapOutRoute> {
-        // Previously there was bulkseller, and there is a step to filter out the
-        // bulkseller. It is no longer exist in the system, so now we can just call find best generic route.
-        return this.findBestGenericRoute(routes);
-    }
-
-    override async findBestLiquidityMigrationRoute<
-        LiquidityMigrationRoute extends BaseLiquidityMigrationFixTokenRedeemSyRoute<LiquidityMigrationRoute, any>,
-    >(routes: LiquidityMigrationRoute[]): Promise<LiquidityMigrationRoute> {
-        if (routes.length === 0) {
-            throw new PendleSdkError('Unexpected empty routes');
-        }
-        // Determine if we should use remove liquidity route with bulkseller.
-        // Note that all route should have the same removeLiquidityRoute
-        const optimalRemoveLiquidityRoute = await this.findBestZapOutRoute([routes[0].removeLiquidityRoute]);
-        routes = routes.map((route) => route.withRemoveLiquidityRoute(optimalRemoveLiquidityRoute));
-
-        // Previously there was bulkseller, and there is a step to filter out the
-        // bulkseller. It is no longer exist in the system, so now we can just call find best generic route.
-
-        return this.findBestGenericRoute(routes);
-    }
-
-    async findBestGenericRoute<Route extends BaseRoute<Route>>(routes: Route[]): Promise<Route> {
-        const routesData = routes.map(async (route) => {
-            const [netOut, netOutInEth] = await Promise.all([route.getNetOut(), route.estimateActualReceivedInEth()]);
-            if (!netOut) {
-                throw new PendleSdkError('Unable to estimate output');
-            }
-            if (this.checkErrorOnSimulation) {
-                await this.checkSimulableRoute(route);
-            }
-            return { route, netOut, netOutInEth };
-        });
-
-        const [results, errors] = await promiseAllWithErrors(routesData);
-
-        // consideration: maybe also gather the errors and put to the result.
-        if (results.length === 0) {
-            throw new RoutingError(Array.from(zip(routes, errors), ([route, error]) => ({ route, error })));
-        }
-        const routesWithNetOutInEth = results.filter((route) => route.netOutInEth != undefined);
-
-        type Item = (typeof results)[number];
-        const reducer: (a: Item, b: Item) => Item =
-            routesWithNetOutInEth.length === results.length
-                ? (a, b) => (a.netOutInEth!.gt(b.netOutInEth!) ? a : b)
-                : (a, b) => (a.netOut.gt(b.netOut) ? a : b);
-        return results.reduce(reducer).route;
-    }
-
-    private async checkSimulableRoute<Route extends BaseRoute<Route>>(route: Route): Promise<void> {
-        try {
-            await route.getGasUsedUnwrapped();
-        } catch (e: any) {
-            if (e instanceof GasEstimationError && (await route.signerHasApproved())) {
-                throw e;
-            }
-        }
     }
 }
