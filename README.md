@@ -1,3 +1,15 @@
+Given the variety of assets Pendle now supports, along with their nuances, the
+Pendle SDK project may not be the optimal solution for integration. As a
+result, we have publicly archived this repository in favor of our new backend
+for generating contract calldata, accessible
+[here](https://api-v2.pendle.finance/sdk/). This backend incorporates most of
+the functionalities utilized by our dApp, including the recent Limit Order
+protocol, and provides enhanced ease of use compared to the SDK.
+
+We encourage migration to our backend to ensure access to the latest updates!
+
+---
+
 # Pendle SDK v2
 
 ## Installation
