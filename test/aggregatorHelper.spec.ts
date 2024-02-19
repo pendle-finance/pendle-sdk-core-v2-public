@@ -6,6 +6,7 @@ import {
     VoidAggregatorHelper,
     createTokenAmount,
     OneInchAggregatorHelper,
+    KyberSwapAggregatorHelper,
 } from '../src';
 import { currentConfig, networkConnection, env } from './util/testEnv';
 import { BigNumber as BN } from 'ethers';
@@ -34,7 +35,7 @@ describe('VoidAggregatorHelper', () => {
     });
 });
 
-testHelper.describeIf(env.AGGREGATOR_HELPER === 'ONEINCH')('OneInchAggregatorHelper', () => {
+testHelper.describeIf(env.AGGREGATOR_HELPER === 'ONEINCH')(OneInchAggregatorHelper, () => {
     const oneInchAggregatorHelper = currentConfig.aggregatorHelper as OneInchAggregatorHelper;
     const usdcAmount = createTokenAmount({ token: currentConfig.tokens.USDC, amount: BN.from(10) });
     const daiAddress = currentConfig.tokens.DAI;
@@ -58,5 +59,16 @@ testHelper.describeIf(env.AGGREGATOR_HELPER === 'ONEINCH')('OneInchAggregatorHel
         const firstCall = await OneInchAggregatorHelper.provideCachedLiquiditySources(oneInchAggregatorHelper);
         const secondCall = await OneInchAggregatorHelper.provideCachedLiquiditySources(oneInchAggregatorHelper);
         expect(Object.is(firstCall, secondCall)).toBe(true);
+    });
+});
+
+testHelper.describeIf(env.AGGREGATOR_HELPER === 'KYBERSWAP')(KyberSwapAggregatorHelper, () => {
+    const oneInchAggregatorHelper = currentConfig.aggregatorHelper as KyberSwapAggregatorHelper;
+    const usdcAmount = createTokenAmount({ token: currentConfig.tokens.USDC, amount: BN.from(10) });
+    const daiAddress = currentConfig.tokens.DAI;
+
+    it('swap', async () => {
+        const swapResult = await oneInchAggregatorHelper.makeCall(usdcAmount, daiAddress, SLIPPAGE_TYPE2);
+        expect(swapResult).toBeDefined();
     });
 });

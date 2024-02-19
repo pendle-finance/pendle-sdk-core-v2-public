@@ -35,7 +35,10 @@ export type KyberAPIParamsOverrides = {
     saveGas?: '0' | '1';
     gasInclude?: '0' | '1';
     useMeta?: boolean;
-    clientData?: { source: string };
+    // Client data should be a JSON string of an object with a "source" property.
+    // Axios has a different way to serialize object.
+    // To make the intention clear, we use a string here.
+    clientData?: `{"source":"${string}"}`;
     deadline?: string;
 
     /**
@@ -253,7 +256,7 @@ export class KyberSwapAggregatorHelper implements AggregatorHelper<true> {
             useMeta: false,
             saveGas: '1',
             gasInclude: '1',
-            clientData: { source: 'Pendle' },
+            clientData: '{"source":"Pendle"}',
             deadline: String(2 ** 31 - 1),
             excludedSources: 'kyberswap-limit-order,rfq',
             ...filterUndefinedFields(this.getApiParamsOverrides()),
